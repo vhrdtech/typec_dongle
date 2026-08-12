@@ -2,7 +2,7 @@
 icon: lucide/home
 ---
 
-# Donguru — ドングル**
+# Donguru — ドングル
 
 Donguru is a USB-Type-C dongle featuring a USB Hub, USART/I2C/GPIO/ADC, a power
 switch and a power meter.
