@@ -111,11 +111,18 @@ accent = "teal"
 
 [[project.extra.social]]
 icon = "fontawesome/brands/github"
-link = "https://github.com/vhrdtech/typec_dongle"
+link = "https://github.com/vhrdtech"
+name = "vhrdtech on GitHub"
 
-# [[project.extra.social]]
-# icon = "fontawesome/brands/mastodon"
-# link = "https://fosstodon.org/@user"
+[[project.extra.social]]
+icon = "fontawesome/brands/linkedin"
+link = "https://www.linkedin.com/company/vhrdtech/"
+name = "vhrdtech on LinkedIn"
+
+[[project.extra.social]]
+icon = "fontawesome/solid/globe"
+link = "https://vhrd.tech"
+name = "vhrd.tech website"
 
 [project.markdown_extensions]
 abbr = {}
