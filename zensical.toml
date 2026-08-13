@@ -1,18 +1,40 @@
 [project]
 site_url = "https://www.example.com/"
-site_name = "Documentation"
-# site_description = "Your project description"
+site_name = "Donguru"
+site_description = "USB-Type-C dongle with a USB Hub, USART/I2C/GPIO/ADC, power switch and power meter."
 # site_author = "Your name"
 
-# copyright = "Copyright &copy; 2026 Your name"
+copyright = "Copyright &copy; 2026 vhrdtech"
 
-# repo_url = "https://github.com/user/repo"
-# repo_name = "user/repo"
-# edit_uri = "edit/main/docs/"
+repo_url = "https://github.com/vhrdtech/typec_dongle"
+repo_name = "vhrdtech/typec_dongle"
+edit_uri = "edit/main/docs/"
 
 nav = [
   { "Home" = "index.md" },
+  { "About" = "about/index.md" },
+  { "Documentation" = [
+      "user/index.md",
+      { "Quickstart" = "user/quickstart.md" },
+      { "Usage" = "user/usage.md" },
+  ]
+  },
   { "Development" = "development/index.md" },
+  { "Design" = [
+      "design/index.md",
+      { "CLI" = [
+          "design/cli/index.md",
+          { "Implementation" = "design/cli/implementation.md" },
+          { "Evaluations" = [
+              "design/cli/evaluations/index.md",
+              { "figment vs config" = "design/cli/evaluations/config-figment-vs-config.md" },
+              { "tabled vs comfy-table" = "design/cli/evaluations/tables-tabled-vs-comfy-table.md" },
+          ]
+          },
+      ]
+      },
+  ]
+  },
   { "References" = [
       "reference/index.md",
       { "Zensical" = "reference/zensical.md" },
@@ -49,7 +71,7 @@ features = [
   "navigation.path",
   # "navigation.prune",
   "navigation.sections",
-  # "navigation.tabs",
+  "navigation.tabs",
   # "navigation.tabs.sticky",
   "navigation.top",
   "navigation.tracking",
@@ -87,9 +109,9 @@ toggle.name = "Switch to system preference"
 primary = "teal"
 accent = "teal"
 
-# [[project.extra.social]]
-# icon = "fontawesome/brands/github"
-# link = "https://github.com/user/repo"
+[[project.extra.social]]
+icon = "fontawesome/brands/github"
+link = "https://github.com/vhrdtech/typec_dongle"
 
 # [[project.extra.social]]
 # icon = "fontawesome/brands/mastodon"

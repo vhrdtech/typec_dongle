@@ -10,8 +10,7 @@ This page describes how to set up a local development environment.
 
 Install the following tools before you start:
 
-- [uv](https://docs.astral.sh/uv/) — Python package and project manager
-    - [Python](https://www.python.org)
+- [uv](https://docs.astral.sh/uv/)
 - [Rust](https://rust-lang.org)
 
 ## Working on the documentation
