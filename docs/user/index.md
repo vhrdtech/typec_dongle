@@ -29,4 +29,12 @@ End-user documentation for using a [Donguru](../index.md) dongle with the
 
     [:octicons-arrow-right-24: Learn the commands](usage.md)
 
+-   :lucide-file-code-corner: __Scripting__
+
+    ---
+
+    Task-oriented guide to everyday commands.
+
+    [:octicons-arrow-right-24: Learn more](scripting.md)
+
 </div>

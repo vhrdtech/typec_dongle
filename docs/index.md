@@ -7,7 +7,7 @@ hide:
 
 # Donguru — ドングル { style="text-align:center" }
 
-A USB-Type-C dongle with a **USB Hub**, **USART / I2C / GPIO / ADC**, a
+A USB-Type-C dongle with a **USB Hub**, **UART / I2C / GPIO / ADC**, a
 **power switch** and a **power meter**
 { style="text-align:center" }
 
@@ -31,26 +31,37 @@ Plus a fast, scriptable command-line interface to drive it all.
 
     ---
 
-    Control downstream USB port(s) power, data lines, CC
-    lines etc.
+    Not enough ports on your machine? Donguru puts a small test rack worth of equipment on just one cable.
 
--   :material-connection: __USART / I2C / GPIO / ADC__
+-   :material-usb: __Full control of Type-C plug__
 
     ---
 
-    General-purpose interfaces for prototyping, bring-up, debugging and testing.
+    Turn power on and off, disconnect data lines, communicate over USB-PD protocol, enter alternate or debug-accessory modes and more. 
+
+-   :material-connection: __UART / I2C / GPIO / ADC__
+
+    ---
+
+    General-purpose interfaces for prototyping, bring-up, debugging and testing. On the plug SBU lines and 2.54 header.
 
 -   :material-power-plug: __Power switch__
 
     ---
 
-    Enable or disable power to downstream devices on demand.
+    Enable or disable power to downstream device(s) on demand.
 
 -   :material-gauge: __Power meter__
 
     ---
 
     Monitor voltage and current draw in real time.
+
+-   :material-creation: __More to come__
+
+    ---
+
+    Hardware also supports SPI, FDCAN, PWM and a whole SWD interface. Which will be released with upcoming software updates.
 
 </div>
 
@@ -67,14 +78,6 @@ Plus a fast, scriptable command-line interface to drive it all.
 
     [:octicons-arrow-right-24: Start here](user/quickstart.md)
 
--   :lucide-wrench: __Development__
-
-    ---
-
-    Set up your environment and build everything yourself.
-
-    [:octicons-arrow-right-24: Start building](development/index.md)
-
 -   :lucide-terminal: __CLI__
 
     ---
@@ -83,6 +86,22 @@ Plus a fast, scriptable command-line interface to drive it all.
     it's unixi archtitecture.
 
     [:octicons-arrow-right-24: Read the design](design/cli/index.md)
+
+-   :material-language-python: __Scripting__
+
+    ---
+
+    Take full control of the hardware through Rust or Python.
+
+    [:octicons-arrow-right-24: Learn more](user/scripting.md)
+
+-   :lucide-wrench: __Development__
+
+    ---
+
+    Set up your environment and build everything yourself.
+
+    [:octicons-arrow-right-24: Start building](development/index.md)
 
 -   :lucide-drafting-compass: __Design__
 

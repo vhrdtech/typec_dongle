@@ -58,8 +58,8 @@ match them:
 ## Transport model
 
 The host talks to the dongle over a **control channel exposed by the dongle's
-MCU**. The channel is carried over USB, and the wire protocol is expected to be
-[**wireweaver**](https://github.com/jamesmunns/wireweaver). The CLI treats this
+MCU**. The channel is carried over USB, and the wire protocol is
+[**WireWeaver**](https://github.com/vhrdtech/wire_weaver). The CLI treats this
 as a typed request/response transport: each subcommand maps to one or more RPC
 calls.
 
@@ -285,7 +285,7 @@ developed, shipped, and versioned independently.
 
 ## Open questions
 
-- **wireweaver surface** — the exact RPC schema and how firmware update is
+- **WireWeaver surface** — the exact RPC schema and how firmware update is
   carried over it (*TBD*, tracked with firmware work).
 - **Windows specifics** — driver/enumeration differences for USB access on
   Windows (lowest priority target).

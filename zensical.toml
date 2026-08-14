@@ -17,6 +17,7 @@ nav = [
       "user/index.md",
       { "Quickstart" = "user/quickstart.md" },
       { "Usage" = "user/usage.md" },
+      { "Scripting" = "user/scripting.md" },
   ]
   },
   { "Development" = "development/index.md" },
@@ -41,6 +42,7 @@ nav = [
       { "Markdown" = "reference/markdown.md" },
   ]
   },
+  { "Vhrd.Tech" = "https://vhrd.tech" },
 ]
 
 # extra_css = ["stylesheets/extra.css"]

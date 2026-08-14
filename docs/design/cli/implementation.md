@@ -33,15 +33,14 @@ why it is preferred over alternatives.
 | Config files         | **`figment`** (or `config`)   | Layered providers (defaults → files → env) matching the design’s precedence; merges TOML + env cleanly. See [figment vs config](evaluations/config-figment-vs-config.md). |
 | Serialization        | **`serde`** + **`toml`**      | Config parsing and `--format json` share one model.                 |
 | JSON output          | **`serde_json`**              | `json` and `jsonl` output formats.                                  |
-| USB access           | **`nusb`**                    | Pure-Rust, cross-platform, async-friendly USB; avoids a libusb C dependency. (`rusb`/libusb is the fallback.) |
-| Serial (fallback/UART)| **`serialport`**             | Cross-platform serial for a UART bridge or a serial transport fallback. |
-| RPC / wire format    | **`wireweaver`** | Matches the dongle’s control-channel protocol.                     |
+| USB access           | **`nusb`**                    | Pure-Rust, cross-platform, async-friendly USB; avoids a libusb C dependency. |
+| RPC / wire format    | **`WireWeaver`** | Matches the dongle’s control-channel protocol.                     |
 | Errors (app)         | **`anyhow`**                  | Ergonomic error propagation at the binary boundary.                 |
 | Errors (library)     | **`thiserror`**               | Typed errors in the core library crate that map to exit codes.      |
 | Logging/diagnostics  | **`tracing`** + `tracing-subscriber` | Structured diagnostics to stderr, controlled by `-v`/`-q`.   |
 | TTY / colour         | **`anstream`**/`anstyle` (+ `is-terminal`) | Auto-disable colour when piped; honour `NO_COLOR`.          |
 | Tables (text output) | `tabled` or `comfy-table`     | Aligned human output for `list`/`info`. See [tabled vs comfy-table](evaluations/tables-tabled-vs-comfy-table.md). |
-| Async runtime        | **`tokio`** (if needed)       | Only if `nusb`/transport needs async; keep it optional.             |
+| Async runtime        | **`tokio`**        | Required by WireWeaver, blocking interface provided via channels for both Rust and Python.             |
 
 !!! note
 
