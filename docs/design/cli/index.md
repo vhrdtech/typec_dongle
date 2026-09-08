@@ -6,9 +6,7 @@ icon: lucide/terminal
 
 This document describes the design of the **Donguru command-line interface**:
 its goals, its command surface, how it is configured, and how it composes with
-other Unix tools. A companion page covers the
-[implementation details](implementation.md) (crate selection, module layout,
-testing, packaging).
+other Unix tools. 
 
 !!! info "Status"
 
@@ -180,7 +178,7 @@ The CLI is built to be a good citizen in pipelines.
   never sees log noise.
 - **Exit codes are meaningful.** `0` success; non-zero on failure with distinct
   codes for categories (usage error, no device, transport error, device error,
-  timeout). These are documented in [implementation](implementation.md).
+  timeout).
 - **Output formats are selectable.** A global `--format`/`-f` flag chooses the
   representation:
     - `text` (default) — human-readable, aligned, possibly colourised when
@@ -250,8 +248,7 @@ Higher priority numbers override lower ones on a per-key basis.
 - **Command-line flags** always win.
 
 Typical configurable keys: default device selector, default output format,
-default timeouts, log verbosity. The exact schema and precedence mechanics are
-specified in [implementation](implementation.md).
+default timeouts, log verbosity.
 
 ## Device selection
 

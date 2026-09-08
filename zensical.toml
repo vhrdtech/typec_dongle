@@ -25,13 +25,6 @@ nav = [
       "design/index.md",
       { "CLI" = [
           "design/cli/index.md",
-          { "Implementation" = "design/cli/implementation.md" },
-          { "Evaluations" = [
-              "design/cli/evaluations/index.md",
-              { "figment vs config" = "design/cli/evaluations/config-figment-vs-config.md" },
-              { "tabled vs comfy-table" = "design/cli/evaluations/tables-tabled-vs-comfy-table.md" },
-          ]
-          },
       ]
       },
   ]
