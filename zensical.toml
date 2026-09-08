@@ -4,7 +4,7 @@ site_name = "Donguru"
 site_description = "USB-Type-C dongle with a USB Hub, USART/I2C/GPIO/ADC, power switch and power meter."
 # site_author = "Your name"
 
-copyright = "Copyright &copy; 2026 vhrdtech"
+copyright = "Copyright &copy; 2026 vhrd.tech"
 
 repo_url = "https://github.com/vhrdtech/typec_dongle"
 repo_name = "vhrdtech/typec_dongle"
