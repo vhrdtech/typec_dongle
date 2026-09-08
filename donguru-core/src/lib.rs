@@ -1,14 +1,8 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+//! This crate is responsbile for interacting with a donguru dongle.
+//! E.g.: device enumeration/selection, transport abstraction (WireWeaver RPC over USB)
+//!       and typed operations for each subsystem (GPIO, USB power, etc.).
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub mod device;
+pub mod error;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use error::{Error, Result};

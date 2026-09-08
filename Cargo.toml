@@ -1,0 +1,19 @@
+[workspace]
+resolver = "3"
+members = ["donguru-cli", "donguru-core"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "TBD"
+repository = ""
+
+[workspace.dependencies]
+donguru-core = { path = "donguru-core" }
+
+anyhow = "1"
+thiserror = "2"
+clap = { version = "4", features = ["derive", "env", "wrap_help"] }
+clap_complete = "4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
