@@ -22,4 +22,3 @@ pub enum Error {
     #[error("timed out: {0}")]
     Timeout(String),
 }
-

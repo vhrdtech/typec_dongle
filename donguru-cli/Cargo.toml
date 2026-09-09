@@ -1,6 +1,18 @@
 [package]
 name = "donguru-cli"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
+description = "Command-line interface for the Donguru USB-C dongle"
+
+# The same executable is installed under two names: `donguru` and `dg`.
+[[bin]]
+name = "donguru"
+path = "src/main.rs"
 
 [dependencies]
+donguru-core.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+clap_complete.workspace = true
+serde.workspace = true
+serde_json.workspace = true
