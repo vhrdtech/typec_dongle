@@ -1,11 +1,11 @@
-use clap::Parser;
 mod cli;
 mod commands;
 mod context;
 mod exit;
+mod theme;
 
 fn main() -> std::process::ExitCode {
-    let cli = cli::Cli::parse();
+    let cli = cli::Cli::parse_styled();
     let ctx = context::Context::from_cli(&cli);
 
     let exit_code = match commands::dispatch(&ctx, cli.command) {

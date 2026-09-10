@@ -4,6 +4,10 @@ version.workspace = true
 edition.workspace = true
 description = "Command-line interface for the Donguru USB-C dongle"
 
+[lib]
+name = "donguru_cli"
+path = "src/lib.rs"
+
 # The same executable is installed under two names: `donguru` and `dg`.
 [[bin]]
 name = "donguru"
@@ -14,5 +18,10 @@ donguru-core.workspace = true
 anyhow.workspace = true
 clap.workspace = true
 clap_complete.workspace = true
+thiserror.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+
+[dev-dependencies]
+# Colour-aware stdout for the theme_preview example.
+anstream = "1"

@@ -20,16 +20,22 @@ impl ExitCode {
     pub const TIMEOUT: u8 = 5;
 }
 
-impl Into<std::process::ExitCode> for ExitCode {
-    fn into(self) -> std::process::ExitCode {
-        match self {
-            Self::Success => std::process::ExitCode::SUCCESS,
-            Self::Failure => std::process::ExitCode::FAILURE,
-            Self::BadArgs => std::process::ExitCode::from(Self::BAD_ARGS),
-            Self::NoDevice => std::process::ExitCode::from(Self::NO_DEVICE),
-            Self::DeviceError => std::process::ExitCode::from(Self::DEVICE_ERROR),
-            Self::Timeout => std::process::ExitCode::from(Self::TIMEOUT),
+impl From<&ExitCode> for std::process::ExitCode {
+    fn from(value: &ExitCode) -> Self {
+        match value {
+            ExitCode::Success => std::process::ExitCode::SUCCESS,
+            ExitCode::Failure => std::process::ExitCode::FAILURE,
+            ExitCode::BadArgs => std::process::ExitCode::from(ExitCode::BAD_ARGS),
+            ExitCode::NoDevice => std::process::ExitCode::from(ExitCode::NO_DEVICE),
+            ExitCode::DeviceError => std::process::ExitCode::from(ExitCode::DEVICE_ERROR),
+            ExitCode::Timeout => std::process::ExitCode::from(ExitCode::TIMEOUT),
         }
+    }
+}
+
+impl From<ExitCode> for std::process::ExitCode {
+    fn from(value: ExitCode) -> Self {
+        std::process::ExitCode::from(&value)
     }
 }
 

@@ -1,11 +1,12 @@
 //! Command-line interface, global settings and built-in command tree.
 //!
 //! Every node supports `--help`, unknown top-level subcommands are captured for external
-//! plugin dispatch (`donguru foo` → `donguru-foo` on `PATH`).
+//! plugin dispatch (`donguru my-command` → `donguru-my-command` on `PATH`).
 
 use std::ffi::OsString;
 
-use clap::{Args, Parser, Subcommand, ValueEnum};
+use crate::theme;
+use clap::{Args, CommandFactory, FromArgMatches, Parser, Subcommand, ValueEnum};
 
 /// Command-line interface for the Donguru USB-C dongle.
 #[derive(Debug, Parser)]
@@ -24,6 +25,21 @@ pub struct Cli {
 
     #[command(subcommand)]
     pub command: Command,
+}
+
+impl Cli {
+    /// Apply the CLI color theme before and parse arguments.
+    ///
+    /// As we want to downgrade the color theme depending on the terminal's capabilities,
+    /// we manually apply the style rather than using `#[command(styles = ...)]` which
+    /// requires a `const` and is applied "statically".
+    pub fn parse_styled() -> Self {
+        let matches = Self::command().styles(theme::select_style()).get_matches();
+        match Self::from_arg_matches(&matches) {
+            Ok(cli) => cli,
+            Err(err) => err.exit(),
+        }
+    }
 }
 
 /// Settings accepted at every level of the command tree.
@@ -75,54 +91,50 @@ pub enum Format {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum ColorMode {
+    /// Colourise only when stderr/stdout is a TTY that supports it
     Auto,
+    /// Always emit colour escape sequences
     Always,
+    /// Never emit colour escape sequences
     Never,
 }
 
 /// Top-level command tree.
 #[derive(Debug, Subcommand)]
 pub enum Command {
+    /// Provides general information about the available dongles and the environment
+    #[command(subcommand)]
+    Info,
+
     /// Enumerate and inspect dongles
     #[command(subcommand)]
     Device,
+
+    /// Control downstream USB port(s)
+    #[command(subcommand)]
+    Usb,
 
     /// Read and drive general-purpose I/O pins
     #[command(subcommand)]
     Gpio,
 
-    /// Control downstream USB hub ports
-    #[command(subcommand)]
-    Usb,
+    /// Generate Udev rules
+    #[command(display_order = 70)]
+    Udev,
 
-    /// Power switch and power meter
-    #[command(subcommand)]
-    Power,
-
-    /// I2C bus bridge
-    #[command(subcommand)]
-    I2c,
-
-    /// UART (USART) bridge
-    #[command(subcommand)]
-    Uart,
-
-    /// Firmware version and update
-    #[command(subcommand)]
-    Fw,
+    /// Generate a default config, and inspect/evaluate the effective one
+    #[command(subcommand, display_order = 80)]
+    Config,
 
     /// Generate shell completions
+    #[command(display_order = 90)]
     Completions {
         /// Shell to generate completions for
         #[arg(value_enum)]
         shell: clap_complete::Shell,
     },
 
-    /// Generate a default config, and inspect/evaluate the effective one
-    #[command(subcommand)]
-    Config,
-
-    /// External plugin: `donguru foo ...` runs `donguru-foo ...` from PATH
+    /// External plugin: `donguru my-command ...` runs `donguru-my-command ...` from PATH
     #[command(external_subcommand)]
     External(Vec<OsString>),
 }
