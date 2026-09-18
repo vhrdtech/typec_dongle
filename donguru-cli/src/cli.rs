@@ -103,7 +103,6 @@ pub enum ColorMode {
 #[derive(Debug, Subcommand)]
 pub enum Command {
     /// Provides general information about the available dongles and the environment
-    #[command(subcommand)]
     Info,
 
     /// Enumerate and inspect dongles
