@@ -107,7 +107,7 @@ pub enum Command {
 
     /// Enumerate and inspect dongles
     #[command(subcommand)]
-    Device,
+    Device(crate::commands::device::Device),
 
     /// Control downstream USB port(s)
     #[command(subcommand)]
