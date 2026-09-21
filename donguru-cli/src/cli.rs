@@ -117,9 +117,9 @@ pub enum Command {
     #[command(subcommand)]
     Gpio(crate::commands::gpio::Gpio),
 
-    /// Generate Udev rules
-    #[command(display_order = 70)]
-    Udev,
+    /// Manage the Linux udev rules granting access to a dongle
+    #[command(subcommand, display_order = 70)]
+    Udev(crate::commands::udev::Udev),
 
     /// Generate a default config, and inspect/evaluate the effective one
     #[command(subcommand, display_order = 80)]
