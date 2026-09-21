@@ -1,13 +1,12 @@
-
-pub mod info;
+pub mod completions;
 pub mod device;
-pub mod usb;
 pub mod gpio;
+pub mod info;
+pub mod usb;
 
 use crate::cli::Command;
 use crate::context::Context;
 use crate::exit::ExitCode;
-
 
 pub fn dispatch(ctx: &Context, command: Command) -> anyhow::Result<ExitCode> {
     match command {
@@ -15,6 +14,7 @@ pub fn dispatch(ctx: &Context, command: Command) -> anyhow::Result<ExitCode> {
         Command::Device(cmd) => device::run(ctx, cmd),
         Command::Usb(cmd) => usb::run(ctx, cmd),
         Command::Gpio(cmd) => gpio::run(ctx, cmd),
+        Command::Completions { shell } => completions::run(ctx, shell),
         _ => Ok(ExitCode::Failure),
     }
 }
