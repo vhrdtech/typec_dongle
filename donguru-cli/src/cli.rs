@@ -115,7 +115,7 @@ pub enum Command {
 
     /// Read and drive general-purpose I/O pins
     #[command(subcommand)]
-    Gpio,
+    Gpio(crate::commands::gpio::Gpio),
 
     /// Generate Udev rules
     #[command(display_order = 70)]

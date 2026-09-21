@@ -10,6 +10,19 @@ A global (top level) one as well as for the relevant subcommands like gpio, usb,
 ## USB Command
 * Add support for PD commands
 
+## GPIO Command
+
+### Write
+* Consider adding supporting writing multiple pins in one command
+* Consider support for custom syntax like <PIN>:<LEVEL" e.g. "p1:high" 
+  using this "p1:low p2:high" it would be easiert to specify multiple pins at once
+
+### Configure
+* Similar to write consider configuring multiple gpios at once
+* Also consider using custom config strings e.g. p1:out:low ...
+
+
+## Firmware
 
 * firmware
     - version

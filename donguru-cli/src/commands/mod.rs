@@ -2,6 +2,7 @@
 pub mod info;
 pub mod device;
 pub mod usb;
+pub mod gpio;
 
 use crate::cli::Command;
 use crate::context::Context;
@@ -13,6 +14,7 @@ pub fn dispatch(ctx: &Context, command: Command) -> anyhow::Result<ExitCode> {
         Command::Info => info::run(ctx),
         Command::Device(cmd) => device::run(ctx, cmd),
         Command::Usb(cmd) => usb::run(ctx, cmd),
+        Command::Gpio(cmd) => gpio::run(ctx, cmd),
         _ => Ok(ExitCode::Failure),
     }
 }

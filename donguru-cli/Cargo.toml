@@ -21,6 +21,7 @@ clap_complete.workspace = true
 thiserror.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+humantime.workspace = true
 
 [dev-dependencies]
 # Colour-aware stdout for the theme_preview example.
