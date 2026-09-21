@@ -111,7 +111,7 @@ pub enum Command {
 
     /// Control downstream USB port(s)
     #[command(subcommand)]
-    Usb,
+    Usb(crate::commands::usb::Usb),
 
     /// Read and drive general-purpose I/O pins
     #[command(subcommand)]
