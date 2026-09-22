@@ -1,11 +1,11 @@
 pub mod completions;
+pub mod config;
 pub mod device;
+pub mod external;
 pub mod gpio;
 pub mod info;
-pub mod usb;
 pub mod udev;
-pub mod config;
-pub mod external;
+pub mod usb;
 
 use crate::cli::Command;
 use crate::context::Context;

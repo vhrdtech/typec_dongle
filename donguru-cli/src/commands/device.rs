@@ -1,8 +1,8 @@
 //! `donguru device` - enumerate and inspect dongles.
 
-use crate::exit::ExitCode;
 use crate::context::Context;
-use clap::{Subcommand};
+use crate::exit::ExitCode;
+use clap::Subcommand;
 
 #[derive(Debug, Subcommand)]
 pub enum Device {
@@ -18,12 +18,12 @@ pub enum Device {
     },
 }
 
-
 pub fn run(_ctx: &Context, command: Device) -> anyhow::Result<ExitCode> {
     match command {
         Device::List => super::stub("device list", ExitCode::Failure),
         Device::Info => super::stub("device info", ExitCode::Failure),
-        Device::Select { selector } => super::stub(&format!("device select {selector}"), ExitCode::Failure),
+        Device::Select { selector } => {
+            super::stub(&format!("device select {selector}"), ExitCode::Failure)
+        }
     }
 }
-

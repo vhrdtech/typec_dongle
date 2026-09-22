@@ -35,9 +35,7 @@ pub enum Access {
     Group,
 
     /// `MODE="0666"` - access for every local user
-    #[value(
-        help = "Grant access to every local user, MODE=\"0666\""
-    )]
+    #[value(help = "Grant access to every local user, MODE=\"0666\"")]
     All,
 }
 

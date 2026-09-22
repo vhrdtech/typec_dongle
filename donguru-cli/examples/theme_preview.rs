@@ -10,7 +10,7 @@ use std::io::Write;
 use clap::builder::styling::{Color, Reset, Style, Styles};
 use clap::{Parser, ValueEnum};
 
-use donguru_cli::theme::{self, donguru_style, DEFAULT_PALETTE, FALLBACK_PALETTE, Palette};
+use donguru_cli::theme::{self, DEFAULT_PALETTE, FALLBACK_PALETTE, Palette, donguru_style};
 
 /// This example's *own* help/error styling is fixed at compile time via
 /// `#[command(styles = ...)]` (unlike `Cli::parse_styled()`, which picks a palette at runtime).
@@ -282,11 +282,7 @@ fn slot_table(out: &mut impl Write, chrome: &Chrome, variants: &[Variant]) {
     } = chrome;
 
     let _ = writeln!(out, "{header}Theme slots{Reset}");
-    let _ = writeln!(
-        out,
-        "{}",
-        table_head(placeholder, "slot", variants.iter())
-    );
+    let _ = writeln!(out, "{}", table_head(placeholder, "slot", variants.iter()));
 
     for slot in SLOTS {
         let mut row = format!("  {:<15}", slot.name);

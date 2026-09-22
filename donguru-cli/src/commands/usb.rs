@@ -2,7 +2,7 @@
 
 use crate::context::Context;
 use crate::exit::ExitCode;
-use clap::{Subcommand, ValueEnum, Args};
+use clap::{Args, Subcommand, ValueEnum};
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum Port {
@@ -14,7 +14,6 @@ pub enum Port {
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum PowerState {
-
     #[value(aliases = ["enable", "attach"], help = "Enable power [aliases: enable, attach]")]
     On,
     #[value(aliases = ["disable", "detach"], help = "Disable power [aliases: disable, detach]")]
@@ -29,7 +28,6 @@ pub enum DataState {
     Disconnect,
 }
 
-
 #[derive(Debug, Clone, Copy, Args)]
 pub struct UsbPort {
     #[arg(
@@ -43,7 +41,7 @@ pub struct UsbPort {
     /// Downstream USB port to interact with
     ///
     /// Each port can also be given by its short alias, e.g. `-p 0` or `-p p1`.
-    pub port: Option<Port>
+    pub port: Option<Port>,
 }
 
 #[derive(Debug, Subcommand)]
@@ -63,13 +61,11 @@ pub enum Usb {
     },
     /// Control the USB power lines of a specific USB port
     Power {
-
         #[arg(value_enum)]
         action: PowerState,
 
         #[command(flatten)]
         port: UsbPort,
-
     },
     /// Control the USB data lines of a specific USB port
     Data {
@@ -86,7 +82,13 @@ pub fn run(_ctx: &Context, command: Usb) -> anyhow::Result<ExitCode> {
         Usb::List => super::stub("usb list", ExitCode::Failure),
         Usb::Detach { port } => super::stub(&format!("usb detach {port:?}"), ExitCode::Failure),
         Usb::Attach { port } => super::stub(&format!("usb attach {port:?}"), ExitCode::Failure),
-        Usb::Power { port, action } => super::stub(&format!("usb power {action:?} [PORT: {port:?}]"), ExitCode::Failure),
-        Usb::Data { port, action } => super::stub(&format!("usb data {action:?} [PORT: {port:?}]"), ExitCode::Failure),
+        Usb::Power { port, action } => super::stub(
+            &format!("usb power {action:?} [PORT: {port:?}]"),
+            ExitCode::Failure,
+        ),
+        Usb::Data { port, action } => super::stub(
+            &format!("usb data {action:?} [PORT: {port:?}]"),
+            ExitCode::Failure,
+        ),
     }
 }

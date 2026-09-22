@@ -17,7 +17,10 @@ use clap::{Subcommand, ValueEnum};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum Scope {
     /// `./donguru.toml` - settings for the current project
-    #[value(alias = "local", help = "Project configuration, ./donguru.toml [alias: local]")]
+    #[value(
+        alias = "local",
+        help = "Project configuration, ./donguru.toml [alias: local]"
+    )]
     Project,
 
     /// `$XDG_CONFIG_HOME/donguru/donguru.toml` - settings for the current user
@@ -28,7 +31,10 @@ pub enum Scope {
     User,
 
     /// `/etc/donguru/donguru.toml` - settings for every user on the machine
-    #[value(alias = "etc", help = "System configuration, /etc/donguru/donguru.toml [alias: etc]")]
+    #[value(
+        alias = "etc",
+        help = "System configuration, /etc/donguru/donguru.toml [alias: etc]"
+    )]
     System,
 }
 
@@ -78,7 +84,11 @@ pub enum Config {
     #[command(aliases = ["paths", "where"])]
     Path {
         /// Print only the path of this scope
-        #[arg(value_enum, value_name = "SCOPE", help = "Print only the path of this scope [aliases: local, global, etc]")]
+        #[arg(
+            value_enum,
+            value_name = "SCOPE",
+            help = "Print only the path of this scope [aliases: local, global, etc]"
+        )]
         scope: Option<Scope>,
     },
 
@@ -104,10 +114,9 @@ pub fn run(_ctx: &Context, command: Config) -> anyhow::Result<ExitCode> {
         Config::Generate { output, force } => super::stub(
             &format!(
                 "config generate -> {} (force: {force})",
-                output.as_deref().map_or_else(
-                    || "-".to_string(),
-                    |path| path.display().to_string()
-                ),
+                output
+                    .as_deref()
+                    .map_or_else(|| "-".to_string(), |path| path.display().to_string()),
             ),
             ExitCode::Failure,
         ),
