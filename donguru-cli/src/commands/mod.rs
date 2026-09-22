@@ -5,6 +5,7 @@ pub mod info;
 pub mod usb;
 pub mod udev;
 pub mod config;
+pub mod external;
 
 use crate::cli::Command;
 use crate::context::Context;
@@ -19,7 +20,7 @@ pub fn dispatch(ctx: &Context, command: Command) -> anyhow::Result<ExitCode> {
         Command::Completions { shell } => completions::run(ctx, shell),
         Command::Udev(cmd) => udev::run(ctx, cmd),
         Command::Config(cmd) => config::run(ctx, cmd),
-        _ => Ok(ExitCode::Failure),
+        Command::External(cmd) => external::run(ctx, cmd),
     }
 }
 
