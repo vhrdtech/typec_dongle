@@ -123,7 +123,7 @@ pub enum Command {
 
     /// Generate a default config, and inspect/evaluate the effective one
     #[command(subcommand, display_order = 80)]
-    Config,
+    Config(crate::commands::config::Config),
 
     /// Generate shell completions
     #[command(display_order = 90)]
