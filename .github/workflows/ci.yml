@@ -53,7 +53,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v10
+        uses: astral-sh/setup-uv@v10.2.0
 
       - name: Install just
         run: uv tool install rust-just
@@ -75,12 +75,6 @@ jobs:
           rustup show active-toolchain
           rustc --version
           cargo --version
-
-      - name: Cache cargo registry and build output
-        uses: Swatinem/rust-cache@v2
-        with:
-          # Keep caches of different toolchains apart.
-          key: ${{ inputs.rust-version || 'pinned' }}
 
       # From here on, every step is a task that also exists locally.
       - name: just format-check
@@ -111,7 +105,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v10
+        uses: astral-sh/setup-uv@v10.2.0
 
       - name: Install just and prek
         run: |
