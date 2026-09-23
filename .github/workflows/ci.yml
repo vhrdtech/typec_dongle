@@ -1,0 +1,124 @@
+name: CI
+
+# The workflow only provides the environment (toolchain, caching) and passes settings in.
+# Every actual task is a `just` target, so what runs here should also run locally.
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      rust-version:
+        description: "Rust toolchain, e.g. stable, beta, nightly, 1.85.0. Empty uses rust-toolchain.toml."
+        type: string
+        default: ""
+      os:
+        description: "Runner to execute on."
+        type: choice
+        default: ubuntu-latest
+        options:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+      run-tests:
+        description: "Also run the test suite."
+        type: boolean
+        default: true
+
+# Only keep the newest run per branch/PR; cancel superseded ones.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: short
+
+jobs:
+  verify:
+    name: verify (${{ inputs.rust-version || 'pinned' }})
+    runs-on: ${{ inputs.os || 'ubuntu-latest' }}
+
+    # `RUSTUP_TOOLCHAIN` takes precedence over rust-toolchain.toml, so an
+    # empty value means "use the version pinned in the repository".
+    env:
+      RUSTUP_TOOLCHAIN: ${{ inputs.rust-version }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10
+
+      - name: Install just
+        run: uv tool install rust-just
+
+      # Runners ship with rustup, so only the toolchain itself is needed.
+      # With no argument, `rustup toolchain install` reads the channel and
+      # components straight from rust-toolchain.toml. Passing a version
+      # explicitly needs the components spelled out, since the file's
+      # `components` key does not apply to a different toolchain.
+      - name: Install Rust toolchain
+        shell: bash
+        run: |
+          if [ -n "${RUSTUP_TOOLCHAIN}" ]; then
+            rustup toolchain install "${RUSTUP_TOOLCHAIN}" \
+              --profile minimal --component rustfmt,clippy
+          else
+            rustup toolchain install
+          fi
+          rustup show active-toolchain
+          rustc --version
+          cargo --version
+
+      - name: Cache cargo registry and build output
+        uses: Swatinem/rust-cache@v2
+        with:
+          # Keep caches of different toolchains apart.
+          key: ${{ inputs.rust-version || 'pinned' }}
+
+      # From here on, every step is a task that also exists locally.
+      - name: just format-check
+        run: just format-check
+
+      - name: just check
+        run: just check
+
+      - name: just clippy
+        run: just clippy
+
+      # On pull_request/push there are no inputs, so `inputs.run-tests` is
+      # an empty string. GitHub coerces both '' and false to 0, so a plain
+      # `inputs.run-tests != false` would be false there and skip the
+      # tests on every PR. Hence the explicit event check first.
+      - name: just test
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run-tests }}
+        run: just test
+
+  # Runs the same git hooks that fire locally on commit, which covers the
+  # non-Rust checks (trailing whitespace, YAML/TOML syntax, ...). The Rust
+  # hooks are skipped because the `verify` job already covers them.
+  hooks:
+    name: hooks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10
+
+      - name: Install just and prek
+        run: |
+          uv tool install rust-just
+          uv tool install prek
+
+      - name: just hooks
+        env:
+          SKIP: fmt,check,clippy,test
+        run: just hooks
