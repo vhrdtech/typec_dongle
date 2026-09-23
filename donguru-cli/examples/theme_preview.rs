@@ -156,9 +156,11 @@ const SLOTS: &[Slot] = &[
     },
 ];
 
+type SlotMapping<'a> = (&'a str, fn(&Palette) -> Color);
+
 /// The color slots a [`Palette`] actually defines, the remaining `Styles` slots are
 /// inherited from `Styles::styled()`.
-const PALETTE_SLOTS: &[(&str, fn(&Palette) -> Color)] = &[
+const PALETTE_SLOTS: &[SlotMapping] = &[
     ("header", Palette::header),
     ("usage", Palette::usage),
     ("literal", Palette::literal),

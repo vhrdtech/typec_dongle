@@ -6,7 +6,7 @@ icon: lucide/terminal
 
 This document describes the design of the **Donguru command-line interface**:
 its goals, its command surface, how it is configured, and how it composes with
-other Unix tools. 
+other Unix tools.
 
 !!! info "Status"
 
