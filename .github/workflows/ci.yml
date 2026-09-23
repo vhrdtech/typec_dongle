@@ -98,7 +98,7 @@ jobs:
   # non-Rust checks (trailing whitespace, YAML/TOML syntax, ...). The Rust
   # hooks are skipped because the `verify` job already covers them.
   hooks:
-    name: hooks
+    name: commit hooks
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
