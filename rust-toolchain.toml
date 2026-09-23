@@ -1,0 +1,9 @@
+# Pins the Rust toolchain for everyone working on this repository.
+# `rustup` reads this file automatically and installs the toolchain on
+# first use, so `cargo`/`just fmt`/`just clippy` all agree on a version.
+#
+# The workspace uses edition 2024, which requires Rust 1.85 or newer.
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

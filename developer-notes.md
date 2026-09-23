@@ -54,11 +54,11 @@
 
 ## Testing
 - UnitTest
-- Insta 
+- Insta
 
 ## Packaging and distribution
 
 - Static Binary/ies
-- Man page(s) 
+- Man page(s)
 - Shell completions
 - Udev rules (for linux)

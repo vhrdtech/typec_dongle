@@ -37,7 +37,7 @@ Plus a fast, scriptable command-line interface to drive it all.
 
     ---
 
-    Turn power on and off, disconnect data lines, communicate over USB-PD protocol, enter alternate or debug-accessory modes and more. 
+    Turn power on and off, disconnect data lines, communicate over USB-PD protocol, enter alternate or debug-accessory modes and more.
 
 -   :material-connection: __UART / I2C / GPIO / ADC__
 

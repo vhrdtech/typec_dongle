@@ -1,0 +1,77 @@
+# Hook configuration for `prek` (https://github.com/j178/prek)
+#
+#   just hooks-install   # install the git hooks
+#   just hooks           # run every hook against all files
+#
+# The file format is identical to `.pre-commit-config.yaml` of `pre-commit`,
+
+default_install_hook_types:
+  - pre-commit
+  - pre-push
+
+default_stages:
+  - pre-commit
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-toml
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+
+  # These hooks delegate to the `just` targets/actions so the actual
+  # invocations live in exactly one place: the justfile.
+  #
+  # `language: system` reuses the toolchain already installed via rustup
+  # instead of downloading one per hook, and requires `just` on PATH.
+  #
+  # Only the formatting hooks receive the staged file names; `just fmt`
+  # then formats exactly those files. `check`, `clippy` and `test` take
+  # no arguments and always cover the whole workspace, so they are
+  # declared with `pass_filenames: false`.
+  - repo: local
+    hooks:
+      - id: fmt
+        name: just fmt
+        description: Format the changed Rust files.
+        entry: just fmt
+        language: system
+        types: [rust]
+        require_serial: true
+
+      - id: check
+        name: just check
+        description: Type-check the whole workspace.
+        entry: just check
+        language: system
+        types: [rust]
+        pass_filenames: false
+        require_serial: true
+
+      - id: clippy
+        name: just clippy
+        description: Lint the whole workspace, warnings are errors.
+        entry: just clippy
+        language: system
+        types: [rust]
+        pass_filenames: false
+        require_serial: true
+
+      # `just test` takes no file arguments: a change in one crate can
+      # break another crate's tests, so the whole workspace is always
+      # tested. Hence `pass_filenames: false`.
+      - id: test
+        name: just test
+        description: Run the full workspace test suite.
+        entry: just test
+        language: system
+        types: [rust]
+        pass_filenames: false
+        require_serial: true
+        stages: [pre-push]
