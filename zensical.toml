@@ -27,6 +27,7 @@ nav = [
           "design/cli/index.md",
       ]
       },
+      { "Packaging and distribution plan" = "design/packaging/index.md" },
   ]
   },
   { "References" = [
