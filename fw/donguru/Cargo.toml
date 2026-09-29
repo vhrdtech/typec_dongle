@@ -21,9 +21,10 @@ embassy-sync = { version = "0.8.0", features = ["defmt"] }
 embassy-futures = { version = "0.1.2" }
 static_cell = "2.1"
 assign-resources = "0.5.0"
-cnt = "0.2"
+cnt = "0.4"
 
 [features]
+default = ["debug-button"]
 # periodic ADC readings in the debug log
 debug-adc = []
 # switch / button state changes in the debug log

@@ -22,6 +22,7 @@
 //! and the first valid state after boot is not one. A button press is a falling edge followed by a rising
 //! one, reported on release with the time held.
 
+use cnt::cnt;
 use defmt::info;
 use embassy_time::{Duration, Instant, Ticker};
 
@@ -193,6 +194,7 @@ pub async fn button_task() {
                     Edge::Rising => {
                         if let Some(t) = pushed_at.take() {
                             info!("button pressed ({} ms)", (now - t).as_millis());
+                            cnt!(button_press: u32);
                         }
                     }
                 }

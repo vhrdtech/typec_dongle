@@ -16,16 +16,7 @@ MEMORY
   RAM : ORIGIN = 0x20000000, LENGTH = 144K
 
   /* BKP_REGS (reg): TAMP backup registers, retained across resets (not power loss without VBAT) */
-  BKP_REGS : ORIGIN = 0x4000B100, LENGTH = 0x14
-}
-
-SECTIONS
-{
-  .bkp_regs (NOLOAD) : ALIGN(4)
-  {
-    *(.bss._CNT_BKP_BUFFER .bss._CNT_BKP_BUFFER.*);
-    . = ALIGN(4);
-  } > BKP_REGS
+  BKPSRAM : ORIGIN = 0x4000B100, LENGTH = 0x14
 }
 
 /* Helper symbols: additional RAM banks (see init_ram.rs), flash partitions */
