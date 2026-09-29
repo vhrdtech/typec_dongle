@@ -16,7 +16,13 @@
 //! button with the switch on goes through the button only level), and with contact bounce the oversampled
 //! average can be anywhere. [`State::INVALID`] is only accepted after [`INVALID_DEBOUNCE`], so such samples
 //! are ignored and only a lasting fault is reported.
+//!
+//! Edges follow the voltage ([`Edge::Falling`] = switch on / button pushed) and are detected between valid
+//! states. The last valid value is kept through an invalid period, so a change across it is still an edge,
+//! and the first valid state after boot is not one. A button press is a falling edge followed by a rising
+//! one, reported on release with the time held.
 
+use defmt::info;
 use embassy_time::{Duration, Instant, Ticker};
 
 use crate::adc;
@@ -46,6 +52,46 @@ pub enum Button {
 pub struct State {
     pub switch: Switch,
     pub button: Button,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, defmt::Format)]
+pub enum Edge {
+    /// Switch turned off or button released.
+    Rising,
+    /// Switch turned on or button pushed.
+    Falling,
+}
+
+impl Switch {
+    fn high(self) -> Option<bool> {
+        match self {
+            Switch::Invalid => None,
+            Switch::On => Some(false),
+            Switch::Off => Some(true),
+        }
+    }
+}
+
+impl Button {
+    fn high(self) -> Option<bool> {
+        match self {
+            Button::Invalid => None,
+            Button::Pushed => Some(false),
+            Button::NotPushed => Some(true),
+        }
+    }
+}
+
+/// Edge from the last valid value `last` to `now`, updating `last`. `None` for an invalid `now`.
+fn edge(last: &mut Option<bool>, now: Option<bool>) -> Option<Edge> {
+    let now = now?;
+    let edge = match (*last, now) {
+        (Some(false), true) => Some(Edge::Rising),
+        (Some(true), false) => Some(Edge::Falling),
+        _ => None,
+    };
+    *last = Some(now);
+    edge
 }
 
 impl State {
@@ -108,6 +154,10 @@ pub async fn button_task() {
     let mut state = State::INVALID;
     let mut candidate = State::INVALID;
     let mut candidate_since = Instant::now();
+    let mut last_switch = None;
+    let mut last_button = None;
+    // None if held since boot, so that release is not a press
+    let mut pushed_at = None;
     loop {
         ticker.next().await;
         // No readings while the ADC is (re)initialized
@@ -133,6 +183,20 @@ pub async fn button_task() {
                 readings.map(|r| r.button_switch_mv),
                 readings.map(|r| r.vdda_mv)
             );
+            if let Some(e) = edge(&mut last_switch, state.switch.high()) {
+                info!("switch {}", e);
+            }
+            if let Some(e) = edge(&mut last_button, state.button.high()) {
+                info!("button {}", e);
+                match e {
+                    Edge::Falling => pushed_at = Some(now),
+                    Edge::Rising => {
+                        if let Some(t) = pushed_at.take() {
+                            info!("button pressed ({} ms)", (now - t).as_millis());
+                        }
+                    }
+                }
+            }
         }
     }
 }
