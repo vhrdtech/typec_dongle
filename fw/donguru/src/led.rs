@@ -5,9 +5,7 @@
 //! That function runs once, when the PWM drivers are created, to work out the timer settings from 1 kHz.
 //! Removing it would mean setting up TIM14 and TIM15 directly through the register-level API instead of SimplePwm and ComplementaryPwm.
 
-use embassy_stm32::Peri;
 use embassy_stm32::gpio::OutputType;
-use embassy_stm32::peripherals::{PF0, PF1, TIM14, TIM15};
 use embassy_stm32::time::{Hertz, khz};
 use embassy_stm32::timer::Channel;
 use embassy_stm32::timer::complementary_pwm::{ComplementaryPwm, ComplementaryPwmPin};
@@ -16,6 +14,8 @@ use embassy_stm32::timer::simple_pwm::{PwmPin, SimplePwm};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::signal::Signal;
 use embassy_time::{Duration, Ticker};
+
+use crate::LedResources;
 
 const PWM_FREQ: Hertz = khz(1);
 /// Animation update period.
@@ -170,15 +170,10 @@ fn duty(level: u32, max_duty: u32) -> u32 {
 }
 
 #[embassy_executor::task]
-pub async fn led_task(
-    tim14: Peri<'static, TIM14>,
-    pf0: Peri<'static, PF0>,
-    tim15: Peri<'static, TIM15>,
-    pf1: Peri<'static, PF1>,
-) {
+pub async fn led_task(r: LedResources) {
     let mut pwm0 = SimplePwm::new(
-        tim14,
-        Some(PwmPin::new(pf0, OutputType::PushPull)),
+        r.tim14,
+        Some(PwmPin::new(r.pf0, OutputType::PushPull)),
         None,
         None,
         None,
@@ -190,9 +185,9 @@ pub async fn led_task(
     ch0.enable();
 
     let mut pwm1 = ComplementaryPwm::new(
-        tim15,
+        r.tim15,
         None,
-        Some(ComplementaryPwmPin::new(pf1, OutputType::PushPull)),
+        Some(ComplementaryPwmPin::new(r.pf1, OutputType::PushPull)),
         None,
         None,
         None,
