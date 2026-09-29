@@ -116,4 +116,4 @@ fw-size:
         exit 1
     fi
     printf "\nCounters:\n"
-    cnt "$elf" list
+    cnt list "$elf"
