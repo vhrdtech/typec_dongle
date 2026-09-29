@@ -26,6 +26,8 @@ cnt = "0.2"
 [features]
 # periodic ADC readings in the debug log
 debug-adc = []
+# switch / button state changes in the debug log
+debug-button = []
 
 [build-dependencies]
 # (none)

@@ -2,6 +2,7 @@
 #![no_main]
 
 mod adc;
+mod button;
 mod init;
 mod led;
 
@@ -89,6 +90,7 @@ async fn main(spawner: embassy_executor::Spawner) {
     );
 
     spawner.spawn(unwrap!(adc::adc_task(r.adc, adc::ChannelSet::Base)));
+    spawner.spawn(unwrap!(button::button_task()));
 
     info!("init done");
 }
