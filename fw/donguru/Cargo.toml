@@ -13,7 +13,7 @@ panic-probe = { version = "1.0", features = ["print-defmt"] }
 cortex-m = { version = "0.7", features = ["critical-section-single-core"] }
 cortex-m-rt = "0.7"
 portable-atomic = { version = "1.11", features = ["critical-section"] } # atomics for Cortex-M0(+)
-embassy-stm32 = { version = "0.6.0", features = ["defmt", "stm32g0b1ce", "unstable-pac", "exti", "time", "time-driver-any"] }
+embassy-stm32 = { version = "0.6.0", features = ["defmt", "stm32g0b1ce", "unstable-pac", "exti", "time", "time-driver-tim4"] } # not "any": it would pick TIM15, which drives the PF1 LED
 embassy-usb = { version = "0.6.0", default-features = false, features = ["defmt"] }
 embassy-executor = { version = "0.10.0", features = ["platform-cortex-m", "executor-thread", "executor-interrupt", "defmt"] }
 embassy-time = { version = "0.5.1", features = ["defmt", "defmt-timestamp-uptime"] }

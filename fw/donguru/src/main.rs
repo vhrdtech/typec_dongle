@@ -2,32 +2,35 @@
 #![no_main]
 
 mod init;
+mod led;
 
 use cnt::cnt_if;
-use defmt::{error, info};
+use defmt::{error, info, unwrap};
 use defmt_rtt as _;
 use panic_probe as _;
 
 use cortex_m_rt::exception;
-use embassy_stm32::gpio::{Level, Output, Speed};
-use embassy_time::Timer;
 
 #[embassy_executor::main]
-async fn main(_spawner: embassy_executor::Spawner) {
+async fn main(spawner: embassy_executor::Spawner) {
     info!("donguru starting...");
     let mut config = embassy_stm32::Config::default();
     // TODO: configure config.rcc (clock tree) for your board
     let p = embassy_stm32::init(config);
     init::init();
 
-    let mut led = Output::new(p.PF1, Level::Low, Speed::Low);
+    spawner.spawn(unwrap!(led::led_task(p.TIM14, p.PF0, p.TIM15, p.PF1)));
+    led::set_brightness(led::Led::Power, led::Brightness::Bright);
+    led::set(led::Led::Power, led::Mode::Breath { period_ms: 3000 });
+    led::set(
+        led::Led::Status,
+        led::Mode::Blink {
+            on_ms: 300,
+            off_ms: 1200,
+        },
+    );
 
     info!("init done");
-    loop {
-        led.toggle();
-        cnt_if!(true, led_toggles: u32 += 1);
-        Timer::after_millis(1000).await;
-    }
 }
 
 #[exception]
