@@ -94,3 +94,24 @@ hooks-all:
 [group: 'hooks']
 hooks-update:
     prek update
+
+# Build firmware in release, print FLASH/RAM usage (limits from memory.x) and top 25 symbols
+[group: 'fw']
+[working-directory('fw/donguru')]
+fw-size:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cargo build --release
+    elf=target/thumbv6m-none-eabi/release/donguru
+    uv run --quiet scripts/size.py "$elf" memory.x
+    if ! cargo bloat --version >/dev/null 2>&1; then
+        echo "cargo-bloat not found: cargo install cargo-bloat" >&2
+        exit 1
+    fi
+    cargo bloat --release --bin donguru -n 25
+    if ! cnt --help >/dev/null 2>&1; then
+        echo "cnt not found: cargo install cnt_cli" >&2
+        exit 1
+    fi
+    printf "\nCounters:\n"
+    cnt "$elf" list
