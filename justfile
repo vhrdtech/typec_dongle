@@ -101,6 +101,8 @@ hooks-update:
 fw-size:
     #!/usr/bin/env bash
     set -euo pipefail
+    # size report only: hide rustc warnings (does not invalidate the build cache)
+    export CARGO_BUILD_WARNINGS=allow
     cargo build --release
     elf=target/thumbv6m-none-eabi/release/donguru
     uv run --quiet scripts/size.py "$elf" memory.x
