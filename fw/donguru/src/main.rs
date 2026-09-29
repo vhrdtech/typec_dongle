@@ -3,14 +3,14 @@
 
 mod init;
 
-use defmt::{info, error};
+use cnt::cnt_if;
+use defmt::{error, info};
 use defmt_rtt as _;
 use panic_probe as _;
-use cnt::cnt_if; // bkp_cnt_if! for counters in backup registers
 
+use cortex_m_rt::exception;
 use embassy_stm32::gpio::{Level, Output, Speed};
 use embassy_time::Timer;
-use cortex_m_rt::exception;
 
 #[embassy_executor::main]
 async fn main(_spawner: embassy_executor::Spawner) {

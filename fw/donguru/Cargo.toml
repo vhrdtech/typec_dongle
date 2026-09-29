@@ -24,6 +24,14 @@ cnt = "0.2"
 [build-dependencies]
 # (none)
 
+# to solve "can't find crate for test
+[[bin]]
+name = "donguru"
+path = "src/main.rs"
+test = false
+doctest = false
+bench = false
+
 # See https://docs.rust-embedded.org/book/unsorted/speed-vs-size.html
 [profile.dev]
 codegen-units = 1
