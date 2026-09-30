@@ -7,7 +7,7 @@ pub(crate) fn init() {
     enable_backup_registers();
 }
 
-/// Enable write access to TAMP backup registers used by `bkp_cnt_if!` counters.
+/// Enable write access to TAMP backup registers used by `bkp_cnt!` counters.
 /// Backup registers are only accessible with DBP set and (on most families) the RTC APB clock enabled.
 /// NOTE: TAMP/RTC backup registers are reset by a backup domain reset, so do not call reset_backup_domain().
 pub(crate) fn enable_backup_registers() {

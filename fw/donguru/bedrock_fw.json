@@ -1,0 +1,74 @@
+{
+  "about": "Written by embedded_bedrock firmware_template_skill (bedrock_gen.py). Records the template revision and the answers this firmware was generated with, plus firmware-specific upgrade history. See AGENTS.md.",
+  "schema": 1,
+  "template": {
+    "repo": "https://github.com/romixlab/embedded_bedrock",
+    "path": "firmware_template_skill",
+    "commit": "33985a86d108e32747829fe80a8dc6994445369b",
+    "commit_date": "2026-09-30T18:59:32+02:00",
+    "dirty": false,
+    "version": "0.4.2"
+  },
+  "generated": "2026-09-30T18:59:40+02:00",
+  "command": "bedrock_gen.py new donguru --chip STM32G0B1CE --config-page --bkp-counters auto --counters --led PF1",
+  "answers": {
+    "name": "donguru",
+    "chip": "STM32G0B1CE",
+    "offline": false,
+    "flash_size": null,
+    "ram_size": null,
+    "erase_size": null,
+    "rust_target": null,
+    "bootloader": false,
+    "config_page": true,
+    "min_bootloader": "24K",
+    "main_ram": null,
+    "bkp_counters": "auto",
+    "framework": "embassy",
+    "log": "defmt",
+    "log_level": "debug",
+    "rtt_buffer": 1024,
+    "counters": true,
+    "ram_counters": 64,
+    "no_flip_link": false,
+    "nightly": false,
+    "build_core": false,
+    "panic_immediate_abort": false,
+    "rtc": false,
+    "supply_config": null,
+    "smps_voltage": null,
+    "led": "PF1",
+    "bedrock": "git",
+    "build_info": false
+  },
+  "upgrades": [
+    {
+      "date": "2026-09-30",
+      "from": "3cf6405",
+      "to": "af1f939",
+      "applied": [
+        "0.4.0: added bedrock_fw.json, AGENTS.md, CLAUDE.md. Answers reconstructed and verified: templates 01d6ae1..3cf6405 regenerate the initial commit 5e56fc6 byte for byte",
+        "0.3.0 cnt 0.4 syntax: cnt!/bkp_cnt! with warn/error levels in main.rs, also adc.rs and examples/blinky.rs (cnt dependency was already bumped locally in 2065c34)",
+        "0.4.1 BKPSRAM region name (cnt default, no CNT_BKP_MEMORY_REGION); firmware already used it since 2065c34, only the comment changed",
+        "README cnt_cli usage, init.rs doc comment"
+      ],
+      "notes": "Built dev/release/examples; .cnt_bkp_buffer checked at 0x4000B100. Retention of BKP counters across reset not yet tested on hardware."
+    },
+    {
+      "date": "2026-09-30",
+      "from": "af1f939",
+      "to": "33985a8",
+      "applied": [
+        "0.4.2: build.rs import order (rustfmt)"
+      ],
+      "notes": "build.rs was untouched, replaced"
+    }
+  ],
+  "rejected": [],
+  "nuances": [
+    "src/main.rs is hand-written (64 MHz PLL clock tree, assign-resources, spawned adc/button tasks): never replace it with the template's, only port individual changes (e.g. counter macros in DefaultHandler/HardFault) by hand",
+    "embassy-stm32 uses time-driver-tim4 on purpose: time-driver-any picks TIM15, which drives the PF1 LED. Keep it when Cargo.toml template changes",
+    "Local Cargo.toml additions to keep: embassy-usb, embassy-futures, [features] debug-adc/debug-button, [[bin]] test=false, defmt-rtt disable-blocking-mode",
+    "src/adc.rs, button.rs, led.rs, examples/, scripts/size.py are local-only (not from the template), but they use the cnt macros, so update them together with template counter-syntax changes"
+  ]
+}

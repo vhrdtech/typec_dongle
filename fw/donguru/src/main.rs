@@ -6,7 +6,7 @@ mod button;
 mod init;
 mod led;
 
-use cnt::cnt_if;
+use cnt::cnt; // cnt::bkp_cnt! for counters in backup registers
 use defmt::{error, info, unwrap};
 use defmt_rtt as _;
 use panic_probe as _;
@@ -97,14 +97,14 @@ async fn main(spawner: embassy_executor::Spawner) {
 
 #[exception]
 unsafe fn DefaultHandler(irqn: i16) {
-    cnt_if!(true, unhandled_exceptions: u32 += 1);
-    cnt::bkp_cnt_if!(true, unhandled_exceptions_total: u32 += 1);
+    cnt!(unhandled_exceptions: u32, warn);
+    cnt::bkp_cnt!(unhandled_exceptions_total: u32, warn);
     error!("unhandled exception, IRQn = {}", irqn);
 }
 
 #[exception]
 unsafe fn HardFault(ef: &cortex_m_rt::ExceptionFrame) -> ! {
-    cnt::bkp_cnt_if!(true, hard_faults: u32 += 1);
+    cnt::bkp_cnt!(hard_faults: u32, error);
     error!("HardFault {}", defmt::Debug2Format(ef));
     // TODO: consider cortex_m::peripheral::SCB::sys_reset() in production
     loop {}

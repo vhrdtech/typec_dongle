@@ -7,7 +7,7 @@ Firmware for **STM32G0B1CE** (thumbv6m-none-eabi), framework: `embassy`, logging
 ```
 rustup target add thumbv6m-none-eabi
 cargo install probe-rs-tools --locked flip-link
-cargo install cnt_cli   # read counters: cnt_cli target/<target>/debug/donguru tui
+cargo install cnt_cli   # provides `cnt`: cnt tui (TUI), cnt read, cnt reset
 ```
 
 ## Run
@@ -27,7 +27,7 @@ See `memory.x`. Summary:
 | FLASH | 0x08000000 | 510K | Application |
 | CONFIG | 0x0807F800 | 2K | Persistent application configuration (one erase sector) |
 | SRAM (ref) | 0x20000000 | 144K | Main RAM (also exported as RAM) |
-| BKP_REGS | 0x4000B100 | 0x14 | TAMP backup registers, retained across resets (not power loss without VBAT) |
+| BKPSRAM | 0x4000B100 | 0x14 | TAMP backup registers, retained across resets (not power loss without VBAT); cnt.x places the BKP counters here |
 
 ## MCU
 

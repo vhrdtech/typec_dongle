@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use cnt::cnt_if;
+use cnt::cnt;
 use defmt::info;
 use defmt_rtt as _;
 use panic_probe as _;
@@ -21,7 +21,7 @@ async fn main(_spawner: embassy_executor::Spawner) {
     loop {
         led.toggle();
         info!("led toggle");
-        cnt_if!(true, led_toggles: u32 += 1);
+        cnt!(led_toggles: u32);
         Timer::after_millis(1000).await;
     }
 }

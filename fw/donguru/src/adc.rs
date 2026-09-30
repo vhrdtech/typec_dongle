@@ -354,7 +354,7 @@ async fn run(
         };
         if res.is_err() {
             // consumer fell behind: drop the stale data, reads stay aligned to whole sequences
-            cnt::cnt_if!(true, adc_overruns: u32 += 1);
+            cnt::cnt!(adc_overruns: u32, warn);
             warn!("ADC: DMA ring buffer overrun");
             ring.clear();
             continue;
