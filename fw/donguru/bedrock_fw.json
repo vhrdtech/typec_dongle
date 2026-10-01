@@ -86,6 +86,7 @@
     "src/adc.rs, button.rs, led.rs, examples/, scripts/size.py are local-only (not from the template), but they use the cnt macros, so update them together with template counter-syntax changes",
     "WireWeaver layout differs from the template's: the API crate is donguru_api/ in the repo root (two levels up, in the root workspace, uses workspace edition/license), the firmware is fw/donguru/ (not firmware/). When regenerating with --wire-weaver, map <out>/donguru_api -> ../../donguru_api and <out>/firmware -> . ; the generator writes absolute --ww-src paths, keep the relative ../../../wire_weaver (firmware) and ../../wire_weaver (API crate) paths",
     "USB is set up in main.rs (UsbResources, Irqs, usb::Driver::new) and passed to ww::start; ww.rs has no bind_interrupts/usb_driver. ServerState owns no LED: PF1 is the PWM status LED owned by led::led_task, the API calls led::set",
-    "embassy-usb is a direct dependency with default-features = false (also used by examples/usb_serial.rs); wire_weaver_usb_embassy pulls its own features"
+    "embassy-usb is a direct dependency with default-features = false (also used by examples/usb_serial.rs); wire_weaver_usb_embassy pulls its own features",
+    "ww.rs follows the local wire_weaver checkout API from 3f1ccf8 'feat(server): pass a request context to every handler' (WireWeaverAsyncApiBackend::Medium, process_bytes(out: &mut EventWriter, medium, ...), handlers take &mut Context<'_, impl EventOut>), newer than the template's (f10b345) ww.rs; when taking template ww.rs changes, keep the signatures matching the checkout"
   ]
 }

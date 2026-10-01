@@ -12,7 +12,7 @@ use embassy_executor::Spawner;
 use embassy_stm32::{peripherals, usb};
 use static_cell::StaticCell;
 use wire_weaver::prelude::*;
-use wire_weaver::{MessageSink, WireWeaverAsyncApiBackend};
+use wire_weaver::{Context, EventOut, EventWriter, MessageSink, WireWeaverAsyncApiBackend};
 use wire_weaver_usb_embassy::{LinkConfig, UsbBuffers, UsbDevice, UsbServer, UsbTimings, usb_init};
 
 /// Longest WireWeaver message the device accepts and can reply with (reported to the host)
@@ -25,14 +25,14 @@ pub struct ServerState {}
 // Implementations of the DonguruApi methods. `method_model = "_=immediate"`: they return a result right away
 // (`RpcResult` can also defer the reply, see wire_weaver::RpcResult).
 impl ServerState {
-    async fn led_on(&mut self, _msg_tx: &mut impl MessageSink) -> RpcResult<()> {
+    async fn led_on(&mut self, _cx: &mut Context<'_, impl EventOut>) -> RpcResult<()> {
         info!("led on");
         cnt!(led_on_calls: u32);
         led::set(led::Led::Status, led::Mode::On);
         Ready(())
     }
 
-    async fn led_off(&mut self, _msg_tx: &mut impl MessageSink) -> RpcResult<()> {
+    async fn led_off(&mut self, _cx: &mut Context<'_, impl EventOut>) -> RpcResult<()> {
         info!("led off");
         cnt!(led_off_calls: u32);
         led::set(led::Led::Status, led::Mode::Off);
@@ -53,13 +53,16 @@ mod server_impl {
 }
 
 impl WireWeaverAsyncApiBackend for ServerState {
+    type Medium = ();
+
     async fn process_bytes<'a>(
         &mut self,
-        msg_tx: &mut impl MessageSink,
+        out: &mut EventWriter<'_, impl MessageSink>,
+        medium: (),
         data: &[u8],
         scratch: &'a mut [u8],
     ) -> Result<&'a [u8], shrink_wrap::Error> {
-        self.process_request_bytes(data, scratch, msg_tx).await
+        self.process_request_bytes(data, scratch, out, medium).await
     }
 
     fn version(&self) -> FullVersion<'_> {
