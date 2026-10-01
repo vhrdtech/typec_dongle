@@ -22,6 +22,11 @@ embassy-futures = { version = "0.1.2" }
 static_cell = "2.1"
 assign-resources = "0.5.0"
 cnt = "0.4"
+# WireWeaver: API crate in the repo root, served by src/ww.rs. wire_weaver from the local checkout next to this repo
+donguru_api = { path = "../../donguru_api", features = ["defmt"] }
+wire_weaver = { path = "../../../wire_weaver/wire_weaver", default-features = false, features = ["defmt"] }
+ww_client_server = { path = "../../../wire_weaver/ww_stdlib/ww_client_server", default-features = false }
+wire_weaver_usb_embassy = { path = "../../../wire_weaver/mcu/wire_weaver_usb_embassy" }
 
 [features]
 default = ["debug-button"]

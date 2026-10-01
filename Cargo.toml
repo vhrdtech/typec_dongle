@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["donguru-cli", "donguru-core"]
+members = ["donguru-cli", "donguru-core", "donguru_api"]
 
 [workspace.package]
 version = "0.1.0"
@@ -10,6 +10,7 @@ repository = ""
 
 [workspace.dependencies]
 donguru-core = { path = "donguru-core" }
+donguru_api = { path = "donguru_api", features = ["std"] }
 
 anyhow = "1"
 thiserror = "2"

@@ -4,6 +4,25 @@ This firmware (STM32G0B1CE, `embassy`) was generated from the **embedded_bedrock
 (`firmware_template_skill/` in https://github.com/romixlab/embedded_bedrock, the `firmware-template` agent skill, generator
 `scripts/bedrock_gen.py`). After generation it is an ordinary Rust project and is meant to be edited freely.
 
+## Layout: WireWeaver API crate + firmware
+
+The firmware serves a [WireWeaver](https://github.com/vhrdtech/wire_weaver) API over USB. Unlike the template's
+WireWeaver layout (`<api>/` + `firmware/` side by side), this repo keeps:
+
+- `../../donguru_api/` (repo root) — `#![no_std]` API crate: the `DonguruApi` trait (`#[ww_api_root]`) and its data
+  types (`#[derive_shrink_wrap]`). A member of the repo-root Cargo workspace (host tools use it with `std`). Its name +
+  version identify the API on the wire: bump the version with every change and follow WireWeaver's
+  `docs/evolution/rules.md` so deployed devices and hosts keep working together.
+- `fw/donguru/` (this directory) — the firmware, a standalone crate; `src/ww.rs` implements the API on `ServerState`
+  (`ww_codegen!`) and runs the USB server. The USB driver is created in `src/main.rs` and handed to `ww::start`.
+
+WireWeaver crates come from the local checkout next to this repo (`~/git/wire_weaver`, relative path deps).
+Its `AGENTS.md` and `docs/` explain the API DSL (methods, properties, streams) and the wire format.
+
+The trait, `ServerState` and the method implementations were blinky stubs; they are this firmware's own code now.
+On template upgrades take only plumbing changes there (dependencies, transport set-up, `ww_codegen!` arguments),
+never the stubs.
+
 `bedrock_fw.json` (project root, keep it under version control) records:
 
 | key | meaning |

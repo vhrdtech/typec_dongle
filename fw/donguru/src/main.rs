@@ -5,6 +5,7 @@ mod adc;
 mod button;
 mod init;
 mod led;
+mod ww;
 
 use cnt::cnt; // cnt::bkp_cnt! for counters in backup registers
 use defmt::{error, info, unwrap};
@@ -20,6 +21,7 @@ use embassy_stm32::{
         PllRDiv, PllSource, Sysclk,
         mux::{Adcsel, Usbsel},
     },
+    usb,
 };
 
 assign_resources! {
@@ -42,10 +44,18 @@ assign_resources! {
         pb1: PB1,
         pb12: PB12,
     }
+    usb: UsbResources {
+        usb: USB,
+        /// USB D+
+        pa12: PA12,
+        /// USB D-
+        pa11: PA11,
+    }
 }
 
 bind_interrupts!(pub struct Irqs {
     DMA1_CHANNEL1 => dma::InterruptHandler<peripherals::DMA1_CH1>;
+    USB_UCPD1_2 => usb::InterruptHandler<peripherals::USB>;
 });
 
 #[embassy_executor::main]
@@ -91,6 +101,10 @@ async fn main(spawner: embassy_executor::Spawner) {
 
     spawner.spawn(unwrap!(adc::adc_task(r.adc, adc::ChannelSet::Base)));
     spawner.spawn(unwrap!(button::button_task()));
+
+    // USB device (FS, HSI48 clock above), currently carrying only the WireWeaver class, see src/ww.rs
+    let usb_driver = usb::Driver::new(r.usb.usb, Irqs, r.usb.pa12, r.usb.pa11);
+    ww::start(spawner, usb_driver, ww::ServerState {});
 
     info!("init done");
 }

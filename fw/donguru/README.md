@@ -17,6 +17,15 @@ cargo run            # dev profile
 cargo run --release
 ```
 
+## WireWeaver API
+
+The device serves a [WireWeaver](https://github.com/vhrdtech/wire_weaver) API over USB (VID:PID `c0de:cafe`).
+The API is defined in `donguru_api/` in the repo root, implemented in `src/ww.rs`. `ww list` shows the device,
+`ww introspect` prints the API tree (`ww` = `wire_weaver_cli` from the WireWeaver repository).
+
+To change the API: edit `DonguruApi` in `donguru_api/src/lib.rs`, implement it on `ServerState` in `src/ww.rs`
+(the compiler lists what is missing) and bump the `donguru_api` version.
+
 ## Memory layout
 
 See `memory.x`. Summary:

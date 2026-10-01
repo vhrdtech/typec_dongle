@@ -4,13 +4,13 @@
   "template": {
     "repo": "https://github.com/romixlab/embedded_bedrock",
     "path": "firmware_template_skill",
-    "commit": "33985a86d108e32747829fe80a8dc6994445369b",
-    "commit_date": "2026-09-30T18:59:32+02:00",
+    "commit": "f10b3454cca25943e4fcf2e05872db299193466e",
+    "commit_date": "2026-09-30T22:27:19+02:00",
     "dirty": false,
-    "version": "0.4.2"
+    "version": "0.5.0"
   },
   "generated": "2026-09-30T18:59:40+02:00",
-  "command": "bedrock_gen.py new donguru --chip STM32G0B1CE --config-page --bkp-counters auto --counters --led PF1",
+  "command": "bedrock_gen.py new donguru --chip STM32G0B1CE --config-page --bkp-counters auto --counters --led PF1 --wire-weaver --ww-transport usb --ww-api donguru_api --ww-src ../../../wire_weaver",
   "answers": {
     "name": "donguru",
     "chip": "STM32G0B1CE",
@@ -39,7 +39,11 @@
     "smps_voltage": null,
     "led": "PF1",
     "bedrock": "git",
-    "build_info": false
+    "build_info": false,
+    "wire_weaver": true,
+    "ww_transport": "usb",
+    "ww_api": "donguru_api",
+    "ww_src": "../../../wire_weaver"
   },
   "upgrades": [
     {
@@ -62,6 +66,16 @@
         "0.4.2: build.rs import order (rustfmt)"
       ],
       "notes": "build.rs was untouched, replaced"
+    },
+    {
+      "date": "2026-09-30",
+      "from": "33985a8",
+      "to": "f10b345",
+      "applied": [
+        "0.4.3: build.rs without the unused `let _ = out;` (file untouched, replaced); main.rs import order was already rustfmt-clean",
+        "0.5.0: WireWeaver over USB, set up by hand in the existing layout: API crate donguru_api in the repo root (../../donguru_api, member of the root Cargo workspace), firmware stays in fw/donguru; src/ww.rs from the template with the USB driver created in main.rs (USB in assign_resources, USB_UCPD1_2 in main's Irqs) and led_on/led_off switching the status LED via led::set instead of owning PF1"
+      ],
+      "notes": "wire_weaver crates via relative path deps to ~/git/wire_weaver (not git). dev/release/examples build, fmt clean, .cnt_bkp_buffer still at 0x4000B100. USB enumeration and `ww list`/`ww introspect` not yet tested on hardware."
     }
   ],
   "rejected": [],
@@ -69,6 +83,9 @@
     "src/main.rs is hand-written (64 MHz PLL clock tree, assign-resources, spawned adc/button tasks): never replace it with the template's, only port individual changes (e.g. counter macros in DefaultHandler/HardFault) by hand",
     "embassy-stm32 uses time-driver-tim4 on purpose: time-driver-any picks TIM15, which drives the PF1 LED. Keep it when Cargo.toml template changes",
     "Local Cargo.toml additions to keep: embassy-usb, embassy-futures, [features] debug-adc/debug-button, [[bin]] test=false, defmt-rtt disable-blocking-mode",
-    "src/adc.rs, button.rs, led.rs, examples/, scripts/size.py are local-only (not from the template), but they use the cnt macros, so update them together with template counter-syntax changes"
+    "src/adc.rs, button.rs, led.rs, examples/, scripts/size.py are local-only (not from the template), but they use the cnt macros, so update them together with template counter-syntax changes",
+    "WireWeaver layout differs from the template's: the API crate is donguru_api/ in the repo root (two levels up, in the root workspace, uses workspace edition/license), the firmware is fw/donguru/ (not firmware/). When regenerating with --wire-weaver, map <out>/donguru_api -> ../../donguru_api and <out>/firmware -> . ; the generator writes absolute --ww-src paths, keep the relative ../../../wire_weaver (firmware) and ../../wire_weaver (API crate) paths",
+    "USB is set up in main.rs (UsbResources, Irqs, usb::Driver::new) and passed to ww::start; ww.rs has no bind_interrupts/usb_driver. ServerState owns no LED: PF1 is the PWM status LED owned by led::led_task, the API calls led::set",
+    "embassy-usb is a direct dependency with default-features = false (also used by examples/usb_serial.rs); wire_weaver_usb_embassy pulls its own features"
   ]
 }
