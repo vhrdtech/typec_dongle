@@ -99,7 +99,7 @@ pub struct Readings {
     /// PA7
     pub button_switch_mv: u16,
     /// Current through the shunt sensed on PB0 ([`SHUNT_MOHM`], [`CURRENT_AMP_GAIN`]), positive when the
-    /// amplifier output is above VDDA / 2.
+    /// DUT is charged (computer to DUT), negative when the DUT feeds the computer.
     pub input_current_ma: i16,
     /// PB1. P0, P2 and P3 are `None` with [`ChannelSet::Base`]; P1 is not on an ADC capable pin.
     pub p0_mv: Option<u16>,
@@ -387,7 +387,9 @@ async fn run(
             ((pa3_pin_x16 * (PA3_R_TOP_OHM + PA3_R_BOT_OHM) + div / 2) / div) as u16;
         // Offset from the VDDA / 2 reference in codes (ratiometric, so exact whatever VDDA is), then
         // mA = mV * 1000 / (gain * shunt_mOhm), from the 1/16 mV voltage to keep resolution
-        let pb0_code_x16 = avg_x16(unwrap!(pos(Input::Pb0))) as i32 - (FULL_SCALE * 8) as i32;
+        // REF minus output: the amplifier output drops below REF when the DUT is charged (B153A INA181 IN+ on the
+        // plug side of the shunt), and charging is positive
+        let pb0_code_x16 = (FULL_SCALE * 8) as i32 - avg_x16(unwrap!(pos(Input::Pb0))) as i32;
         let pb0_x16 = pb0_code_x16 * vdda_mv as i32 / FULL_SCALE as i32;
         let div = 16 * CURRENT_AMP_GAIN * SHUNT_MOHM;
         let half = if pb0_x16 < 0 { -div / 2 } else { div / 2 };

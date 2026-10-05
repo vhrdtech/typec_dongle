@@ -1,6 +1,6 @@
 [package]
 name = "donguru"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 
 # standalone crate: keeps an enclosing Cargo workspace from claiming it

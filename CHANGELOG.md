@@ -10,6 +10,11 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 - AGENTS.md (repository rules), FEATURES.md and this changelog.
 
+### Fixed
+
+- Firmware 0.1.1: input current sign, positive now means charging the DUT (computer to DUT), negative the DUT
+  feeding the computer. The INA181 on B153A has IN+ on the plug side of the shunt (FW-3).
+
 ## [0.1.0] - 2026-10-01
 
 Not released. Reconstructed from git history.

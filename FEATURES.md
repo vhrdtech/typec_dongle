@@ -39,13 +39,16 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   brightness (`src/led.rs`). B153A.
 - ✅ **FW-3 ADC sampling**: continuous ADC1 into a DMA ring buffer with hardware oversampling and calibration;
   VDDA, die temperature, input voltage, input current, button / switch input, optionally P0 / P2 / P3
-  (`src/adc.rs`, `adc::latest()`). B153A.
+  (`src/adc.rs`, `adc::latest()`). B153A. Current sign: positive = charging the DUT (computer to DUT), negative =
+  the DUT feeds the computer (0.1.1, from the schematic; check on the bench).
 - ✅ **FW-4 Button and boot switch**: decoded from one ADC input (PA7) with debounce, edges and press duration
   (`src/button.rs`). B153A.
 - ✅ **FW-5 USB hub bring-up**: hub works after I2C init (B153A, 29 Sep 2026; `examples/usb_serial.rs`). PF2 is
   NRST on this MCU, hub reset moved to PC13 for rev B.
 - 🐛 **FW-6 Hub configuration**: hub defaults read back as 0, and a reMarkable 2 behind the hub gets descriptor
   error -32 (B153A notes, `hw/b153_typec_serial/report/assy_b153a.md`).
+  Likely cause: D+/D- are crossed between the hub and the plug on port 2 (and port 4, SBU USB on Plus), so a
+  full-speed device looks low-speed. Set the hub's port swap for ports 2 and 4 (`hw/b153_typec_serial/doc/hw_b153a.md`).
 - 📋 **FW-7 USART on SBU with automatic TX/RX flip**: bridge to the host (CDC-ACM or over WireWeaver), flip by
   cable orientation. ^revB
 - 📋 **FW-8 Power switch and USB data switches** per downstream port, with safe defaults at boot. ^revB
@@ -60,6 +63,9 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 
 ## API (`API`)
 
+- 📋 **FW-14 Switched VBUS on the header** (J101 pin 10, PD1 `5V_EN`, net to be renamed VBUS_SW): it is the computer's
+  VBUS as it is, 5 V or up to 20 V after PD. Off at boot; report the receptacle voltage (PA3) with the state; turn it
+  off when VBUS changes unless the user allowed a higher voltage. ^revB
 - 🧪 **API-1 WireWeaver over USB**: `DonguruApi` served by `fw/donguru/src/ww.rs` (USB FS, VID:PID `c0de:cafe`, API
   id in a string descriptor for `ww list`). Built against the local wire_weaver checkout; not yet tested with
   `ww list` on hardware.
@@ -96,6 +102,9 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   user, project file, `DONGURU_*`, flags).
 - 📋 **CLI-10 `fw version` / `fw update`**: in the design doc, not in the command tree yet. Needs FW-11, FW-12.
 - 📋 **CLI-11 `power on / off / status / meter / watch`**: in the design doc, not in the command tree yet. ^revB
+- 📋 **CLI-16 Header VBUS output with a clear warning**: enabling the header's switched VBUS (FW-14) shows the present
+  voltage and a warning that it is the computer's VBUS, not a regulated 5 V; above 5.5 V it needs an explicit
+  confirmation flag. Same warning in the GUI, Python and docs. ^revB
 - 📋 **CLI-12 `i2c scan / read / write` and `uart`**: in the design doc, not in the command tree yet.
 - 🐛 **CLI-13 Exit codes differ from the notes**: `src/exit.rs` has device error = 4, timeout = 5 and no transport
   code; `developer-notes.md` has transport = 4, device = 5, timeout = 6. Decide before anything ships.
