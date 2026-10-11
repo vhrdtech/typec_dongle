@@ -3,8 +3,10 @@
 
 mod adc;
 mod button;
+mod cmsis_dap;
 mod init;
 mod led;
+mod swd;
 mod ww;
 
 use cnt::cnt; // cnt::bkp_cnt! for counters in backup registers
@@ -50,6 +52,20 @@ assign_resources! {
         pa12: PA12,
         /// USB D-
         pa11: PA11,
+    }
+    swd: SwdResources {
+        /// SBU1_VT net (SBU1 (PA1) <-R211 bypass-> PB8/PB7): SWCLK in [`donguru_api::SwdOrientation::Normal`],
+        /// SWDIO swapped. Only PB8 is used, PB7 is the same net and stays unconfigured (floating at reset).
+        pb8: PB8,
+        /// SBU2 net (SBU2 (PA0) <-R212 bypass-> PB9/PB6/PB11): SWDIO in Normal, SWCLK swapped. Only PB6 is used,
+        /// PA0/PB9/PB11 are the same net and stay unconfigured (floating at reset).
+        pb6: PB6,
+        /// SBU_OE: TXS0102 level shifter output enable. Always driven low (shifter disabled): R211/R212 already
+        /// bypass it, and hw_b153a.md §8 warns never to enable it while the MCU drives SBU at 3.3 V.
+        pb2: PB2,
+        /// SBU_PU_EN: switched 3K3 pull-ups to V_SBU on SBU1/SBU2. Always driven low: the bit-bang driver uses
+        /// its own weak pull during SWD turnaround and none at all when released to Hi-Z.
+        pc15: PC15,
     }
 }
 
@@ -102,9 +118,10 @@ async fn main(spawner: embassy_executor::Spawner) {
     spawner.spawn(unwrap!(adc::adc_task(r.adc, adc::ChannelSet::Base)));
     spawner.spawn(unwrap!(button::button_task()));
 
-    // USB device (FS, HSI48 clock above), currently carrying only the WireWeaver class, see src/ww.rs
+    // Composite USB device (FS, HSI48 clock above): WireWeaver and CMSIS-DAP v2 (FW-15), see src/ww.rs.
     let usb_driver = usb::Driver::new(r.usb.usb, Irqs, r.usb.pa12, r.usb.pa11);
-    ww::start(spawner, usb_driver, ww::ServerState {});
+    let swd_host = swd::SwdHost::new(r.swd);
+    ww::start(spawner, usb_driver, ww::ServerState {}, swd_host);
 
     info!("init done");
 }

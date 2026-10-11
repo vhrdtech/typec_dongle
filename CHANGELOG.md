@@ -9,6 +9,15 @@ IDs refer to [FEATURES.md](FEATURES.md).
 ### Added
 
 - AGENTS.md (repository rules), FEATURES.md and this changelog.
+- Firmware: SWD-host over the plug SBU lines, CMSIS-DAP v2 (bulk) alongside WireWeaver on one composite USB
+  device, `donguru_api` 0.1.1 (old CLIs still work: additive, same major/minor): `swd_orientation` rw property
+  and `swd_release` Hi-Z disconnect, for the P2625 power-cut bench (FW-15, API-4). Built, not tested on hardware.
+- CLI: stub `swd orientation` / `swd release` commands, same "not implemented" state as the other device commands
+  pending CORE-1 (CLI-17).
+
+### Changed
+
+- `donguru_api` 0.1.0 -> 0.1.1 (wire-compatible addition, see above).
 
 ### Fixed
 

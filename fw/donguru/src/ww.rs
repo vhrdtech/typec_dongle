@@ -1,25 +1,31 @@
 //! WireWeaver server: implements `donguru_api::DonguruApi` (defined in `donguru_api/src/lib.rs` in the repo root) for
-//! [ServerState] and serves it over USB. The USB driver is created in `main.rs` and handed to [start].
+//! [ServerState] and serves it over USB, on a composite device built by [start] that also carries the CMSIS-DAP
+//! v2 interface (`src/cmsis_dap.rs`, FW-15). The USB driver is created in `main.rs` and handed to [start].
 //!
 //! To add a method, property or stream: declare it in the API trait, then implement it here, `ww_codegen!` below
 //! regenerates the dispatch code and the compiler lists what is missing. Extend [ServerState] with the peripherals
 //! and data the implementations need. See https://github.com/vhrdtech/wire_weaver (`docs/`, `examples_mcu/`).
 
-use crate::led;
+use crate::{cmsis_dap, led, swd};
 use cnt::cnt;
 use defmt::{info, unwrap};
+use donguru_api::SwdOrientation;
 use embassy_executor::Spawner;
 use embassy_stm32::{peripherals, usb};
+use embassy_usb::{Builder, Config as UsbConfig};
 use static_cell::StaticCell;
 use wire_weaver::prelude::*;
 use wire_weaver::{Context, EventOut, EventWriter, MessageSink, WireWeaverAsyncApiBackend};
-use wire_weaver_usb_embassy::{LinkConfig, UsbBuffers, UsbDevice, UsbServer, UsbTimings, usb_init};
+use wire_weaver_usb_embassy::{
+    LinkConfig, ServerBuffers, State as WwState, UsbDevice, UsbServer, UsbTimings, WireWeaverClass,
+};
 
 /// Longest WireWeaver message the device accepts and can reply with (reported to the host)
 const MAX_MESSAGE_LEN: usize = 1024;
 
 /// Everything the API implementation needs: peripherals, drivers, state.
-/// LEDs are driven by `led::led_task`, the API only changes their mode.
+/// LEDs are driven by `led::led_task`, the API only changes their mode. SWD-host orientation and release
+/// (FW-15) live in `src/swd.rs`, shared with the CMSIS-DAP v2 task rather than owned here.
 pub struct ServerState {}
 
 // Implementations of the DonguruApi methods. `method_model = "_=immediate"`: they return a result right away
@@ -36,6 +42,27 @@ impl ServerState {
         info!("led off");
         cnt!(led_off_calls: u32);
         led::set(led::Led::Status, led::Mode::Off);
+        Ready(())
+    }
+
+    async fn get_swd_orientation(&mut self, _cx: &mut Context<'_, impl EventOut>) -> GetResult<SwdOrientation, ()> {
+        Value(swd::orientation())
+    }
+
+    async fn set_swd_orientation(
+        &mut self,
+        _cx: &mut Context<'_, impl EventOut>,
+        orientation: SwdOrientation,
+    ) -> SetResult<()> {
+        info!("swd orientation set");
+        swd::set_orientation(orientation);
+        Set
+    }
+
+    async fn swd_release(&mut self, _cx: &mut Context<'_, impl EventOut>) -> RpcResult<()> {
+        info!("swd release");
+        cnt!(swd_release_calls: u32);
+        swd::release().await;
         Ready(())
     }
 }
@@ -81,27 +108,84 @@ fn link_config() -> LinkConfig<'static> {
 pub type UsbDriver = usb::Driver<'static, peripherals::USB>;
 
 const MAX_USB_PACKET_LEN: usize = 64; // Full Speed
-static USB_BUFFERS: StaticCell<UsbBuffers<MAX_USB_PACKET_LEN, MAX_MESSAGE_LEN>> = StaticCell::new();
 
-/// Builds the USB device with the WireWeaver class on `driver` and spawns the USB and server tasks.
-pub fn start(spawner: Spawner, driver: UsbDriver, state: ServerState) {
+/// Descriptor and class buffers for the whole composite device (WireWeaver + CMSIS-DAP v2). Replaces
+/// `wire_weaver_usb_embassy::usb_init`'s convenience `UsbBuffers`, which only has room for one function: its own
+/// doc comment points at building the `Builder` by hand for "other USB classes alongside".
+struct UsbBuffers {
+    config_descriptor: [u8; 192],
+    bos_descriptor: [u8; 40],
+    msos_descriptor: [u8; 330],
+    control: [u8; 256],
+    ww_state: WwState,
+    dap_state: cmsis_dap::State,
+    server: ServerBuffers<MAX_USB_PACKET_LEN, MAX_MESSAGE_LEN>,
+}
+
+impl Default for UsbBuffers {
+    fn default() -> Self {
+        UsbBuffers {
+            config_descriptor: [0; 192],
+            bos_descriptor: [0; 40],
+            msos_descriptor: [0; 330],
+            control: [0; 256],
+            ww_state: WwState::new(),
+            dap_state: cmsis_dap::State::new(),
+            server: ServerBuffers::default(),
+        }
+    }
+}
+
+static USB_BUFFERS: StaticCell<UsbBuffers> = StaticCell::new();
+
+/// Builds the composite USB device (WireWeaver + CMSIS-DAP v2, `src/cmsis_dap.rs`) on `driver` and spawns the
+/// USB, WireWeaver server and CMSIS-DAP tasks. `swd_host` is handed to the CMSIS-DAP task, which is the sole
+/// owner of the SWD-host pins (FW-15).
+pub fn start(spawner: Spawner, driver: UsbDriver, state: ServerState, swd_host: swd::SwdHost) {
+    let buffers = USB_BUFFERS.init(UsbBuffers::default());
+
+    let mut config = UsbConfig::new(0xc0de, 0xcafe);
+    config.manufacturer = Some("donguru");
+    config.product = Some("donguru");
+    config.serial_number = Some(embassy_stm32::uid::uid_hex());
+    // Required for Windows compatibility with more than one function, see wire_weaver_usb_embassy::usb_init.
+    config.device_class = 0xEF;
+    config.device_sub_class = 0x02;
+    config.device_protocol = 0x01;
+    config.composite_with_iads = true;
+    config.max_power = 100;
+    config.self_powered = false;
+
+    let mut builder = Builder::new(
+        driver,
+        config,
+        &mut buffers.config_descriptor,
+        &mut buffers.bos_descriptor,
+        &mut buffers.msos_descriptor,
+        &mut buffers.control,
+    );
+
+    let timings = UsbTimings::fs_higher_speed();
+    let link_cfg = link_config();
     // server_impl::API_ID is reported in a USB string descriptor, `ww list` shows it without opening the device.
     // A user label (e.g. loaded from flash) can be added with wire_weaver::api_id::with_label().
-    let (usb, server) = usb_init(
-        driver,
-        USB_BUFFERS.init(UsbBuffers::default()),
-        UsbTimings::fs_higher_speed(),
-        link_config(),
+    let ww = WireWeaverClass::new(
+        &mut builder,
+        &mut buffers.ww_state,
+        MAX_USB_PACKET_LEN as u16,
+        timings.use_bulk_endpoints,
+        timings.packet_send_timeout,
+        &link_cfg.user_api_version,
         server_impl::API_ID,
-        |config| {
-            // VID:PID is c0de:cafe unless set here
-            config.manufacturer = Some("donguru");
-            config.product = Some("donguru");
-            config.serial_number = Some(embassy_stm32::uid::uid_hex());
-        },
     );
+    let dap_class = cmsis_dap::CmsisDapClass::new(&mut builder, &mut buffers.dap_state, MAX_USB_PACKET_LEN as u16);
+
+    let usb = builder.build();
+    let server = ww.into_server(link_cfg, &timings, &mut buffers.server);
+
     spawner.spawn(unwrap!(usb_task(usb)));
     spawner.spawn(unwrap!(server_task(server, state)));
+    spawner.spawn(unwrap!(cmsis_dap::dap_task(dap_class, swd_host)));
 }
 
 #[embassy_executor::task]

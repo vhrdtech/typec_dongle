@@ -60,6 +60,15 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   bootloader; the CLI side is CLI-10. ^v1.0
 - 📋 **FW-13 HardFault handling for production**: reset instead of looping (TODO in `HardFault`); the backup-register
   counter already records the fault.
+- 🧪 **FW-15 SWD-host over the plug SBU lines**: CMSIS-DAP v2 (bulk, `src/cmsis_dap.rs`) on a composite USB device
+  alongside WireWeaver (`src/ww.rs`), carrying `dap_rs`'s command processor over a GPIO bit-bang SWD driver
+  (`src/swd.rs`: SWCLK/SWDIO on PB8/PB6, orientation-swappable, SWCLK clamped 10 kHz..1 MHz, default 400 kHz).
+  `SBU_OE` (PB2) and `SBU_PU_EN` (PC15) always driven low (hw_b153a.md §8: R211/R212 bypass the level shifter on
+  B153A, never enable OE while the MCU drives SBU at 3.3 V). No hardware reset line (NRESET/NTRST): `SWJ_Pins`
+  reports it as never asserted. JTAG and SWO not wired (SWD only). Orientation is a runtime setting
+  (`DonguruApi::swd_orientation`, API-4), not auto-detected from CC polarity (would need UCPD2 on the plug, not
+  wired up by any module yet). Built, not tested on hardware: see the hardware checklist in
+  `docs/development/index.md`. First use: the P2625 chunky-ota power-cut bench (`DonguruApi::swd_release`).
 
 ## API (`API`)
 
@@ -72,6 +81,8 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - ✅ **API-2 `led_on` / `led_off`**: status LED only, the template's example methods.
 - 📋 **API-3 Full API**: ports (power, data), power meter readings and streams, button / switch events, USART bridge,
   GPIO, I2C, device info; designed together with the CLI command tree. ^revB
+- 🧪 **API-4 `swd_orientation` / `swd_release`**: SWD-host cable orientation (rw property) and the Hi-Z disconnect
+  for the bench power-cut test (FW-15). `donguru_api` 0.1.1.
 
 ## Host library (`CORE`)
 
@@ -111,6 +122,9 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 📋 **CLI-14 `--version` with git SHA and build time** (`build.rs`), per the version rule in AGENTS.md.
 - 📋 **CLI-15 Output renderer**: commands return typed values, one renderer for text / json / jsonl
   (`developer-notes.md`).
+- ⬜ **CLI-17 `swd orientation / release`**: arguments parsed, prints "not implemented" (`src/commands/swd.rs`),
+  same as the other device commands: needs CORE-1, API-4. CMSIS-DAP itself (FW-15) is not a `donguru` subcommand,
+  probe-rs talks to it directly over USB.
 
 ## Packaging and docs (`PKG`)
 

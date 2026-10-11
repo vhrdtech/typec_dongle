@@ -117,6 +117,10 @@ pub enum Command {
     #[command(subcommand)]
     Gpio(crate::commands::gpio::Gpio),
 
+    /// SWD-host pins on the plug SBU lines: cable orientation and the Hi-Z release
+    #[command(subcommand)]
+    Swd(crate::commands::swd::Swd),
+
     /// Manage the Linux udev rules granting access to a dongle
     #[command(subcommand, display_order = 70)]
     Udev(crate::commands::udev::Udev),
