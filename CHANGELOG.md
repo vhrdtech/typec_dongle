@@ -11,7 +11,10 @@ IDs refer to [FEATURES.md](FEATURES.md).
 - AGENTS.md (repository rules), FEATURES.md and this changelog.
 - Firmware: SWD-host over the plug SBU lines, CMSIS-DAP v2 (bulk) alongside WireWeaver on one composite USB
   device, `donguru_api` 0.1.1 (old CLIs still work: additive, same major/minor): `swd_orientation` rw property
-  and `swd_release` Hi-Z disconnect, for the P2625 power-cut bench (FW-15, API-4). Built, not tested on hardware.
+  and `swd_release` Hi-Z disconnect, for the P2625 power-cut bench (FW-15, API-4). The pins also go Hi-Z on a
+  clean `DAP_Disconnect` and on a USB reset/suspend of the CMSIS-DAP interface, not only on an explicit
+  `swd_release` call, so a bench harness only has to end the probe-rs session before cutting power. Built, not
+  tested on hardware.
 - CLI: stub `swd orientation` / `swd release` commands, same "not implemented" state as the other device commands
   pending CORE-1 (CLI-17).
 

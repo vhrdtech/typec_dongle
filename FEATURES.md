@@ -67,8 +67,12 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   B153A, never enable OE while the MCU drives SBU at 3.3 V). No hardware reset line (NRESET/NTRST): `SWJ_Pins`
   reports it as never asserted. JTAG and SWO not wired (SWD only). Orientation is a runtime setting
   (`DonguruApi::swd_orientation`, API-4), not auto-detected from CC polarity (would need UCPD2 on the plug, not
-  wired up by any module yet). Built, not tested on hardware: see the hardware checklist in
-  `docs/development/index.md`. First use: the P2625 chunky-ota power-cut bench (`DonguruApi::swd_release`).
+  wired up by any module yet). The SWD-host pins go Hi-Z on a clean `DAP_Disconnect` and also when the CMSIS-DAP
+  v2 endpoints get disabled (USB reset/suspend, probe-rs or its process going away without disconnecting
+  cleanly), not just on an explicit `DonguruApi::swd_release` (`src/cmsis_dap.rs::dap_task`): a bench harness only
+  has to end the probe-rs session, one way or another, before cutting the DUT's power. Built, not tested on
+  hardware: see the hardware checklist in `docs/development/index.md`. First use: the P2625 chunky-ota power-cut
+  bench.
 
 ## API (`API`)
 

@@ -89,6 +89,13 @@ impl<'d, D: Driver<'d>> CmsisDapClass<'d, D> {
 /// Runs the CMSIS-DAP v2 interface: for every bulk OUT packet from the host, process it against `host.dap` and
 /// write the response back. Also services `swd::release()` requests (FW-15's Hi-Z disconnect) concurrently, so
 /// a bench harness is not stuck waiting behind an idle or stalled probe-rs connection.
+///
+/// A clean `DAP_Disconnect` already releases the SWD-host pins to Hi-Z, inside `host.dap.process_command`
+/// (`dap_rs` calls `SwdPins::high_impedance_mode` on its own state machine). But a session can also end without
+/// one: the host process dying, a cable pull, or any other USB reset/suspend that disables this interface's
+/// endpoints. [`EndpointError::Disabled`] from either endpoint covers that case, so a bench harness only has to
+/// detach probe-rs (ending the session one way or another) before cutting the DUT's power, without also having
+/// to remember an explicit `swd_release` call; `swd_release` stays for cases that want it mid-session.
 #[embassy_executor::task]
 pub async fn dap_task(mut class: CmsisDapClass<'static, crate::ww::UsbDriver>, mut host: SwdHost) {
     let mut report = [0u8; DAP2_PACKET_SIZE as usize];
@@ -105,7 +112,10 @@ pub async fn dap_task(mut class: CmsisDapClass<'static, crate::ww::UsbDriver>, m
         loop {
             let n = match select(class.read_packet(&mut report), swd::wait_release_request()).await {
                 Either::First(Ok(n)) => n,
-                Either::First(Err(EndpointError::Disabled)) => break,
+                Either::First(Err(EndpointError::Disabled)) => {
+                    host.release();
+                    break;
+                }
                 Either::First(Err(EndpointError::BufferOverflow)) => continue,
                 Either::Second(()) => {
                     host.release();
@@ -115,6 +125,7 @@ pub async fn dap_task(mut class: CmsisDapClass<'static, crate::ww::UsbDriver>, m
             };
             let n_out = host.dap.process_command(&report[..n], &mut response, DapVersion::V2);
             if n_out > 0 && class.write_packet(&response[..n_out]).await.is_err() {
+                host.release();
                 break;
             }
         }
