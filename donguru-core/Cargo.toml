@@ -6,3 +6,10 @@ description = "Library for interacting with Donguru dongles"
 
 [dependencies]
 thiserror.workspace = true
+anyhow = { workspace = true, optional = true }
+# CMSIS-DAP v2 only: the default cmsisdap_v1 pulls in hidapi (C)
+probe-rs = { version = "0.32", optional = true, default-features = false, features = ["builtin-targets"] }
+
+[features]
+# Run the SWD memtest (CORE-5) through a debug probe
+probe-rs = ["dep:probe-rs", "dep:anyhow"]

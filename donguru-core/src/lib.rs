@@ -4,5 +4,6 @@
 
 pub mod device;
 pub mod error;
+pub mod swd_memtest;
 
 pub use error::{Error, Result};
