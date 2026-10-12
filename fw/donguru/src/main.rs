@@ -75,14 +75,17 @@ assign_resources! {
         pc14: PC14,
     }
     swd: SwdResources {
-        /// SBU1_VT net (SBU1 (PA1) <-R211 bypass-> PB8/PB7): SWCLK in [`donguru_api::SwdOrientation::Normal`],
-        /// SWDIO swapped. Only PB8 is used, PB7 is the same net and stays unconfigured (floating at reset).
-        pb8: PB8,
-        /// SBU2 net (SBU2 (PA0) <-R212 bypass-> PB9/PB6/PB11): SWDIO in Normal, SWCLK swapped. Only PB6 is used,
-        /// PA0/PB9/PB11 are the same net and stay unconfigured (floating at reset).
-        pb6: PB6,
-        /// SBU_OE: TXS0102 level shifter output enable. Always driven low (shifter disabled): R211/R212 already
-        /// bypass it, and hw_b153a.md §8 warns never to enable it while the MCU drives SBU at 3.3 V.
+        /// SBU1 net, plug side of the level shifter (hw_b153a.md §8): SWCLK in [`donguru_api::SwdOrientation::Normal`],
+        /// SWDIO swapped. R211/R212 (the 0 Ω bypass to PB8/PB6) are not fitted on B153A (checked on the bench 12 Oct
+        /// 2026), so this is the only MCU pin wired straight to the plug SBU1. PB8/PB7 stay unconfigured.
+        pa1: PA1,
+        /// SBU2 net: SWDIO in Normal, SWCLK swapped. PB9/PB6/PB11 (the `_VT` side) stay unconfigured.
+        pa0: PA0,
+        /// VSBU_SEL: high selects 3.3 V for V_SBU, the level shifter's A side, so PA0/PA1 driving 3.3 V don't
+        /// back-feed it (hw_b153a.md §8).
+        pd3: PD3,
+        /// SBU_OE: TXS0102 level shifter output enable. Always driven low (shifter disabled): the SWD-host drives
+        /// the SBU side directly.
         pb2: PB2,
         /// SBU_PU_EN: switched 3K3 pull-ups to V_SBU on SBU1/SBU2. Always driven low: the bit-bang driver uses
         /// its own weak pull during SWD turnaround and none at all when released to Hi-Z.

@@ -1,14 +1,15 @@
 //! SWD host over the plug SBU lines (FW-15), for probe-rs over CMSIS-DAP v2 (`src/cmsis_dap.rs` carries the USB
 //! side) and for the Hi-Z [`release`] used by bench power-cut tests (first use: P2625).
 //!
-//! Wiring (`hw/b153_typec_serial/doc/hw_b153a.md` §8, "SWD as host"), after R211/R212 bypass the TXS0102 level
-//! shifter (fitted on B153A, electrically shorting each `_VT` pin to its SBU pin):
-//! * SBU1_VT net (PB8, PB7 tied together): SWCLK in [`SwdOrientation::Normal`], SWDIO in
-//!   [`SwdOrientation::Swapped`]. Only PB8 is driven; PB7 is the same net and stays unconfigured.
-//! * SBU2 net (PA0, PB9, PB6, PB11 tied together): SWDIO in `Normal`, SWCLK in `Swapped`. Only PB6 is driven.
+//! Wiring (`hw/b153_typec_serial/doc/hw_b153a.md` §8, "SWD as host"): R211/R212, the 0 Ω bypass of the TXS0102
+//! level shifter, are not fitted on B153A (checked on the bench 12 Oct 2026: PB8/PB6 don't reach PA1/PA0), so
+//! the driver works on the SBU side of the shifter, the only MCU pins wired straight to the plug:
+//! * SBU1 net (PA1): SWCLK in [`SwdOrientation::Normal`], SWDIO in [`SwdOrientation::Swapped`].
+//! * SBU2 net (PA0): SWDIO in `Normal`, SWCLK in `Swapped`.
+//! The `_VT` pins (PB6..PB11) stay unconfigured, so this also works on a board with the bypass fitted.
 //!
-//! `SBU_OE` (PB2, the level shifter's output enable) is driven low and never touched again: with R211/R212
-//! fitted, enabling it or selecting 1.8 V on V_SBU while the MCU drives SBU at 3.3 V is explicitly unsafe
+//! V_SBU is set to 3.3 V (`VSBU_SEL` PD3 high) since PA0/PA1 drive 3.3 V on the shifter's A side.
+//! `SBU_OE` (PB2, the level shifter's output enable) is driven low and never touched again
 //! (hw_b153a.md §8). `SBU_PU_EN` (PC15, the switched 3K3 pull-ups) is likewise always driven low; the bit-bang
 //! driver supplies its own weak pull during SWD turnaround and goes fully floating on [`release`].
 //!
@@ -108,9 +109,9 @@ pub(crate) fn signal_release_done() {
 /// type (DEPS = SWD = JTAG), relying on the standard library's blanket `impl<T> From<T> for T` to satisfy the
 /// `From` bounds those traits ask for.
 pub struct SwdPins {
-    /// SBU1_VT net (PB8): SWCLK in Normal orientation, SWDIO in Swapped.
+    /// SBU1 net (PA1): SWCLK in Normal orientation, SWDIO in Swapped.
     a: Flex<'static>,
-    /// SBU2 net (PB6): SWDIO in Normal orientation, SWCLK in Swapped.
+    /// SBU2 net (PA0): SWDIO in Normal orientation, SWCLK in Swapped.
     b: Flex<'static>,
     half_period: u32,
 }
@@ -427,11 +428,13 @@ pub struct SwdHost {
 
 impl SwdHost {
     pub fn new(r: SwdResources) -> Self {
-        let a = Flex::new(r.pb8);
-        let b = Flex::new(r.pb6);
+        // V_SBU to 3.3 V before PA0/PA1 ever drive: the shifter's A side sits on the same nets
+        let vsbu_sel = Output::new(r.pd3, Level::High, Speed::Low);
+        core::mem::forget(vsbu_sel);
+        let a = Flex::new(r.pa1);
+        let b = Flex::new(r.pa0);
         let pins = SwdPins::new(a, b);
-        // Never enabled: R211/R212 already bypass the level shifter, and hw_b153a.md §8 warns never to enable
-        // OE while the MCU drives SBU at 3.3 V.
+        // Never enabled: the SWD-host drives the SBU side (PA0/PA1) directly.
         let oe = Output::new(r.pb2, Level::Low, Speed::Low);
         // Never enabled: the bit-bang driver supplies its own weak pull during SWD turnaround (see `dio_release`).
         let pu_en = Output::new(r.pc15, Level::Low, Speed::Low);

@@ -22,6 +22,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
   probe-rs doesn't send, so SWCLK stayed an input and no target ever acknowledged (FW-15).
 - Firmware: SWD-host samples SWDIO before the rising SWCLK edge (as CMSIS-DAP `SW_READ_BIT`), not right after it
   when the target is changing it (FW-15).
+- Firmware: SWD-host on PA1 (SBU1) / PA0 (SBU2) with V_SBU at 3.3 V, not PB8/PB6: R211/R212, the level shifter
+  bypass, are not fitted on B153A, so PB8/PB6 never reached the plug (FW-15).
 
 ## [0.2.0] - 2026-10-11
 
