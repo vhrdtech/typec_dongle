@@ -39,6 +39,8 @@ default = ["debug-button"]
 debug-adc = []
 # switch / button state changes in the debug log
 debug-button = []
+# stopgap until FW-8: AOZ1375 on from boot, receptacle VBUS passed to the plug (never on the P2625 power-cut bench)
+plug-vbus-on = []
 
 [build-dependencies]
 # (none)

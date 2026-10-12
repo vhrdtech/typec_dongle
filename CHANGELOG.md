@@ -11,6 +11,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 - Firmware: plug CC drive for SWD-host, stopgap and hardcoded (PD0/PD2 push-pull high on `DAP_Connect`, Hi-Z with
   SWCLK/SWDIO on `DAP_Disconnect` / endpoint disable / `swd_release`), so a downstream board gating its SBU->SWD
   mux on CC (e.g. B129A) switches over during a probe-rs session (FW-17). Built, not tested on hardware.
+- Firmware: `plug-vbus-on` build feature, off by default: AOZ1375 on from boot so one cable powers the DUT and
+  carries SWD, a stopgap until FW-8. Never on the P2625 power-cut bench (the DUT runs from Q102 there).
 
 ## [0.2.0] - 2026-10-11
 

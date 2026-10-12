@@ -17,7 +17,9 @@ use panic_probe as _;
 use assign_resources::assign_resources;
 use cortex_m_rt::exception;
 use embassy_stm32::{
-    Peri, bind_interrupts, dma, peripherals,
+    Peri, bind_interrupts, dma,
+    gpio::{Level, Output, Pull, Speed},
+    peripherals,
     rcc::{
         AHBPrescaler, APBPrescaler, Hsi, Hsi48Config, HsiSysDiv, Pll, PllMul, PllPDiv, PllPreDiv,
         PllRDiv, PllSource, Sysclk,
@@ -52,6 +54,13 @@ assign_resources! {
         pa12: PA12,
         /// USB D-
         pa11: PA11,
+    }
+    pwr: PwrResources {
+        /// PWR_EN: U601 AOZ1375 enable, receptacle VBUS -> plug VBUS. R601 pull-down, off at reset. Driven only
+        /// with the `plug-vbus-on` feature (stopgap until FW-8), left at its reset state otherwise.
+        pa6: PA6,
+        /// ~PWR_FLT: U601 FLTB, open drain with no external pull-up (hw_b153a.md §3).
+        pc14: PC14,
     }
     swd: SwdResources {
         /// SBU1_VT net (SBU1 (PA1) <-R211 bypass-> PB8/PB7): SWCLK in [`donguru_api::SwdOrientation::Normal`],
@@ -120,6 +129,17 @@ async fn main(spawner: embassy_executor::Spawner) {
             off_ms: 1200,
         },
     );
+
+    // Stopgap (P2534#12oct-1338b, until FW-8): plug VBUS on from boot so one cable powers the DUT and carries
+    // SWD. Off in normal builds: on the P2625 power-cut bench plug VBUS must stay off (the DUT runs from Q102).
+    if cfg!(feature = "plug-vbus-on") {
+        let fault = embassy_stm32::gpio::Input::new(r.pwr.pc14, Pull::Up);
+        let pwr_en = Output::new(r.pwr.pa6, Level::High, Speed::Low);
+        info!("plug VBUS on (plug-vbus-on), fault: {}", fault.is_low());
+        // Kept for the life of the firmware: dropping either would put its pin back to analog.
+        core::mem::forget(pwr_en);
+        core::mem::forget(fault);
+    }
 
     spawner.spawn(unwrap!(adc::adc_task(r.adc, adc::ChannelSet::Base)));
     spawner.spawn(unwrap!(button::button_task()));
