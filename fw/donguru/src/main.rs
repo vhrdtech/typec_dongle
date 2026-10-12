@@ -159,8 +159,10 @@ async fn main(spawner: embassy_executor::Spawner) {
     spawner.spawn(unwrap!(adc::adc_task(r.adc, adc::ChannelSet::Base)));
     spawner.spawn(unwrap!(button::button_task()));
 
-    // The MCU's USB is on hub port 1: nothing enumerates until the hub is configured and attached
-    hub::bring_up(r.hub).await;
+    // The MCU's USB is on hub port 1: nothing enumerates until the hub is configured and attached. The watchdog
+    // (FW-18) redoes this after a brown-out resets the hub without resetting the MCU (P2534#12oct-1819).
+    let hub = hub::bring_up(r.hub).await;
+    spawner.spawn(unwrap!(hub::watchdog_task(hub)));
 
     // Composite USB device (FS, HSI48 clock above): WireWeaver and CMSIS-DAP v2 (FW-15), see src/ww.rs.
     let usb_driver = usb::Driver::new(r.usb.usb, Irqs, r.usb.pa12, r.usb.pa11);

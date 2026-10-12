@@ -6,6 +6,14 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Fixed
+
+- Firmware: Donguru no longer stays off USB for good after a brown-out on the hub (U301) that leaves the MCU
+  running — a hard turn-on load on the header's switched VBUS (Q102) is one way to trigger it. The hub shares
+  `+3V3_DCDC` with the MCU and loses its SMBus config and attach state when its rail sags enough to reset it; a
+  watchdog now notices (the composite USB device losing the configured state it had reached, backed by a periodic
+  I2C probe) and redoes the reset + config + attach bring-up (`src/hub.rs`, FW-18).
+
 ## [0.4.0] - 2026-10-12
 
 ### Added

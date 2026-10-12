@@ -82,6 +82,15 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   back-feed an unpowered DUT through the gating comparators. Not a real CC/PD role: no Rp/Rd, no UCPD2 involved;
   the follow-up (proper CC/PD handling) is tracked on the tpm task. Tested 12 Oct 2026: B129A's `SWD_SEL` (TP1)
   goes high during a session, PD0/PD2 are inputs again after disconnect.
+- 🧪 **FW-18 Hub brown-out recovery**: the hub (U301) shares `+3V3_DCDC` with the MCU (hw_b153a.md §3); a hard
+  turn-on load on the header's switched VBUS (Q102, inrush into a large downstream cap) can sag that rail enough
+  to reset the hub without resetting the MCU, which loses the hub's SMBus config and attach state for good
+  (P2534#12oct-1819, seen on the P2625 power-cut bench). `src/hub.rs`'s `watchdog_task` notices the loss — the
+  composite USB device (carried on hub port 1) dropping out of the configured state it had reached, or a periodic
+  I2C presence probe — and redoes the reset + config + attach bring-up. Built and unit-free (no host test target
+  in this firmware); not yet exercised against a real brown-out: the P2625 bench's VBUS_SW line now has a 10R
+  series resistor (power-cut-bench session) that stops the inrush from reproducing it, so hardware verification
+  needs a debugger-forced hub reset (pulse PC13 low) instead, or the resistor bypassed.
 
 ## API (`API`)
 

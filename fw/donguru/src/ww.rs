@@ -6,13 +6,13 @@
 //! regenerates the dispatch code and the compiler lists what is missing. Extend [ServerState] with the peripherals
 //! and data the implementations need. See https://github.com/vhrdtech/wire_weaver (`docs/`, `examples_mcu/`).
 
-use crate::{cmsis_dap, led, swd};
+use crate::{cmsis_dap, hub, led, swd};
 use cnt::cnt;
 use defmt::{info, unwrap};
 use donguru_api::SwdOrientation;
 use embassy_executor::Spawner;
 use embassy_stm32::{peripherals, usb};
-use embassy_usb::{Builder, Config as UsbConfig};
+use embassy_usb::{Builder, Config as UsbConfig, Handler};
 use static_cell::StaticCell;
 use wire_weaver::prelude::*;
 use wire_weaver::{Context, EventOut, EventWriter, MessageSink, WireWeaverAsyncApiBackend};
@@ -105,6 +105,41 @@ fn link_config() -> LinkConfig<'static> {
     )
 }
 
+/// Watches the composite device's own USB state for the hub (U301, port 1 carries the MCU's own USB) bouncing
+/// after a brown-out (`src/hub.rs`, FW-18): a reset from `None`/`Default` state is normal on first enumeration,
+/// but once the device has reached `Configured` once, any later `reset()` means something upstream bounced the
+/// link outside of the host ever issuing one — exactly what the hub's own reset does to its downstream ports.
+struct HubWatchHandler {
+    was_configured: bool,
+}
+
+impl HubWatchHandler {
+    const fn new() -> Self {
+        HubWatchHandler { was_configured: false }
+    }
+
+    fn lost(&mut self) {
+        if self.was_configured {
+            self.was_configured = false;
+            hub::request_recovery();
+        }
+    }
+}
+
+impl Handler for HubWatchHandler {
+    fn reset(&mut self) {
+        self.lost();
+    }
+
+    fn configured(&mut self, configured: bool) {
+        if configured {
+            self.was_configured = true;
+        } else {
+            self.lost();
+        }
+    }
+}
+
 pub type UsbDriver = usb::Driver<'static, peripherals::USB>;
 
 const MAX_USB_PACKET_LEN: usize = 64; // Full Speed
@@ -119,6 +154,7 @@ struct UsbBuffers {
     control: [u8; 256],
     ww_state: WwState,
     dap_state: cmsis_dap::State,
+    hub_watch: HubWatchHandler,
     server: ServerBuffers<MAX_USB_PACKET_LEN, MAX_MESSAGE_LEN>,
 }
 
@@ -131,6 +167,7 @@ impl Default for UsbBuffers {
             control: [0; 256],
             ww_state: WwState::new(),
             dap_state: cmsis_dap::State::new(),
+            hub_watch: HubWatchHandler::new(),
             server: ServerBuffers::default(),
         }
     }
@@ -164,6 +201,7 @@ pub fn start(spawner: Spawner, driver: UsbDriver, state: ServerState, swd_host: 
         &mut buffers.msos_descriptor,
         &mut buffers.control,
     );
+    builder.handler(&mut buffers.hub_watch);
 
     let timings = UsbTimings::fs_higher_speed();
     let link_cfg = link_config();
