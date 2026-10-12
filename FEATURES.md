@@ -106,6 +106,12 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 📋 **CORE-3 Transport trait with a mock**: so commands can be tested without hardware (design doc, *Transport
   model*).
 - 📋 **CORE-4 Python bindings** over the Rust core. ^v1.0
+- ✅ **CORE-5 SWD link memtest** (`donguru-core/src/swd_memtest.rs`): memtest-style patterns over any
+  `WordMemory` (data bus walking 1/0, Barr address bus, solid, checkerboard, address-in-address, moving inversions
+  per chunk, byte lanes, seeded xorshift64* random), mismatches counted and located (address, expected, read,
+  flipped bits). Unit-tested against fake RAM with a stuck bit, an aliased address bit, swapped byte lanes and rare
+  read flips. Feature `probe-rs` (`swd_memtest/probe.rs`): attach through any CMSIS-DAP v2 probe at a given speed,
+  halt, save the region, run, restore, resume; probe-rs without its C HID backend.
 
 ## CLI (`CLI`)
 
@@ -138,6 +144,10 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - ⬜ **CLI-17 `swd orientation / release`**: arguments parsed, prints "not implemented" (`src/commands/swd.rs`),
   same as the other device commands: needs CORE-1, API-4. CMSIS-DAP itself (FW-15) is not a `donguru` subcommand,
   probe-rs talks to it directly over USB.
+- ✅ **CLI-18 `swd memtest`**: CORE-5 from the command line, `--chip` (probe-rs name), `--probe` (Donguru by
+  default), `--speed` list in kHz, `--base`/`--size` (default the chip's largest RAM), `--pattern`, `--seed`,
+  `--passes`, `--no-restore`; text with colour and a spinner, `json`/`jsonl`; exit 1 on any mismatch. Tested
+  12 Oct 2026 on B153A + B129A (STM32G0B1).
 
 ## Packaging and docs (`PKG`)
 

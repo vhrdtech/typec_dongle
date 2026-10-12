@@ -222,7 +222,7 @@ fn region(target: &Target, args: &MemtestArgs) -> anyhow::Result<Region> {
             anyhow::bail!("the chip has no RAM region in its memory map: give --base and --size")
         }
     };
-    anyhow::ensure!(base % 4 == 0, "--base must be word-aligned");
+    anyhow::ensure!(base.is_multiple_of(4), "--base must be word-aligned");
     let size = match (args.size, ram) {
         (Some(s), _) => s,
         (None, Some(r)) if (r.base..r.base + 4 * r.words as u64).contains(&base) => {
@@ -231,7 +231,7 @@ fn region(target: &Target, args: &MemtestArgs) -> anyhow::Result<Region> {
         _ => anyhow::bail!("--base is outside the chip's largest RAM region: give --size"),
     };
     anyhow::ensure!(
-        size >= 8 && size % 4 == 0,
+        size >= 8 && size.is_multiple_of(4),
         "--size must be a multiple of 4, at least 8"
     );
     Ok(Region {

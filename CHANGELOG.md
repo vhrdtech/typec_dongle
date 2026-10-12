@@ -6,6 +6,13 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- CLI: `donguru swd memtest`, an integrity check of an SWD link: memtest-style patterns (data and address bus,
+  solid, checkerboard, address-in-address, moving inversions, byte lanes, seeded random) written to the target's
+  RAM through the probe and read back, at one or more SWD speeds; the RAM is restored and the target resumed after
+  (CLI-18). The patterns live in `donguru-core` (`swd_memtest`, feature `probe-rs`) (CORE-5).
+
 ## [0.3.0] - 2026-10-12
 
 ### Added

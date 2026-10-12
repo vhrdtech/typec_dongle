@@ -142,8 +142,20 @@ pub fn run_pattern<M: WordMemory>(
             t.fill_verify(|_, _| u32::MAX)?;
         }
         Pattern::Checkerboard => {
-            t.fill_verify(|i, _| if i % 2 == 0 { 0x5555_5555 } else { 0xAAAA_AAAA })?;
-            t.fill_verify(|i, _| if i % 2 == 0 { 0xAAAA_AAAA } else { 0x5555_5555 })?;
+            t.fill_verify(|i, _| {
+                if i.is_multiple_of(2) {
+                    0x5555_5555
+                } else {
+                    0xAAAA_AAAA
+                }
+            })?;
+            t.fill_verify(|i, _| {
+                if i.is_multiple_of(2) {
+                    0xAAAA_AAAA
+                } else {
+                    0x5555_5555
+                }
+            })?;
         }
         Pattern::AddressInAddress => {
             t.fill_verify(|_, a| a as u32)?;
@@ -378,7 +390,10 @@ mod tests {
             for (k, w) in buf.iter_mut().enumerate() {
                 self.reads += 1;
                 *w = self.words[self.index(addr + 4 * k as u64)] | self.stuck_high;
-                if self.flip_every.is_some_and(|n| self.reads % n == 0) {
+                if self
+                    .flip_every
+                    .is_some_and(|n| self.reads.is_multiple_of(n))
+                {
                     *w ^= 1;
                 }
             }
