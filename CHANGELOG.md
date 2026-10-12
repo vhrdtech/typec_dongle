@@ -12,7 +12,9 @@ IDs refer to [FEATURES.md](FEATURES.md).
   running — a hard turn-on load on the header's switched VBUS (Q102) is one way to trigger it. The hub shares
   `+3V3_DCDC` with the MCU and loses its SMBus config and attach state when its rail sags enough to reset it; a
   watchdog now notices (the composite USB device losing the configured state it had reached, backed by a periodic
-  I2C probe) and redoes the reset + config + attach bring-up (`src/hub.rs`, FW-18).
+  I2C probe) and redoes the reset + config + attach bring-up (`src/hub.rs`, FW-18). Tested 12 Oct 2026 on B153A: a
+  debugger-forced hub reset (PC13 pulsed low/high via J-Link, standing in for the brown-out since the bench's new
+  10R VBUS_SW resistor stops that from reproducing) recovered 10/10 times, about 2 s each.
 
 ## [0.4.0] - 2026-10-12
 
