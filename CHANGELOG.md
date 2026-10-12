@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-12
+
 ### Fixed
 
 - Firmware: Donguru no longer stays off USB for good after a brown-out on the hub (U301) that leaves the MCU
