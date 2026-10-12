@@ -6,6 +6,12 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- Firmware: plug CC drive for SWD-host, stopgap and hardcoded (PD0/PD2 push-pull high on `DAP_Connect`, Hi-Z with
+  SWCLK/SWDIO on `DAP_Disconnect` / endpoint disable / `swd_release`), so a downstream board gating its SBU->SWD
+  mux on CC (e.g. B129A) switches over during a probe-rs session (FW-17). Built, not tested on hardware.
+
 ## [0.2.0] - 2026-10-11
 
 ### Added

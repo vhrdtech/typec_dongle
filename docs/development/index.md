@@ -88,6 +88,10 @@ connect/program cycle relies on the target's own power-on or a software reset, n
 7. **Power-cut bench dry run (P2625)**: with the DUT connected only through Donguru's switched VBUS (Q102) and
    SWD as above: start a `probe-rs` session, call `swd_release`, then cut VBUS, and confirm on the scope that
    SWCLK/SWDIO stay released (no back-powering the DUT through them) through the cut.
+8. **Plug CC drive (FW-17, stopgap)**: with a multimeter or scope on the plug's CC1/CC2 (PD0/PD2), confirm both
+   read about 3.2 V during a `probe-rs` session and float (no driven level) after `DAP_Disconnect` or
+   `swd_release`. On a B129A DUT, also check TP1 `SWD_SEL` goes high while connected — that is what gates its
+   SBU->SWD mux onto the plug.
 
 ### `probe-rs` command
 

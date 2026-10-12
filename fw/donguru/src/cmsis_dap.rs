@@ -6,7 +6,7 @@
 //! `wire_weaver_usb_embassy`'s own advice for "other USB classes alongside": build one [`embassy_usb::Builder`],
 //! add every class to it, then call `.build()` once (`src/main.rs`).
 
-use dap_rs::dap::DapVersion;
+use dap_rs::dap::{Command, DapVersion};
 use dap_rs::usb::DAP2_PACKET_SIZE;
 use embassy_futures::select::{Either, select};
 use embassy_usb::Builder;
@@ -124,6 +124,16 @@ pub async fn dap_task(mut class: CmsisDapClass<'static, crate::ww::UsbDriver>, m
                 }
             };
             let n_out = host.dap.process_command(&report[..n], &mut response, DapVersion::V2);
+            // Stopgap plug CC drive (FW-17, P2534#12oct-1338b, `src/swd.rs` module doc): hardcoded to these two
+            // command bytes rather than a real connect/disconnect callback through `dap_rs`. `response[1]` is
+            // `ConnectPortResponse`, 0 = Failed.
+            if n > 0 {
+                match Command::try_from(report[0]) {
+                    Ok(Command::DAP_Connect) if n_out >= 2 && response[1] != 0 => host.drive_cc(),
+                    Ok(Command::DAP_Disconnect) => host.release(),
+                    _ => {}
+                }
+            }
             if n_out > 0 && class.write_packet(&response[..n_out]).await.is_err() {
                 host.release();
                 break;

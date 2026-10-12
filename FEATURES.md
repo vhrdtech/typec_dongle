@@ -73,6 +73,14 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   has to end the probe-rs session, one way or another, before cutting the DUT's power. Built, not tested on
   hardware: see the hardware checklist in `docs/development/index.md`. First use: the P2625 chunky-ota power-cut
   bench.
+- 🧪 **FW-17 Plug CC drive for SWD-host**: stopgap, hardcoded (`src/swd.rs`, `src/cmsis_dap.rs`; P2534#12oct-1338b).
+  PD0/PD2 (UCPD2_CC1/CC2; B153A has no DPO2036, hw_b153a.md §0, so these reach the plug CC directly) are driven
+  push-pull high on a successful `DAP_Connect` and released to Hi-Z together with SWCLK/SWDIO on `DAP_Disconnect`,
+  CMSIS-DAP v2 endpoint disable and `swd_release` — a downstream board such as B129A gates its SBU->SWD mux on CC
+  voltage and would otherwise never route its SBU lines to the MCU, and a driven CC left up after a session would
+  back-feed an unpowered DUT through the gating comparators. Not a real CC/PD role: no Rp/Rd, no UCPD2 involved;
+  the follow-up (proper CC/PD handling) is tracked on the tpm task. Built, not tested on hardware: see the
+  hardware checklist in `docs/development/index.md`.
 
 ## API (`API`)
 

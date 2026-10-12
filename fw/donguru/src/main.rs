@@ -66,6 +66,12 @@ assign_resources! {
         /// SBU_PU_EN: switched 3K3 pull-ups to V_SBU on SBU1/SBU2. Always driven low: the bit-bang driver uses
         /// its own weak pull during SWD turnaround and none at all when released to Hi-Z.
         pc15: PC15,
+        /// PD2_CC1 (UCPD2 CC1, plug): B153A has no DPO2036 (`hw_b153a.md` §0), so this pin reaches the plug
+        /// CC1 directly. Stopgap-driven push-pull high while a CMSIS-DAP session is connected, Hi-Z otherwise
+        /// (P2534#12oct-1338b, `src/swd.rs`).
+        pd0: PD0,
+        /// PD2_CC2 (UCPD2 CC2, plug): same story as PD0 above, for CC2.
+        pd2: PD2,
     }
 }
 

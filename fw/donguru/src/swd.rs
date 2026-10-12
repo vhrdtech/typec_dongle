@@ -24,6 +24,15 @@
 //! No host-side unit tests: this crate has no test target (`fw/donguru/Cargo.toml`, like the rest of the
 //! firmware), and the bit-bang timing can only really be checked with a scope on hardware (hardware checklist,
 //! FEATURES.md FW-15).
+//!
+//! **Plug CC drive, stopgap (FW-17, P2534#12oct-1338b)**: a downstream board such as B129A gates its SBU->SWD
+//! mux on CC voltage (comparators on both CC lines, switching a 74LVC1G08 `SWD_SEL`), so without a driven CC it
+//! never routes the plug SBU lines to its own MCU. [`SwdHost::drive_cc`] / [`SwdHost::release`] drive PD0/PD2
+//! (UCPD2_CC1/CC2, reaching the plug CC directly since B153A has no DPO2036, hw_b153a.md §0) push-pull high
+//! only while a CMSIS-DAP session is connected, Hi-Z together with SWCLK/SWDIO everywhere else: driven CC
+//! back-feeds an unpowered DUT through the comparator inputs otherwise. Hardcoded to the CMSIS-DAP v2 command
+//! bytes in `src/cmsis_dap.rs` rather than a real connect/disconnect callback through `dap_rs`; see the tpm task
+//! for the follow-up (UCPD2 driving CC properly, with Rp/Rd and fault handling).
 
 use core::sync::atomic::{AtomicBool, Ordering};
 
@@ -398,6 +407,10 @@ pub struct SwdHost {
     pub dap: DapHandler,
     oe: Output<'static>,
     pu_en: Output<'static>,
+    /// PD0 (UCPD2_CC1, plug), stopgap CC drive: see the module doc.
+    cc1: Flex<'static>,
+    /// PD2 (UCPD2_CC2, plug), stopgap CC drive: see the module doc.
+    cc2: Flex<'static>,
 }
 
 impl SwdHost {
@@ -410,17 +423,34 @@ impl SwdHost {
         let oe = Output::new(r.pb2, Level::Low, Speed::Low);
         // Never enabled: the bit-bang driver supplies its own weak pull during SWD turnaround (see `dio_release`).
         let pu_en = Output::new(r.pc15, Level::Low, Speed::Low);
+        let mut cc1 = Flex::new(r.pd0);
+        let mut cc2 = Flex::new(r.pd2);
+        cc1.set_as_input(Pull::None);
+        cc2.set_as_input(Pull::None);
         SwdHost {
             dap: Dap::new(pins, NoLeds, Delay, None, "donguru-swd 0.1"),
             oe,
             pu_en,
+            cc1,
+            cc2,
         }
     }
 
-    /// Hi-Z the SWD-host pins, independent of any CMSIS-DAP session. Idempotent.
+    /// Drive both plug CC lines push-pull high: stopgap, see the module doc. Called from `src/cmsis_dap.rs` on a
+    /// successful `DAP_Connect`.
+    pub fn drive_cc(&mut self) {
+        self.cc1.set_as_output(Speed::Low);
+        self.cc1.set_high();
+        self.cc2.set_as_output(Speed::Low);
+        self.cc2.set_high();
+    }
+
+    /// Hi-Z the SWD-host pins and the plug CC lines, independent of any CMSIS-DAP session. Idempotent.
     pub fn release(&mut self) {
         self.dap.suspend();
         self.oe.set_low();
         self.pu_en.set_low();
+        self.cc1.set_as_input(Pull::None);
+        self.cc2.set_as_input(Pull::None);
     }
 }
