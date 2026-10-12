@@ -173,10 +173,12 @@ impl SwdPins {
         self.clk().set_low();
     }
 
+    /// Samples SWDIO at the end of the low half, before the rising edge, as the CMSIS-DAP reference does
+    /// (`SW_READ_BIT`): the target changes SWDIO on the rising edge, so a sample just after it is a race.
     fn clock_bit_in(&mut self) -> bool {
         self.half_delay();
-        self.clk().set_high();
         let bit = self.dio().is_high();
+        self.clk().set_high();
         self.half_delay();
         self.clk().set_low();
         bit

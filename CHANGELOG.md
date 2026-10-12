@@ -20,6 +20,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
   only `examples/usb_serial.rs` did it, so the main firmware never showed up on USB: the MCU sits behind the hub.
 - Firmware: SWD-host drives SWCLK as an output on every clocking path. It was set only by `DAP_SWJ_Pins`, which
   probe-rs doesn't send, so SWCLK stayed an input and no target ever acknowledged (FW-15).
+- Firmware: SWD-host samples SWDIO before the rising SWCLK edge (as CMSIS-DAP `SW_READ_BIT`), not right after it
+  when the target is changing it (FW-15).
 
 ## [0.2.0] - 2026-10-11
 
