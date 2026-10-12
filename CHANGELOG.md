@@ -14,6 +14,11 @@ IDs refer to [FEATURES.md](FEATURES.md).
 - Firmware: `plug-vbus-on` build feature, off by default: AOZ1375 on from boot so one cable powers the DUT and
   carries SWD, a stopgap until FW-8. Never on the P2625 power-cut bench (the DUT runs from Q102 there).
 
+### Fixed
+
+- Firmware: the USB hub is configured and attached at boot (`src/hub.rs`, from the FW-5 bring-up example). Until now
+  only `examples/usb_serial.rs` did it, so the main firmware never showed up on USB: the MCU sits behind the hub.
+
 ## [0.2.0] - 2026-10-11
 
 ### Added

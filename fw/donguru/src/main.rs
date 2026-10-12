@@ -4,6 +4,7 @@
 mod adc;
 mod button;
 mod cmsis_dap;
+mod hub;
 mod init;
 mod led;
 mod swd;
@@ -54,6 +55,17 @@ assign_resources! {
         pa12: PA12,
         /// USB D-
         pa11: PA11,
+    }
+    hub: HubResources {
+        /// Hub RESET_N (B153A rework, hw_b153a.md §6), high releases the hub
+        pc13: PC13,
+        /// HUB_I2C_EN: SDA pull-up R301 on B153A, high for I2C to work
+        pa4: PA4,
+        i2c2: I2C2,
+        /// I2C2_SCL
+        pb10: PB10,
+        /// I2C2_SDA
+        pb14: PB14,
     }
     pwr: PwrResources {
         /// PWR_EN: U601 AOZ1375 enable, receptacle VBUS -> plug VBUS. R601 pull-down, off at reset. Driven only
@@ -143,6 +155,9 @@ async fn main(spawner: embassy_executor::Spawner) {
 
     spawner.spawn(unwrap!(adc::adc_task(r.adc, adc::ChannelSet::Base)));
     spawner.spawn(unwrap!(button::button_task()));
+
+    // The MCU's USB is on hub port 1: nothing enumerates until the hub is configured and attached
+    hub::bring_up(r.hub).await;
 
     // Composite USB device (FS, HSI48 clock above): WireWeaver and CMSIS-DAP v2 (FW-15), see src/ww.rs.
     let usb_driver = usb::Driver::new(r.usb.usb, Irqs, r.usb.pa12, r.usb.pa11);
