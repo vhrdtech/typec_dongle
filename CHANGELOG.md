@@ -18,6 +18,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 - Firmware: the USB hub is configured and attached at boot (`src/hub.rs`, from the FW-5 bring-up example). Until now
   only `examples/usb_serial.rs` did it, so the main firmware never showed up on USB: the MCU sits behind the hub.
+- Firmware: SWD-host drives SWCLK as an output on every clocking path. It was set only by `DAP_SWJ_Pins`, which
+  probe-rs doesn't send, so SWCLK stayed an input and no target ever acknowledged (FW-15).
 
 ## [0.2.0] - 2026-10-11
 

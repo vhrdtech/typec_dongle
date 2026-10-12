@@ -149,6 +149,12 @@ impl SwdPins {
         self.clk().set_low();
     }
 
+    /// SWCLK as a push-pull output, keeping its level (idles low). Every clocking path calls it: after reset or
+    /// a release the pins are inputs, and probe-rs starts with SWJ_Sequence, not SWJ_Pins.
+    fn clk_drive(&mut self) {
+        self.clk().set_as_output(Speed::Medium);
+    }
+
     fn dio_drive(&mut self) {
         self.dio().set_as_output(Speed::Medium);
     }
@@ -177,6 +183,7 @@ impl SwdPins {
     }
 
     fn clock_cycles(&mut self, n: usize) {
+        self.clk_drive();
         for _ in 0..n {
             self.half_delay();
             self.clk().set_high();
@@ -186,6 +193,7 @@ impl SwdPins {
     }
 
     fn write_bits(&mut self, nbits: usize, data: &[u8]) {
+        self.clk_drive();
         self.dio_drive();
         for i in 0..nbits {
             let bit = (data[i / 8] >> (i % 8)) & 1 != 0;
@@ -194,6 +202,7 @@ impl SwdPins {
     }
 
     fn read_bits(&mut self, nbits: usize, data: &mut [u8]) {
+        self.clk_drive();
         self.dio_release();
         data[..nbits.div_ceil(8)].fill(0);
         for i in 0..nbits {
@@ -204,6 +213,7 @@ impl SwdPins {
     }
 
     fn read_bits_u32(&mut self, nbits: usize) -> u32 {
+        self.clk_drive();
         self.dio_release();
         let mut v = 0u32;
         for i in 0..nbits {
