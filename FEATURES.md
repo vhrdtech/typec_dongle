@@ -60,27 +60,28 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   bootloader; the CLI side is CLI-10. ^v1.0
 - 📋 **FW-13 HardFault handling for production**: reset instead of looping (TODO in `HardFault`); the backup-register
   counter already records the fault.
-- 🧪 **FW-15 SWD-host over the plug SBU lines**: CMSIS-DAP v2 (bulk, `src/cmsis_dap.rs`) on a composite USB device
+- ✅ **FW-15 SWD-host over the plug SBU lines**: CMSIS-DAP v2 (bulk, `src/cmsis_dap.rs`) on a composite USB device
   alongside WireWeaver (`src/ww.rs`), carrying `dap_rs`'s command processor over a GPIO bit-bang SWD driver
-  (`src/swd.rs`: SWCLK/SWDIO on PB8/PB6, orientation-swappable, SWCLK clamped 10 kHz..1 MHz, default 400 kHz).
-  `SBU_OE` (PB2) and `SBU_PU_EN` (PC15) always driven low (hw_b153a.md §8: R211/R212 bypass the level shifter on
-  B153A, never enable OE while the MCU drives SBU at 3.3 V). No hardware reset line (NRESET/NTRST): `SWJ_Pins`
-  reports it as never asserted. JTAG and SWO not wired (SWD only). Orientation is a runtime setting
-  (`DonguruApi::swd_orientation`, API-4), not auto-detected from CC polarity (would need UCPD2 on the plug, not
-  wired up by any module yet). The SWD-host pins go Hi-Z on a clean `DAP_Disconnect` and also when the CMSIS-DAP
+  (`src/swd.rs`: SWCLK/SWDIO on PA1/PA0, the SBU side of the TXS0102 level shifter, orientation-swappable, SWCLK
+  clamped 10 kHz..1 MHz, default 400 kHz). R211/R212 (the shifter bypass to PB8/PB6) are not fitted on B153A, so
+  the driver goes around the shifter: `SBU_OE` (PB2) and `SBU_PU_EN` (PC15) always low, V_SBU at 3.3 V (PD3 high),
+  so 3.3 V targets only. No hardware reset line (NRESET/NTRST): `SWJ_Pins` reports it as never asserted. JTAG and
+  SWO not wired (SWD only). Orientation is a runtime setting (`DonguruApi::swd_orientation`, API-4), not
+  auto-detected from CC polarity. The SWD-host pins go Hi-Z on a clean `DAP_Disconnect` and also when the CMSIS-DAP
   v2 endpoints get disabled (USB reset/suspend, probe-rs or its process going away without disconnecting
   cleanly), not just on an explicit `DonguruApi::swd_release` (`src/cmsis_dap.rs::dap_task`): a bench harness only
-  has to end the probe-rs session, one way or another, before cutting the DUT's power. Built, not tested on
-  hardware: see the hardware checklist in `docs/development/index.md`. First use: the P2625 chunky-ota power-cut
-  bench.
-- 🧪 **FW-17 Plug CC drive for SWD-host**: stopgap, hardcoded (`src/swd.rs`, `src/cmsis_dap.rs`; P2534#12oct-1338b).
+  has to end the probe-rs session, one way or another, before cutting the DUT's power.
+  Tested 12 Oct 2026 on B153A + B129A (CANnify Micro, STM32G0B1) with probe-rs: reads at 100 kHz, 400 kHz and
+  1 MHz (16 KB in about 2 s), both cable orientations (flipped = `Swapped`), pins Hi-Z after disconnect.
+  Next: a level-shifter mode for 1.8 V targets and SPI-driven SWD on PB8/PB6 (P2534#12oct-1338b).
+- ✅ **FW-17 Plug CC drive for SWD-host**: stopgap, hardcoded (`src/swd.rs`, `src/cmsis_dap.rs`; P2534#12oct-1338b).
   PD0/PD2 (UCPD2_CC1/CC2; B153A has no DPO2036, hw_b153a.md §0, so these reach the plug CC directly) are driven
   push-pull high on a successful `DAP_Connect` and released to Hi-Z together with SWCLK/SWDIO on `DAP_Disconnect`,
   CMSIS-DAP v2 endpoint disable and `swd_release` — a downstream board such as B129A gates its SBU->SWD mux on CC
   voltage and would otherwise never route its SBU lines to the MCU, and a driven CC left up after a session would
   back-feed an unpowered DUT through the gating comparators. Not a real CC/PD role: no Rp/Rd, no UCPD2 involved;
-  the follow-up (proper CC/PD handling) is tracked on the tpm task. Built, not tested on hardware: see the
-  hardware checklist in `docs/development/index.md`.
+  the follow-up (proper CC/PD handling) is tracked on the tpm task. Tested 12 Oct 2026: B129A's `SWD_SEL` (TP1)
+  goes high during a session, PD0/PD2 are inputs again after disconnect.
 
 ## API (`API`)
 
