@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-12
+
 ### Added
 
 - CLI: `donguru swd memtest`, an integrity check of an SWD link: memtest-style patterns (data and address bus,
