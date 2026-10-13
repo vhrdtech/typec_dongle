@@ -97,7 +97,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   target in the tpm task was a rough estimate; ~2 s here is mostly host-side USB re-enumeration overhead, not the
   firmware's own recovery time. Not yet exercised against a real brown-out (needs the 10R resistor bypassed, which
   the user declined for now since the bench is in use for cut measurements).
-- 🧪 **FW-19 512-byte CMSIS-DAP packets**: `DAP_Info` reports `MaxPacketSize` 512 (`dap_rs` feature `usb-hs`, which
+- ✅ **FW-19 512-byte CMSIS-DAP packets**: `DAP_Info` reports `MaxPacketSize` 512 (`dap_rs` feature `usb-hs`, which
   changes nothing else) instead of 64, so `DAP_TransferBlock` carries 126 words per USB round trip instead of 15.
   The endpoints stay Full-Speed 64-byte bulk: `src/cmsis_dap.rs` puts a request together from several OUT packets
   and splits a response over several IN packets. The rules are in the `donguru_dap` crate (repo root, unit-tested
@@ -115,10 +115,19 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
     reads more than the response holds); the host gets 1 s to read a response (`dap_response_timeouts`), then the
     task goes back to listening, so `swd_release` is never stuck behind a host that stopped reading.
 
-  Hi-Z on `DAP_Disconnect`, on endpoint disable and on `swd_release` is unchanged. Built (dev, release,
-  `plug-vbus-on`), not yet run on a board: to measure on B153A + B129A, a 64 KB flash read at 1000 kHz (7.7 s
-  before), `donguru swd memtest --size 16K --speed 1000` and the full RAM once. One bit-banged request now holds
-  the executor for up to ~8 ms at 1 MHz (126 words), and for most of a second at the 10 kHz floor.
+  Hi-Z on `DAP_Disconnect`, on endpoint disable and on `swd_release` is unchanged.
+  Tested 13 Oct 2026 on B153A + B129A (omarchy-m1, probe-rs 0.32, release build with `plug-vbus-on`, before =
+  0.4.1): the link works and is clean, but the gain is about 9 %, not the 4-5x expected. 64 KB of B129 flash at
+  1000 kHz: 7.7 s -> 7.05 s with 32-bit accesses (`probe-rs read b32`), 30.3 s -> 27.3 s with 8-bit, bytes
+  identical to the read before. `donguru swd memtest --size 16K` at 100, 400 and 1000 kHz and the full 144 KiB RAM
+  at 1000 kHz: all patterns pass (2.1 / 6.0 / 9.6 KiB/s; 9.0 KiB/s at 1000 kHz before). PA0/PA1 and PD0/PD2 are
+  inputs without pull after the session (GPIOA/GPIOD MODER and PUPDR read through the J-Link). The `dap_*`
+  counters were not read.
+  Why so little: the USB round trips were not the bottleneck, the bit-bang is. 16384 words in 7.05 s is about
+  430 us per word where a real 1 MHz SWCLK needs about 50 us, and the rate still follows the requested clock
+  (2.1 KiB/s at 100 kHz): `src/swd.rs` spends several microseconds per bit on top of the half-period delay. The
+  next step for speed is there (a tighter bit loop, or SPI-driven SWD as planned under FW-15), and one request
+  now holds the executor for about 55 ms at 1000 kHz (126 words) and about 0.25 s at 100 kHz.
 
 ## API (`API`)
 

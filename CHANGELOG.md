@@ -11,7 +11,10 @@ IDs refer to [FEATURES.md](FEATURES.md).
 - Firmware: the CMSIS-DAP probe reports a 512-byte DAP packet instead of 64, so probe-rs moves 126 words per
   `DAP_TransferBlock` instead of 15; requests and responses span several 64-byte Full-Speed USB packets
   (`src/cmsis_dap.rs`, new crate `donguru_dap` with the framing rules and their unit tests, FW-19). `donguru_api`
-  unchanged (0.1.1), old CLIs keep working. Not yet tested on a board.
+  unchanged (0.1.1), old CLIs keep working. Tested 13 Oct 2026 on B153A + B129A with probe-rs 0.32: 64 KB flash
+  read at 1000 kHz 7.7 s -> 7.05 s (bytes identical), `donguru swd memtest` 16K at 100 / 400 / 1000 kHz and the
+  full RAM at 1000 kHz pass, pins Hi-Z after disconnect. Only about 9 % faster: the bit-banged SWD clock, not
+  the USB round trips, limits the speed.
 
 ### Fixed
 
