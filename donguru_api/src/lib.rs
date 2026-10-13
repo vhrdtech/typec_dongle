@@ -26,6 +26,11 @@ pub trait DonguruApi {
     /// plug SBU lines can back-power it (FW-15).
     #[since = "0.1.1"]
     fn swd_release();
+
+    /// How the SWD-host drives the plug SBU lines (FW-21). Takes effect on the next SWD transfer; see
+    /// [`SwdMode`]. Default [`SwdMode::BitBang`] unless the firmware was built with the `swd-spi` feature.
+    #[since = "0.1.2"]
+    property!(rw swd_mode: SwdMode);
 }
 
 /// Cable orientation for the SWD-host pins, see [`DonguruApi::swd_orientation`].
@@ -35,4 +40,16 @@ pub enum SwdOrientation {
     Normal,
     /// SBU1 = SWDIO, SBU2 = SWCLK
     Swapped,
+}
+
+/// How the SWD-host drives the plug SBU lines, see [`DonguruApi::swd_mode`].
+#[derive_shrink_wrap(borrowed, derive(Copy, Clone, Debug, PartialEq, Eq), ww_repr = nib)]
+pub enum SwdMode {
+    /// GPIO bit-bang on PA1/PA0, straight on the SBU lines, level shifter off: up to about 3.7 MHz.
+    BitBang,
+    /// SPI2 through the TXS0102 level shifter (`SBU_OE` high, its 10K pull-ups on both sides): SWCLK on PB8,
+    /// SWDIO on PB11 (MOSI) / PB6 (MISO), up to 8 MHz. [`SwdOrientation::Normal`] only, a swapped cable falls back
+    /// to [`SwdMode::BitBang`]; clocks under 250 kHz bit-bang through the shifter. For B153A as built (R211/R212
+    /// not fitted): with that bypass fitted the shifter output enable must stay off, so do not use this mode.
+    Spi,
 }

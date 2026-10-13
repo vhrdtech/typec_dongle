@@ -9,7 +9,7 @@
 use crate::{cmsis_dap, hub, led, swd};
 use cnt::cnt;
 use defmt::{info, unwrap};
-use donguru_api::SwdOrientation;
+use donguru_api::{SwdMode, SwdOrientation};
 use embassy_executor::Spawner;
 use embassy_stm32::{peripherals, usb};
 use embassy_usb::{Builder, Config as UsbConfig, Handler};
@@ -56,6 +56,16 @@ impl ServerState {
     ) -> SetResult<()> {
         info!("swd orientation set");
         swd::set_orientation(orientation);
+        Set
+    }
+
+    async fn get_swd_mode(&mut self, _cx: &mut Context<'_, impl EventOut>) -> GetResult<SwdMode, ()> {
+        Value(swd::mode())
+    }
+
+    async fn set_swd_mode(&mut self, _cx: &mut Context<'_, impl EventOut>, mode: SwdMode) -> SetResult<()> {
+        info!("swd mode set");
+        swd::set_mode(mode);
         Set
     }
 

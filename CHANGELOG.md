@@ -6,14 +6,22 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- Firmware: SPI-driven SWD as a second SWD-host mode, SPI2 through the SBU level shifter (`SBU_OE` high while it
+  is in use, low again on every release), up to 8 MHz in steps of 64 MHz / 2^n; bit-bang stays the default. Normal
+  cable orientation only. Selected with the new `swd_mode` property or the firmware feature `swd-spi` (FW-21).
+  Not yet tested on hardware.
+- API: `swd_mode` property (`SwdMode::BitBang` / `SwdMode::Spi`), `donguru_api` 0.1.2; additive, older CLIs keep
+  working (API-5).
+
 ### Changed
 
 - Firmware: the bit-banged SWD clock runs at the requested frequency instead of well under it (about 400 kHz at
   a requested 1 MHz before), up to about 3 MHz, with both clock halves the same length; requests up to 3 MHz are
   accepted (cap was 1 MHz). A DUT with series resistors and clamp diodes on SWD limits the usable clock (B129A:
-  2 MHz or less). Tight
-  assembly bit loops on the GPIO registers, timed against SysTick at boot (`src/swd.rs`, `donguru_dap::swclk`,
-  FW-20). `donguru_api` unchanged (0.1.1). Tested 13 Oct 2026 on B153A + B129A: 64 KB flash read 7.03 s -> 1.77 s
+  2 MHz or less). Tight assembly bit loops on the GPIO registers, timed against SysTick at boot (`src/swd.rs`,
+  `donguru_dap::swclk`, FW-20). `donguru_api` unchanged (0.1.1). Tested 13 Oct 2026 on B153A + B129A: 64 KB flash read 7.03 s -> 1.77 s
   at 1000 kHz and 1.07 s at 4000 kHz (bytes identical), `donguru swd memtest` 16K at 400 / 1000 / 2000 / 4000 kHz
   and the full RAM at 4000 kHz pass (72 s, was 493 s at 1000 kHz), pins Hi-Z after disconnect; that build ran
   the top speed at 70 % duty, since fixed (equal halves, cap 3 MHz), not yet re-measured.

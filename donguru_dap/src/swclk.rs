@@ -55,6 +55,12 @@ impl KernelCost {
     }
 }
 
+/// SPI prescaler setting (`BR`: the clock is `pclk_hz / 2^(br + 1)`, `br` 0..=7) for the fastest SPI clock not
+/// above `max_hz`; `None` when even `pclk_hz / 256` is faster.
+pub fn spi_prescaler(pclk_hz: u32, max_hz: u32) -> Option<u8> {
+    (0..8u8).find(|br| pclk_hz >> (br + 1) <= max_hz)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -119,5 +125,17 @@ mod tests {
             per_spin: 0,
         };
         assert_eq!(zero.halves(10).1, 10);
+    }
+
+    #[test]
+    fn spi_prescaler_never_runs_faster_than_asked() {
+        let pclk = 64_000_000;
+        assert_eq!(spi_prescaler(pclk, 32_000_000), Some(0));
+        assert_eq!(spi_prescaler(pclk, 8_000_000), Some(2));
+        assert_eq!(spi_prescaler(pclk, 7_999_999), Some(3));
+        assert_eq!(spi_prescaler(pclk, 1_000_000), Some(5));
+        assert_eq!(spi_prescaler(pclk, 250_000), Some(7));
+        assert_eq!(spi_prescaler(pclk, 249_999), None);
+        assert_eq!(spi_prescaler(pclk, u32::MAX), Some(0));
     }
 }

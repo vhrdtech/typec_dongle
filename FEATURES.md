@@ -73,7 +73,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   has to end the probe-rs session, one way or another, before cutting the DUT's power.
   Tested 12 Oct 2026 on B153A + B129A (CANnify Micro, STM32G0B1) with probe-rs: reads at 100 kHz, 400 kHz and
   1 MHz (16 KB in about 2 s), both cable orientations (flipped = `Swapped`), pins Hi-Z after disconnect.
-  Next: a level-shifter mode for 1.8 V targets and SPI-driven SWD on PB8/PB6 (P2534#12oct-1338b).
+  Next: a level-shifter mode for 1.8 V targets (P2534#12oct-1338b); SPI-driven SWD is FW-21.
 - ✅ **FW-17 Plug CC drive for SWD-host**: stopgap, hardcoded (`src/swd.rs`, `src/cmsis_dap.rs`; P2534#12oct-1338b).
   PD0/PD2 (UCPD2_CC1/CC2; B153A has no DPO2036, hw_b153a.md §0, so these reach the plug CC directly) are driven
   push-pull high on a successful `DAP_Connect` and released to Hi-Z together with SWCLK/SWDIO on `DAP_Disconnect`,
@@ -156,6 +156,22 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   period 330 ns (3.03 MHz, fastest 240 ns) at 70 % duty (high about 230 ns, low only about 100 ns), the clock at
   B129 swinging only about 0.7..3.1 V (the DUT's RC above; G0 VIL is 1.0 V), memtest still passing. The equal
   halves above are the fix for that, built but not yet re-measured: hence 🧪.
+- 🧪 **FW-21 SPI-driven SWD**: a second SWD-host mode, `SwdMode::Spi` (API-5), next to the default bit-bang
+  (P2534#13oct-1353b). On B153A the SPI pins reach the plug only through the TXS0102 level shifter (R211/R212 not
+  fitted, hw_b153a.md §8), so the mode engages that side: PA0/PA1 Hi-Z, SPI2 on with SWCLK = SPI2_SCK on PB8 and
+  SWDIO = SPI2_MOSI on PB11 + SPI2_MISO on PB6 (same net, full duplex, MOSI switched to input while the target
+  drives), then `SBU_OE` high; V_SBU stays 3.3 V. Every frame CPOL 0 / CPHA 0, LSB first, 4..16 bits: request 8 |
+  turnaround + ack 4 | read: data 16 + 14 + (2 data + parity + turnaround) 4, idle 8 | write: (turnaround + 15
+  data) 16 + 16 + (1 data + parity + idle 8) 10. MOSI only drives where the target is done or drives the same level
+  (the OK ack's last bit is 0); WAIT / FAULT get a bit-banged turnaround and idle on the same pins, and so do SWJ
+  sequences (any bit count) and clocks under 250 kHz (`src/swd.rs`, "SPI-driven SWD"). SPI clock = 64 MHz / 2^n,
+  never above the request, cap 8 MHz (`SPI_MAX_HZ`, not yet verified). Normal orientation only: SBU1_VT has no MISO
+  pin, a swapped cable falls back to the direct bit-bang. Every release (`DAP_Disconnect`, endpoint disable,
+  `swd_release`) takes `SBU_OE` low first (its 10K pull-ups on both sides go with it), then PB6/PB8/PB11 Hi-Z and
+  SPI2 off; switching back to bit-bang does the same. Selected at run time with `swd_mode`, or at boot with the
+  firmware feature `swd-spi` (the CLI has no command for it yet, CLI-17). ⚠️ Not for a board with R211/R212 fitted.
+  Built, not yet tested on hardware: to check on B153A + B129A are reads and memtest per speed, the SWCLK waveform
+  through the shifter and the Hi-Z after release (PB2 low, PB6/PB8/PB11 inputs).
 
 ## API (`API`)
 
@@ -170,6 +186,8 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   GPIO, I2C, device info; designed together with the CLI command tree. ^revB
 - 🧪 **API-4 `swd_orientation` / `swd_release`**: SWD-host cable orientation (rw property) and the Hi-Z disconnect
   for the bench power-cut test (FW-15). `donguru_api` 0.1.1.
+- 🧪 **API-5 `swd_mode`**: rw property, `SwdMode::BitBang` (default) or `SwdMode::Spi` (FW-21), next to
+  `swd_orientation`; takes effect on the next SWD transfer. Additive, `donguru_api` 0.1.2: older hosts keep working.
 
 ## Host library (`CORE`)
 

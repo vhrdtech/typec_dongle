@@ -46,6 +46,9 @@ debug-adc = []
 debug-button = []
 # stopgap until FW-8: AOZ1375 on from boot, receptacle VBUS passed to the plug (never on the P2625 power-cut bench)
 plug-vbus-on = []
+# SWD-host starts in SPI mode (FW-21, SPI2 through the SBU level shifter) instead of bit-bang; the mode can still be
+# changed at run time with `DonguruApi::swd_mode`
+swd-spi = []
 
 [build-dependencies]
 # (none)
