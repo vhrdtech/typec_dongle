@@ -128,7 +128,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   (2.1 KiB/s at 100 kHz): `src/swd.rs` spends several microseconds per bit on top of the half-period delay. The
   next step for speed is there (a tighter bit loop, or SPI-driven SWD as planned under FW-15), and one request
   now holds the executor for about 55 ms at 1000 kHz (126 words) and about 0.25 s at 100 kHz.
-- ✅ **FW-20 Faster bit-bang SWD**: the SWD clock is what was asked for, up to about 3.7 MHz (P2534#13oct-1353).
+- 🧪 **FW-20 Faster bit-bang SWD**: the SWD clock is what was asked for, up to about 3 MHz (P2534#13oct-1353).
   FW-19 showed the bit loop was the limit: about 50 CPU cycles of overhead per clock edge (embassy `Flex` calls,
   the orientation re-read per edge), so "1 MHz" ran at about 400 kHz. `src/swd.rs` now clocks through two
   inline-assembly kernels on GPIOA's BSRR / BRR / IDR (one store per edge, SWCLK falling and the next SWDIO bit in
@@ -136,9 +136,14 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   (pull-up kept). Each clock half is a countdown loop; how many iterations give the requested clock comes from a
   calibration at boot that times the same kernels with SysTick while the pins are still inputs (the plug sees
   nothing), arithmetic in `donguru_dap::swclk` (unit-tested). The clock never runs faster than asked
-  (`DAP_SWJ_Clock` is a maximum); 4 MHz asked gives the kernels' fastest. The boot log prints the measured costs
-  and the top SWCLK. Cap 4 MHz (`MAX_FREQUENCY_HZ`), default still 400 kHz; sampling before the rising edge,
-  SWCLK driven on every path and the Hi-Z release unchanged.
+  (`DAP_SWJ_Clock` is a maximum); anything from 3 MHz up gives the kernels' fastest, about 3 MHz real. The boot
+  log prints the measured costs and the top SWCLK. Both clock halves are the same length at every speed: each
+  kernel does the next bit's work in the low half and its loop counter in the high one, and an odd spin goes to
+  the low half. Cap 3 MHz (`MAX_FREQUENCY_HZ`), default still 400 kHz; sampling before the rising edge, SWCLK
+  driven on every path and the Hi-Z release unchanged.
+  The usable clock also depends on the DUT: series resistors and clamp diodes on its SWD lines slow the edges
+  (B129A: 200R + 5V6 zener, tau about 70 ns), so a short clock half no longer reaches a clean low. On B129A use
+  2 MHz or less.
   Tested 13 Oct 2026 on B153A + B129A (omarchy-m1, probe-rs 0.32, release build with `plug-vbus-on`, flashed and run
   by the parent session): 64 KB of B129 flash with `probe-rs read b32`, bytes identical to the 0.5.0 read, in
   9.96 / 3.13 / 1.77 / 1.27 / 1.07 s at 100 / 400 / 1000 / 2000 / 4000 kHz (0.5.0 at 1000 kHz: 7.03 s; 4000 kHz is
@@ -146,7 +151,11 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   4000 kHz pass (72 s, 493 s at 1000 kHz on 0.5.0); 100 kHz memtest not run. PA0/PA1 and PD0/PD2 inputs without
   pull after the session. The real SWCLK was not measured (no logic analyzer channel on SWCLK); derived from the
   read times (time per word = fixed overhead + 54 clocks / f, about 50 us of overhead), it is within a few percent
-  under the requested 100, 400 and 1000 kHz.
+  under the requested 100, 400 and 1000 kHz. Scope (M2K at 100 MS/s on B129 J2-9 SWCLK / J2-10 SWDIO, flying
+  leads, by the parent session): 1000 kHz asked -> 0.97 MHz, 53 % duty, clean 0..3.18 V; 4000 kHz asked -> median
+  period 330 ns (3.03 MHz, fastest 240 ns) at 70 % duty (high about 230 ns, low only about 100 ns), the clock at
+  B129 swinging only about 0.7..3.1 V (the DUT's RC above; G0 VIL is 1.0 V), memtest still passing. The equal
+  halves above are the fix for that, built but not yet re-measured: hence 🧪.
 
 ## API (`API`)
 

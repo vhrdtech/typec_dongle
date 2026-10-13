@@ -57,9 +57,10 @@ use crate::SwdResources;
 const SYSCLK_HZ: u32 = 64_000_000;
 /// Floor on SWCLK: slow enough that bit-bang jitter (task scheduling, interrupts) cannot matter.
 const MIN_FREQUENCY_HZ: u32 = 10_000;
-/// Ceiling on the requested SWCLK. The clock actually reached is lower when the kernels can't go that fast (see
-/// [`Calibration`]); `DAP_SWJ_Clock` still answers OK then, and the boot log says what the top speed is.
-const MAX_FREQUENCY_HZ: u32 = 4_000_000;
+/// Ceiling on the requested SWCLK: about what the kernels do at their fastest with both clock halves equal
+/// (measured 13 Oct 2026: about 3 MHz). The clock actually reached is lower when the kernels can't go that fast
+/// (see [`Calibration`]); `DAP_SWJ_Clock` still answers OK then, and the boot log says what the top speed is.
+const MAX_FREQUENCY_HZ: u32 = 3_000_000;
 /// Default SWCLK before the host sends `DAP_SWJ_Clock`.
 const DEFAULT_FREQUENCY_HZ: u32 = 400_000;
 /// Idle cycles driven after each SWD register transaction, SWDIO low: more than the one bit the spec requires,
@@ -114,8 +115,8 @@ pub(crate) fn signal_release_done() {
 // Two small loops do all the clocking, in inline assembly on GPIOA's BSRR / BRR / IDR: one store per edge, SWCLK
 // falling and the next SWDIO bit in the same BSRR write. Assembly rather than Rust because the compiler spilled the
 // loop's values to the stack (about 24 cycles per bit at the least, 2.7 MHz) and its cycle count changes with the
-// build profile; the assembly loops are 10-11 cycles plus 3 per spin iteration, so up to about 3.7 MHz, the same in
-// every build. They take the pin masks as arguments, so the orientation is resolved once per transfer
+// build profile; the assembly loops are 11-12 cycles plus 3 per spin iteration by the instruction count (about 21
+// at the fastest on the scope, so about 3 MHz), the same in every build, with both clock halves the same length. They take the pin masks as arguments, so the orientation is resolved once per transfer
 // ([`SwdPins::engage`]), not per edge. Each clock half is padded with a countdown loop (`subs` + `bne`, a fixed
 // cost per iteration, at least 1 iteration: 0 would spin 2^32 times); how many iterations give the requested
 // frequency comes from [`Calibration`], which times the very same kernels with SysTick at boot, so the numbers
@@ -124,8 +125,10 @@ pub(crate) fn signal_release_done() {
 
 /// Clocks out `nbits` (0..=32) bits of `word`, LSB first: per bit SWCLK falls and SWDIO takes the bit (one BSRR
 /// write), `lo` spins, SWCLK rises (the target samples), `hi` spins; SWCLK low at the end. With `dio == 0` it only
-/// clocks (turnaround, idle cycles), SWDIO untouched. Branch-free per bit, so every bit costs the same:
-/// 11 + 3 * (lo + hi) cycles with single-cycle GPIO stores, about 3 lo + 1 of them low and 3 hi + 7 high.
+/// clocks (turnaround, idle cycles), SWDIO untouched. Branch-free per bit, so every bit costs the same. The next
+/// bit's BSRR word is worked out in the low half and the loop counter runs in the high one, so with `lo == hi`
+/// the two halves take the same time give or take a cycle or two (by the instruction count: 3 lo + 5 low,
+/// 3 hi + 5 high, 12 + 3 * (lo + hi) per bit with single-cycle GPIO stores).
 #[inline(never)]
 fn out_bits(clk: u32, dio: u32, h: Halves, word: u32, nbits: u32) {
     let bsrr = pac::GPIOA.bsrr().as_ptr() as *mut u32;
@@ -134,27 +137,31 @@ fn out_bits(clk: u32, dio: u32, h: Halves, word: u32, nbits: u32) {
         // BSRR word for a 1 bit (SWDIO set), and what turns it into the one for a 0 bit (SWDIO reset)
         let one = clk_low | dio;
         let flip = one ^ (clk_low | (dio << 16));
-        // SAFETY: only writes GPIOA BSRR, a set/reset register: just the SWCLK/SWDIO bits in the masks change.
-        // `h.lo`, `h.hi` >= 1 (`Halves`).
         let high = [h.lo, h.hi, clk];
+        // SAFETY: only writes GPIOA BSRR, a set/reset register: just the SWCLK/SWDIO bits in the masks change.
+        // `h.lo`, `h.hi` >= 1 (`Halves`), `nbits` >= 1.
         unsafe {
             asm!(
-                // Only r0-r7 can be operands in Thumb-1: the spin counts and SWCLK's mask go to r8, r10, r11
-                // through `n`, saved in r12 meanwhile; `t` starts as the pointer to them.
-                "mov r12, {n}",
-                "ldr {n}, [{t}]",
-                "mov r8, {n}",
-                "ldr {n}, [{t}, #4]",
-                "mov r10, {n}",
-                "ldr {n}, [{t}, #8]",
-                "mov r11, {n}",
-                "mov {n}, r12",
+                // Only r0-r7 can be operands in Thumb-1: the spin counts, SWCLK's mask and the bit counter go to
+                // r8, r10, r11, r12; `t` starts as the pointer to the first three, `v` as the bit count.
+                "mov r12, {v}",
+                "ldr {v}, [{t}]",
+                "mov r8, {v}",
+                "ldr {v}, [{t}, #4]",
+                "mov r10, {v}",
+                "ldr {v}, [{t}, #8]",
+                "mov r11, {v}",
+                // v = BSRR word of the first bit
+                "lsrs {word}, {word}, #1", // C = bit
+                "sbcs {v}, {v}",           // 0 for a 1 bit, all ones for a 0 bit
+                "ands {v}, {flip}",
+                "eors {v}, {one}",
                 "2:",
-                "lsrs {word}, {word}, #1", // C = next bit
-                "sbcs {t}, {t}",           // 0 for a 1 bit, all ones for a 0 bit
-                "ands {t}, {flip}",
-                "eors {t}, {one}",
-                "str {t}, [{bsrr}]",       // SWCLK falls, SWDIO takes the bit
+                "str {v}, [{bsrr}]",       // SWCLK falls, SWDIO takes the bit
+                "lsrs {word}, {word}, #1", // the next bit's word (unused after the last)
+                "sbcs {v}, {v}",
+                "ands {v}, {flip}",
+                "eors {v}, {one}",
                 "mov {t}, r8",
                 "3:",
                 "subs {t}, #1",
@@ -165,10 +172,12 @@ fn out_bits(clk: u32, dio: u32, h: Halves, word: u32, nbits: u32) {
                 "4:",
                 "subs {t}, #1",
                 "bne 4b",
-                "subs {n}, #1",
+                "mov {t}, r12",
+                "subs {t}, #1",
+                "mov r12, {t}",
                 "bne 2b",
                 word = inout(reg) word => _,
-                n = inout(reg) nbits => _,
+                v = inout(reg) nbits => _,
                 t = inout(reg) high.as_ptr() => _,
                 flip = in(reg) flip,
                 one = in(reg) one,
@@ -185,60 +194,69 @@ fn out_bits(clk: u32, dio: u32, h: Halves, word: u32, nbits: u32) {
     unsafe { write_volatile(bsrr, clk_low) };
 }
 
-/// Clocks in `nbits` (0..=32) bits, LSB first: per bit SWCLK falls, `lo` spins, SWDIO (mask `dio`) is sampled
+/// Clocks in `nbits` (0..=32) bits, LSB first: per bit SWCLK falls, `lo` spins, SWDIO (pin `dio_pin`) is sampled
 /// just before SWCLK rises, as the CMSIS-DAP reference does (`SW_READ_BIT`: the target changes SWDIO on the rising
-/// edge, so a sample just after it is a race), `hi` spins; SWCLK low at the end. 10 + 3 * (lo + hi) cycles with
-/// single-cycle GPIO access, about 3 lo + 2 of them low and 3 hi + 6 high.
+/// edge, so a sample just after it is a race), `hi` spins; SWCLK low at the end. Each sample is shifted in during
+/// the next low half and the loop counter runs in the high one, so with `lo == hi` the halves take the same time
+/// give or take a cycle or two (by the instruction count: 3 lo + 4 low, 3 hi + 5 high, 11 + 3 * (lo + hi) per bit
+/// with single-cycle GPIO access).
 #[inline(never)]
-fn in_bits(clk: u32, dio: u32, h: Halves, nbits: u32) -> u32 {
+fn in_bits(clk: u32, dio_pin: u32, h: Halves, nbits: u32) -> u32 {
     let idr = pac::GPIOA.idr().as_ptr() as *mut u32;
     let mut v = 0u32;
     if nbits > 0 {
+        let high = [h.lo, h.hi, nbits];
+        // shifting the IDR value right by this leaves SWDIO in the carry
+        let shift = dio_pin + 1;
         // SAFETY: reads GPIOA IDR and writes BSRR (IDR + 8) / BRR (IDR + 0x18), set/reset registers: only SWCLK
-        // changes. `h.lo`, `h.hi` >= 1 (`Halves`).
-        let high = [h.lo, h.hi];
+        // changes. `h.lo`, `h.hi` >= 1 (`Halves`), `nbits` >= 1.
         unsafe {
             asm!(
-                // The spin counts go to r8, r10 (see `out_bits`).
-                "mov r12, {n}",
-                "ldr {n}, [{t}]",
-                "mov r8, {n}",
-                "ldr {n}, [{t}, #4]",
-                "mov r10, {n}",
-                "mov {n}, r12",
+                // The spin counts and the bit counter go to r8, r10, r11 (see `out_bits`).
+                "ldr {b}, [{t}]",
+                "mov r8, {b}",
+                "ldr {b}, [{t}, #4]",
+                "mov r10, {b}",
+                "ldr {b}, [{t}, #8]",
+                "mov r11, {b}",
+                "movs {b}, #0",              // the first round shifts in a 0 before any sample
                 "2:",
                 "str {clk}, [{idr}, #0x18]", // BRR: SWCLK falls
+                "lsrs {b}, {shift}",         // C = previous sample's SWDIO
+                "adcs {v}, {v}",             // first bit ends up highest
                 "mov {t}, r8",
                 "3:",
                 "subs {t}, #1",
                 "bne 3b",
-                "ldr {t}, [{idr}]",          // sample SWDIO
+                "ldr {b}, [{idr}]",          // sample SWDIO
                 "str {clk}, [{idr}, #8]",    // BSRR: SWCLK rises
-                "ands {t}, {dio}",
-                "subs {t}, #1",              // C = SWDIO
-                "adcs {v}, {v}",             // first bit ends up highest
                 "mov {t}, r10",
                 "4:",
                 "subs {t}, #1",
                 "bne 4b",
-                "subs {n}, #1",
+                "mov {t}, r11",
+                "subs {t}, #1",
+                "mov r11, {t}",
                 "bne 2b",
+                "lsrs {b}, {shift}",         // the last sample
+                "adcs {v}, {v}",
                 v = inout(reg) v,
-                n = inout(reg) nbits => _,
                 t = inout(reg) high.as_ptr() => _,
+                b = out(reg) _,
+                shift = in(reg) shift,
                 clk = in(reg) clk,
-                dio = in(reg) dio,
                 idr = in(reg) idr,
                 out("r8") _,
                 out("r10") _,
-                out("r12") _,
+                out("r11") _,
                 options(nostack),
             );
         }
     }
     // SAFETY: GPIOA BSRR.
     unsafe { write_volatile(pac::GPIOA.bsrr().as_ptr() as *mut u32, clk << 16) };
-    // nbits = 0: a shift by 32 wraps to 0, v is 0 anyway
+    // nbits + 1 bits shifted in, the leading 0 first: it falls off the top (nbits = 32) or above the result. A
+    // shift by 32 (nbits = 0) wraps to 0, v is 0 anyway.
     v.reverse_bits().wrapping_shr(32u32.wrapping_sub(nbits))
 }
 
@@ -284,7 +302,7 @@ impl Calibration {
             };
             let out = cost(&|h, n| out_bits(clk, dio, h, 0x5555_5555, n));
             let inp = cost(&|h, n| {
-                core::hint::black_box(in_bits(clk, dio, h, n));
+                core::hint::black_box(in_bits(clk, PIN_B, h, n));
             });
             // SAFETY: back to SysTick's reset state.
             unsafe { syst.csr.write(0) };
@@ -452,7 +470,7 @@ impl SwdPins {
         let len = nbits.div_ceil(8).min(data.len());
         for (i, chunk) in data[..len].chunks_mut(4).enumerate() {
             let n = nbits.saturating_sub(i * 32).min(32) as u32;
-            let word = in_bits(bus.clk, bus.dio, self.timing.inp, n).to_le_bytes();
+            let word = in_bits(bus.clk, bus.dio_pin, self.timing.inp, n).to_le_bytes();
             chunk.copy_from_slice(&word[..chunk.len()]);
         }
     }
@@ -472,7 +490,7 @@ impl SwdPins {
         Self::dio_release(bus);
         out_bits(bus.clk, 0, out, 0, 1);
 
-        let ack = in_bits(bus.clk, bus.dio, inp, 3) as u8;
+        let ack = in_bits(bus.clk, bus.dio_pin, inp, 3) as u8;
         let ack_result = swd::Ack::try_ok(ack);
 
         // Exactly one more turnaround happens in this transaction, at the one point where the direction
@@ -481,8 +499,8 @@ impl SwdPins {
         // idle cycles below.
         let result = match (ack_result, rnw) {
             (Ok(()), RnW::R) => {
-                let data = in_bits(bus.clk, bus.dio, inp, 32);
-                let parity = in_bits(bus.clk, bus.dio, inp, 1) != 0;
+                let data = in_bits(bus.clk, bus.dio_pin, inp, 32);
+                let parity = in_bits(bus.clk, bus.dio_pin, inp, 1) != 0;
                 out_bits(bus.clk, 0, out, 0, 1);
                 if parity != (data.count_ones() % 2 == 1) {
                     Err(swd::Error::BadParity)

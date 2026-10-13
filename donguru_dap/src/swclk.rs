@@ -25,9 +25,11 @@ impl KernelCost {
     pub const BATCH: u32 = 16;
     /// Spins per half in the slow samples of [`Self::from_samples`], on top of the fast samples' 1.
     pub const EXTRA: u32 = 8;
-    /// Spins the low half gets on top of an even split: the kernels' high half carries more of the loop's own
-    /// work (about 6 cycles more, two spins' worth, see `out_bits` / `in_bits` in the firmware).
-    pub const LOW_SKEW: u32 = 2;
+    /// Spins the low half gets on top of an even split, times two: 1 = an odd spin goes to the low half. The
+    /// kernels (`out_bits` / `in_bits` in the firmware) split their own work so the halves match at `lo == hi`
+    /// by the instruction count; the high half also holds the loop's taken branch back to the top, so the odd
+    /// spin evens that out.
+    pub const LOW_SKEW: u32 = 1;
 
     /// From four timings in cycles, each including the same fixed call overhead: [`Self::BATCH`] and
     /// 2 x [`Self::BATCH`] bits with 1 spin per half (`fast_*`), and the same with 1 + [`Self::EXTRA`] (`slow_*`).
