@@ -6,6 +6,13 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Changed
+
+- Firmware: the bit-banged SWD clock runs at the requested frequency instead of well under it (about 400 kHz at
+  a requested 1 MHz before), up to about 3.7 MHz; requests up to 4 MHz are accepted (cap was 1 MHz). Tight
+  assembly bit loops on the GPIO registers, timed against SysTick at boot (`src/swd.rs`, `donguru_dap::swclk`,
+  FW-20). `donguru_api` unchanged (0.1.1). Not yet tested on hardware.
+
 ## [0.5.0] - 2026-10-13
 
 ### Changed

@@ -28,6 +28,8 @@
 
 #![no_std]
 
+pub mod swclk;
+
 /// DAP packet size reported in `DAP_Info` (`MaxPacketSize`): what `dap_rs` reports with its `usb-hs` feature.
 pub const DAP_PACKET_SIZE: usize = 512;
 

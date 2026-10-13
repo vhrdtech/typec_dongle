@@ -63,7 +63,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - ✅ **FW-15 SWD-host over the plug SBU lines**: CMSIS-DAP v2 (bulk, `src/cmsis_dap.rs`) on a composite USB device
   alongside WireWeaver (`src/ww.rs`), carrying `dap_rs`'s command processor over a GPIO bit-bang SWD driver
   (`src/swd.rs`: SWCLK/SWDIO on PA1/PA0, the SBU side of the TXS0102 level shifter, orientation-swappable, SWCLK
-  clamped 10 kHz..1 MHz, default 400 kHz). R211/R212 (the shifter bypass to PB8/PB6) are not fitted on B153A, so
+  clamped 10 kHz..4 MHz since FW-20, default 400 kHz). R211/R212 (the shifter bypass to PB8/PB6) are not fitted on B153A, so
   the driver goes around the shifter: `SBU_OE` (PB2) and `SBU_PU_EN` (PC15) always low, V_SBU at 3.3 V (PD3 high),
   so 3.3 V targets only. No hardware reset line (NRESET/NTRST): `SWJ_Pins` reports it as never asserted. JTAG and
   SWO not wired (SWD only). Orientation is a runtime setting (`DonguruApi::swd_orientation`, API-4), not
@@ -128,6 +128,18 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   (2.1 KiB/s at 100 kHz): `src/swd.rs` spends several microseconds per bit on top of the half-period delay. The
   next step for speed is there (a tighter bit loop, or SPI-driven SWD as planned under FW-15), and one request
   now holds the executor for about 55 ms at 1000 kHz (126 words) and about 0.25 s at 100 kHz.
+- 🧪 **FW-20 Faster bit-bang SWD**: the SWD clock is what was asked for, up to about 3.7 MHz (P2534#13oct-1353).
+  FW-19 showed the bit loop was the limit: about 50 CPU cycles of overhead per clock edge (embassy `Flex` calls,
+  the orientation re-read per edge), so "1 MHz" ran at about 400 kHz. `src/swd.rs` now clocks through two
+  inline-assembly kernels on GPIOA's BSRR / BRR / IDR (one store per edge, SWCLK falling and the next SWDIO bit in
+  the same write), with the orientation resolved once per transfer and the SWDIO direction switched through MODER
+  (pull-up kept). Each clock half is a countdown loop; how many iterations give the requested clock comes from a
+  calibration at boot that times the same kernels with SysTick while the pins are still inputs (the plug sees
+  nothing), arithmetic in `donguru_dap::swclk` (unit-tested). The clock never runs faster than asked
+  (`DAP_SWJ_Clock` is a maximum); 4 MHz asked gives the kernels' fastest. The boot log prints the measured costs
+  and the top SWCLK. Cap raised to 4 MHz (`MAX_FREQUENCY_HZ`), default still 400 kHz; sampling before the rising
+  edge, SWCLK driven on every path and the Hi-Z release unchanged. Not yet tested on hardware: flash read and
+  `donguru swd memtest` against 0.5.0, SWCLK on the M2K, Hi-Z after disconnect.
 
 ## API (`API`)
 
