@@ -460,6 +460,7 @@ dependencies = [
  "defmt 1.1.1",
  "defmt-rtt",
  "donguru_api",
+ "donguru_dap",
  "embassy-executor",
  "embassy-futures",
  "embassy-stm32",
@@ -481,6 +482,10 @@ dependencies = [
  "defmt 1.1.1",
  "wire_weaver",
 ]
+
+[[package]]
+name = "donguru_dap"
+version = "0.4.1"
 
 [[package]]
 name = "either"

@@ -26,7 +26,12 @@ cnt = "0.4"
 # `usb` module targets the separate `usb-device` crate, incompatible with the embassy-usb stack used here.
 # Its own "defmt" feature pulls defmt 0.3, a different major version than ours (1.1): left off, nothing here needs
 # to Format-print its types directly.
-dap-rs = { version = "0.2", default-features = false }
+# "usb-hs": DAP_Info reports a 512-byte DAP packet. Nothing else: the feature only switches `DAP2_PACKET_SIZE`,
+# and besides DAP_Info that constant sizes buffers in the `usb` module not used here. The packets are still
+# 64 bytes on the bus, src/cmsis_dap.rs splits and joins (FW-19).
+dap-rs = { version = "0.2", default-features = false, features = ["usb-hs"] }
+# where a CMSIS-DAP request ends when it spans several USB packets: no_std, unit-tested on the host
+donguru_dap = { path = "../../donguru_dap" }
 # WireWeaver: API crate in the repo root, served by src/ww.rs. wire_weaver from the local checkout next to this repo
 donguru_api = { path = "../../donguru_api", features = ["defmt"] }
 wire_weaver = { path = "../../../wire_weaver/wire_weaver", default-features = false, features = ["defmt"] }

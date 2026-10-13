@@ -6,6 +6,19 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Changed
+
+- Firmware: the CMSIS-DAP probe reports a 512-byte DAP packet instead of 64, so probe-rs moves 126 words per
+  `DAP_TransferBlock` instead of 15; requests and responses span several 64-byte Full-Speed USB packets
+  (`src/cmsis_dap.rs`, new crate `donguru_dap` with the framing rules and their unit tests, FW-19). `donguru_api`
+  unchanged (0.1.1), old CLIs keep working. Not yet tested on a board.
+
+### Fixed
+
+- Firmware: a truncated CMSIS-DAP request (shorter than its command needs), or one asking for a response larger
+  than the DAP packet, is dropped and counted instead of panicking inside `dap_rs`; a host that stops reading a
+  response no longer blocks `swd_release` (FW-19).
+
 ## [0.4.1] - 2026-10-12
 
 ### Fixed

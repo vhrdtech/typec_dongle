@@ -55,6 +55,8 @@ The tpm repo's `/sync-repos` reads this file to log progress, so a missing entry
     GUI / Python bindings, `thiserror` errors.
   - `donguru_api/` — `#![no_std]` WireWeaver API crate (`DonguruApi`), shared by firmware and host. Its name and
     version identify the API on the wire.
+  - `donguru_dap/` — `#![no_std]` CMSIS-DAP request framing used by the firmware (`fw/donguru/src/cmsis_dap.rs`):
+    firmware logic that needs no hardware, here so `just test` runs its unit tests.
 - `fw/donguru/` — firmware (embassy, thumbv6m), a separate Cargo project with its own `Cargo.lock` and toolchain:
   `src/main.rs` (clocks, tasks, fault handlers), `led.rs`, `adc.rs`, `button.rs`, `ww.rs` (API server), `init.rs`.
 - `docs/` — documentation site (Zensical), published to vhrdtech.github.io/typec_dongle. `developer-notes.md` —

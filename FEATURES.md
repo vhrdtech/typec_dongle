@@ -97,6 +97,28 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   target in the tpm task was a rough estimate; ~2 s here is mostly host-side USB re-enumeration overhead, not the
   firmware's own recovery time. Not yet exercised against a real brown-out (needs the 10R resistor bypassed, which
   the user declined for now since the bench is in use for cut measurements).
+- 🧪 **FW-19 512-byte CMSIS-DAP packets**: `DAP_Info` reports `MaxPacketSize` 512 (`dap_rs` feature `usb-hs`, which
+  changes nothing else) instead of 64, so `DAP_TransferBlock` carries 126 words per USB round trip instead of 15.
+  The endpoints stay Full-Speed 64-byte bulk: `src/cmsis_dap.rs` puts a request together from several OUT packets
+  and splits a response over several IN packets. The rules are in the `donguru_dap` crate (repo root, unit-tested
+  on the host):
+  - A request ends where its own bytes say (command lengths parsed per the CMSIS-DAP layouts), not at a short
+    packet or after a pause: probe-rs 0.32 sends no zero-length packet after a request that is an exact multiple
+    of 64 bytes (25 batched register writes are 128), and a pause cannot tell a slow host from a finished request.
+  - A request whose rest does not arrive within 100 ms is dropped and the next one starts clean; one cut short
+    by a short packet, one longer than 512 bytes or one asking for a response over 512 bytes is dropped too (no
+    response, counters `dap_requests_truncated`, `dap_requests_too_long`, `dap_responses_too_long`). This also
+    closes a panic on host input: `dap_rs` indexes past the end of a truncated request.
+  - Commands with a layout the firmware does not know (vendor, UART, `DAP_ExecuteCommands`) end at a short packet
+    or after 10 ms of silence.
+  - A response that is an exact multiple of 64 bytes and shorter than 512 gets a zero-length packet (probe-rs
+    reads more than the response holds); the host gets 1 s to read a response (`dap_response_timeouts`), then the
+    task goes back to listening, so `swd_release` is never stuck behind a host that stopped reading.
+
+  Hi-Z on `DAP_Disconnect`, on endpoint disable and on `swd_release` is unchanged. Built (dev, release,
+  `plug-vbus-on`), not yet run on a board: to measure on B153A + B129A, a 64 KB flash read at 1000 kHz (7.7 s
+  before), `donguru swd memtest --size 16K --speed 1000` and the full RAM once. One bit-banged request now holds
+  the executor for up to ~8 ms at 1 MHz (126 words), and for most of a second at the 10 kHz floor.
 
 ## API (`API`)
 
