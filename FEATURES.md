@@ -128,7 +128,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   (2.1 KiB/s at 100 kHz): `src/swd.rs` spends several microseconds per bit on top of the half-period delay. The
   next step for speed is there (a tighter bit loop, or SPI-driven SWD as planned under FW-15), and one request
   now holds the executor for about 55 ms at 1000 kHz (126 words) and about 0.25 s at 100 kHz.
-- 🧪 **FW-20 Faster bit-bang SWD**: the SWD clock is what was asked for, up to about 3.7 MHz (P2534#13oct-1353).
+- ✅ **FW-20 Faster bit-bang SWD**: the SWD clock is what was asked for, up to about 3.7 MHz (P2534#13oct-1353).
   FW-19 showed the bit loop was the limit: about 50 CPU cycles of overhead per clock edge (embassy `Flex` calls,
   the orientation re-read per edge), so "1 MHz" ran at about 400 kHz. `src/swd.rs` now clocks through two
   inline-assembly kernels on GPIOA's BSRR / BRR / IDR (one store per edge, SWCLK falling and the next SWDIO bit in
@@ -137,9 +137,16 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   calibration at boot that times the same kernels with SysTick while the pins are still inputs (the plug sees
   nothing), arithmetic in `donguru_dap::swclk` (unit-tested). The clock never runs faster than asked
   (`DAP_SWJ_Clock` is a maximum); 4 MHz asked gives the kernels' fastest. The boot log prints the measured costs
-  and the top SWCLK. Cap raised to 4 MHz (`MAX_FREQUENCY_HZ`), default still 400 kHz; sampling before the rising
-  edge, SWCLK driven on every path and the Hi-Z release unchanged. Not yet tested on hardware: flash read and
-  `donguru swd memtest` against 0.5.0, SWCLK on the M2K, Hi-Z after disconnect.
+  and the top SWCLK. Cap 4 MHz (`MAX_FREQUENCY_HZ`), default still 400 kHz; sampling before the rising edge,
+  SWCLK driven on every path and the Hi-Z release unchanged.
+  Tested 13 Oct 2026 on B153A + B129A (omarchy-m1, probe-rs 0.32, release build with `plug-vbus-on`, flashed and run
+  by the parent session): 64 KB of B129 flash with `probe-rs read b32`, bytes identical to the 0.5.0 read, in
+  9.96 / 3.13 / 1.77 / 1.27 / 1.07 s at 100 / 400 / 1000 / 2000 / 4000 kHz (0.5.0 at 1000 kHz: 7.03 s; 4000 kHz is
+  about 60 KB/s). `donguru swd memtest --size 16K` at 400, 1000, 2000 and 4000 kHz and the full 144 KiB RAM at
+  4000 kHz pass (72 s, 493 s at 1000 kHz on 0.5.0); 100 kHz memtest not run. PA0/PA1 and PD0/PD2 inputs without
+  pull after the session. The real SWCLK was not measured (no logic analyzer channel on SWCLK); derived from the
+  read times (time per word = fixed overhead + 54 clocks / f, about 50 us of overhead), it is within a few percent
+  under the requested 100, 400 and 1000 kHz.
 
 ## API (`API`)
 

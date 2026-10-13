@@ -11,7 +11,9 @@ IDs refer to [FEATURES.md](FEATURES.md).
 - Firmware: the bit-banged SWD clock runs at the requested frequency instead of well under it (about 400 kHz at
   a requested 1 MHz before), up to about 3.7 MHz; requests up to 4 MHz are accepted (cap was 1 MHz). Tight
   assembly bit loops on the GPIO registers, timed against SysTick at boot (`src/swd.rs`, `donguru_dap::swclk`,
-  FW-20). `donguru_api` unchanged (0.1.1). Not yet tested on hardware.
+  FW-20). `donguru_api` unchanged (0.1.1). Tested 13 Oct 2026 on B153A + B129A: 64 KB flash read 7.03 s -> 1.77 s
+  at 1000 kHz and 1.07 s at 4000 kHz (bytes identical), `donguru swd memtest` 16K at 400 / 1000 / 2000 / 4000 kHz
+  and the full RAM at 4000 kHz pass (72 s, was 493 s at 1000 kHz), pins Hi-Z after disconnect.
 
 ## [0.5.0] - 2026-10-13
 
