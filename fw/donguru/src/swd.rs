@@ -410,8 +410,9 @@ impl Bus {
 // bit-banged turnaround and idle on the same pins (`out_bits` on GPIOB), released exactly like the direct path.
 // Sequences (line reset, JTAG-to-SWD, any bit count) and clocks under PCLK / 256 bit-bang on the B pins the same way.
 
-/// Ceiling on the SPI-driven SWCLK, not yet verified on hardware: the TXS0102 is good for 24 Mbps push-pull.
-const SPI_MAX_HZ: u32 = 8_000_000;
+/// Ceiling on the SPI-driven SWCLK: 4 MHz worked on B153A + B129A (13 Oct 2026), 8 MHz failed there (protocol errors:
+/// weak highs through the shifter against the DUT's network, see FEATURES.md FW-21).
+const SPI_MAX_HZ: u32 = 4_000_000;
 /// SPI2's kernel clock: PCLK, APB undivided (`src/main.rs`).
 const PCLK_HZ: u32 = SYSCLK_HZ;
 /// Polls of SPI2's status per frame before giving up: a 16-bit frame at 250 kHz takes about 4100 CPU cycles.

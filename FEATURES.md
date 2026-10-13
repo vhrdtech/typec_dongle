@@ -128,7 +128,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   (2.1 KiB/s at 100 kHz): `src/swd.rs` spends several microseconds per bit on top of the half-period delay. The
   next step for speed is there (a tighter bit loop, or SPI-driven SWD as planned under FW-15), and one request
   now holds the executor for about 55 ms at 1000 kHz (126 words) and about 0.25 s at 100 kHz.
-- 🧪 **FW-20 Faster bit-bang SWD**: the SWD clock is what was asked for, up to about 3 MHz (P2534#13oct-1353).
+- ✅ **FW-20 Faster bit-bang SWD**: the SWD clock is what was asked for, up to about 3 MHz (P2534#13oct-1353).
   FW-19 showed the bit loop was the limit: about 50 CPU cycles of overhead per clock edge (embassy `Flex` calls,
   the orientation re-read per edge), so "1 MHz" ran at about 400 kHz. `src/swd.rs` now clocks through two
   inline-assembly kernels on GPIOA's BSRR / BRR / IDR (one store per edge, SWCLK falling and the next SWDIO bit in
@@ -155,8 +155,11 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   leads, by the parent session): 1000 kHz asked -> 0.97 MHz, 53 % duty, clean 0..3.18 V; 4000 kHz asked -> median
   period 330 ns (3.03 MHz, fastest 240 ns) at 70 % duty (high about 230 ns, low only about 100 ns), the clock at
   B129 swinging only about 0.7..3.1 V (the DUT's RC above; G0 VIL is 1.0 V), memtest still passing. The equal
-  halves above are the fix for that, built but not yet re-measured: hence 🧪.
-- 🧪 **FW-21 SPI-driven SWD**: a second SWD-host mode, `SwdMode::Spi` (API-5), next to the default bit-bang
+  halves above are the fix for that. Re-measured with the fix (babf602, same setup): 1000 kHz -> 0.98 MHz at 49 %
+  duty, -0.07..3.18 V; 2000 kHz -> 2.00 MHz at 52 %, 0.06..3.09 V; 3000 kHz -> 2.78 MHz (360 ns) at 47 %, low
+  0.16 V (worst 0.28), high 2.89 V (worst 2.82). 64 KB reads identical in 1.77 / 1.29 / 1.19 s at 1000 / 2000 /
+  3000 kHz, memtest 16K at 400 / 1000 / 2000 / 3000 kHz pass, Hi-Z after disconnect holds.
+- 🧪 **FW-21 SPI-driven SWD** (experimental): a second SWD-host mode, `SwdMode::Spi` (API-5), next to the default bit-bang
   (P2534#13oct-1353b). On B153A the SPI pins reach the plug only through the TXS0102 level shifter (R211/R212 not
   fitted, hw_b153a.md §8), so the mode engages that side: PA0/PA1 Hi-Z, SPI2 on with SWCLK = SPI2_SCK on PB8 and
   SWDIO = SPI2_MOSI on PB11 + SPI2_MISO on PB6 (same net, full duplex, MOSI switched to input while the target
@@ -165,14 +168,21 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   data) 16 + 16 + (1 data + parity + idle 8) 10. MOSI only drives where the target is done or drives the same level
   (the OK ack's last bit is 0); WAIT / FAULT get a bit-banged turnaround and idle on the same pins, and so do SWJ
   sequences (any bit count) and clocks under 250 kHz (`src/swd.rs`, "SPI-driven SWD"). SPI clock = 64 MHz / 2^n,
-  never above the request, cap 8 MHz (`SPI_MAX_HZ`, not yet verified). Normal orientation only: SBU1_VT has no MISO
+  never above the request, cap 4 MHz (`SPI_MAX_HZ`). Normal orientation only: SBU1_VT has no MISO
   pin, a swapped cable falls back to the direct bit-bang. Every release (`DAP_Disconnect`, endpoint disable,
   `swd_release`) takes `SBU_OE` low first (its 10K pull-ups on both sides go with it), then PB6/PB8/PB11 Hi-Z and
   SPI2 off; switching back to bit-bang does the same. Selected at run time with `swd_mode`, or at boot with the
   firmware feature `swd-spi` (the CLI has no command for it yet, CLI-17). ⚠️ Not for a board with R211/R212 fitted.
-  Built, not yet tested on hardware: to check on B153A + B129A are reads and memtest per speed, the SWCLK waveform
-  through the shifter and the Hi-Z after release (PB2 low, PB6/PB8/PB11 inputs).
-
+  Tested 13 Oct 2026 on B153A + B129A (release build with `plug-vbus-on,swd-spi`, by the parent session): 64 KB
+  reads identical at 100 / 1000 / 2000 / 4000 kHz in 10.02 / 1.86 / 1.40 / 1.24 s, 8000 kHz fails (protocol
+  error); memtest 16K at 100 / 1000 / 2000 / 4000 kHz pass; after disconnect PB2 is low and PB6/PB8/PB11, PA0/PA1,
+  PD0/PD2 are inputs. But the signal through the TXS0102 is poor at B129A: SWCLK highs peak at only about 2.3-2.5 V
+  at 1 MHz and about 2.0 V at 4 MHz (lows reach 0 V), host-driven SWDIO highs ramp toward 3 V over microseconds.
+  After its one-shot the TXS0102 holds a high only through its 10K pull-up, against B129A's 10K pull-down (R28) on
+  SWCLK (a divider at about 1.6 V) and the 200R + zener capacitance: the G0's Schmitt inputs cope, but it is below
+  VIH (0.7 VDD) on paper. Not for targets with pull-downs below about 50K on SWD. And it is not faster than the
+  bit-bang here (1.24 s at 4 MHz vs 1.19 s for FW-20 at 3 MHz), so bit-bang stays the default and SPI stays
+  experimental: 🧪 on purpose, no more bench time planned.
 ## API (`API`)
 
 - 📋 **FW-14 Switched VBUS on the header** (J101 pin 10, PD1 `5V_EN`, net to be renamed VBUS_SW): it is the computer's

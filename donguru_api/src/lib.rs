@@ -48,7 +48,8 @@ pub enum SwdMode {
     /// GPIO bit-bang on PA1/PA0, straight on the SBU lines, level shifter off: up to about 3.7 MHz.
     BitBang,
     /// SPI2 through the TXS0102 level shifter (`SBU_OE` high, its 10K pull-ups on both sides): SWCLK on PB8,
-    /// SWDIO on PB11 (MOSI) / PB6 (MISO), up to 8 MHz. [`SwdOrientation::Normal`] only, a swapped cable falls back
+    /// SWDIO on PB11 (MOSI) / PB6 (MISO), up to 4 MHz. Experimental: the shifter holds highs only
+    /// through its 10K pull-ups, weak against target pull-downs (FW-21). [`SwdOrientation::Normal`] only, a swapped cable falls back
     /// to [`SwdMode::BitBang`]; clocks under 250 kHz bit-bang through the shifter. For B153A as built (R211/R212
     /// not fitted): with that bypass fitted the shifter output enable must stay off, so do not use this mode.
     Spi,

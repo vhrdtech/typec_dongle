@@ -9,9 +9,11 @@ IDs refer to [FEATURES.md](FEATURES.md).
 ### Added
 
 - Firmware: SPI-driven SWD as a second SWD-host mode, SPI2 through the SBU level shifter (`SBU_OE` high while it
-  is in use, low again on every release), up to 8 MHz in steps of 64 MHz / 2^n; bit-bang stays the default. Normal
-  cable orientation only. Selected with the new `swd_mode` property or the firmware feature `swd-spi` (FW-21).
-  Not yet tested on hardware.
+  is in use, low again on every release), up to 4 MHz in steps of 64 MHz / 2^n; experimental, bit-bang stays the
+  default. Normal cable orientation only. Selected with the new `swd_mode` property or the firmware feature
+  `swd-spi` (FW-21). Tested 13 Oct 2026 on B153A + B129A: reads (bytes identical) and memtest pass at 100 / 1000 /
+  2000 / 4000 kHz, 8000 kHz fails, pins Hi-Z after release; highs through the level shifter are weak against the
+  target's pull-downs (about 2.0-2.5 V at B129A), and it is no faster than the bit-bang there.
 - API: `swd_mode` property (`SwdMode::BitBang` / `SwdMode::Spi`), `donguru_api` 0.1.2; additive, older CLIs keep
   working (API-5).
 
@@ -24,7 +26,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
   `donguru_dap::swclk`, FW-20). `donguru_api` unchanged (0.1.1). Tested 13 Oct 2026 on B153A + B129A: 64 KB flash read 7.03 s -> 1.77 s
   at 1000 kHz and 1.07 s at 4000 kHz (bytes identical), `donguru swd memtest` 16K at 400 / 1000 / 2000 / 4000 kHz
   and the full RAM at 4000 kHz pass (72 s, was 493 s at 1000 kHz), pins Hi-Z after disconnect; that build ran
-  the top speed at 70 % duty, since fixed (equal halves, cap 3 MHz), not yet re-measured.
+  the top speed at 70 % duty, fixed since (equal halves, cap 3 MHz): re-measured 0.98 / 2.00 / 2.78 MHz at
+  1000 / 2000 / 3000 kHz asked, 47-52 % duty, 64 KB read 1.19 s at 3000 kHz, memtest 16K passes up to 3000 kHz.
 
 ## [0.5.0] - 2026-10-13
 
