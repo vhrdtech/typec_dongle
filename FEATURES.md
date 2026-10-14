@@ -45,10 +45,13 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   (`src/button.rs`). B153A.
 - ✅ **FW-5 USB hub bring-up**: hub works after I2C init (B153A, 29 Sep 2026; `examples/usb_serial.rs`). PF2 is
   NRST on this MCU, hub reset moved to PC13 for rev B.
-- 🐛 **FW-6 Hub configuration**: hub defaults read back as 0, and a reMarkable 2 behind the hub gets descriptor
-  error -32 (B153A notes, `hw/b153_typec_serial/report/assy_b153a.md`).
-  Likely cause: D+/D- are crossed between the hub and the plug on port 2 (and port 4, SBU USB on Plus), so a
-  full-speed device looks low-speed. Set the hub's port swap for ports 2 and 4 (`hw/b153_typec_serial/doc/hw_b153a.md`).
+- 🧪 **FW-6 Hub configuration**: bring-up moved from raw SMBus bytes to the `usb251xb` crate (`src/hub.rs`,
+  `hub_config()`): same VID 0x0424 / PID 0x2512 (Main, USB2512B) / DID 0x0BB3 / config bytes as the FW-5
+  bring-up, plus the port 2 and port 4 D+/D- polarity swap (`PortSwap`, `hw_b153a.md` §6) that the FW-5 bring-up
+  never wrote, and a VID/PID readback logged right after configuring, using the crate's SMBus block-read framing
+  (register address, then count + data) instead of the plain register read that used to come back as 0.
+  Builds; hardware check (VID/PID readback, reMarkable 2 behind the plug) pending a board with a probe
+  (P2534#14oct-1402), `hw/b153_typec_serial/test/verify_b153a.md` HUB-1, HUB-5, HUB-7.
 - 📋 **FW-7 USART on SBU with automatic TX/RX flip**: bridge to the host (CDC-ACM or over WireWeaver), flip by
   cable orientation. ^revB
 - 📋 **FW-8 Power switch and USB data switches** per downstream port, with safe defaults at boot. ^revB

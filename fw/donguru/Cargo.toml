@@ -37,6 +37,7 @@ donguru_api = { path = "../../donguru_api", features = ["defmt"] }
 wire_weaver = { path = "../../../wire_weaver/wire_weaver", default-features = false, features = ["defmt"] }
 ww_client_server = { path = "../../../wire_weaver/ww_stdlib/ww_client_server", default-features = false }
 wire_weaver_usb_embassy = { path = "../../../wire_weaver/mcu/wire_weaver_usb_embassy" }
+usb251xb = { version = "0.1.0", default-features = false, features = ["async", "defmt"] }
 
 [features]
 default = ["debug-button"]

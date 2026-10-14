@@ -6,6 +6,19 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Changed
+
+- Firmware: hub (U301) bring-up now goes through the `usb251xb` crate (typed config, MIT/Apache, pure Rust)
+  instead of raw SMBus bytes: same VID/PID/DID and config bytes as before, plus the port 2 and port 4 D+/D-
+  polarity swap (fixes a full/high-speed device on the plug looking low-speed to the hub), and a VID/PID
+  readback logged right after configuring, using the crate's correct SMBus block-read framing instead of the
+  plain register read that used to come back as 0 (`src/hub.rs`, FW-6, FW-18 recovery unchanged on top).
+
+### Fixed
+
+- Firmware: a reMarkable 2 behind the hub's plug port showing up as a low-speed device with descriptor error -32
+  (FW-6, port swap above). Built, not yet tested on hardware.
+
 ## [0.6.0] - 2026-10-13
 
 ### Added
