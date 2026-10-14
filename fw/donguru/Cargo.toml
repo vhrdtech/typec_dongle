@@ -32,6 +32,8 @@ cnt = "0.4"
 dap-rs = { version = "0.2", default-features = false, features = ["usb-hs"] }
 # where a CMSIS-DAP request ends when it spans several USB packets: no_std, unit-tested on the host
 donguru_dap = { path = "../../donguru_dap" }
+# hub (U301) variant detection and per-variant config: no_std, unit-tested on the host
+donguru_hub = { path = "../../donguru_hub" }
 # WireWeaver: API crate in the repo root, served by src/ww.rs. wire_weaver from the local checkout next to this repo
 donguru_api = { path = "../../donguru_api", features = ["defmt"] }
 wire_weaver = { path = "../../../wire_weaver/wire_weaver", default-features = false, features = ["defmt"] }

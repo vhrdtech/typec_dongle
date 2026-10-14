@@ -193,6 +193,22 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   VIH (0.7 VDD) on paper. Not for targets with pull-downs below about 50K on SWD. And it is not faster than the
   bit-bang here (1.24 s at 4 MHz vs 1.19 s for FW-20 at 3 MHz), so bit-bang stays the default and SPI stays
   experimental: 🧪 on purpose, no more bench time planned.
+- 🧪 **FW-22 Board variant detection**: Main (2-port USB2512B) vs. Plus (4-port USB2514B, not decided/built yet)
+  identified at boot from a GPIO strap, not the hub's PID (`src/hub.rs::read_board_variant_strap`,
+  `donguru_hub` crate, P2534#14oct-1439). Reading the hub's own power-on-default VID/PID/DID (HUB-5) before
+  configuring it does not work on this hub's SMBus-slave strap — it reads all-zero regardless of delay (tried
+  0/5/100/1000 ms), confirming hw_b153a.md §9's existing caution that these registers hold whatever was last
+  written there, not a factory default. The signal used instead: PA10 (`SBU_TO_USB`, U901 S) carries R902, a
+  10K pull-down fitted only on Plus (hw_b153a.md §9/§11); read against the MCU's own ~40k pull-up after
+  releasing PA10's UCPD1 dead-battery pull-down (`SYSCFG.cfgr1().ucpd1_strobe`, resolves the 🔍 open in
+  hw_b153a.md §11), high = Main, low = Plus. `donguru_hub::hub_config` then builds the hub's config
+  (`usb251xb::Variant`, port count, D+/D- swap mask for FW-6) from the detected variant instead of a hardcoded
+  Main constant; the pure mapping and config builder are host-unit-tested for both variants (`donguru_hub`,
+  `just test`), including the not-yet-built Plus. Variant exposed read-only over WireWeaver
+  (`DonguruApi::board_variant`, API-7, FW-11 hw_info). Tested 14 Oct 2026 on B153A (J-Link via omarchy-m1,
+  P2534#14oct-1439): reads PA10 high → `BoardVariant::Main` on 2 cold power-cycles (true replug, J-Link VTref
+  0.00 V between them) and 2 debugger-forced resets, hub attaching correctly every time. 🧪 because Plus is
+  untested hardware.
 ## API (`API`)
 
 - 📋 **FW-14 Switched VBUS on the header** (J101 pin 10, PD1 `5V_EN`, net to be renamed VBUS_SW): it is the computer's
@@ -208,6 +224,8 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   for the bench power-cut test (FW-15). `donguru_api` 0.1.1.
 - 🧪 **API-5 `swd_mode`**: rw property, `SwdMode::BitBang` (default) or `SwdMode::Spi` (FW-21), next to
   `swd_orientation`; takes effect on the next SWD transfer. Additive, `donguru_api` 0.1.2: older hosts keep working.
+- 🧪 **API-7 `board_variant`**: ro property, `BoardVariant::Main` / `Plus` / `Unknown` (FW-22), for host tooling
+  and future `hw_info` (FW-11). Additive, `donguru_api` 0.1.3: older hosts keep working.
 
 ## Host library (`CORE`)
 

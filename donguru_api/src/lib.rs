@@ -31,6 +31,14 @@ pub trait DonguruApi {
     /// [`SwdMode`]. Default [`SwdMode::BitBang`] unless the firmware was built with the `swd-spi` feature.
     #[since = "0.1.2"]
     property!(rw swd_mode: SwdMode);
+
+    /// Board variant identified from the fitted USB hub's power-on-default PID (HUB-5, FW-11 hw_info): `Main`
+    /// is the 2-port USB2512B, `Plus` the 4-port USB2514B (P2534 #12, not decided/built yet). `Unknown` means
+    /// the read PID matched neither part — an unsupported hub, or the register read failing — in which case the
+    /// firmware configures the Main, 2-port layout as a safe fallback. Read-only: there is nothing a host could
+    /// set here, the hub is whatever is soldered down.
+    #[since = "0.1.3"]
+    property!(ro board_variant: BoardVariant);
 }
 
 /// Cable orientation for the SWD-host pins, see [`DonguruApi::swd_orientation`].
@@ -53,4 +61,16 @@ pub enum SwdMode {
     /// to [`SwdMode::BitBang`]; clocks under 250 kHz bit-bang through the shifter. For B153A as built (R211/R212
     /// not fitted): with that bypass fitted the shifter output enable must stay off, so do not use this mode.
     Spi,
+}
+
+/// Board variant, see [`DonguruApi::board_variant`].
+#[derive_shrink_wrap(borrowed, derive(Copy, Clone, Debug, PartialEq, Eq), ww_repr = nib)]
+pub enum BoardVariant {
+    /// 2-port USB2512B hub (U301).
+    Main,
+    /// 4-port USB2514B hub (U301), not decided/built yet (P2534 #12).
+    Plus,
+    /// The fitted hub's power-on PID matched neither [`Main`](BoardVariant::Main) nor
+    /// [`Plus`](BoardVariant::Plus).
+    Unknown,
 }

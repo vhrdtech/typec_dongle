@@ -66,6 +66,9 @@ assign_resources! {
         pb10: PB10,
         /// I2C2_SDA
         pb14: PB14,
+        /// SBU_TO_USB (U901 S): board-variant strap (R902, Plus only, hw_b153a.md §9/§11) read before hub
+        /// config, driven low (SBU to MCU, its normal state) afterward
+        pa10: PA10,
     }
     pwr: PwrResources {
         /// PWR_EN: U601 AOZ1375 enable, receptacle VBUS -> plug VBUS. R601 pull-down, off at reset. Driven only

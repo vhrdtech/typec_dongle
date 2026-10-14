@@ -6,6 +6,21 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- Firmware: board variant (Main, 2-port USB2512B; Plus, 4-port USB2514B) detected at boot from a GPIO strap
+  (PA10/R902, `donguru_hub` crate) instead of a hardcoded constant, and the hub's config built per detected
+  variant; the hub's own power-on PID is not usable for this (reads 0 before configuring, regardless of delay —
+  see Fixed below for the readback this corrects) (FW-22).
+- API: `board_variant` read-only property (`BoardVariant::Main` / `Plus` / `Unknown`), `donguru_api` 0.1.3;
+  additive, older CLIs keep working (API-7).
+
+### Fixed
+
+- Firmware/docs: the hub's VID/PID/DID registers do not hold a factory default readable before configuring on
+  this board (hw_b153a.md §9's "defaults read 0" caution confirmed, not a delay or SMBus-framing issue); the
+  0.7.0 entry below only fixed the readback *after* the config write (HUB-5).
+
 ## [0.7.0] - 2026-10-14
 
 ### Changed

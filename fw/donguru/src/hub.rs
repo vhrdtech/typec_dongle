@@ -4,6 +4,15 @@
 //! this has run. Config and attach go through the `usb251xb` crate (typed registers, port swap, VID/PID
 //! readback, FW-6) instead of the raw bytes written in the FW-5 bring-up.
 //!
+//! Two board variants (Main, 2-port USB2512B; Plus, 4-port USB2514B, P2534 #12, not decided/built yet) share this
+//! bring-up. Reading which one is fitted from the hub's own power-on-default PID register (HUB-5) does not work
+//! on this hub's SMBus-slave strap — [`Hub::read_power_on_defaults`]'s doc has the detail — so the signal used
+//! instead is a board strap on PA10 (SBU_TO_USB, U901's S): [`read_board_variant_strap`], R902 fitted only on
+//! Plus (hw_b153a.md §9/§11). [`bring_up`] reads it once, before anything else drives PA10, and keeps the
+//! result in `Hub::variant` for every [`configure`](Hub::configure)/[`recover`](Hub::recover) afterward; it is
+//! also kept in [`BOARD_VARIANT`] and exposed read-only over WireWeaver (`donguru_api::DonguruApi::board_variant`,
+//! FW-11 hw_info).
+//!
 //! The hub and the MCU share `+3V3_DCDC` (hw_b153a.md §3). A hard turn-on load on the header's switched VBUS
 //! (Q102, FW-14) sags that rail enough to reset the hub but not the MCU (P2534#12oct-1819): the hub comes back
 //! powered but unconfigured and un-attached, and only redoing this bring-up gets it back. [`watchdog_task`]
@@ -12,59 +21,80 @@
 //! along with the rest of the chip, so this fires within a USB frame or two of the brown-out — and a periodic
 //! I2C probe backstops it for a brown-out that, for some reason, does not bounce the MCU's own port.
 
+use core::sync::atomic::{AtomicU8, Ordering};
+
 use crate::HubResources;
 use defmt::{info, warn};
+use donguru_api::BoardVariant;
 use embassy_futures::select::{Either, select};
-use embassy_stm32::gpio::{Level, Output, Speed};
+use embassy_stm32::Peri;
+use embassy_stm32::gpio::{Flex, Level, Output, Pull, Speed};
 use embassy_stm32::i2c::{I2c, Master};
 use embassy_stm32::mode::Blocking;
+use embassy_stm32::pac;
+use embassy_stm32::peripherals::PA10;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::signal::Signal;
 use embassy_time::Timer;
-use usb251xb::register::{ConfigByte3, REG_VENDOR_ID_LSB};
-use usb251xb::{Config, CurrentSensing, Milliamps, Port, PowerSwitching, Usb251xb, Variant};
+use usb251xb::register::{REG_CONFIG_BYTE_1, REG_VENDOR_ID_LSB};
+use usb251xb::Usb251xb;
 
-/// Hub chip fitted on this board: Main has the 2-port USB2512B (PID 0x2512); Plus's 4-port USB2514B is a
-/// different board variant, not wired up here.
-const VARIANT: Variant = Variant::Usb2512b;
+/// How long to wait after releasing the hub from reset before talking to it over I2C. 0: tried 0/5/100/1000 ms
+/// on a B153A (14 Oct 2026) and all four read [`Hub::read_power_on_defaults`] back as all-zero, so there is no
+/// settle time that makes a difference here — see that function's doc for what the all-zero read means. The
+/// config write itself (register block_write) has always landed with no delay at all, pre- and post-HUB-5.
+const HUB_RESET_RELEASE_SETTLE_MS: u64 = 0;
 
-/// Config byte 3, register 0x08, verbatim from the FW-5 bring-up (0x02 = bit 1 set). The datasheet marks this
-/// bit reserved and the `usb251xb` crate gives it no setter; nobody has found a reason to clear it, so it stays
-/// until someone does.
-const CONFIG_BYTE_3: ConfigByte3 = ConfigByte3::from_bytes([0x02]);
+/// How long to wait after enabling PA10's pull-up before sampling the board-variant strap
+/// ([`read_board_variant_strap`]): 1 ms, the first value tried, generous for a plain resistor divider (R902 vs
+/// the MCU's own pull-up) with nothing deliberately filtering it.
+const BOARD_VARIANT_STRAP_SETTLE_MS: u64 = 1;
 
-/// Hub controller's own current draw while self-powered, register units of 2 mA (FW-5 bring-up value; the
-/// `usb251xb` crate's own default is the bus-powered value, 100 mA, so this needs setting explicitly).
-const HUB_CURRENT_SELF: Milliamps = Milliamps(2);
+/// Reads the board-variant strap on PA10 (SBU_TO_USB, U901's S, hw_b153a.md §9/§11): R902, a 10K pull-down to
+/// GND, is fitted only on Plus, so the net reads low there against the MCU's own ~40k pull-up winning on Main,
+/// where nothing else pulls on it. [`donguru_hub::board_variant_from_strap`] does that mapping; this function
+/// only does the GPIO/register side of reading it.
+///
+/// PA10 doubles as UCPD1's DBCC2 dead-battery pin, which otherwise holds an internal pull-down on it (active
+/// out of any reset, independent of whether firmware ever touches UCPD1) that would read as Plus on both
+/// variants — `SYSCFG.cfgr1().ucpd1_strobe` has to be set first to release it. Leaves PA10 driven low on
+/// return, its normal state (SBU routed to the MCU) until a future SBU mode switch (FW-7/FW-8) changes it.
+async fn read_board_variant_strap(pa10: Peri<'static, PA10>) -> BoardVariant {
+    pac::SYSCFG.cfgr1().modify(|w| w.set_ucpd1_strobe(true));
+    let mut pa10 = Flex::new(pa10);
+    pa10.set_as_input(Pull::Up);
+    Timer::after_millis(BOARD_VARIANT_STRAP_SETTLE_MS).await;
+    let high = pa10.is_high();
+    let variant = donguru_hub::board_variant_from_strap(high);
+    info!(
+        "board variant strap (PA10): {} -> {}",
+        if high { "high" } else { "low" },
+        if high { "Main" } else { "Plus" }
+    );
+    pa10.set_as_output(Speed::Low);
+    pa10.set_low();
+    // Kept for the life of the firmware: dropping it would put PA10 back to analog.
+    core::mem::forget(pa10);
+    variant
+}
 
-/// Ports needing their D+/D- polarity swapped: port 2 (plug, U701) and port 4 (SBU USB, U901, Plus only) both
-/// cross D+/D- between the hub and the far end (hw_b153a.md §6). Unswapped, a full/high-speed device's D+
-/// pull-up shows up on the hub's D-, which the hub reads as low-speed (FW-6: the reMarkable 2 result,
-/// `error -32`). Port 4 doesn't exist on the 2-port [`VARIANT`] fitted here; setting its bit is a no-op.
-const SWAPPED_PORTS: [Port; 2] = [Port::Port2, Port::Port4];
+/// Board variant [`bring_up`] reads from the PA10 strap (module doc), shared with `src/ww.rs` for the
+/// read-only `board_variant` WireWeaver property (FW-11 hw_info). A plain atomic rather than a
+/// [`Signal`]/[`embassy_sync::mutex::Mutex`]: readers only ever want the latest value, never to wait for a
+/// change, and [`BoardVariant`] is a fieldless enum, so its default discriminants fit a `u8` losslessly.
+static BOARD_VARIANT: AtomicU8 = AtomicU8::new(BoardVariant::Unknown as u8);
 
-/// Builds the hub's configuration. VID (0x0424), PID (0x2512 for [`VARIANT`]), DID (0x0BB3), and every register
-/// not mentioned here (max power, hub current in bus-powered mode, power-on time, ...) already match the FW-5
-/// bring-up as the crate's own datasheet defaults; only [`CONFIG_BYTE_3`], [`HUB_CURRENT_SELF`] and the port
-/// swap differ from them and need setting below. Unlike the FW-5 bring-up (which stopped writing registers
-/// after power-on time, 0x10), this also writes the registers up to the port swap/map (0xFC) — mostly explicit
-/// zeros (no battery charging, no signal boost override) where the FW-5 bring-up relied on the hub's own
-/// power-on defaults.
-fn hub_config() -> Config {
-    let mut config = Config::builder(VARIANT)
-        .self_powered(true)
-        .mtt(true)
-        .high_speed(true)
-        .power_switching(PowerSwitching::Individual)
-        // OCS_N1..4 are unconnected on this board; the datasheet gives them internal pull-ups (DS00001692,
-        // "the over-current sense inputs ... have internal pull-up resistors"), which read as "no overcurrent",
-        // so per-port sensing is safe to keep on this self-powered hub (hw_b153a.md §6, HUB-10).
-        .current_sensing(CurrentSensing::Individual)
-        .hub_current_self(HUB_CURRENT_SELF)
-        .port_swap(&SWAPPED_PORTS)
-        .into_config();
-    config.config3 = CONFIG_BYTE_3;
-    config
+fn set_board_variant(variant: BoardVariant) {
+    BOARD_VARIANT.store(variant as u8, Ordering::Relaxed);
+}
+
+/// Board variant [`bring_up`] read from the PA10 strap, [`BoardVariant::Unknown`] before it has run.
+pub fn board_variant() -> BoardVariant {
+    match BOARD_VARIANT.load(Ordering::Relaxed) {
+        x if x == BoardVariant::Main as u8 => BoardVariant::Main,
+        x if x == BoardVariant::Plus as u8 => BoardVariant::Plus,
+        _ => BoardVariant::Unknown,
+    }
 }
 
 /// How often [`watchdog_task`] probes the hub over I2C when nothing has told it to recover sooner.
@@ -87,6 +117,9 @@ pub fn request_recovery() {
 pub struct Hub {
     nrst: Output<'static>,
     i2c: I2c<'static, Blocking, Master>,
+    /// Read once from the PA10 strap in [`bring_up`], reused by every [`configure`](Hub::configure) /
+    /// [`recover`](Hub::recover): the fitted hub does not change at runtime, so there is nothing to re-read.
+    variant: BoardVariant,
 }
 
 impl Hub {
@@ -94,38 +127,72 @@ impl Hub {
         Usb251xb::new(&mut self.i2c)
     }
 
+    /// Reads VID/PID/DID (registers 0x00-0x05) and CFG1-3 (0x06-0x08) before anything has been written to the
+    /// hub, meant to catch the values straight out of reset (HUB-5). In practice (B153A, 14 Oct 2026, every
+    /// delay in [`HUB_RESET_RELEASE_SETTLE_MS`] from 0 to 1000 ms) this reads all-zero every time, unlike
+    /// [`log_vid_pid_after_config`](Hub::log_vid_pid_after_config)'s readback right after the config write,
+    /// which correctly echoes what was just written. So in this hub's SMBus-slave strap (hw_b153a.md §6),
+    /// these registers hold whatever was last written over SMBus, not a factory/silicon default — there is no
+    /// PID signal here to read before configuring, matching hw_b153a.md §9's existing caution ("the hub ID
+    /// read over SMBus is not reliable, defaults read 0 on rev A"). Board variant instead comes from
+    /// [`read_board_variant_strap`]; this read stays only as a logged diagnostic (so the all-zero result is
+    /// visible rather than silently assumed), not as a detection signal.
+    fn read_power_on_defaults(&mut self) {
+        let mut id_buf = [0u8; 1 + 6];
+        let mut cfg_buf = [0u8; 1 + 3];
+        let id = self.dev().read_register(REG_VENDOR_ID_LSB, &mut id_buf);
+        let cfg = self.dev().read_register(REG_CONFIG_BYTE_1, &mut cfg_buf);
+        match (id, cfg) {
+            (Ok(_), Ok(_)) => info!(
+                "hub power-on defaults: VID {:x} PID {:x} DID {:x} CFG {:x} {:x} {:x}",
+                u16::from_le_bytes([id_buf[1], id_buf[2]]),
+                u16::from_le_bytes([id_buf[3], id_buf[4]]),
+                u16::from_le_bytes([id_buf[5], id_buf[6]]),
+                cfg_buf[1],
+                cfg_buf[2],
+                cfg_buf[3]
+            ),
+            (id, cfg) => warn!("hub power-on defaults: VID/PID/DID {:?}, CFG1-3 {:?}", id, cfg),
+        }
+    }
+
+    /// Reads back VID/PID right after the config write, labelled accordingly: unlike
+    /// [`read_power_on_defaults`](Hub::read_power_on_defaults), this only ever echoes the value just written
+    /// (HUB-5's original readback, kept as a sanity check that the write landed).
+    fn log_vid_pid_after_config(&mut self) {
+        let mut buf = [0u8; 1 + 4];
+        match self.dev().read_register(REG_VENDOR_ID_LSB, &mut buf) {
+            Ok(_) => info!(
+                "hub VID/PID readback (after config write): {:x}/{:x}",
+                u16::from_le_bytes([buf[1], buf[2]]),
+                u16::from_le_bytes([buf[3], buf[4]])
+            ),
+            Err(e) => warn!("hub VID/PID readback (after config write): {:?}", e),
+        }
+    }
+
+    /// Configures the hub for `self.variant` and attaches it upstream.
     fn configure(&mut self) {
-        if let Err(e) = self.dev().configure(&hub_config()) {
+        self.read_power_on_defaults();
+        let variant = self.variant;
+        if let Err(e) = self.dev().configure(&donguru_hub::hub_config(variant)) {
             warn!("hub config: {:?}", e);
         }
-        self.log_vid_pid();
+        self.log_vid_pid_after_config();
         match self.dev().attach() {
             Ok(()) => info!("hub attached"),
             Err(e) => warn!("hub attach: {:?}", e),
         }
     }
 
-    /// Reads back VID/PID right after the config write (HUB-5: earlier attempts using a plain register read,
-    /// without the SMBus block-read framing the `usb251xb` crate uses, got 0 back regardless of the hub).
-    fn log_vid_pid(&mut self) {
-        let mut buf = [0u8; 1 + 4];
-        match self.dev().read_register(REG_VENDOR_ID_LSB, &mut buf) {
-            Ok(_) => info!(
-                "hub VID/PID readback: {:x}/{:x}",
-                u16::from_le_bytes([buf[1], buf[2]]),
-                u16::from_le_bytes([buf[3], buf[4]])
-            ),
-            Err(e) => warn!("hub VID/PID readback: {:?}", e),
-        }
-    }
-
-    /// The bring-up sequence again: reset pulse, config, attach.
+    /// The bring-up sequence again: reset pulse, config, attach. The board variant does not need re-reading
+    /// (module doc): `self.variant` carries over from [`bring_up`].
     async fn recover(&mut self) {
         warn!("hub: lost after brown-out, redoing bring-up");
         self.nrst.set_low();
         Timer::after_millis(1).await;
         self.nrst.set_high();
-        Timer::after_millis(1).await;
+        Timer::after_millis(HUB_RESET_RELEASE_SETTLE_MS).await;
         self.configure();
     }
 
@@ -144,16 +211,20 @@ impl Hub {
     }
 }
 
-/// Releases the hub from reset, writes its config and attaches it upstream.
+/// Reads the board-variant strap, releases the hub from reset, writes its config and attaches it upstream.
 pub async fn bring_up(r: HubResources) -> Hub {
+    let variant = read_board_variant_strap(r.pa10).await;
+    set_board_variant(variant);
+
     let mut nrst = Output::new(r.pc13, Level::Low, Speed::Low);
     // SDA pull-up R301 goes to PA4 on B153A, not to 3.3 V
     let i2c_en = Output::new(r.pa4, Level::High, Speed::Low);
     Timer::after_millis(1).await;
     nrst.set_high();
+    Timer::after_millis(HUB_RESET_RELEASE_SETTLE_MS).await;
 
     let i2c = I2c::new_blocking(r.i2c2, r.pb10, r.pb14, Default::default());
-    let mut hub = Hub { nrst, i2c };
+    let mut hub = Hub { nrst, i2c, variant };
     hub.configure();
     // Kept for the life of the firmware: dropping it would put PA4 back to analog (hub's SDA pull-up gone)
     core::mem::forget(i2c_en);

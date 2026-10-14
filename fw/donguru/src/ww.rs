@@ -9,7 +9,7 @@
 use crate::{cmsis_dap, hub, led, swd};
 use cnt::cnt;
 use defmt::{info, unwrap};
-use donguru_api::{SwdMode, SwdOrientation};
+use donguru_api::{BoardVariant, SwdMode, SwdOrientation};
 use embassy_executor::Spawner;
 use embassy_stm32::{peripherals, usb};
 use embassy_usb::{Builder, Config as UsbConfig, Handler};
@@ -74,6 +74,10 @@ impl ServerState {
         cnt!(swd_release_calls: u32);
         swd::release().await;
         Ready(())
+    }
+
+    async fn get_board_variant(&mut self, _cx: &mut Context<'_, impl EventOut>) -> GetResult<BoardVariant, ()> {
+        Value(hub::board_variant())
     }
 }
 

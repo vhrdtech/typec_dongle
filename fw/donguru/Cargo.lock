@@ -461,6 +461,7 @@ dependencies = [
  "defmt-rtt",
  "donguru_api",
  "donguru_dap",
+ "donguru_hub",
  "embassy-executor",
  "embassy-futures",
  "embassy-stm32",
@@ -478,7 +479,7 @@ dependencies = [
 
 [[package]]
 name = "donguru_api"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "defmt 1.1.1",
  "wire_weaver",
@@ -486,7 +487,15 @@ dependencies = [
 
 [[package]]
 name = "donguru_dap"
-version = "0.6.0"
+version = "0.7.0"
+
+[[package]]
+name = "donguru_hub"
+version = "0.7.0"
+dependencies = [
+ "donguru_api",
+ "usb251xb",
+]
 
 [[package]]
 name = "either"
