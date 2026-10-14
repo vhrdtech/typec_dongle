@@ -12,12 +12,14 @@ IDs refer to [FEATURES.md](FEATURES.md).
   instead of raw SMBus bytes: same VID/PID/DID and config bytes as before, plus the port 2 and port 4 D+/D-
   polarity swap (fixes a full/high-speed device on the plug looking low-speed to the hub), and a VID/PID
   readback logged right after configuring, using the crate's correct SMBus block-read framing instead of the
-  plain register read that used to come back as 0 (`src/hub.rs`, FW-6, FW-18 recovery unchanged on top).
+  plain register read that used to come back as 0 (`src/hub.rs`, FW-6, FW-18 recovery unchanged on top). Tested
+  14 Oct 2026 on B153A (J-Link via omarchy-m1): HUB-1 (config/attach) and HUB-5 (VID/PID readback, now
+  `0424/2512` instead of 0) confirmed; HUB-7 (the port 2/4 swap itself, with a device on the plug) not yet.
 
 ### Fixed
 
 - Firmware: a reMarkable 2 behind the hub's plug port showing up as a low-speed device with descriptor error -32
-  (FW-6, port swap above). Built, not yet tested on hardware.
+  (FW-6, port swap above). Built, not yet tested on hardware (HUB-7).
 
 ## [0.6.0] - 2026-10-13
 

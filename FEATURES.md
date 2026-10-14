@@ -50,8 +50,9 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   bring-up, plus the port 2 and port 4 D+/D- polarity swap (`PortSwap`, `hw_b153a.md` §6) that the FW-5 bring-up
   never wrote, and a VID/PID readback logged right after configuring, using the crate's SMBus block-read framing
   (register address, then count + data) instead of the plain register read that used to come back as 0.
-  Builds; hardware check (VID/PID readback, reMarkable 2 behind the plug) pending a board with a probe
-  (P2534#14oct-1402), `hw/b153_typec_serial/test/verify_b153a.md` HUB-1, HUB-5, HUB-7.
+  Tested 14 Oct 2026 on B153A (J-Link via omarchy-m1, P2534#14oct-1402): HUB-1 (config/attach) and HUB-5
+  (VID/PID readback, now `0424/2512` instead of 0) confirmed, `hw/b153_typec_serial/test/verify_b153a.md`.
+  HUB-7 (the port swap itself, needs a device on the plug) not yet done — landing as is, HUB-7 later.
 - 📋 **FW-7 USART on SBU with automatic TX/RX flip**: bridge to the host (CDC-ACM or over WireWeaver), flip by
   cable orientation. ^revB
 - 📋 **FW-8 Power switch and USB data switches** per downstream port, with safe defaults at boot. ^revB
@@ -100,6 +101,12 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   target in the tpm task was a rough estimate; ~2 s here is mostly host-side USB re-enumeration overhead, not the
   firmware's own recovery time. Not yet exercised against a real brown-out (needs the 10R resistor bypassed, which
   the user declined for now since the bench is in use for cut measurements).
+  🐛 Known quirk (B153A, 14 Oct 2026, FW-6 hardware check): `watchdog_task`'s periodic I2C probe fires one or two
+  spurious recoveries about 200-400 ms after a cold boot, before the hub has finished its own internal attach and
+  well before USB enumeration — harmless (self-heals before the host notices) but not a real brown-out. Confirmed
+  present on the unmodified 0.6.0 firmware too, so not from the FW-6 crate change. The obvious fix is a short
+  grace period after [`bring_up`](../fw/donguru/src/hub.rs) before `watchdog_task` starts probing; not done in
+  this branch.
 - ✅ **FW-19 512-byte CMSIS-DAP packets**: `DAP_Info` reports `MaxPacketSize` 512 (`dap_rs` feature `usb-hs`, which
   changes nothing else) instead of 64, so `DAP_TransferBlock` carries 126 words per USB round trip instead of 15.
   The endpoints stay Full-Speed 64-byte bulk: `src/cmsis_dap.rs` puts a request together from several OUT packets
