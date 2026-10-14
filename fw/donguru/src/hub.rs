@@ -79,21 +79,27 @@ pub fn request_recovery() {
     RECOVERY_REQUEST.signal(());
 }
 
-/// Owns the hub's reset pin and the `usb251xb` driver (which owns the I2C bus) for the life of the firmware, so
-/// [`watchdog_task`] can redo the bring-up without re-touching PA4 (the SDA pull-up supply, driven high for good
-/// by [`bring_up`]).
+/// Owns the hub's reset pin and I2C bus for the life of the firmware, so [`watchdog_task`] can redo the
+/// bring-up without re-touching PA4 (the SDA pull-up supply, driven high for good by [`bring_up`]). The bus
+/// itself stays a plain [`I2c`]: [`dev`](Hub::dev) wraps `&mut` it in a fresh [`Usb251xb`] per call instead of
+/// the driver owning it outright, so [`probe_lost`](Hub::probe_lost) can still reach the bus directly for its
+/// bare zero-length write (next field doc).
 pub struct Hub {
     nrst: Output<'static>,
-    dev: Usb251xb<I2c<'static, Blocking, Master>>,
+    i2c: I2c<'static, Blocking, Master>,
 }
 
 impl Hub {
+    fn dev(&mut self) -> Usb251xb<&mut I2c<'static, Blocking, Master>> {
+        Usb251xb::new(&mut self.i2c)
+    }
+
     fn configure(&mut self) {
-        if let Err(e) = self.dev.configure(&hub_config()) {
+        if let Err(e) = self.dev().configure(&hub_config()) {
             warn!("hub config: {:?}", e);
         }
         self.log_vid_pid();
-        match self.dev.attach() {
+        match self.dev().attach() {
             Ok(()) => info!("hub attached"),
             Err(e) => warn!("hub attach: {:?}", e),
         }
@@ -103,7 +109,7 @@ impl Hub {
     /// without the SMBus block-read framing the `usb251xb` crate uses, got 0 back regardless of the hub).
     fn log_vid_pid(&mut self) {
         let mut buf = [0u8; 1 + 4];
-        match self.dev.read_register(REG_VENDOR_ID_LSB, &mut buf) {
+        match self.dev().read_register(REG_VENDOR_ID_LSB, &mut buf) {
             Ok(_) => info!(
                 "hub VID/PID readback: {:x}/{:x}",
                 u16::from_le_bytes([buf[1], buf[2]]),
@@ -123,14 +129,18 @@ impl Hub {
         self.configure();
     }
 
-    /// Minimal register read (1 byte: just the SMBus block-read count, no data): a cheap presence/health probe.
-    /// The hub's address phase NAKs or times out the same way whether the transaction is a read or a write, so
-    /// this catches a hub mid brown-out exactly as the bare zero-length write it replaces did — but by reusing
-    /// [`Usb251xb::read_register`] instead of reaching around the driver for a raw write, there is only one
-    /// I2C path through this module instead of two.
+    /// Zero-length write: a cheap presence probe (address byte + ACK/NAK only, no data phase, no register
+    /// touched). Deliberately does not go through [`dev`](Hub::dev) and read anything back: tried on a B153A
+    /// (14 Oct 2026, this crate's own first bring-up), a register read here false-triggered a recovery about
+    /// 200 ms after a clean boot — the hub was fully attached and enumerated fine, so this is not the brown-out
+    /// NAK/timeout the probe is meant to catch, just the hub's own microcontroller being briefly unable to
+    /// service a register read so soon after `ATTACH` (consistent with the B153A bring-up notes that found
+    /// the hub's register read-back unreliable, `hw/b153_typec_serial/report/assy_b153a.md`). ACK/NAK on the
+    /// address is all the detection needs — a hub mid brown-out NAKs or times out here regardless.
     fn probe_lost(&mut self) -> bool {
-        let mut buf = [0u8; 1];
-        self.dev.read_register(REG_VENDOR_ID_LSB, &mut buf).is_err()
+        self.i2c
+            .blocking_write(usb251xb::register::DEVICE_ADDR, &[])
+            .is_err()
     }
 }
 
@@ -143,10 +153,7 @@ pub async fn bring_up(r: HubResources) -> Hub {
     nrst.set_high();
 
     let i2c = I2c::new_blocking(r.i2c2, r.pb10, r.pb14, Default::default());
-    let mut hub = Hub {
-        nrst,
-        dev: Usb251xb::new(i2c),
-    };
+    let mut hub = Hub { nrst, i2c };
     hub.configure();
     // Kept for the life of the firmware: dropping it would put PA4 back to analog (hub's SDA pull-up gone)
     core::mem::forget(i2c_en);
