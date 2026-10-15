@@ -218,11 +218,12 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 🚧 **FW-24 WireWeaver USB throughput** (P2534#15oct-1747): was ~30% of USB FS bulk (`ww usb-loopback`, 1 KB
   messages: 152 round trips/s, 373 kB/s host -> device, 316 kB/s device -> host). Done: flash prefetch on
   (`main.rs`, embassy-stm32 0.6 leaves it off on the G0); release `opt-level = 3` instead of "z" (~40% faster
-  here); wire_weaver TR-12 (U2Head byte fast path, replies flushed when no request waits). Release build now:
-  1 KB 214 round trips/s, 419 kB/s host -> device, 470 kB/s device -> host; 64 B 2400 round trips/s. Pending outside this repo: double-buffered bulk endpoints, which need
-  embassy-stm32 with usb_v4 double buffering (patch written, not upstream yet) and an embassy-usb release with
-  `endpoint_bulk_*_double_buffered`; measured with that patch: 1 KB 330 round trips/s, 697 kB/s host -> device,
-  489 kB/s device -> host. Tested 15 Oct 2026 on B153A.
+  here); wire_weaver TR-12 (U2Head byte fast path, replies flushed when no request waits); double-buffered bulk
+  endpoints (`ww.rs`, `WireWeaverClass::with_endpoints`) from embassy-rs/embassy#7275, through a git dependency on
+  the romixlab/embassy `donguru-0.6-double-buffer` branch (`fw/donguru/Cargo.toml` `[patch.crates-io]`). Release
+  build now: 1 KB 335 round trips/s, 664-676 kB/s host -> device, 520 kB/s device -> host; 64 B 2400-2500 round
+  trips/s, 540 kB/s each way. Tested 15 Oct 2026 on B153A. Open: back to crates.io embassy once #7275 is released;
+  device -> host stays ~520 kB/s with the device ~30% idle (CRC burst per message, copies: wire_weaver TR-12).
 
 ## API (`API`)
 

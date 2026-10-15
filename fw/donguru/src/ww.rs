@@ -227,14 +227,21 @@ pub fn start(spawner: Spawner, driver: UsbDriver, state: ServerState, swd_host: 
     let link_cfg = link_config();
     // server_impl::API_ID is reported in a USB string descriptor, `ww list` shows it without opening the device.
     // A user label (e.g. loaded from flash) can be added with wire_weaver::api_id::with_label().
-    let ww = WireWeaverClass::new(
+    // Double-buffered bulk endpoints: the USB peripheral takes the next packet while the previous one is processed,
+    // instead of making the host retry (through the board's hub that costs ~half the throughput, FW-24). Each one
+    // uses both directions of a hardware endpoint, 4 of the G0's 8 for WireWeaver.
+    let ww = WireWeaverClass::with_endpoints(
         &mut builder,
         &mut buffers.ww_state,
-        MAX_USB_PACKET_LEN as u16,
-        timings.use_bulk_endpoints,
         timings.packet_send_timeout,
         &link_cfg.user_api_version,
         server_impl::API_ID,
+        |alt| {
+            (
+                alt.endpoint_bulk_out_double_buffered(None, MAX_USB_PACKET_LEN as u16),
+                alt.endpoint_bulk_in_double_buffered(None, MAX_USB_PACKET_LEN as u16),
+            )
+        },
     );
     let dap_class = cmsis_dap::CmsisDapClass::new(&mut builder, &mut buffers.dap_state, MAX_USB_PACKET_LEN as u16);
 

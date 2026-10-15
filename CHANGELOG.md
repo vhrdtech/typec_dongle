@@ -6,6 +6,13 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Changed
+
+- WireWeaver uses double-buffered USB bulk endpoints (embassy-rs/embassy#7275, from a git dependency until it is
+  released): `ww usb-loopback` on a release build, 1 KB messages 214 -> 335 round trips/s, 419 -> 670 kB/s host ->
+  device, 470 -> 520 kB/s device -> host; 64 B messages ~540 kB/s each way. Needs wire_weaver with
+  `WireWeaverClass::with_endpoints` (FW-24). CMSIS-DAP enumerates and answers as before. Tested on B153A.
+
 ## [0.10.0] - 2026-10-15
 
 ### Changed
