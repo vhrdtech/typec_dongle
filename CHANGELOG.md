@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-10-15
+
 ### Added
 
 - donguru-core talks to the dongle over wire_weaver_client (CORE-1): enumeration from the USB descriptors (VID:PID
