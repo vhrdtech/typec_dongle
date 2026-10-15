@@ -313,7 +313,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `reset_totals`, `window`, `deadband` (observers marked changed only beyond it), `calibration` (nominal until FW-9);
   `adc` as `ww_adc::Adc` with the named channels, raw code and value (`fw/donguru/src/ww/meter.rs`, `ww/adc.rs`,
   integration in `src/adc.rs`). Built, not yet checked on a board against a DMM. Open: `adc.sbu1` / `sbu2` answer
-  `Busy` until the SBU level (API-14) owns PA0 / PA1; `window` is 0.9 .. 9.3 ms (one to one half DMA buffer of
+  `Busy` until the SBU level (API-14) owns PA0 / PA1; `window` is 0.9 .. 14.9 ms (one sequence up to one half DMA buffer of
   sequences), longer needs averaging across updates. A read of `io7` / `io9` / `io10` switches the ADC to the
   extended set and stays there (meter keeps working, sequence 0.62 -> 0.90 ms). With FW-3. ^revB
 - 📋 **API-13 Button and switch**: observable button (with a press counter) and slide switch, counted event stream.
