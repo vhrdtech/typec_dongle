@@ -236,7 +236,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 📋 **API-3 Full API**: ports (power, data), power meter readings and streams, button / switch events, USART bridge,
   GPIO, I2C, device info; designed together with the CLI command tree. ^revB
   Planned 15 Oct 2026 (P2534#15oct-2031): `donguru_api` 0.2.0 with the whole tree declared, then one item per level
-  below (API-8..API-18); the design is kept in tpm (P2534 `design/api-v1.md`).
+  below (API-8..API-21); the design is kept in tpm (P2534 `design/api-v1.md`).
 - 🧪 **API-4 `plug.orientation` / `sbu.release`** (were `swd_orientation` / `swd_release`, moved in 0.2.0, API-8):
   cable orientation of everything on SBU (rw + observe, `Auto` / `Normal` / `Swapped`; `Auto` acts as `Normal` until
   CC detection) and the Hi-Z disconnect for the bench power-cut test (FW-15). Only the SWD-host uses them so far.
@@ -283,6 +283,15 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   spurious recoveries after a cold boot fixed. ^revB
 - 📋 **API-18 Bring-up API**: MCU pins by port and number (refused list, no memory write), boot-time pin snapshot,
   hub SMBus registers, UCPD1/2 state and role, raw LEDs, peripheral register reads (P2534#14oct-1014). ^revB
+
+- 📋 **API-19 Persistent settings**: `device.settings` as `rw` properties kept in flash by the new `ww_settings` store
+  (sparse shrink_wrap records, power-cut safe, 4 pages at the end of flash): label, plug VBUS at boot (replaces the
+  `plug-vbus-on` feature), button action, meter window / deadband, UART default; a factory key for FW-9. ^revB
+- 📋 **API-20 SBU UART as CDC-ACM**: the SBU USART also as `/dev/ttyACM*`; one owner at a time (ACM while the tty is
+  open, else WireWeaver), the owner shown in `sbu.function`, WireWeaver gets `InUse`, `sbu.release` overrides. With
+  FW-7. ^revB
+- 📋 **API-21 USB NCM and embassy-net**: CDC-NCM network interface with a DHCP server, the same API over WebSocket and
+  UDP, and a ~1 KiB http start page that loads the browser UI from our web server (cargo feature `net`). ^revB
 
 ## Host library (`CORE`)
 
