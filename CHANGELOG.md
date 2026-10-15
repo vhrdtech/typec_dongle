@@ -13,7 +13,9 @@ IDs refer to [FEATURES.md](FEATURES.md).
   `deadband` (default 20 mV / 10 mA; `OnChange` observers are marked only beyond it, `totals` once a second),
   `calibration` (nominal until FW-9). Integer milli values, no host change needed: API items existed since 0.2.0.
 - `adc` (`ww_adc::Adc`): channels `vbus_in`, `current`, `vdda`, `temperature`, `button`, `io9`, `io7`, `io10` with
-  raw code and value in milli units; `sbu1` / `sbu2` answer `Busy` for now. Not checked on a board yet.
+  raw code and value in milli units; `sbu1` / `sbu2` answer `Busy` for now.
+- Tested 15 Oct 2026 on B153A without DUT power (needs API-11): values plausible, totals integrate, `OnChange`
+  observers quiet on an idle DUT. Not compared with a DMM under load yet.
 - Firmware size, release build, `just fw-size`: FLASH 259.5 KiB of 510 KiB (0.13.0 recorded 243.5 KiB).
 
 ## [0.15.0] - 2026-10-15
