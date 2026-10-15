@@ -1,5 +1,6 @@
-//! Animated LEDs on PF0 (TIM14_CH1) and PF1 (TIM15_CH1N), each controlled independently via [`set`] and
-//! [`set_brightness`].
+//! Animated LEDs on PF0 (TIM14_CH1) and PF1 (TIM15_CH1N): each runs its own animation ([`set`]), shown through one
+//! global indication (API-9, `leds` in the API): which LEDs are [visible](set_visible), one [peak](set_peak)
+//! brightness for both, and [`identify`], which blinks both for a while and then returns to the animations.
 //!
 //! NOTE: The only remaining caller of the 64-bit multiply and divide routines is embassy's calculate_psc_arr.
 //! That function runs once, when the PWM drivers are created, to work out the timer settings from 1 kHz.
@@ -13,7 +14,7 @@ use embassy_stm32::timer::low_level::CountingMode;
 use embassy_stm32::timer::simple_pwm::{PwmPin, SimplePwm};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::signal::Signal;
-use embassy_time::{Duration, Ticker};
+use embassy_time::{Duration, Instant, Ticker};
 
 use crate::LedResources;
 
@@ -31,27 +32,10 @@ pub enum Led {
     Status = 1,
 }
 
-/// Peak brightness per [`Brightness`], perceptual (gamma corrected): 0 = off, 255 = full PWM duty.
-const DIM: u8 = 40;
-const NOMINAL: u8 = 128;
-const BRIGHT: u8 = 255;
-
-#[derive(Clone, Copy, PartialEq, Eq, defmt::Format)]
-pub enum Brightness {
-    Dim,
-    Nominal,
-    Bright,
-}
-
-impl Brightness {
-    fn value(self) -> u8 {
-        match self {
-            Brightness::Dim => DIM,
-            Brightness::Nominal => NOMINAL,
-            Brightness::Bright => BRIGHT,
-        }
-    }
-}
+/// Default peak brightness, perceptual (gamma corrected): 0 = off, 255 = full PWM duty.
+pub const DEFAULT_PEAK: u8 = 128;
+/// Identify: both LEDs blink at full brightness, on and off this long.
+const IDENTIFY_BLINK_MS: u32 = 150;
 
 #[derive(Clone, Copy, PartialEq, Eq, defmt::Format)]
 pub enum Mode {
@@ -70,7 +54,9 @@ pub enum Mode {
 
 type Sig<T> = Signal<CriticalSectionRawMutex, T>;
 static MODES: [Sig<Mode>; 2] = [Signal::new(), Signal::new()];
-static BRIGHTNESS: [Sig<Brightness>; 2] = [Signal::new(), Signal::new()];
+static VISIBLE: [Sig<bool>; 2] = [Signal::new(), Signal::new()];
+static PEAK: Sig<u8> = Signal::new();
+static IDENTIFY: Sig<u32> = Signal::new();
 /// Wakes the task when it is idle (no animation running).
 static WAKE: Sig<()> = Signal::new();
 
@@ -80,9 +66,22 @@ pub fn set(led: Led, mode: Mode) {
     WAKE.signal(());
 }
 
-/// Change the peak brightness of one LED (default [`Brightness::Nominal`]) without restarting its animation.
-pub fn set_brightness(led: Led, brightness: Brightness) {
-    BRIGHTNESS[led as usize].signal(brightness);
+/// Show or hide one LED (default shown); its animation keeps running hidden.
+pub fn set_visible(led: Led, visible: bool) {
+    VISIBLE[led as usize].signal(visible);
+    WAKE.signal(());
+}
+
+/// Peak brightness of both LEDs (default [`DEFAULT_PEAK`]), without restarting their animations.
+pub fn set_peak(peak: u8) {
+    PEAK.signal(peak);
+    WAKE.signal(());
+}
+
+/// Blink both LEDs at full brightness for `ms` (restarts a running identify, 0 ends it), then show the animations
+/// again.
+pub fn identify(ms: u32) {
+    IDENTIFY.signal(ms);
     WAKE.signal(());
 }
 
@@ -203,18 +202,46 @@ pub async fn led_task(r: LedResources) {
     pwm1.enable(Channel::Ch1);
 
     let mut leds = [State::new(Mode::Off), State::new(Mode::Off)];
-    let mut brightness = [Brightness::Nominal; 2];
+    let mut visible = [true; 2];
+    let mut peak = DEFAULT_PEAK;
+    // a running identify: when it ends and its blink
+    let mut identifying: Option<(Instant, State)> = None;
     let mut ticker = Ticker::every(Duration::from_millis(TICK_MS as u64));
     loop {
         for i in 0..2 {
             if let Some(mode) = MODES[i].try_take() {
                 leds[i] = State::new(mode);
             }
-            if let Some(b) = BRIGHTNESS[i].try_take() {
-                brightness[i] = b;
+            if let Some(v) = VISIBLE[i].try_take() {
+                visible[i] = v;
             }
         }
-        let level = |i: usize| leds[i].level() * brightness[i].value() as u32 / 255;
+        if let Some(p) = PEAK.try_take() {
+            peak = p;
+        }
+        if let Some(ms) = IDENTIFY.try_take() {
+            identifying = (ms > 0).then(|| {
+                let blink = Mode::Blink {
+                    on_ms: IDENTIFY_BLINK_MS,
+                    off_ms: IDENTIFY_BLINK_MS,
+                };
+                (
+                    Instant::now() + Duration::from_millis(ms as u64),
+                    State::new(blink),
+                )
+            });
+        }
+        if identifying
+            .as_ref()
+            .is_some_and(|(end, _)| Instant::now() >= *end)
+        {
+            identifying = None;
+        }
+        let level = |i: usize| match &identifying {
+            Some((_, blink)) => blink.level(),
+            None if visible[i] => leds[i].level() * peak as u32 / 255,
+            None => 0,
+        };
 
         let max0 = ch0.max_duty_cycle();
         ch0.set_duty_cycle(duty(level(0), max0));
@@ -222,8 +249,11 @@ pub async fn led_task(r: LedResources) {
         for led in &mut leds {
             led.advance();
         }
+        if let Some((_, blink)) = &mut identifying {
+            blink.advance();
+        }
 
-        if leds.iter().any(State::animated) {
+        if identifying.is_some() || leds.iter().any(State::animated) {
             ticker.next().await;
         } else {
             // nothing to animate: sleep until a mode or brightness changes

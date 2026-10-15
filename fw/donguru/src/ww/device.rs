@@ -1,15 +1,17 @@
 //! `device`: the device contract (API-9, API-10) and the settings (API-19), and the values of the `const` items.
 
 use super::ServerState;
-use crate::hub;
+use crate::{hub, last_reset};
+use core::sync::atomic::AtomicU32;
 use donguru_api::BoardVariant;
 use wire_weaver::prelude::*;
 use ww_board_info::{BoardSummary, RevisionSource};
 use ww_counters::{BufferInfo, CountersInfo};
-use ww_firmware_info::{BuildProfile, FirmwareSummary, Version, bounded_str, parse_u32};
+use ww_counters::{CounterBuffer, read_words, reset_words};
+use ww_firmware_info::{BUILD_ID_MAX_LEN, FirmwareSummary};
 use ww_log::{DefmtEncoding, DefmtInfo};
 use ww_uid::UniqueId;
-use ww_user_info::UserInfoCaps;
+use ww_user_info::{MAX_NAME_LEN, MAX_NOTES_LEN, UserInfoCaps};
 
 impl ServerState {
     // donguru_api::Device at device
@@ -29,21 +31,22 @@ impl ServerState {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> RpcResult<ww_firmware_info::ResetRecord<'_>> {
-        Unimplemented.into()
+        Ready(last_reset::record(&self.last_reset))
     }
 
     pub(super) async fn device_last_reset_boot_count(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> RpcResult<u32> {
-        Unimplemented.into()
+        Ready(self.last_reset.boot_count())
     }
 
     pub(super) async fn device_last_reset_clear(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> RpcResult<()> {
-        Unimplemented.into()
+        bedrock_crash::clear(&mut self.last_reset);
+        Ready(())
     }
 
     // ww_board_info::BoardInfo at device.board
@@ -55,9 +58,10 @@ impl ServerState {
     pub(super) async fn set_device_label_name(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _value: wire_weaver::shrink_wrap::MaxLen<&'_ str, 32>,
+        value: wire_weaver::shrink_wrap::MaxLen<&'_ str, 32>,
     ) -> SetResult<ww_user_info::UserInfoError<'_>> {
-        Unimplemented.into()
+        self.label.name.set(&value);
+        Set
     }
 
     pub(super) async fn get_device_label_name(
@@ -65,16 +69,17 @@ impl ServerState {
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<wire_weaver::shrink_wrap::MaxLen<&'_ str, 32>, ww_user_info::UserInfoError<'_>>
     {
-        Unimplemented.into()
+        Value(MaxLen::new_unchecked(self.label.name.get()))
     }
 
     // optional, can be left out with omit = ["device.label.notes"]
     pub(super) async fn set_device_label_notes(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _value: wire_weaver::shrink_wrap::MaxLen<&'_ str, 256>,
+        value: wire_weaver::shrink_wrap::MaxLen<&'_ str, 256>,
     ) -> SetResult<ww_user_info::UserInfoError<'_>> {
-        Unimplemented.into()
+        self.label.notes.set(&value);
+        Set
     }
 
     pub(super) async fn get_device_label_notes(
@@ -82,7 +87,7 @@ impl ServerState {
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<wire_weaver::shrink_wrap::MaxLen<&'_ str, 256>, ww_user_info::UserInfoError<'_>>
     {
-        Unimplemented.into()
+        Value(MaxLen::new_unchecked(self.label.notes.get()))
     }
 
     // ww_counters::Counters at device.counters
@@ -90,8 +95,8 @@ impl ServerState {
     pub(super) async fn device_counters_read(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _buffer: ww_counters::CounterBuffer,
-        _offset: u16,
+        buffer: ww_counters::CounterBuffer,
+        offset: u16,
     ) -> RpcResult<
         Result<
             wire_weaver::shrink_wrap::MaxLen<
@@ -101,18 +106,20 @@ impl ServerState {
             ww_counters::CountersError<'_>,
         >,
     > {
-        Unimplemented.into()
+        let (words, used) = counter_buffer(buffer);
+        Ready(read_words(words, used, offset, &mut self.counters_page))
     }
 
     pub(super) async fn device_counters_reset(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _buffer: ww_counters::CounterBuffer,
+        buffer: ww_counters::CounterBuffer,
     ) -> RpcResult<Result<(), ww_counters::CountersError<'_>>> {
-        Unimplemented.into()
+        reset_words(counter_buffer(buffer).0);
+        Ready(Ok(()))
     }
 
-    // optional, can be left out with omit = ["device.counters.watch"]
+    // optional, can be left out with omit = ["device.counters.watch"]; polling `read` covers USB
     pub(super) async fn device_counters_watch(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
@@ -233,31 +240,16 @@ impl ServerState {
     }
 }
 
-/// Values of the `const` items, served without a handler. Minimal until the device contract is filled in (API-9:
-/// build id, git and build time from the template's `build.rs`).
+/// Values of the `const` items, served without a handler and read once per connection by a host.
 impl super::server_impl::DonguruApiConsts for ServerState {
-    const DEVICE_FIRMWARE_FIRMWARE: FirmwareSummary<'static> = FirmwareSummary {
-        name: bounded_str(env!("CARGO_PKG_NAME")),
-        version: Version::new(
-            parse_u32(env!("CARGO_PKG_VERSION_MAJOR")),
-            parse_u32(env!("CARGO_PKG_VERSION_MINOR")),
-            parse_u32(env!("CARGO_PKG_VERSION_PATCH")),
-        ),
-        git: None,
-        built: None,
-        profile: if cfg!(debug_assertions) {
-            BuildProfile::Debug
-        } else {
-            BuildProfile::Release
-        },
-    };
+    // name, version, git commit, build time and profile, from build.rs (ww_firmware_info::build::emit())
+    const DEVICE_FIRMWARE_FIRMWARE: FirmwareSummary<'static> =
+        ww_firmware_info::firmware_summary!();
 
-    // no build id note in flash yet (API-9)
-    const DEVICE_FIRMWARE_BUILD_ID: MaxLen<RefVec<'static, u8>, 32> =
-        MaxLen::new_unchecked(RefVec::new_bytes(&[]));
-
-    const DEVICE_FIRMWARE_BUILD_RECORD: MaxLen<RefVec<'static, u8>, 512> =
-        MaxLen::new_unchecked(RefVec::new_bytes(&[]));
+    // GNU build id, kept in flash by memory.x: a host finds this firmware's ELF by it
+    fn device_firmware_build_id(&self) -> MaxLen<RefVec<'_, u8>, BUILD_ID_MAX_LEN> {
+        MaxLen::new_unchecked(RefVec::new_bytes(ww_firmware_info::build_id()))
+    }
 
     // revision: the firmware is built for rev A; the variant comes from the PA10 strap (FW-22)
     fn device_board_board(&self) -> BoardSummary<'_> {
@@ -281,34 +273,77 @@ impl super::server_impl::DonguruApiConsts for ServerState {
         MaxLen::new_unchecked(RefVec::Slice { slice: &self.uid })
     }
 
+    // RAM only until the settings store (API-19)
     const DEVICE_LABEL_CAPABILITIES: UserInfoCaps = UserInfoCaps {
-        name_max: 32,
-        notes_max: 0,
+        name_max: MAX_NAME_LEN as u16,
+        notes_max: MAX_NOTES_LEN as u16,
         persistent: false,
     };
 
-    // the whole buffers until `cnt` tells the used words (API-9)
     fn device_counters_info(&self) -> CountersInfo<'_> {
-        let ram = cnt::counters_ram_buffer().len() as u16;
-        let bkp = cnt::counters_bkp_buffer().len() as u16;
+        let bkp = cnt::counters_bkp_buffer();
         CountersInfo {
-            format: 2,
-            ram: BufferInfo {
-                used_words: ram,
-                capacity_words: ram,
-            },
-            backup: (bkp > 0).then_some(BufferInfo {
-                used_words: bkp,
-                capacity_words: bkp,
-            }),
-            build_id: MaxLen::new_unchecked(RefVec::new_bytes(&[])),
+            format: cnt::SIGNATURE_VERSION,
+            ram: BufferInfo::new(cnt::ram_used_words(), cnt::counters_ram_buffer()),
+            backup: (!bkp.is_empty()).then(|| BufferInfo::new(cnt::bkp_used_words(), bkp)),
+            build_id: MaxLen::new_unchecked(RefVec::new_bytes(ww_firmware_info::build_id())),
         }
     }
 
+    // build id empty until the log is served (API-10)
     const DEVICE_LOG_DEFMT: DefmtInfo<'static> = DefmtInfo {
         encoding: DefmtEncoding::Rzcobs,
         build_id: MaxLen::new_unchecked(RefVec::new_bytes(&[])),
     };
 
     const LEDS_NAMES: RefVec<'static, &'static str> = super::leds::NAMES;
+}
+
+/// A `cnt` buffer and its used words.
+fn counter_buffer(buffer: CounterBuffer) -> (&'static [AtomicU32], usize) {
+    match buffer {
+        CounterBuffer::Ram => (cnt::counters_ram_buffer(), cnt::ram_used_words()),
+        CounterBuffer::Backup => (cnt::counters_bkp_buffer(), cnt::bkp_used_words()),
+    }
+}
+
+/// `device.label`: name and notes, in RAM until the settings store (API-19).
+pub(super) struct Label {
+    pub(super) name: Text<MAX_NAME_LEN>,
+    pub(super) notes: Text<MAX_NOTES_LEN>,
+}
+
+impl Label {
+    pub(super) const fn new() -> Self {
+        Label {
+            name: Text::new(),
+            notes: Text::new(),
+        }
+    }
+}
+
+/// UTF-8 text of up to `N` bytes. The bound is checked when the request is read (`MaxLen`), so `set` never cuts.
+pub(super) struct Text<const N: usize> {
+    buf: [u8; N],
+    len: usize,
+}
+
+impl<const N: usize> Text<N> {
+    const fn new() -> Self {
+        Text {
+            buf: [0; N],
+            len: 0,
+        }
+    }
+
+    pub(super) fn set(&mut self, s: &str) {
+        let len = s.len().min(N);
+        self.buf[..len].copy_from_slice(&s.as_bytes()[..len]);
+        self.len = len;
+    }
+
+    pub(super) fn get(&self) -> &str {
+        // only ever a whole `&str` (or empty) is copied in
+        core::str::from_utf8(&self.buf[..self.len]).unwrap_or("")
+    }
 }

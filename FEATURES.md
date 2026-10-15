@@ -60,12 +60,16 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 📋 **FW-8 Power switch and USB data switches** per downstream port, with safe defaults at boot. ^revB
 - 📋 **FW-9 Power meter calibration**: offsets and gain per board, stored in the config page. ^v1.0
 - 📋 **FW-10 GPIO and I2C** on the external pins. ^v1.0
-- 📋 **FW-11 `fw_info` / `hw_info`** (embedded_bedrock device contract): firmware name, version, git SHA, build
-  time; board revision and serial. ^revB
+- 🧪 **FW-11 `fw_info` / `hw_info`** (embedded_bedrock device contract): served as `device.firmware`
+  (`ww_firmware_info::FirmwareInfo`: name, version, git SHA, build time, profile, GNU build id kept in flash by
+  `memory.x`) and `device.board` (`ww_board_info`: "Donguru B153" rev A assumed, variant from the PA10 strap, UID as
+  serial), `fw/donguru/src/ww/device.rs` (API-9). Template upgrade to embedded_bedrock `ec04ab4`. ^revB
 - 📋 **FW-12 Firmware update without a probe**: STM32 system bootloader via the boot switch first, then a custom
   bootloader; the CLI side is CLI-10. ^v1.0
-- 📋 **FW-13 HardFault handling for production**: reset instead of looping (TODO in `HardFault`); the backup-register
-  counter already records the fault.
+- 🧪 **FW-13 HardFault handling for production**: `HardFault` and the panic handler save a `bedrock_crash` record
+  (cause, registers, 32 stack words, message, uptime, build id) in `.uninit` RAM and reset instead of looping
+  (`fw/donguru/src/main.rs`, `src/last_reset.rs`); the next boot logs it and serves it as `device.last_reset`
+  (API-9). The `hard_faults` backup-register counter still counts.
 - ✅ **FW-15 SWD-host over the plug SBU lines**: CMSIS-DAP v2 (bulk, `src/cmsis_dap.rs`) on a composite USB device
   alongside WireWeaver (`src/ww/`), carrying `dap_rs`'s command processor over a GPIO bit-bang SWD driver
   (`src/swd.rs`: SWCLK/SWDIO on PA1/PA0, the SBU side of the TXS0102 level shifter, orientation-swappable, SWCLK
@@ -264,8 +268,13 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   (`swd_orientation` -> `plug.orientation`, `swd_mode` -> `swd.mode`, `swd_release` -> `sbu.release`,
   `board_variant` -> `device.variant`, `led_on/off` -> `debug.led_set`), new items `Unimplemented` until their item
   lands; one handler module per level. Breaks 0.1 hosts (none but `ww`). ^revB
-- 📋 **API-9 Device contract**: `ww_firmware_info` (`FirmwareInfo`, `LastReset`), `ww_board_info`, `ww_uid`,
-  `ww_user_info` (RAM only until FW-9), `ww_counters`, LEDs as `ww_indication`; template upgrade. With FW-11. ^revB
+- 🧪 **API-9 Device contract**: `device.firmware` (`FirmwareInfo`, build id), `device.last_reset` (`LastReset`:
+  cause, crash record, boot count, clear), `device.board`, `device.uid`, `device.label` (`UserInfo`: name 32 B and
+  notes 256 B, RAM only until the settings store, API-19), `device.counters` (`ww_counters`: RAM and BKP buffers,
+  used words, build id; `watch` not implemented, polling `read` covers USB), `leds` as `ww_indication` (mode:
+  `OnlyEssential` keeps the power LED; brightness in five steps; `identify` blinks both LEDs, `Busy` while running;
+  RAM only). Code: `fw/donguru/src/ww/device.rs`, `ww/leds.rs`, `src/led.rs`, `src/last_reset.rs`. With FW-11,
+  FW-13. ^revB
 - 📋 **API-10 defmt log over WireWeaver**: `ww_log::LogDefmt` through `ww_defmt_logger`, RTT kept as a tee, logs kept
   across a crash in a persistent RAM store. ^revB
 - 📋 **API-11 Plug and header power**: plug VBUS on / off / timed cycle and header VBUS_SW behind a firmware-side guard

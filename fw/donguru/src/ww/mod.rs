@@ -81,10 +81,18 @@ pub struct ServerState {
     uart_tx_credit: [SinkCredit; uart::COUNT],
     /// `device.uid.IDS`: the STM32 96-bit UID.
     uid: [UniqueId<'static>; 1],
+    /// `device.last_reset`: reset cause and crash record read at boot (`src/last_reset.rs`).
+    last_reset: bedrock_crash::Snapshot,
+    /// `device.counters.read`: one page of counter words, copied at once.
+    counters_page: [UVlq32; ww_counters::MAX_WORDS],
+    /// `device.label`, in RAM until the settings store (API-19).
+    label: device::Label,
+    /// `leds`: global mode, brightness and the end of a running identify.
+    leds: leds::LedsState,
 }
 
 impl ServerState {
-    fn new(uid: &'static [u8]) -> Self {
+    fn new(uid: &'static [u8], last_reset: bedrock_crash::Snapshot) -> Self {
         ServerState {
             observe: server_impl::ObserveState::new(ObserveLimits::DEFAULT),
             stream_sessions: 0,
@@ -99,6 +107,10 @@ impl ServerState {
                 source: UidSource::InternalIc,
                 value: MaxLen::new_unchecked(RefVec::new_bytes(uid)),
             }],
+            last_reset,
+            counters_page: [UVlq32(0); ww_counters::MAX_WORDS],
+            label: device::Label::new(),
+            leds: leds::LedsState::new(),
         }
     }
 
@@ -118,13 +130,15 @@ impl ServerState {
 mod server_impl {
     // Re-parses the API trait and generates request dispatch + serdes for ServerState.
     // To see the generated code, add: debug_to_file = "./target/ww_server.rs"
-    // `const_model`: the board record and the chip ids are read at boot (`device.rs`).
+    // `const_model`: the board record and the chip ids are read at boot, the build id and the counter buffers are
+    // known at link time (`device.rs`). The optional build record (`bedrock_build_info`) is left out.
     wire_weaver::ww_codegen!(
         donguru_api :: DonguruApi for super::ServerState,
         server = true, no_alloc = true, use_async = true,
         method_model = "_=immediate",
         property_model = "_=get_set",
-        const_model = "BOARD|IDS|INFO=fn",
+        const_model = "BOARD|IDS|INFO|BUILD_ID=fn",
+        omit = ["device.firmware.BUILD_RECORD"],
         introspect = "with_docs",
     );
 }
@@ -231,11 +245,19 @@ static UID: StaticCell<[u8; 12]> = StaticCell::new();
 
 /// Builds the composite USB device (WireWeaver + CMSIS-DAP v2, `src/cmsis_dap.rs`) on `driver` and spawns the
 /// USB, WireWeaver server and CMSIS-DAP tasks. `swd_host` is handed to the CMSIS-DAP task, which is the sole
-/// owner of the SWD-host pins (FW-15).
-pub fn start(spawner: Spawner, driver: UsbDriver, swd_host: swd_host::SwdHost) {
+/// owner of the SWD-host pins (FW-15). `last_reset` is what `last_reset::boot` read, served as `device.last_reset`.
+pub fn start(
+    spawner: Spawner,
+    driver: UsbDriver,
+    swd_host: swd_host::SwdHost,
+    last_reset: bedrock_crash::Snapshot,
+) {
     let buffers = USB_BUFFERS.init(UsbBuffers::default());
     // in a static, not on the task's future: the observe tables and stream states are a few hundred bytes
-    let state = SERVER_STATE.init(ServerState::new(UID.init(embassy_stm32::uid::uid())));
+    let state = SERVER_STATE.init(ServerState::new(
+        UID.init(embassy_stm32::uid::uid()),
+        last_reset,
+    ));
 
     let mut config = UsbConfig::new(0xc0de, 0xcafe);
     config.manufacturer = Some("donguru");

@@ -4,13 +4,13 @@
   "template": {
     "repo": "https://github.com/romixlab/embedded_bedrock",
     "path": "firmware_template_skill",
-    "commit": "f10b3454cca25943e4fcf2e05872db299193466e",
-    "commit_date": "2026-09-30T22:27:19+02:00",
+    "commit": "ec04ab476f8a0638ca97c513416577f2824ad589",
+    "commit_date": "2026-10-15T17:03:23+02:00",
     "dirty": false,
-    "version": "0.5.0"
+    "version": "Unreleased"
   },
   "generated": "2026-09-30T18:59:40+02:00",
-  "command": "bedrock_gen.py new donguru --chip STM32G0B1CE --config-page --bkp-counters auto --counters --led PF1 --wire-weaver --ww-transport usb --ww-api donguru_api --ww-src ../../../wire_weaver",
+  "command": "bedrock_gen.py new donguru --chip STM32G0B1CE --config-page --bkp-counters auto --counters --led PF1 --wire-weaver --ww-api donguru_api --ww-src ../../../wire_weaver",
   "answers": {
     "name": "donguru",
     "chip": "STM32G0B1CE",
@@ -43,7 +43,8 @@
     "wire_weaver": true,
     "ww_transport": "usb",
     "ww_api": "donguru_api",
-    "ww_src": "../../../wire_weaver"
+    "ww_src": "../../../wire_weaver",
+    "no_crash_capture": false
   },
   "upgrades": [
     {
@@ -85,6 +86,20 @@
         "ROB-12 (template [Unreleased] after 0.5.0), ahead of the other changes since 0.5.0: flip-link through linker = \"flip-link\" in .cargo/config.toml, the cargo:rustc-linker line removed from build.rs (cargo ignored it, flip-link was never used)"
       ],
       "notes": "Only ROB-12 taken; template.commit stays at 0.5.0, so the next upgrade still offers everything else after it (crash capture, build id, ...). Checked in the ELFs: _stack_start = start of .data, stack down to the start of RAM. Not yet on hardware."
+    },
+    {
+      "date": "2026-10-15",
+      "from": "f10b345",
+      "to": "ec04ab4",
+      "applied": [
+        "ROB-11 crash capture (c4fa204): bedrock_crash from git, src/last_reset.rs from the template (doc pointers to src/ww/device.rs), last_reset::boot() first thing in main, HardFault saves the record and resets instead of looping (FW-13), panic-probe replaced by the template's panic handler (kept as a dev-dependency for examples/)",
+        "DEV-2 build id (c4fa204): --build-id=sha1 in build.rs, .note.gnu.build-id SECTIONS block at the end of memory.x, ww_firmware_info::build::emit() in build.rs (build-dependency)",
+        "FirmwareInfo / LastReset servers (c4fa204): already declared in donguru_api 0.2 at device.firmware / device.last_reset (API-8), so no API change; served in src/ww/device.rs (firmware_summary!(), build_id(), the three LastReset handlers), const_model gets BUILD_ID, omit = [\"device.firmware.BUILD_RECORD\"]; the Snapshot is handed to ww::start",
+        "STD-27 boots_since_crash (ec04ab4): in last_reset.rs as taken",
+        "TPL-14 (fb0d7eb): nothing to do, ww/ was already on the current server API",
+        "ROB-12 (b53d9e4): already taken on 2026-10-15 (previous entry)"
+      ],
+      "notes": "API-9 (session device-contract). Release FLASH 228.60 -> 243.50 KiB with the API-9 handlers. readelf: build id note at 0x0803cd5c in flash, .uninit after .bss. The template's generated Cargo.toml has [build-dependencies] and its ww_firmware_info line twice (generator bug, not taken). Hardware test: see CHANGELOG API-9."
     }
   ],
   "rejected": [],
@@ -97,6 +112,7 @@
     "USB is set up in main.rs (UsbResources, Irqs, usb::Driver::new) and passed to ww::start; ww.rs has no bind_interrupts/usb_driver. ServerState owns no LED: PF1 is the PWM status LED owned by led::led_task, the API calls led::set",
     "embassy-usb is a direct dependency with default-features = false (also used by examples/usb_serial.rs); wire_weaver_usb_embassy pulls its own features",
     "ww.rs follows the local wire_weaver checkout API from 3f1ccf8 'feat(server): pass a request context to every handler' (WireWeaverAsyncApiBackend::Medium, process_bytes(out: &mut EventWriter, medium, ...), handlers take &mut Context<'_, impl EventOut>), newer than the template's (f10b345) ww.rs; when taking template ww.rs changes, keep the signatures matching the checkout",
-    "src/ww.rs is split into src/ww/ (API-8, donguru_api 0.2): mod.rs has what came from the template's ww.rs (ww_codegen!, WireWeaverAsyncApiBackend, USB composite setup with fixed endpoint addresses EP1/EP2 WireWeaver and EP3 CMSIS-DAP, server task with observe polling); one handler module per level of the API tree (device.rs, plug.rs, ...) is this firmware's own. Template ww.rs changes go to ww/mod.rs; ServerState is no longer passed to ww::start (a static inside ww)"
+    "src/ww.rs is split into src/ww/ (API-8, donguru_api 0.2): mod.rs has what came from the template's ww.rs (ww_codegen!, WireWeaverAsyncApiBackend, USB composite setup with fixed endpoint addresses EP1/EP2 WireWeaver and EP3 CMSIS-DAP, server task with observe polling); one handler module per level of the API tree (device.rs, plug.rs, ...) is this firmware's own. Template ww.rs changes go to ww/mod.rs; ServerState is no longer passed to ww::start (a static inside ww)",
+    "Crash capture (bedrock_crash): the record is in cortex-m-rt's .uninit; nothing in this firmware initialises RAM by hand, keep it that way. ww::start takes the last_reset Snapshot; ServerState lives in a static inside ww"
   ]
 }

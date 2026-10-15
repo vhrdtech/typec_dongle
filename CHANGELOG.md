@@ -6,6 +6,32 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- Device contract served (API-9, FW-11; `donguru_api` unchanged at 0.2.0, nothing changes for hosts):
+  `device.firmware` (name, version, git SHA, build time, profile and the GNU build id, kept in flash, so `ww` finds
+  the ELF), `device.last_reset` (reset cause, crash record, boot count, `clear`), `device.counters` (`cnt` RAM and
+  backup words with the used counts and the build id, `reset`), `device.label` (name and notes, in RAM until the
+  settings store, API-19), `leds` as `ww_indication` (`mode` `AllOff` / `OnlyEssential`, which keeps the power LED,
+  / `Normal`; `brightness` in five steps; `identify` blinks both LEDs at full brightness for the given time, at most
+  10 min, `Busy` while one runs). `device.firmware.BUILD_RECORD` is left out.
+
+### Changed
+
+- A HardFault or panic no longer hangs the dongle: the record is saved and the MCU resets (FW-13); it shows in the
+  boot log and in `device.last_reset`. With a debugger attached a panic still stops the core as panic-probe did.
+- Both LEDs now run at one brightness, `Normal` (peak 128 of 255) by default: the power LED was at full brightness
+  before. `leds.brightness` `Highest` gives the old look.
+- embedded_bedrock template upgrade 0.5.0 (`f10b345`) -> `ec04ab4`: crash capture (`bedrock_crash`), GNU build id,
+  `FirmwareInfo` / `LastReset` servers; `cnt` 0.5 (`fw/donguru/bedrock_fw.json`).
+- Firmware size, release build, `just fw-size`: FLASH 228.6 -> 243.5 KiB of 510 KiB, RAM 14.4 -> 16.1 KiB of 144 KiB
+  (API-9).
+
+### Fixed
+
+- `fw/donguru/examples/` build again (`usb_serial`: the CDC-ACM class moved to `cdc_acm::device` in the embassy
+  fork; both examples take panic-probe as a dev-dependency).
+
 ## [0.12.0] - 2026-10-15
 
 ### Added

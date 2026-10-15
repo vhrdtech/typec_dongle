@@ -6,6 +6,7 @@ mod button;
 mod cmsis_dap;
 mod hub;
 mod init;
+mod last_reset;
 mod led;
 mod swd;
 mod ww;
@@ -13,7 +14,6 @@ mod ww;
 use cnt::cnt; // cnt::bkp_cnt! for counters in backup registers
 use defmt::{error, info, unwrap};
 use defmt_rtt as _;
-use panic_probe as _;
 
 use assign_resources::assign_resources;
 use cortex_m_rt::exception;
@@ -117,6 +117,7 @@ bind_interrupts!(pub struct Irqs {
 #[embassy_executor::main]
 async fn main(spawner: embassy_executor::Spawner) {
     info!("donguru starting...");
+    let last_reset = last_reset::boot(); // reset cause and crash record (src/last_reset.rs), logged
     let mut config = embassy_stm32::Config::default();
     // SYSCLK 64 MHz (max): HSI16 / 1 * 8 = 128 MHz VCO, / 2. AHB and APB undivided, also 64 MHz.
     config.rcc.hsi = Some(Hsi {
@@ -152,7 +153,6 @@ async fn main(spawner: embassy_executor::Spawner) {
     let r = split_resources!(p);
 
     spawner.spawn(unwrap!(led::led_task(r.leds)));
-    led::set_brightness(led::Led::Power, led::Brightness::Bright);
     led::set(led::Led::Power, led::Mode::Breath { period_ms: 3000 });
     led::set(
         led::Led::Status,
@@ -184,7 +184,7 @@ async fn main(spawner: embassy_executor::Spawner) {
     // Composite USB device (FS, HSI48 clock above): WireWeaver and CMSIS-DAP v2 (FW-15), see src/ww/mod.rs.
     let usb_driver = usb::Driver::new(r.usb.usb, Irqs, r.usb.pa12, r.usb.pa11);
     let swd_host = swd::SwdHost::new(r.swd);
-    ww::start(spawner, usb_driver, swd_host);
+    ww::start(spawner, usb_driver, swd_host, last_reset);
 
     info!("init done");
 }
@@ -198,8 +198,11 @@ unsafe fn DefaultHandler(irqn: i16) {
 
 #[exception]
 unsafe fn HardFault(ef: &cortex_m_rt::ExceptionFrame) -> ! {
+    let exc_return = bedrock_crash::exc_return!(); // first: lr still holds EXC_RETURN here
+    // Saved for the next boot (src/last_reset.rs, served as device.last_reset), then reset instead of looping
+    // (FW-13). With `probe-rs run` the debugger stops at the fault before this handler runs.
+    unsafe { bedrock_crash::capture_fault(ef, exc_return, last_reset::uptime_ms()) };
     cnt::bkp_cnt!(hard_faults: u32, error);
     error!("HardFault {}", defmt::Debug2Format(ef));
-    // TODO: consider cortex_m::peripheral::SCB::sys_reset() in production
-    loop {}
+    bedrock_crash::reset()
 }

@@ -23,3 +23,15 @@ MEMORY
 /* CONFIG: offsets relative to the start of flash (ORIGIN(FLASH)), as embassy-boot / flash drivers expect */
 __config_start = ORIGIN(CONFIG) - ORIGIN(FLASH);
 __config_end = ORIGIN(CONFIG) + LENGTH(CONFIG) - ORIGIN(FLASH);
+
+/* GNU build id (--build-id=sha1 in build.rs): the firmware's identity, a host finds the ELF by it. Kept in flash;
+   ww_firmware_info::build_id() reads it through the two symbols. */
+SECTIONS
+{
+  .note.gnu.build-id : ALIGN(4)
+  {
+    __build_id_start = .;
+    KEEP(*(.note.gnu.build-id))
+    __build_id_end = .;
+  } > FLASH
+} INSERT AFTER .rodata;
