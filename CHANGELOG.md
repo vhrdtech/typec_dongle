@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-10-15
+
 ### Added
 
 - Device contract served (API-9, FW-11; `donguru_api` unchanged at 0.2.0, nothing changes for hosts):
