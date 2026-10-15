@@ -236,6 +236,8 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - ✅ **API-2 `led_on` / `led_off`**: status LED only, the template's example methods.
 - 📋 **API-3 Full API**: ports (power, data), power meter readings and streams, button / switch events, USART bridge,
   GPIO, I2C, device info; designed together with the CLI command tree. ^revB
+  Planned 15 Oct 2026 (P2534#15oct-2031): `donguru_api` 0.2.0 with the whole tree declared, then one item per level
+  below (API-8..API-18); the design is kept in tpm (P2534 `design/api-v1.md`).
 - 🧪 **API-4 `swd_orientation` / `swd_release`**: SWD-host cable orientation (rw property) and the Hi-Z disconnect
   for the bench power-cut test (FW-15). `donguru_api` 0.1.1.
 - 🧪 **API-5 `swd_mode`**: rw property, `SwdMode::BitBang` (default) or `SwdMode::Spi` (FW-21), next to
@@ -244,6 +246,31 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 🧪 **API-7 `board_variant`**: ro property, `BoardVariant::Main` / `Plus` / `Unknown` (FW-22), for host tooling
   and future `hw_info` (FW-11). Additive, `donguru_api` 0.1.3: older hosts keep working.
   A variant from a newer firmware reads as `BoardVariant::Other(n)` on the host (`future_version = Other`, SW-47).
+
+- 📋 **API-8 API tree 0.2.0**: `donguru_api` 0.2.0 with every level declared (`device`, `leds`, `meter`, `plug`,
+  `header`, `sbu`, `inputs`, `hub`, `swd`, `uart[]`, `i2c[]`, `gpio[]`, `adc`, `debug`), the 0.1 root items moved
+  (`swd_orientation` -> `plug.orientation`, `swd_mode` -> `swd.mode`, `swd_release` -> `sbu.release`,
+  `board_variant` -> `device.variant`, `led_on/off` -> `debug.led_set`), new items `Unimplemented` until their item
+  lands; one handler module per level. Breaks 0.1 hosts (none but `ww`). ^revB
+- 📋 **API-9 Device contract**: `ww_firmware_info` (`FirmwareInfo`, `LastReset`), `ww_board_info`, `ww_uid`,
+  `ww_user_info` (RAM only until FW-9), `ww_counters`, LEDs as `ww_indication`; template upgrade. With FW-11. ^revB
+- 📋 **API-10 defmt log over WireWeaver**: `ww_log::LogDefmt` through `ww_defmt_logger`, RTT kept as a tee, logs kept
+  across a crash in a persistent RAM store. ^revB
+- 📋 **API-11 Plug and header power**: plug VBUS on / off / timed cycle and header VBUS_SW behind a firmware-side guard
+  (max voltage, optional current trip), AOZ1375 fault, plug data switch, relay; all observable. With FW-8, FW-14. ^revB
+- 📋 **API-12 Power meter in SI units**: one coherent V / I / P reading, temperature, charge and energy totals,
+  deadband for on-change observers; ADC1 as `ww_adc::Adc` with named channels (raw and volts). With FW-3. ^revB
+- 📋 **API-13 Button and switch**: observable button (with a press counter) and slide switch, counted event stream.
+  With FW-4. ^revB
+- 📋 **API-14 SBU owner and UART on SBU**: one function at a time on the plug SBU lines, `sbu.release`; `uart[0]` as
+  `ww_uart::Uart` with the TX/RX flip from `plug.orientation` and a two-line monitor. With FW-7. ^revB
+- 📋 **API-15 GPIO banks**: plug (SBU1, SBU2, A2, B2) and header (IO7..IO10) as `ww_gpio::Bank` with pin events.
+  With FW-10. ^v1.0
+- 📋 **API-16 I2C buses**: plug SBU (I2C1) and header (I2C3) as `ww_i2c::I2c`. With FW-10. ^v1.0
+- 📋 **API-17 Hub and SWD state**: observable hub state and recoveries, `hub.recover`, observable SWD session; FW-18's
+  spurious recoveries after a cold boot fixed. ^revB
+- 📋 **API-18 Bring-up API**: MCU pins by port and number (refused list, no memory write), boot-time pin snapshot,
+  hub SMBus registers, UCPD1/2 state and role, raw LEDs, peripheral register reads (P2534#14oct-1014). ^revB
 
 ## Host library (`CORE`)
 
@@ -296,6 +323,15 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   default), `--speed` list in kHz, `--base`/`--size` (default the chip's largest RAM), `--pattern`, `--seed`,
   `--passes`, `--no-restore`; text with colour and a spinner, `json`/`jsonl`; exit 1 on any mismatch. Tested
   12 Oct 2026 on B153A + B129A (STM32G0B1).
+
+- 📋 **CLI-19 `device label / log / counters / reset-cause`**: the device contract from `dg` (API-9, API-10). ^revB
+- 📋 **CLI-20 `sbu` and `uart`**: `sbu status / release / orientation`, `uart open / monitor / pty / break` (API-14). ^revB
+- 📋 **CLI-21 `led mode / brightness / identify`** (API-9).
+- 📋 **CLI-22 `adc`, `input`, `hub`**: `adc read`, `input status / watch`, `hub status / recover` (API-12, API-13,
+  API-17).
+- 📋 **CLI-23 `debug`**: pins by net name or port pin, boot-state diff, hub registers, UCPD, register reads (API-18).
+  ^revB
+- 💡 **CLI-24 `dg top`**: one live screen of every observed level.
 
 ## Packaging and docs (`PKG`)
 
