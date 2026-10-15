@@ -6,10 +6,37 @@ description = "Library for interacting with Donguru dongles"
 
 [dependencies]
 thiserror.workspace = true
-anyhow = { workspace = true, optional = true }
+anyhow.workspace = true
+donguru_api.workspace = true
+tokio = { version = "1", features = ["rt", "time", "sync", "macros"] }
+# local checkout next to this repo (~/git/wire_weaver), like donguru_api
+wire_weaver = { path = "../../wire_weaver/wire_weaver", features = ["std"] }
+wire_weaver_client = { path = "../../wire_weaver/wire_weaver_client" }
+ww_device = { path = "../../wire_weaver/ww_device", optional = true }
+ww_client_server = { path = "../../wire_weaver/ww_stdlib/ww_client_server", features = ["std"], optional = true }
+ww_si = { path = "../../wire_weaver/ww_stdlib/ww_si", features = ["std", "time", "electrical", "mechanical", "thermal"] }
+ww_stream = { path = "../../wire_weaver/ww_stream", features = ["std"], optional = true }
+# stdlib traits of the API tree: the generated client names their types
+ww_adc = { path = "../../wire_weaver/ww_stdlib/ww_adc", features = ["std"] }
+ww_board_info = { path = "../../wire_weaver/ww_stdlib/ww_board_info", features = ["std"] }
+ww_counters = { path = "../../wire_weaver/ww_stdlib/ww_counters", features = ["std"] }
+ww_firmware_info = { path = "../../wire_weaver/ww_stdlib/ww_firmware_info", features = ["std"] }
+ww_gpio = { path = "../../wire_weaver/ww_stdlib/ww_gpio", features = ["std"] }
+ww_i2c = { path = "../../wire_weaver/ww_stdlib/ww_i2c", features = ["std"] }
+ww_indication = { path = "../../wire_weaver/ww_stdlib/ww_indication", features = ["std"] }
+ww_log = { path = "../../wire_weaver/ww_stdlib/ww_log", features = ["std"] }
+ww_uart = { path = "../../wire_weaver/ww_stdlib/ww_uart", features = ["std"] }
+ww_uid = { path = "../../wire_weaver/ww_stdlib/ww_uid", features = ["std"] }
+ww_user_info = { path = "../../wire_weaver/ww_stdlib/ww_user_info", features = ["std"] }
 # CMSIS-DAP v2 only: the default cmsisdap_v1 pulls in hidapi (C)
 probe-rs = { version = "0.32", optional = true, default-features = false, features = ["builtin-targets"] }
 
 [features]
 # Run the SWD memtest (CORE-5) through a debug probe
-probe-rs = ["dep:probe-rs", "dep:anyhow"]
+probe-rs = ["dep:probe-rs"]
+# A DonguruApi server in the same process (`mock`): the test double for the CLI, GUI and Python (CORE-3)
+mock = ["wire_weaver_client/in_process", "dep:ww_device", "dep:ww_client_server", "dep:ww_stream"]
+
+[dev-dependencies]
+donguru-core = { path = ".", features = ["mock"] }
+tokio = { version = "1", features = ["rt-multi-thread"] }

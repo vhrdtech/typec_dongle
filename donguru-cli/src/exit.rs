@@ -43,7 +43,13 @@ impl From<&anyhow::Error> for ExitCode {
     fn from(value: &anyhow::Error) -> Self {
         match value.downcast_ref::<donguru_core::Error>() {
             Some(donguru_core::Error::NoDevice(_)) => ExitCode::NoDevice,
-            Some(donguru_core::Error::Device(_)) => ExitCode::DeviceError,
+            // the device answered, but not with what was asked: its error, an item its firmware lacks, an API
+            // this CLI can't talk to
+            Some(
+                donguru_core::Error::Device { .. }
+                | donguru_core::Error::Unimplemented { .. }
+                | donguru_core::Error::Incompatible(_),
+            ) => ExitCode::DeviceError,
             Some(donguru_core::Error::Timeout(_)) => ExitCode::Timeout,
             _ => ExitCode::Failure,
         }
