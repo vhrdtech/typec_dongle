@@ -15,11 +15,18 @@ IDs refer to [FEATURES.md](FEATURES.md).
   `device.variant`. Every new item answers `Unimplemented` until its piece lands. Built against wire_weaver
   `1a04005` (observe on both sides). Tested 15 Oct 2026 on B153A: `ww list` / `ww introspect` show the tree, the
   moved items read and write from Python, `plug.orientation` observed with a generated client (initial value and
-  each change). Not tested: a CMSIS-DAP `probe-rs` read of B129A with `plug.orientation` (the DUT had no power).
+  each change). Not tested: a CMSIS-DAP `probe-rs` read of B129A with `plug.orientation` (the DUT had no power;
+  it is done with API-11).
+- Plug VBUS is a mode (Roman, 15 Oct): `plug.vbus_mode` and `header.vbus_sw_mode` (rw + observe, `VbusMode`:
+  `ForceOff`, `ForceOn { max_voltage }`, `Auto { max_voltage, max_current, max_power }`, open for more such as PD
+  later) replace the sketched `vbus_on` / `vbus_off` / `VbusGuard`; `vbus` / `vbus_sw` keep the state with the trip
+  reason (`GuardTrip` gains `OverPower`), `plug.vbus_cycle` returns to the mode. `device.settings.plug_vbus_at_boot`
+  is a `VbusMode` (default `ForceOff`): it replaces the `plug-vbus-on` firmware feature once API-11 implements it.
+  Declarations only, `Unimplemented` (API-8); not flashed (the B153A was lent to another session).
 - USB endpoint registers are fixed: EP1 OUT / EP2 IN WireWeaver (double-buffered), EP3 CMSIS-DAP (API-8), so they
   don't move when an interface is added. Same order as before, so nothing changes for hosts.
-- Firmware size, release build, `just fw-size`: FLASH 118.5 -> 227.3 KiB of 510 KiB, RAM 10.9 -> 14.3 KiB of 144
-  KiB (API-8). Introspection with docs costs 8.5 KiB (no docs 217.8 KiB, none 212.8 KiB), under the 15 KiB rule, so
+- Firmware size, release build, `just fw-size`: FLASH 118.5 -> 228.7 KiB of 510 KiB, RAM 10.9 -> 14.4 KiB of 144
+  KiB (API-8; the breakdown below was measured before the VBUS modes, at 227.3 KiB). Introspection with docs costs 8.5 KiB (no docs 217.8 KiB, none 212.8 KiB), under the 15 KiB rule, so
   the docs stay on the device. The `debug` level behind the `debug-api` feature saves 0.2 KiB when cut (its
   dispatch stays, the API is the same). At `opt-level = "s"` the same tree is 174.8 KiB (baseline 90.3 KiB).
 

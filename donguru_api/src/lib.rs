@@ -93,9 +93,9 @@ pub enum BoardVariant {
 /// does not persist it. The label is `device.label`, persisted the same way.
 #[ww_trait]
 pub trait Settings {
-    /// Plug VBUS on at boot, through the guard with the default 5.5 V limit. Default off.
-    #[errors(Fault)]
-    property!(rw plug_vbus_at_boot: bool, CommonError<'i>);
+    /// `plug.vbus_mode` at boot, default `ForceOff`.
+    #[errors(InvalidArgument, Fault)]
+    property!(rw plug_vbus_at_boot: VbusMode, CommonError<'i>);
     /// Boot value of `inputs.button_action`.
     #[errors(InvalidArgument, Fault)]
     property!(rw button_action: ButtonAction, CommonError<'i>);
@@ -183,17 +183,15 @@ pub struct MeterCalibration {
 /// DUT side of the dongle: plug VBUS (U601), data switch (U701), orientation of everything on SBU, CC.
 #[ww_trait]
 pub trait Plug {
-    /// Plug VBUS switch state.
+    /// Plug VBUS switch state, with the trip reason when the firmware cut it.
     property!(ro+observe vbus: VbusState);
-    /// Turns plug VBUS on. Refused while `meter.reading.vbus_in` is above `guard.max_voltage`; cut later when it
-    /// rises above it or the current trips. A software trip takes milliseconds, it is no fuse.
-    #[errors(Common(Refused, WrongState), OverVoltage)]
-    fn vbus_on(guard: VbusGuard) -> Result<VbusState, PowerError<'i>>;
-    /// Turns plug VBUS off.
-    fn vbus_off() -> VbusState;
-    /// Off for `off`, then on again with the guard of the last `vbus_on`; with `release_sbu` SBU goes to Hi-Z first so
-    /// nothing back-powers the DUT. Answered when VBUS is back on.
-    #[errors(Common(Refused, InvalidArgument), OverVoltage)]
+    /// How the firmware drives plug VBUS (U601). The limits are kept by the firmware: a software trip takes
+    /// milliseconds, it is no fuse. A mode from a newer host is refused.
+    #[errors(InvalidArgument, Refused)]
+    property!(rw+observe vbus_mode: VbusMode, CommonError<'i>);
+    /// Off for `off`, then back to `vbus_mode`; with `release_sbu` SBU goes to Hi-Z first so nothing back-powers the
+    /// DUT. Answered when VBUS is back on. `WrongState` in `ForceOff`.
+    #[errors(Common(Refused, InvalidArgument, WrongState), OverVoltage)]
     fn vbus_cycle(off: Second, release_sbu: bool) -> Result<VbusState, PowerError<'i>>;
     /// USB data to the DUT (U701, DATA_CUT PA9).
     #[errors(Refused)]
@@ -208,13 +206,11 @@ pub trait Plug {
 /// Header J101: the VBUS_SW output and the photo-MOS relay.
 #[ww_trait]
 pub trait Header {
-    /// VBUS_SW switch (J101 pin 10, Q102, PD1) state.
+    /// VBUS_SW switch (J101 pin 10, Q102, PD1) state, with the trip reason.
     property!(ro+observe vbus_sw: VbusState);
-    /// Turns VBUS_SW on, with the same guard as [`Plug::vbus_on`].
-    #[errors(Common(Refused, WrongState), OverVoltage)]
-    fn vbus_sw_on(guard: VbusGuard) -> Result<VbusState, PowerError<'i>>;
-    /// Turns VBUS_SW off.
-    fn vbus_sw_off() -> VbusState;
+    /// How the firmware drives VBUS_SW, as [`Plug::vbus_mode`].
+    #[errors(InvalidArgument, Refused)]
+    property!(rw+observe vbus_sw_mode: VbusMode, CommonError<'i>);
     /// Relay U101 closed (PA5).
     property!(rw+observe relay: bool);
 }
@@ -235,15 +231,25 @@ pub enum VbusState {
 pub enum GuardTrip {
     OverVoltage,
     OverCurrent,
+    OverPower,
 }
 
-/// Limits a VBUS switch is kept within by the firmware.
-#[derive_shrink_wrap(borrowed, owned(feature = "std"), derive(Clone, Debug, PartialEq))]
-pub struct VbusGuard {
-    /// Refuse to turn on, or cut, above it. Hosts default to 5.5 V.
-    pub max_voltage: Volt,
-    /// Cut above it; the computer -> DUT path has no hardware limit.
-    pub current_trip: Option<Ampere>,
+/// How the firmware drives a VBUS switch. The limits apply to the receptacle VBUS (`meter.reading`). More modes
+/// come later (`Auto` with PD negotiation); a host reads one it doesn't know as `Unknown`.
+#[derive_shrink_wrap(borrowed, owned(feature = "std"), derive(Clone, Debug, PartialEq), ww_repr = nib)]
+pub enum VbusMode {
+    /// Off.
+    ForceOff,
+    /// On while VBUS stays under `max_voltage`; above it off, reported as `Tripped(OverVoltage)`. Hosts default to
+    /// 5.5 V.
+    ForceOn { max_voltage: Volt },
+    /// On, and off when any limit is exceeded, reported as `Tripped(..)`. The computer -> DUT path has no hardware
+    /// current limit.
+    Auto {
+        max_voltage: Volt,
+        max_current: Ampere,
+        max_power: Watt,
+    },
 }
 
 /// Errors of the VBUS switches.
@@ -257,7 +263,7 @@ pub enum PowerError<'i> {
     /// {0}
     #[common]
     Common(CommonError<'i>),
-    /// VBUS_IN is above the guard's maximum.
+    /// VBUS_IN is above the mode's maximum.
     OverVoltage { measured: Volt },
 }
 

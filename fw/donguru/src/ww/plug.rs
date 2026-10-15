@@ -15,18 +15,18 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn plug_vbus_on(
+    pub(super) async fn set_plug_vbus_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _guard: donguru_api::VbusGuard,
-    ) -> RpcResult<Result<donguru_api::VbusState, donguru_api::PowerError<'_>>> {
+        _value: donguru_api::VbusMode,
+    ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
         Unimplemented.into()
     }
 
-    pub(super) async fn plug_vbus_off(
+    pub(super) async fn get_plug_vbus_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> RpcResult<donguru_api::VbusState> {
+    ) -> GetResult<donguru_api::VbusMode, wire_weaver::ww_error::CommonError<'_>> {
         Unimplemented.into()
     }
 

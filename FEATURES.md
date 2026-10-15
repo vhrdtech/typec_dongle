@@ -254,8 +254,10 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   and the `const` items (minimal: no build id, git or build time yet, API-9); every other item answers
   `Unimplemented`; `uart[0..2]`, `i2c[0..2]`, `gpio[0..2].pin[0..4]` are valid indices. Tested 15 Oct 2026 on B153A:
   `ww introspect` shows the tree, the moved items read and write, `plug.orientation` observed end to end with a
-  generated client. Open: a CMSIS-DAP `probe-rs` read of B129A with `plug.orientation` (the DUT had no power on the
-  bench, decision pending), so 🧪. `ww info` ends with an error from `ww` itself (double disconnect, wire_weaver).
+  generated client. Plug and header VBUS are modes (`plug.vbus_mode`, `header.vbus_sw_mode`: `ForceOff` /
+  `ForceOn` / `Auto` with limits; `device.settings.plug_vbus_at_boot` replaces the `plug-vbus-on` feature once
+  implemented, API-11). Open: a CMSIS-DAP `probe-rs` read of B129A with `plug.orientation` (B129A is fed only
+  through the plug, so it waits for API-11's `vbus_mode`), so 🧪. `ww info` ends with an error from `ww` itself (double disconnect, wire_weaver).
 
 - 📋 **API-8 API tree 0.2.0**: `donguru_api` 0.2.0 with every level declared (`device`, `leds`, `meter`, `plug`,
   `header`, `sbu`, `inputs`, `hub`, `swd`, `uart[]`, `i2c[]`, `gpio[]`, `adc`, `debug`), the 0.1 root items moved

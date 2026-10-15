@@ -153,7 +153,7 @@ impl ServerState {
     pub(super) async fn set_device_settings_plug_vbus_at_boot(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _value: bool,
+        _value: donguru_api::VbusMode,
     ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
         Unimplemented.into()
     }
@@ -161,7 +161,7 @@ impl ServerState {
     pub(super) async fn get_device_settings_plug_vbus_at_boot(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<bool, wire_weaver::ww_error::CommonError<'_>> {
+    ) -> GetResult<donguru_api::VbusMode, wire_weaver::ww_error::CommonError<'_>> {
         Unimplemented.into()
     }
 
