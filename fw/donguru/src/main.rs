@@ -78,7 +78,7 @@ assign_resources! {
         pc14: PC14,
     }
     swd: SwdResources {
-        /// SBU1 net, plug side of the level shifter (hw_b153a.md §8): SWCLK in [`donguru_api::SwdOrientation::Normal`],
+        /// SBU1 net, plug side of the level shifter (hw_b153a.md §8): SWCLK in [`donguru_api::Orientation::Normal`],
         /// SWDIO swapped. R211/R212 (the 0 Ω bypass to PB8/PB6) are not fitted on B153A (checked on the bench 12 Oct
         /// 2026), so this is the only MCU pin wired straight to the plug SBU1. PB8 is the SPI mode's, below.
         pa1: PA1,
@@ -181,10 +181,10 @@ async fn main(spawner: embassy_executor::Spawner) {
     let hub = hub::bring_up(r.hub).await;
     spawner.spawn(unwrap!(hub::watchdog_task(hub)));
 
-    // Composite USB device (FS, HSI48 clock above): WireWeaver and CMSIS-DAP v2 (FW-15), see src/ww.rs.
+    // Composite USB device (FS, HSI48 clock above): WireWeaver and CMSIS-DAP v2 (FW-15), see src/ww/mod.rs.
     let usb_driver = usb::Driver::new(r.usb.usb, Irqs, r.usb.pa12, r.usb.pa11);
     let swd_host = swd::SwdHost::new(r.swd);
-    ww::start(spawner, usb_driver, ww::ServerState {}, swd_host);
+    ww::start(spawner, usb_driver, swd_host);
 
     info!("init done");
 }

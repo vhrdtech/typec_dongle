@@ -67,15 +67,15 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 📋 **FW-13 HardFault handling for production**: reset instead of looping (TODO in `HardFault`); the backup-register
   counter already records the fault.
 - ✅ **FW-15 SWD-host over the plug SBU lines**: CMSIS-DAP v2 (bulk, `src/cmsis_dap.rs`) on a composite USB device
-  alongside WireWeaver (`src/ww.rs`), carrying `dap_rs`'s command processor over a GPIO bit-bang SWD driver
+  alongside WireWeaver (`src/ww/`), carrying `dap_rs`'s command processor over a GPIO bit-bang SWD driver
   (`src/swd.rs`: SWCLK/SWDIO on PA1/PA0, the SBU side of the TXS0102 level shifter, orientation-swappable, SWCLK
   clamped 10 kHz..4 MHz since FW-20, default 400 kHz). R211/R212 (the shifter bypass to PB8/PB6) are not fitted on B153A, so
   the driver goes around the shifter: `SBU_OE` (PB2) and `SBU_PU_EN` (PC15) always low, V_SBU at 3.3 V (PD3 high),
   so 3.3 V targets only. No hardware reset line (NRESET/NTRST): `SWJ_Pins` reports it as never asserted. JTAG and
-  SWO not wired (SWD only). Orientation is a runtime setting (`DonguruApi::swd_orientation`, API-4), not
+  SWO not wired (SWD only). Orientation is a runtime setting (`plug.orientation`, API-4), not
   auto-detected from CC polarity. The SWD-host pins go Hi-Z on a clean `DAP_Disconnect` and also when the CMSIS-DAP
   v2 endpoints get disabled (USB reset/suspend, probe-rs or its process going away without disconnecting
-  cleanly), not just on an explicit `DonguruApi::swd_release` (`src/cmsis_dap.rs::dap_task`): a bench harness only
+  cleanly), not just on an explicit `sbu.release` (`src/cmsis_dap.rs::dap_task`): a bench harness only
   has to end the probe-rs session, one way or another, before cutting the DUT's power.
   Tested 12 Oct 2026 on B153A + B129A (CANnify Micro, STM32G0B1) with probe-rs: reads at 100 kHz, 400 kHz and
   1 MHz (16 KB in about 2 s), both cable orientations (flipped = `Swapped`), pins Hi-Z after disconnect.
@@ -83,7 +83,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - ✅ **FW-17 Plug CC drive for SWD-host**: stopgap, hardcoded (`src/swd.rs`, `src/cmsis_dap.rs`; P2534#12oct-1338b).
   PD0/PD2 (UCPD2_CC1/CC2; B153A has no DPO2036, hw_b153a.md §0, so these reach the plug CC directly) are driven
   push-pull high on a successful `DAP_Connect` and released to Hi-Z together with SWCLK/SWDIO on `DAP_Disconnect`,
-  CMSIS-DAP v2 endpoint disable and `swd_release` — a downstream board such as B129A gates its SBU->SWD mux on CC
+  CMSIS-DAP v2 endpoint disable and `sbu.release` — a downstream board such as B129A gates its SBU->SWD mux on CC
   voltage and would otherwise never route its SBU lines to the MCU, and a driven CC left up after a session would
   back-feed an unpowered DUT through the gating comparators. Not a real CC/PD role: no Rp/Rd, no UCPD2 involved;
   the follow-up (proper CC/PD handling) is tracked on the tpm task. Tested 12 Oct 2026: B129A's `SWD_SEL` (TP1)
@@ -125,9 +125,9 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
     or after 10 ms of silence.
   - A response that is an exact multiple of 64 bytes and shorter than 512 gets a zero-length packet (probe-rs
     reads more than the response holds); the host gets 1 s to read a response (`dap_response_timeouts`), then the
-    task goes back to listening, so `swd_release` is never stuck behind a host that stopped reading.
+    task goes back to listening, so `sbu.release` is never stuck behind a host that stopped reading.
 
-  Hi-Z on `DAP_Disconnect`, on endpoint disable and on `swd_release` is unchanged.
+  Hi-Z on `DAP_Disconnect`, on endpoint disable and on `sbu.release` is unchanged.
   Tested 13 Oct 2026 on B153A + B129A (omarchy-m1, probe-rs 0.32, release build with `plug-vbus-on`, before =
   0.4.1): the link works and is clean, but the gain is about 9 %, not the 4-5x expected. 64 KB of B129 flash at
   1000 kHz: 7.7 s -> 7.05 s with 32-bit accesses (`probe-rs read b32`), 30.3 s -> 27.3 s with 8-bit, bytes
@@ -182,8 +182,8 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   sequences (any bit count) and clocks under 250 kHz (`src/swd.rs`, "SPI-driven SWD"). SPI clock = 64 MHz / 2^n,
   never above the request, cap 4 MHz (`SPI_MAX_HZ`). Normal orientation only: SBU1_VT has no MISO
   pin, a swapped cable falls back to the direct bit-bang. Every release (`DAP_Disconnect`, endpoint disable,
-  `swd_release`) takes `SBU_OE` low first (its 10K pull-ups on both sides go with it), then PB6/PB8/PB11 Hi-Z and
-  SPI2 off; switching back to bit-bang does the same. Selected at run time with `swd_mode`, or at boot with the
+  `sbu.release`) takes `SBU_OE` low first (its 10K pull-ups on both sides go with it), then PB6/PB8/PB11 Hi-Z and
+  SPI2 off; switching back to bit-bang does the same. Selected at run time with `swd.mode`, or at boot with the
   firmware feature `swd-spi` (the CLI has no command for it yet, CLI-17). ⚠️ Not for a board with R211/R212 fitted.
   Tested 13 Oct 2026 on B153A + B129A (release build with `plug-vbus-on,swd-spi`, by the parent session): 64 KB
   reads identical at 100 / 1000 / 2000 / 4000 kHz in 10.02 / 1.86 / 1.40 / 1.24 s, 8000 kHz fails (protocol
@@ -207,7 +207,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   (`usb251xb::Variant`, port count, D+/D- swap mask for FW-6) from the detected variant instead of a hardcoded
   Main constant; the pure mapping and config builder are host-unit-tested for both variants (`donguru_hub`,
   `just test`), including the not-yet-built Plus. Variant exposed read-only over WireWeaver
-  (`DonguruApi::board_variant`, API-7, FW-11 hw_info). Tested 14 Oct 2026 on B153A (J-Link via omarchy-m1,
+  (`device.variant`, API-7, FW-11 hw_info). Tested 14 Oct 2026 on B153A (J-Link via omarchy-m1,
   P2534#14oct-1439): reads PA10 high → `BoardVariant::Main` on 2 cold power-cycles (true replug, J-Link VTref
   0.00 V between them) and 2 debugger-forced resets, hub attaching correctly every time. 🧪 because Plus is
   untested hardware.
@@ -219,7 +219,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   messages: 152 round trips/s, 373 kB/s host -> device, 316 kB/s device -> host). Done: flash prefetch on
   (`main.rs`, embassy-stm32 0.6 leaves it off on the G0); release `opt-level = 3` instead of "z" (~40% faster
   here); wire_weaver TR-12 (U2Head byte fast path, replies flushed when no request waits); double-buffered bulk
-  endpoints (`ww.rs`, `WireWeaverClass::with_endpoints`) from embassy-rs/embassy#7275, through a git dependency on
+  endpoints (`src/ww/mod.rs`, `WireWeaverClass::with_endpoints`) from embassy-rs/embassy#7275, through a git dependency on
   the romixlab/embassy `donguru-0.6-double-buffer` branch (`fw/donguru/Cargo.toml` `[patch.crates-io]`). Release
   build now: 1 KB 335 round trips/s, 664-676 kB/s host -> device, 520 kB/s device -> host; 64 B 2400-2500 round
   trips/s, 540 kB/s each way. Tested 15 Oct 2026 on B153A. Open: back to crates.io embassy once #7275 is released;
@@ -230,22 +230,32 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 📋 **FW-14 Switched VBUS on the header** (J101 pin 10, PD1 `5V_EN`, net to be renamed VBUS_SW): it is the computer's
   VBUS as it is, 5 V or up to 20 V after PD. Off at boot; report the receptacle voltage (PA3) with the state; turn it
   off when VBUS changes unless the user allowed a higher voltage. ^revB
-- 🧪 **API-1 WireWeaver over USB**: `DonguruApi` served by `fw/donguru/src/ww.rs` (USB FS, VID:PID `c0de:cafe`, API
-  id in a string descriptor for `ww list`). Built against the local wire_weaver checkout; not yet tested with
-  `ww list` on hardware.
-- ✅ **API-2 `led_on` / `led_off`**: status LED only, the template's example methods.
+- ✅ **API-1 WireWeaver over USB**: `DonguruApi` served by `fw/donguru/src/ww/` (USB FS, VID:PID `c0de:cafe`, API
+  id in a string descriptor for `ww list`). Fixed endpoint registers: EP1 OUT / EP2 IN WireWeaver (double-buffered),
+  EP3 CMSIS-DAP (API-8). Tested 15 Oct 2026 on B153A with `ww list` / `ww introspect`.
 - 📋 **API-3 Full API**: ports (power, data), power meter readings and streams, button / switch events, USART bridge,
   GPIO, I2C, device info; designed together with the CLI command tree. ^revB
   Planned 15 Oct 2026 (P2534#15oct-2031): `donguru_api` 0.2.0 with the whole tree declared, then one item per level
   below (API-8..API-18); the design is kept in tpm (P2534 `design/api-v1.md`).
-- 🧪 **API-4 `swd_orientation` / `swd_release`**: SWD-host cable orientation (rw property) and the Hi-Z disconnect
-  for the bench power-cut test (FW-15). `donguru_api` 0.1.1.
-- 🧪 **API-5 `swd_mode`**: rw property, `SwdMode::BitBang` (default) or `SwdMode::Spi` (FW-21), next to
-  `swd_orientation`; takes effect on the next SWD transfer. Additive, `donguru_api` 0.1.2: older hosts keep working.
-  A mode from a newer host (read as `SwdMode::Unknown`, wire_weaver SW-47) is refused, the current one stays.
-- 🧪 **API-7 `board_variant`**: ro property, `BoardVariant::Main` / `Plus` / `Unknown` (FW-22), for host tooling
-  and future `hw_info` (FW-11). Additive, `donguru_api` 0.1.3: older hosts keep working.
-  A variant from a newer firmware reads as `BoardVariant::Other(n)` on the host (`future_version = Other`, SW-47).
+- 🧪 **API-4 `plug.orientation` / `sbu.release`** (were `swd_orientation` / `swd_release`, moved in 0.2.0, API-8):
+  cable orientation of everything on SBU (rw + observe, `Auto` / `Normal` / `Swapped`; `Auto` acts as `Normal` until
+  CC detection) and the Hi-Z disconnect for the bench power-cut test (FW-15). Only the SWD-host uses them so far.
+- 🧪 **API-5 `swd.mode`** (was `swd_mode`, moved in 0.2.0): `SwdMode::BitBang` (default) or `SwdMode::Spi` (FW-21);
+  takes effect on the next SWD transfer. A mode from a newer host (read as `SwdMode::Unknown`, wire_weaver SW-47) is
+  refused with `InvalidArgument`, the current one stays.
+- 🧪 **API-7 `device.variant`** (was `board_variant`, moved in 0.2.0): ro property, `BoardVariant::Main` / `Plus` /
+  `Unknown` (FW-22); also the variant of `device.board.BOARD`. A variant from a newer firmware reads as
+  `BoardVariant::Other(n)` on the host (`future_version = Other`, SW-47).
+- 🧪 **API-8 API tree 0.2.0**: `donguru_api` 0.2.0 declares the whole v1 tree (design: tpm
+  `prj/P2534-donguru/design/api-v1.md`): `device` (contract traits, `variant`, `settings`), `leds`, `meter`, `plug`,
+  `header`, `sbu`, `inputs`, `hub`, `swd`, `uart[]`, `i2c[]`, `gpio[]`, `adc`, `debug`. Handlers in one module per
+  level (`fw/donguru/src/ww/`); observed properties served by `poll_properties` in the server task; `debug` behind
+  the `debug-api` cargo feature (on by default). Implemented: the moved items (API-4, API-5, API-7), `debug.led_set`
+  and the `const` items (minimal: no build id, git or build time yet, API-9); every other item answers
+  `Unimplemented`; `uart[0..2]`, `i2c[0..2]`, `gpio[0..2].pin[0..4]` are valid indices. Tested 15 Oct 2026 on B153A:
+  `ww introspect` shows the tree, the moved items read and write, `plug.orientation` observed end to end with a
+  generated client. Open: a CMSIS-DAP `probe-rs` read of B129A with `plug.orientation` (the DUT had no power on the
+  bench, decision pending), so 🧪. `ww info` ends with an error from `ww` itself (double disconnect, wire_weaver).
 
 - 📋 **API-8 API tree 0.2.0**: `donguru_api` 0.2.0 with every level declared (`device`, `leds`, `meter`, `plug`,
   `header`, `sbu`, `inputs`, `hub`, `swd`, `uart[]`, `i2c[]`, `gpio[]`, `adc`, `debug`), the 0.1 root items moved
@@ -344,4 +354,5 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 
 ## Dropped and superseded
 
-(none yet)
+- **API-2 `led_on` / `led_off`** (status LED, the template's example methods): replaced in 0.2.0 by `debug.led_set`
+  (raw LEDs, API-8) and `leds` (`ww_indication`, API-9).

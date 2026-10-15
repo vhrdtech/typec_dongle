@@ -38,11 +38,29 @@ donguru_hub = { path = "../../donguru_hub" }
 donguru_api = { path = "../../donguru_api", features = ["defmt"] }
 wire_weaver = { path = "../../../wire_weaver/wire_weaver", default-features = false, features = ["defmt"] }
 ww_client_server = { path = "../../../wire_weaver/ww_stdlib/ww_client_server", default-features = false }
+# observe tables and stream states of the generated server (SRV-18, counted and reliable streams)
+ww_stream = { path = "../../../wire_weaver/ww_stream", default-features = false }
+# stdlib traits the API implements (`donguru_api` depends on them too): types in the handler signatures
+ww_si = { path = "../../../wire_weaver/ww_stdlib/ww_si", default-features = false, features = ["time", "electrical", "mechanical", "thermal", "i32", "u32"] }
+ww_adc = { path = "../../../wire_weaver/ww_stdlib/ww_adc", default-features = false }
+ww_board_info = { path = "../../../wire_weaver/ww_stdlib/ww_board_info", default-features = false }
+ww_counters = { path = "../../../wire_weaver/ww_stdlib/ww_counters", default-features = false }
+ww_firmware_info = { path = "../../../wire_weaver/ww_stdlib/ww_firmware_info", default-features = false }
+ww_gpio = { path = "../../../wire_weaver/ww_stdlib/ww_gpio", default-features = false }
+ww_i2c = { path = "../../../wire_weaver/ww_stdlib/ww_i2c", default-features = false }
+ww_indication = { path = "../../../wire_weaver/ww_stdlib/ww_indication", default-features = false }
+ww_log = { path = "../../../wire_weaver/ww_stdlib/ww_log", default-features = false }
+ww_uart = { path = "../../../wire_weaver/ww_stdlib/ww_uart", default-features = false }
+ww_uid = { path = "../../../wire_weaver/ww_stdlib/ww_uid", default-features = false }
+ww_user_info = { path = "../../../wire_weaver/ww_stdlib/ww_user_info", default-features = false }
 wire_weaver_usb_embassy = { path = "../../../wire_weaver/mcu/wire_weaver_usb_embassy" }
 usb251xb = { version = "0.1.0", default-features = false, features = ["async", "defmt"] }
 
 [features]
-default = ["debug-button"]
+default = ["debug-button", "debug-api"]
+# the `debug` level of the API (bring-up and production test, API-18); without it the level answers Unimplemented,
+# the API stays the same (decision D2). Can be cut if flash gets scarce.
+debug-api = []
 # periodic ADC readings in the debug log
 debug-adc = []
 # switch / button state changes in the debug log

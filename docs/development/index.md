@@ -76,7 +76,7 @@ connect/program cycle relies on the target's own power-on or a software reset, n
    (Linux) or Device Manager (Windows) should show a second interface string containing `CMSIS-DAP`
    (`src/cmsis_dap.rs`'s `INTERFACE_STRING`).
 4. **Orientation, normal first**: with the breakout in its first orientation, try the `probe-rs` command below. If
-   it fails, flip the breakout (or send `DonguruApi::swd_orientation = Swapped` once CLI-17 is wired up) and retry
+   it fails, flip the breakout (or send `plug.orientation = Swapped` once CLI-17 is wired up) and retry
    before assuming a wiring fault.
 5. **Scope SWCLK/SWDIO**: confirm the waveform is clean at the default 400 kHz (`src/swd.rs::DEFAULT_FREQUENCY_HZ`)
    — no excessive ringing, correct levels (3.3 V, R211/R212 bypass the level shifter so OE must stay low, see the

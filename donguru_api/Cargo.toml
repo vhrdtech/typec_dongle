@@ -1,16 +1,43 @@
 [package]
 name = "donguru_api"
-version = "0.1.4" # identifies the API on the wire, bump with every change
+version = "0.2.0" # identifies the API on the wire, bump with every change
 edition.workspace = true
 license.workspace = true
 description = "WireWeaver API of the donguru firmware"
 
 [features]
 # owned (alloc) variants of the API types, for host-side users
-std = ["wire_weaver/std"]
+std = [
+    "wire_weaver/std",
+    "ww_si/std",
+    "ww_adc/std",
+    "ww_board_info/std",
+    "ww_counters/std",
+    "ww_firmware_info/std",
+    "ww_gpio/std",
+    "ww_i2c/std",
+    "ww_indication/std",
+    "ww_log/std",
+    "ww_uart/std",
+    "ww_uid/std",
+    "ww_user_info/std",
+]
 defmt = ["wire_weaver/defmt", "dep:defmt"]
 
 [dependencies]
 defmt = { version = "1.1", optional = true }
 # local checkout next to this repo (~/git/wire_weaver)
 wire_weaver = { path = "../../wire_weaver/wire_weaver", default-features = false }
+ww_si = { path = "../../wire_weaver/ww_stdlib/ww_si", default-features = false, features = ["time", "electrical", "mechanical", "thermal"] }
+# stdlib traits implemented by the API (device contract, indication, IO family)
+ww_adc = { path = "../../wire_weaver/ww_stdlib/ww_adc", default-features = false }
+ww_board_info = { path = "../../wire_weaver/ww_stdlib/ww_board_info", default-features = false }
+ww_counters = { path = "../../wire_weaver/ww_stdlib/ww_counters", default-features = false }
+ww_firmware_info = { path = "../../wire_weaver/ww_stdlib/ww_firmware_info", default-features = false }
+ww_gpio = { path = "../../wire_weaver/ww_stdlib/ww_gpio", default-features = false }
+ww_i2c = { path = "../../wire_weaver/ww_stdlib/ww_i2c", default-features = false }
+ww_indication = { path = "../../wire_weaver/ww_stdlib/ww_indication", default-features = false }
+ww_log = { path = "../../wire_weaver/ww_stdlib/ww_log", default-features = false }
+ww_uart = { path = "../../wire_weaver/ww_stdlib/ww_uart", default-features = false }
+ww_uid = { path = "../../wire_weaver/ww_stdlib/ww_uid", default-features = false }
+ww_user_info = { path = "../../wire_weaver/ww_stdlib/ww_user_info", default-features = false }

@@ -474,15 +474,40 @@ dependencies = [
  "usb251xb",
  "wire_weaver",
  "wire_weaver_usb_embassy",
+ "ww_adc",
+ "ww_board_info",
  "ww_client_server",
+ "ww_counters",
+ "ww_firmware_info",
+ "ww_gpio",
+ "ww_i2c",
+ "ww_indication",
+ "ww_log",
+ "ww_si",
+ "ww_stream",
+ "ww_uart",
+ "ww_uid",
+ "ww_user_info",
 ]
 
 [[package]]
 name = "donguru_api"
-version = "0.1.4"
+version = "0.2.0"
 dependencies = [
  "defmt 1.1.1",
  "wire_weaver",
+ "ww_adc",
+ "ww_board_info",
+ "ww_counters",
+ "ww_firmware_info",
+ "ww_gpio",
+ "ww_i2c",
+ "ww_indication",
+ "ww_log",
+ "ww_si",
+ "ww_uart",
+ "ww_uid",
+ "ww_user_info",
 ]
 
 [[package]]
@@ -1973,12 +1998,45 @@ dependencies = [
 ]
 
 [[package]]
+name = "ww_adc"
+version = "0.1.0"
+dependencies = [
+ "wire_weaver",
+ "ww_numeric",
+ "ww_si",
+]
+
+[[package]]
+name = "ww_board_info"
+version = "0.1.0"
+dependencies = [
+ "wire_weaver",
+ "ww_date_time",
+]
+
+[[package]]
 name = "ww_client_server"
 version = "0.2.0"
 dependencies = [
  "wire_weaver",
  "ww_global",
  "ww_si",
+]
+
+[[package]]
+name = "ww_counters"
+version = "0.1.0"
+dependencies = [
+ "wire_weaver",
+ "ww_error",
+ "ww_si",
+]
+
+[[package]]
+name = "ww_date_time"
+version = "0.1.0"
+dependencies = [
+ "shrink_wrap",
 ]
 
 [[package]]
@@ -2004,6 +2062,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ww_firmware_info"
+version = "0.1.0"
+dependencies = [
+ "wire_weaver",
+ "ww_date_time",
+ "ww_si",
+ "ww_version",
+]
+
+[[package]]
 name = "ww_framer"
 version = "0.5.0"
 dependencies = [
@@ -2023,6 +2091,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "ww_gpio"
+version = "0.1.0"
+dependencies = [
+ "wire_weaver",
+ "ww_si",
+]
+
+[[package]]
+name = "ww_i2c"
+version = "0.1.0"
+dependencies = [
+ "wire_weaver",
+ "ww_si",
+]
+
+[[package]]
+name = "ww_indication"
+version = "0.1.0"
+dependencies = [
+ "wire_weaver",
+ "ww_si",
+]
+
+[[package]]
 name = "ww_link"
 version = "0.5.0"
 dependencies = [
@@ -2032,6 +2124,13 @@ dependencies = [
  "ww_framer",
  "ww_global",
  "ww_version",
+]
+
+[[package]]
+name = "ww_log"
+version = "0.1.0"
+dependencies = [
+ "wire_weaver",
 ]
 
 [[package]]
@@ -2060,6 +2159,38 @@ version = "0.1.0"
 dependencies = [
  "shrink_wrap",
  "ww_numeric",
+]
+
+[[package]]
+name = "ww_stream"
+version = "0.5.0"
+dependencies = [
+ "wire_weaver",
+ "ww_client_server",
+ "ww_si",
+]
+
+[[package]]
+name = "ww_uart"
+version = "0.1.0"
+dependencies = [
+ "wire_weaver",
+ "ww_si",
+]
+
+[[package]]
+name = "ww_uid"
+version = "0.1.0"
+dependencies = [
+ "wire_weaver",
+]
+
+[[package]]
+name = "ww_user_info"
+version = "0.1.0"
+dependencies = [
+ "wire_weaver",
+ "ww_error",
 ]
 
 [[package]]

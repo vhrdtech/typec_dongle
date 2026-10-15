@@ -13,8 +13,9 @@ WireWeaver layout (`<api>/` + `firmware/` side by side), this repo keeps:
   types (`#[derive_shrink_wrap]`). A member of the repo-root Cargo workspace (host tools use it with `std`). Its name +
   version identify the API on the wire: bump the version with every change and follow WireWeaver's
   `docs/evolution/rules.md` so deployed devices and hosts keep working together.
-- `fw/donguru/` (this directory) — the firmware, a standalone crate; `src/ww.rs` implements the API on `ServerState`
-  (`ww_codegen!`) and runs the USB server. The USB driver is created in `src/main.rs` and handed to `ww::start`.
+- `fw/donguru/` (this directory) — the firmware, a standalone crate; `src/ww/` implements the API on `ServerState`
+  (`ww_codegen!` in `src/ww/mod.rs`, one handler module per level of the API tree) and runs the USB server. The
+  USB driver is created in `src/main.rs` and handed to `ww::start`.
 
 WireWeaver crates come from the local checkout next to this repo (`~/git/wire_weaver`, relative path deps).
 Its `AGENTS.md` and `docs/` explain the API DSL (methods, properties, streams) and the wire format.

@@ -4,7 +4,7 @@
 //! Wiring (`hw/b153_typec_serial/doc/hw_b153a.md` §8, "SWD as host"): R211/R212, the 0 Ω bypass of the TXS0102
 //! level shifter, are not fitted on B153A (checked on the bench 12 Oct 2026: PB8/PB6 don't reach PA1/PA0), so
 //! the driver works on the SBU side of the shifter, the only MCU pins wired straight to the plug:
-//! * SBU1 net (PA1): SWCLK in [`SwdOrientation::Normal`], SWDIO in [`SwdOrientation::Swapped`].
+//! * SBU1 net (PA1): SWCLK in [`Orientation::Normal`], SWDIO in [`Orientation::Swapped`].
 //! * SBU2 net (PA0): SWDIO in `Normal`, SWCLK in `Swapped`.
 //! In this default bit-bang mode the `_VT` pins (PB6..PB11) stay inputs, so it also works on a board with the bypass
 //! fitted. The SPI mode (FW-21, [`SwdMode::Spi`], "SPI-driven SWD" below) is the other way round: SPI2 on the `_VT`
@@ -17,10 +17,10 @@
 //! (PC15, the switched 3K3 pull-ups) is always driven low; the bit-bang driver supplies its own weak pull during
 //! SWD turnaround and goes fully floating on [`release`].
 //!
-//! Orientation is a plain setting (no auto-detect yet: that would need UCPD2 CC polarity on the plug, not wired
-//! up by any module today). It is a global, not part of the pin driver's state, so [`set_orientation`] can take
-//! effect without reaching into the `dap_rs::Dap` state machine, which owns the pins while a CMSIS-DAP host is
-//! connected.
+//! Orientation is a plain setting (`plug.orientation`; `Auto` acts as `Normal`: no auto-detect yet, that would
+//! need UCPD2 CC polarity on the plug, not wired up by any module today). It is a global, not part of the pin
+//! driver's state, so [`set_orientation`] can take effect without reaching into the `dap_rs::Dap` state machine,
+//! which owns the pins while a CMSIS-DAP host is connected.
 //!
 //! `dap_rs` is used for CMSIS-DAP command processing (request parsing, transfer retries, ack/parity handling) but
 //! not its `usb` module: that targets the separate `usb-device` crate, incompatible with the `embassy-usb` stack
@@ -41,7 +41,7 @@
 
 use core::arch::asm;
 use core::ptr::write_volatile;
-use core::sync::atomic::{AtomicBool, Ordering};
+use core::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 
 use cnt::cnt;
 use cortex_m::asm::delay as cycle_delay;
@@ -49,7 +49,7 @@ use dap_rs::dap::{Dap, DapLeds, HostStatus};
 use dap_rs::swd::{self, APnDP, DPRegister, RnW};
 use dap_rs::swj::{self, Dependencies};
 use dap_rs::{jtag, swo};
-use donguru_api::{SwdMode, SwdOrientation};
+use donguru_api::{Orientation, SwdMode};
 use donguru_dap::swclk::{Halves, KernelCost, spi_prescaler};
 use embassy_stm32::Peri;
 use embassy_stm32::gpio::{Flex, Level, Output, Pull, Speed};
@@ -81,26 +81,38 @@ const PIN_A: u32 = 1;
 /// GPIOA pin of the SBU2 net (PA0).
 const PIN_B: u32 = 0;
 
-/// `false` = [`SwdOrientation::Normal`], `true` = [`SwdOrientation::Swapped`]. A global rather than part of the
-/// pin driver's state: see the module doc.
-static ORIENTATION_SWAPPED: AtomicBool = AtomicBool::new(false);
+/// The orientation set through `plug.orientation` (API-8): 0 = [`Orientation::Auto`], 1 = [`Orientation::Normal`],
+/// 2 = [`Orientation::Swapped`]. A global rather than part of the pin driver's state: see the module doc.
+static ORIENTATION: AtomicU8 = AtomicU8::new(0);
 
-pub fn set_orientation(orientation: SwdOrientation) {
-    ORIENTATION_SWAPPED.store(orientation == SwdOrientation::Swapped, Ordering::Relaxed);
+pub fn set_orientation(orientation: Orientation) {
+    let v = match orientation {
+        Orientation::Auto => 0,
+        Orientation::Normal => 1,
+        Orientation::Swapped => 2,
+    };
+    ORIENTATION.store(v, Ordering::Relaxed);
 }
 
-pub fn orientation() -> SwdOrientation {
-    if ORIENTATION_SWAPPED.load(Ordering::Relaxed) {
-        SwdOrientation::Swapped
-    } else {
-        SwdOrientation::Normal
+/// The orientation as set, `Auto` included.
+pub fn orientation() -> Orientation {
+    match ORIENTATION.load(Ordering::Relaxed) {
+        1 => Orientation::Normal,
+        2 => Orientation::Swapped,
+        _ => Orientation::Auto,
     }
+}
+
+/// The SBU lines are swapped: [`Orientation::Swapped`]. `Auto` acts as `Normal` until CC detection is used
+/// (P2534#12oct-1338b).
+fn swapped() -> bool {
+    ORIENTATION.load(Ordering::Relaxed) == 2
 }
 
 static RELEASE_REQUEST: Signal<CriticalSectionRawMutex, ()> = Signal::new();
 static RELEASE_DONE: Signal<CriticalSectionRawMutex, ()> = Signal::new();
 
-/// Release the SWD-host pins to Hi-Z, independent of any CMSIS-DAP session (`DonguruApi::swd_release`, FW-15).
+/// Release the SWD-host pins to Hi-Z, independent of any CMSIS-DAP session (`sbu.release`, FW-15).
 /// Waits for `src/cmsis_dap.rs`'s task to have actually done it, so a caller about to cut the DUT's power can
 /// rely on it.
 pub async fn release() {
@@ -305,7 +317,17 @@ impl Calibration {
             };
             let cost = |kernel: &dyn Fn(Halves, u32)| {
                 let (fast, slow) = (1, 1 + KernelCost::EXTRA);
-                let sample = |spins: u32, bits: u32| time(&|| kernel(Halves { lo: spins, hi: spins }, bits));
+                let sample = |spins: u32, bits: u32| {
+                    time(&|| {
+                        kernel(
+                            Halves {
+                                lo: spins,
+                                hi: spins,
+                            },
+                            bits,
+                        )
+                    })
+                };
                 let n = KernelCost::BATCH;
                 KernelCost::from_samples(
                     sample(fast, n),
@@ -372,10 +394,16 @@ impl Bus {
     fn dio_drive(&self, level: bool) {
         let d = self.dio_pin as usize;
         cortex_m::interrupt::free(|_| {
+            self.port.bsrr().write(|w| {
+                if level {
+                    w.set_bs(d, true)
+                } else {
+                    w.set_br(d, true)
+                }
+            });
             self.port
-                .bsrr()
-                .write(|w| if level { w.set_bs(d, true) } else { w.set_br(d, true) });
-            self.port.moder().modify(|w| w.set_moder(d, vals::Moder::OUTPUT));
+                .moder()
+                .modify(|w| w.set_moder(d, vals::Moder::OUTPUT));
         });
     }
 
@@ -383,7 +411,11 @@ impl Bus {
     /// [`SwdPins::engage`]), the level shifter's 10K ones on the shifter side.
     fn dio_release(&self) {
         let d = self.dio_pin as usize;
-        cortex_m::interrupt::free(|_| self.port.moder().modify(|w| w.set_moder(d, vals::Moder::INPUT)));
+        cortex_m::interrupt::free(|_| {
+            self.port
+                .moder()
+                .modify(|w| w.set_moder(d, vals::Moder::INPUT))
+        });
     }
 }
 
@@ -545,8 +577,14 @@ impl SwdPins {
             shifted: false,
             spi_br: spi_prescaler(PCLK_HZ, DEFAULT_FREQUENCY_HZ.min(SPI_MAX_HZ)),
             cal: Calibration {
-                out: KernelCost { base: 0, per_spin: 1 },
-                inp: KernelCost { base: 0, per_spin: 1 },
+                out: KernelCost {
+                    base: 0,
+                    per_spin: 1,
+                },
+                inp: KernelCost {
+                    base: 0,
+                    per_spin: 1,
+                },
             },
             timing: Timing {
                 out: Halves { lo: 1, hi: 1 },
@@ -572,7 +610,7 @@ impl SwdPins {
     }
 
     fn swapped(&self) -> bool {
-        ORIENTATION_SWAPPED.load(Ordering::Relaxed)
+        swapped()
     }
 
     /// The shifter side carries this transfer: SPI mode asked for, and a cable it works with.
@@ -620,7 +658,11 @@ impl SwdPins {
     /// the line idles high while released (turnaround), matching the bus convention (the board's own pull-ups
     /// are switched, off by default, see `SBU_PU_EN` in the module doc).
     fn engage_direct(&self) -> Bus {
-        let (clk_pin, dio_pin) = if self.swapped() { (PIN_B, PIN_A) } else { (PIN_A, PIN_B) };
+        let (clk_pin, dio_pin) = if self.swapped() {
+            (PIN_B, PIN_A)
+        } else {
+            (PIN_A, PIN_B)
+        };
         let (c, d) = (clk_pin as usize, dio_pin as usize);
         let gpio = pac::GPIOA;
         cortex_m::interrupt::free(|_| {
@@ -700,7 +742,8 @@ impl SwdPins {
         } else {
             cortex_m::interrupt::free(|_| {
                 gpio.bsrr().write(|w| w.set_br(PB_SCK, true));
-                gpio.moder().modify(|w| w.set_moder(PB_SCK, vals::Moder::OUTPUT));
+                gpio.moder()
+                    .modify(|w| w.set_moder(PB_SCK, vals::Moder::OUTPUT));
             });
         }
         Bus {
@@ -750,7 +793,13 @@ impl SwdPins {
     /// One ARM ADIv5 SWD register transaction: 8-bit request, turnaround, 3-bit ack, then (on ack OK) a 32-bit
     /// data phase with parity, in the direction given by `rnw`. On a read, returns the data; `write_value` is
     /// ignored. On a write, `write_value` is sent; the return value is unused.
-    fn transaction(&mut self, apndp: APnDP, rnw: RnW, a: DPRegister, write_value: u32) -> swd::Result<u32> {
+    fn transaction(
+        &mut self,
+        apndp: APnDP,
+        rnw: RnW,
+        a: DPRegister,
+        write_value: u32,
+    ) -> swd::Result<u32> {
         let bus = self.engage();
         if self.shifted && self.spi_br.is_some() {
             return self.spi_transaction(bus, apndp, rnw, a, write_value);
@@ -869,11 +918,13 @@ impl swj::Dependencies<Self, Self> for SwdPins {
         // No NRESET/NTRST/TDI/TDO wires on this SBU-only SWD path (hw_b153a.md §8): only SWCLK/SWDIO are real.
         // Level first, then the mode: no glitch to the old output data. Not timing-critical, so through `Flex`.
         if mask.contains(swj::Pins::SWCLK) {
-            self.clk().set_level(Level::from(output.contains(swj::Pins::SWCLK)));
+            self.clk()
+                .set_level(Level::from(output.contains(swj::Pins::SWCLK)));
             self.clk().set_as_output(Speed::Medium);
         }
         if mask.contains(swj::Pins::SWDIO) {
-            self.dio().set_level(Level::from(output.contains(swj::Pins::SWDIO)));
+            self.dio()
+                .set_level(Level::from(output.contains(swj::Pins::SWDIO)));
             self.dio().set_as_output(Speed::Medium);
         }
         if wait_us > 0 {
@@ -899,7 +950,9 @@ impl swj::Dependencies<Self, Self> for SwdPins {
         if self.shifted {
             // between transfers, SPI2 idle
             if let Some(br) = self.spi_br {
-                pac::SPI2.cr1().modify(|w| w.set_br(spi_vals::Br::from_bits(br)));
+                pac::SPI2
+                    .cr1()
+                    .modify(|w| w.set_br(spi_vals::Br::from_bits(br)));
             }
         }
         defmt::debug!(

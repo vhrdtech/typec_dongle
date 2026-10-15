@@ -5,7 +5,7 @@
 //! a response gets a zero-length packet is decided in the `donguru_dap` crate (repo root), which has the reasoning
 //! and the unit tests; this file only moves the packets.
 //!
-//! Added to the same composite USB device as the WireWeaver interface (`src/ww.rs`) by hand, following
+//! Added to the same composite USB device as the WireWeaver interface (`src/ww/mod.rs`) by hand, following
 //! `wire_weaver_usb_embassy`'s own advice for "other USB classes alongside": build one [`embassy_usb::Builder`],
 //! add every class to it, then call `.build()` once (`src/main.rs`).
 
@@ -15,7 +15,9 @@ use donguru_dap::{Assembler, DAP_PACKET_SIZE, Dropped, Event, response_needs_zlp
 use embassy_futures::select::{Either, Either3, select, select3};
 use embassy_time::{Duration, Timer, with_timeout};
 use embassy_usb::Builder;
-use embassy_usb::driver::{Driver, Endpoint, EndpointError, EndpointIn, EndpointOut};
+use embassy_usb::driver::{
+    Direction, Driver, Endpoint, EndpointAddress, EndpointError, EndpointIn, EndpointOut,
+};
 use embassy_usb::types::StringIndex;
 use embassy_usb::{Handler, types::InterfaceNumber};
 
@@ -62,9 +64,19 @@ pub struct CmsisDapClass<'d, D: Driver<'d>> {
 
 impl<'d, D: Driver<'d>> CmsisDapClass<'d, D> {
     /// Adds the CMSIS-DAP v2 function and interface to `builder`: one OUT and one IN bulk endpoint, no HID (v1)
-    /// fallback and no SWO trace endpoint (not wired on this hardware, see `src/swd.rs`).
-    pub fn new(builder: &mut Builder<'d, D>, state: &'d mut State, max_packet_size: u16) -> Self {
-        let mut func = builder.function(USB_CLASS_VENDOR_SPECIFIC, USB_SUBCLASS_NONE, USB_PROTOCOL_NONE);
+    /// fallback and no SWO trace endpoint (not wired on this hardware, see `src/swd.rs`). Both on hardware endpoint
+    /// `ep` (OUT and IN share it), fixed so the address doesn't move when another interface is added (API-8).
+    pub fn new(
+        builder: &mut Builder<'d, D>,
+        state: &'d mut State,
+        ep: u8,
+        max_packet_size: u16,
+    ) -> Self {
+        let mut func = builder.function(
+            USB_CLASS_VENDOR_SPECIFIC,
+            USB_SUBCLASS_NONE,
+            USB_PROTOCOL_NONE,
+        );
         let mut iface = func.interface();
         let interface = iface.interface_number();
         let name_index = iface.string();
@@ -75,8 +87,14 @@ impl<'d, D: Driver<'d>> CmsisDapClass<'d, D> {
             USB_PROTOCOL_NONE,
             Some(name_index),
         );
-        let read_ep = alt.endpoint_bulk_out(None, max_packet_size);
-        let write_ep = alt.endpoint_bulk_in(None, max_packet_size);
+        let read_ep = alt.endpoint_bulk_out(
+            Some(EndpointAddress::from_parts(ep as usize, Direction::Out)),
+            max_packet_size,
+        );
+        let write_ep = alt.endpoint_bulk_in(
+            Some(EndpointAddress::from_parts(ep as usize, Direction::In)),
+            max_packet_size,
+        );
         drop(func);
         builder.handler(state);
 
@@ -129,7 +147,7 @@ async fn expire(after: Option<donguru_dap::Timeout>) {
 /// one: the host process dying, a cable pull, or any other USB reset/suspend that disables this interface's
 /// endpoints. [`EndpointError::Disabled`] from either endpoint covers that case, so a bench harness only has to
 /// detach probe-rs (ending the session one way or another) before cutting the DUT's power, without also having
-/// to remember an explicit `swd_release` call; `swd_release` stays for cases that want it mid-session.
+/// to remember an explicit `sbu.release` call; `sbu.release` stays for cases that want it mid-session.
 #[embassy_executor::task]
 pub async fn dap_task(mut class: CmsisDapClass<'static, crate::ww::UsbDriver>, mut host: SwdHost) {
     let mut request = [0u8; DAP_PACKET_SIZE];
@@ -149,7 +167,13 @@ pub async fn dap_task(mut class: CmsisDapClass<'static, crate::ww::UsbDriver>, m
         loop {
             // Always room for a packet: an incomplete request is a whole number of packets short of the buffer.
             let packet = class.read_packet(&mut request[assembler.len()..]);
-            let event = match select3(packet, swd::wait_release_request(), expire(assembler.pending())).await {
+            let event = match select3(
+                packet,
+                swd::wait_release_request(),
+                expire(assembler.pending()),
+            )
+            .await
+            {
                 Either3::First(Ok(n)) => assembler.packet(&request, n, max_packet_size),
                 Either3::First(Err(EndpointError::Disabled)) => {
                     host.release();
@@ -183,7 +207,9 @@ pub async fn dap_task(mut class: CmsisDapClass<'static, crate::ww::UsbDriver>, m
                     continue;
                 }
             };
-            let n_out = host.dap.process_command(&request[..n], &mut response, DapVersion::V2);
+            let n_out = host
+                .dap
+                .process_command(&request[..n], &mut response, DapVersion::V2);
             // Stopgap plug CC drive (FW-17, P2534#12oct-1338b, `src/swd.rs` module doc): hardcoded to these two
             // command bytes rather than a real connect/disconnect callback through `dap_rs`. `response[1]` is
             // `ConnectPortResponse`, 0 = Failed.

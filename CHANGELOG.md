@@ -6,6 +6,34 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Changed
+
+- `donguru_api` 0.2.0, the whole v1 API tree declared (API-8). **Breaks old hosts**: 0.1 and 0.2 don't connect (no
+  host code used 0.1; `ww` and Python follow introspection). Moved: `swd_orientation` -> `plug.orientation` (now
+  `Auto` / `Normal` / `Swapped`, observable; `Auto` acts as `Normal` until CC detection), `swd_mode` -> `swd.mode`
+  (an unknown mode is refused with `InvalidArgument`), `swd_release` -> `sbu.release`, `board_variant` ->
+  `device.variant`. Every new item answers `Unimplemented` until its piece lands. Built against wire_weaver
+  `1a04005` (observe on both sides). Tested 15 Oct 2026 on B153A: `ww list` / `ww introspect` show the tree, the
+  moved items read and write from Python, `plug.orientation` observed with a generated client (initial value and
+  each change). Not tested: a CMSIS-DAP `probe-rs` read of B129A with `plug.orientation` (the DUT had no power).
+- USB endpoint registers are fixed: EP1 OUT / EP2 IN WireWeaver (double-buffered), EP3 CMSIS-DAP (API-8), so they
+  don't move when an interface is added. Same order as before, so nothing changes for hosts.
+- Firmware size, release build, `just fw-size`: FLASH 118.5 -> 227.3 KiB of 510 KiB, RAM 10.9 -> 14.3 KiB of 144
+  KiB (API-8). Introspection with docs costs 8.5 KiB (no docs 217.8 KiB, none 212.8 KiB), under the 15 KiB rule, so
+  the docs stay on the device. The `debug` level behind the `debug-api` feature saves 0.2 KiB when cut (its
+  dispatch stays, the API is the same). At `opt-level = "s"` the same tree is 174.8 KiB (baseline 90.3 KiB).
+
+### Added
+
+- `debug.led_set(led, mode)`: drive the power or status LED directly (API-8), behind the `debug-api` cargo feature
+  (on by default).
+- `device.*` contract constants: `firmware.FIRMWARE` (name, version, profile), `board.BOARD` ("Donguru B153" rev A,
+  variant from the strap, serial), `uid.IDS` (the STM32 UID), `counters.INFO`, `log.DEFMT`, `leds.NAMES` (API-8).
+
+### Removed
+
+- `led_on` / `led_off` (API-2): `debug.led_set` and, with API-9, `leds` replace them.
+
 ## [0.11.0] - 2026-10-15
 
 ### Changed

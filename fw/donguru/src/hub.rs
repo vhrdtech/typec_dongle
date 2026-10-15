@@ -10,13 +10,13 @@
 //! instead is a board strap on PA10 (SBU_TO_USB, U901's S): [`read_board_variant_strap`], R902 fitted only on
 //! Plus (hw_b153a.md §9/§11). [`bring_up`] reads it once, before anything else drives PA10, and keeps the
 //! result in `Hub::variant` for every [`configure`](Hub::configure)/[`recover`](Hub::recover) afterward; it is
-//! also kept in [`BOARD_VARIANT`] and exposed read-only over WireWeaver (`donguru_api::DonguruApi::board_variant`,
+//! also kept in [`BOARD_VARIANT`] and exposed read-only over WireWeaver (`device.variant`,
 //! FW-11 hw_info).
 //!
 //! The hub and the MCU share `+3V3_DCDC` (hw_b153a.md §3). A hard turn-on load on the header's switched VBUS
 //! (Q102, FW-14) sags that rail enough to reset the hub but not the MCU (P2534#12oct-1819): the hub comes back
 //! powered but unconfigured and un-attached, and only redoing this bring-up gets it back. [`watchdog_task`]
-//! notices the loss two ways: `src/ww.rs` calls [`request_recovery`] when the composite USB device (on hub port
+//! notices the loss two ways: `src/ww/mod.rs` calls [`request_recovery`] when the composite USB device (on hub port
 //! 1) drops out of the configured state after having reached it once — the hub's own reset bounces that port
 //! along with the rest of the chip, so this fires within a USB frame or two of the brown-out — and a periodic
 //! I2C probe backstops it for a brown-out that, for some reason, does not bounce the MCU's own port.
@@ -36,8 +36,8 @@ use embassy_stm32::peripherals::PA10;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::signal::Signal;
 use embassy_time::Timer;
-use usb251xb::register::{REG_CONFIG_BYTE_1, REG_VENDOR_ID_LSB};
 use usb251xb::Usb251xb;
+use usb251xb::register::{REG_CONFIG_BYTE_1, REG_VENDOR_ID_LSB};
 
 /// How long to wait after releasing the hub from reset before talking to it over I2C. 0: tried 0/5/100/1000 ms
 /// on a B153A (14 Oct 2026) and all four read [`Hub::read_power_on_defaults`] back as all-zero, so there is no
@@ -78,8 +78,8 @@ async fn read_board_variant_strap(pa10: Peri<'static, PA10>) -> BoardVariant {
     variant
 }
 
-/// Board variant [`bring_up`] reads from the PA10 strap (module doc), shared with `src/ww.rs` for the
-/// read-only `board_variant` WireWeaver property (FW-11 hw_info). A plain atomic rather than a
+/// Board variant [`bring_up`] reads from the PA10 strap (module doc), shared with `src/ww/device.rs` for the
+/// read-only `device.variant` WireWeaver property (FW-11 hw_info). A plain atomic rather than a
 /// [`Signal`]/[`embassy_sync::mutex::Mutex`]: readers only ever want the latest value, never to wait for a
 /// change. Holds [`VARIANT_UNKNOWN`], [`VARIANT_MAIN`] or [`VARIANT_PLUS`] ([`BoardVariant`] has a field in its
 /// future-version variant, so no `as u8`).
@@ -112,7 +112,7 @@ const POLL_INTERVAL_MS: u64 = 200;
 static RECOVERY_REQUEST: Signal<CriticalSectionRawMutex, ()> = Signal::new();
 
 /// Tells [`watchdog_task`] the hub needs its bring-up redone, without waiting for the next I2C poll. Called from
-/// `src/ww.rs`'s USB handler when the composite device loses the configured state after having reached it, which
+/// `src/ww/mod.rs`'s USB handler when the composite device loses the configured state after having reached it, which
 /// happens whenever the hub itself gets reset (it carries the MCU's own USB on port 1).
 pub fn request_recovery() {
     RECOVERY_REQUEST.signal(());
@@ -161,7 +161,10 @@ impl Hub {
                 cfg_buf[2],
                 cfg_buf[3]
             ),
-            (id, cfg) => warn!("hub power-on defaults: VID/PID/DID {:?}, CFG1-3 {:?}", id, cfg),
+            (id, cfg) => warn!(
+                "hub power-on defaults: VID/PID/DID {:?}, CFG1-3 {:?}",
+                id, cfg
+            ),
         }
     }
 
