@@ -540,6 +540,9 @@ pub trait Bringup {
     /// Reads 32-bit words of peripheral space (0x4000_0000..0x5000_2000) only.
     #[errors(Common(Refused, InvalidArgument))]
     fn reg_read(addr: u32, words: u8) -> Result<MaxLen<RefVec<'i, u32>, 32>, DebugError<'i>>;
+    /// Logs `count` numbered lines at once, more than the log keeps up with: the host sees how many are lost.
+    #[since = "0.2.1"]
+    fn log_flood(count: u32);
 }
 
 /// An MCU pin: port and number.

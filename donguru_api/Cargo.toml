@@ -1,6 +1,6 @@
 [package]
 name = "donguru_api"
-version = "0.2.0" # identifies the API on the wire, bump with every change
+version = "0.2.1" # identifies the API on the wire, bump with every change
 edition.workspace = true
 license.workspace = true
 description = "WireWeaver API of the donguru firmware"

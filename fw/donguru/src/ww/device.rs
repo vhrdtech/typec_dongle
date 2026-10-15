@@ -9,7 +9,7 @@ use ww_board_info::{BoardSummary, RevisionSource};
 use ww_counters::{BufferInfo, CountersInfo};
 use ww_counters::{CounterBuffer, read_words, reset_words};
 use ww_firmware_info::{BUILD_ID_MAX_LEN, FirmwareSummary};
-use ww_log::{DefmtEncoding, DefmtInfo};
+use ww_log::DefmtInfo;
 use ww_uid::UniqueId;
 use ww_user_info::{MAX_NAME_LEN, MAX_NOTES_LEN, UserInfoCaps};
 
@@ -138,20 +138,19 @@ impl ServerState {
         &mut self.unopened
     }
 
-    // ww_log::LogDefmt at device.log
+    // ww_log::LogDefmt at device.log: the defmt log (src/log.rs). Its session starts at boot, so a host that resumes
+    // it gets the log from before it connected (and from before a crash); opening it anew drops what is kept.
 
     pub(super) async fn device_log_frames(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> RpcResult<Result<(), ww_log::LogError<'_>>> {
-        Unimplemented.into()
+        Ready(Ok(()))
     }
 
     pub(super) async fn close_device_log_frames(&mut self, _cx: &mut Context<'_, impl EventOut>) {}
 
-    pub(super) async fn stream_device_log_frames(
-        &mut self,
-    ) -> &mut ww_stream::tx::Reliable<super::LogStore> {
+    pub(super) async fn stream_device_log_frames(&mut self) -> &mut crate::log::Stream {
         &mut self.log_frames
     }
 
@@ -290,11 +289,13 @@ impl super::server_impl::DonguruApiConsts for ServerState {
         }
     }
 
-    // build id empty until the log is served (API-10)
-    const DEVICE_LOG_DEFMT: DefmtInfo<'static> = DefmtInfo {
-        encoding: DefmtEncoding::Rzcobs,
-        build_id: MaxLen::new_unchecked(RefVec::new_bytes(&[])),
-    };
+    // the encoding defmt is built with, found at run time; a host decodes the frames with the ELF of this build id
+    fn device_log_defmt(&self) -> DefmtInfo<'_> {
+        DefmtInfo {
+            encoding: crate::log::encoding(),
+            build_id: MaxLen::new_unchecked(RefVec::new_bytes(ww_firmware_info::build_id())),
+        }
+    }
 
     const LEDS_NAMES: RefVec<'static, &'static str> = super::leds::NAMES;
 }

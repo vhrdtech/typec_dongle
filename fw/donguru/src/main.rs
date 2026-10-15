@@ -8,13 +8,13 @@ mod hub;
 mod init;
 mod last_reset;
 mod led;
+mod log;
 mod power;
 mod swd;
 mod ww;
 
 use cnt::cnt; // cnt::bkp_cnt! for counters in backup registers
 use defmt::{error, info, unwrap};
-use defmt_rtt as _;
 
 use assign_resources::assign_resources;
 use cortex_m_rt::exception;
@@ -121,6 +121,7 @@ bind_interrupts!(pub struct Irqs {
 
 #[embassy_executor::main]
 async fn main(spawner: embassy_executor::Spawner) {
+    log::init_rtt(); // before the first log line, so RTT has the whole boot log (src/log.rs)
     info!("donguru starting...");
     let last_reset = last_reset::boot(); // reset cause and crash record (src/last_reset.rs), logged
     let mut config = embassy_stm32::Config::default();
@@ -182,7 +183,7 @@ async fn main(spawner: embassy_executor::Spawner) {
     // Composite USB device (FS, HSI48 clock above): WireWeaver and CMSIS-DAP v2 (FW-15), see src/ww/mod.rs.
     let usb_driver = usb::Driver::new(r.usb.usb, Irqs, r.usb.pa12, r.usb.pa11);
     let swd_host = swd::SwdHost::new(r.swd);
-    ww::start(spawner, usb_driver, swd_host, last_reset);
+    ww::start(spawner, usb_driver, swd_host, last_reset).await;
 
     info!("init done");
 }

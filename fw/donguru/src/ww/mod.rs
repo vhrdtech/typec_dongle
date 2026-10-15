@@ -41,8 +41,7 @@ use wire_weaver_usb_embassy::{
 };
 use ww_client_server::credit::SinkCredit;
 use ww_stream::observe::ObserveLimits;
-use ww_stream::store::RamRing;
-use ww_stream::tx::{Counted, Reliable};
+use ww_stream::tx::Counted;
 use ww_uid::{UidKind, UidSource, UniqueId};
 
 /// Longest WireWeaver message the device accepts and can reply with (reported to the host)
@@ -57,13 +56,14 @@ const EP_CMSIS_DAP: usize = 3;
 /// Bytes `uart[]`'s TX sink accepts ahead (its credit), the TX buffer of API-14. Nothing is accepted until then.
 const UART_TX_CREDIT: u32 = 0;
 
-/// Placeholder store of `device.log.frames` until API-10 puts the defmt log there.
-type LogStore = RamRing<64>;
-
 /// How often observed properties are checked while a host observes any (`poll_properties`).
 const OBSERVE_TICK: Duration = Duration::from_millis(1);
 /// Biggest `PropertyUpdate` event the link carries.
 const OBSERVE_BUF_LEN: usize = 256;
+/// Biggest item of a reliable stream: `device.log.frames`' `DefmtFrames` (512 B of frames and its length).
+const STREAM_BUF_LEN: usize = ww_log::MAX_FRAMES_LEN + 16;
+/// Bytes of stream items sent per turn of the server task (at least one event), so requests keep being served.
+const STREAM_BUDGET: usize = 2048;
 
 /// Everything the API implementation needs that isn't a global of its driver module (LEDs, SWD, hub keep their
 /// state in `src/led.rs`, `src/swd.rs`, `src/hub.rs`, shared with their tasks).
@@ -75,8 +75,8 @@ pub struct ServerState {
     /// State handed out for every counted stream not implemented yet: their open answers `Unimplemented`, so it is
     /// never opened.
     unopened: Counted,
-    /// `device.log.frames` (API-10).
-    log_frames: Reliable<LogStore>,
+    /// `device.log.frames`: the defmt log (API-10, `src/log.rs`).
+    log_frames: crate::log::Stream,
     /// `uart[].tx` credit, per index (API-14).
     uart_tx_credit: [SinkCredit; uart::COUNT],
     /// `device.uid.IDS`: the STM32 96-bit UID.
@@ -94,12 +94,15 @@ pub struct ServerState {
 }
 
 impl ServerState {
-    fn new(uid: &'static [u8], last_reset: bedrock_crash::Snapshot) -> Self {
+    async fn new(uid: &'static [u8], last_reset: bedrock_crash::Snapshot) -> Self {
+        // the boot count in the high half: a session of this boot never takes a host's cursor of an earlier boot
+        // for its own (the boot count restarts at a power-on, the log store is lost with it then)
+        let stream_sessions = last_reset.view().boot_count << 16 | 1;
         ServerState {
             observe: server_impl::ObserveState::new(ObserveLimits::DEFAULT),
-            stream_sessions: 0,
+            stream_sessions,
             unopened: Counted::new(),
-            log_frames: Reliable::new(RamRing::new()),
+            log_frames: crate::log::stream(stream_sessions).await,
             uart_tx_credit: [
                 SinkCredit::new(UART_TX_CREDIT),
                 SinkCredit::new(UART_TX_CREDIT),
@@ -119,7 +122,7 @@ impl ServerState {
 
     /// Number of a new session of a counted or reliable stream, when a host opens one.
     fn new_stream_session(&mut self) -> u32 {
-        // TODO(API-10): a boot counter in the high bits, so a cursor from before a reboot never matches a new session
+        // the first one went to the log at boot (`ServerState::new`)
         self.stream_sessions = self.stream_sessions.wrapping_add(1);
         self.stream_sessions
     }
@@ -134,13 +137,13 @@ mod server_impl {
     // Re-parses the API trait and generates request dispatch + serdes for ServerState.
     // To see the generated code, add: debug_to_file = "./target/ww_server.rs"
     // `const_model`: the board record and the chip ids are read at boot, the build id and the counter buffers are
-    // known at link time (`device.rs`). The optional build record (`bedrock_build_info`) is left out.
+    // known at link time, the defmt encoding at run time (`device.rs`). The optional build record (`bedrock_build_info`) is left out.
     wire_weaver::ww_codegen!(
         donguru_api :: DonguruApi for super::ServerState,
         server = true, no_alloc = true, use_async = true,
         method_model = "plug_vbus_cycle=deferred, _=immediate",
         property_model = "_=get_set",
-        const_model = "BOARD|IDS|INFO|BUILD_ID=fn",
+        const_model = "BOARD|IDS|INFO|BUILD_ID|DEFMT=fn",
         omit = ["device.firmware.BUILD_RECORD"],
         introspect = "with_docs",
     );
@@ -249,7 +252,7 @@ static UID: StaticCell<[u8; 12]> = StaticCell::new();
 /// Builds the composite USB device (WireWeaver + CMSIS-DAP v2, `src/cmsis_dap.rs`) on `driver` and spawns the
 /// USB, WireWeaver server and CMSIS-DAP tasks. `swd_host` is handed to the CMSIS-DAP task, which is the sole
 /// owner of the SWD-host pins (FW-15). `last_reset` is what `last_reset::boot` read, served as `device.last_reset`.
-pub fn start(
+pub async fn start(
     spawner: Spawner,
     driver: UsbDriver,
     swd_host: swd_host::SwdHost,
@@ -257,10 +260,8 @@ pub fn start(
 ) {
     let buffers = USB_BUFFERS.init(UsbBuffers::default());
     // in a static, not on the task's future: the observe tables and stream states are a few hundred bytes
-    let state = SERVER_STATE.init(ServerState::new(
-        UID.init(embassy_stm32::uid::uid()),
-        last_reset,
-    ));
+    let state =
+        SERVER_STATE.init(ServerState::new(UID.init(embassy_stm32::uid::uid()), last_reset).await);
 
     let mut config = UsbConfig::new(0xc0de, 0xcafe);
     config.manufacturer = Some("donguru");
@@ -330,27 +331,29 @@ async fn usb_task(mut usb: UsbDevice<'static, UsbDriver>) {
     usb.run().await;
 }
 
-/// Serves requests and, while a host observes anything, sends the observed properties that are due every
-/// [OBSERVE_TICK] (SRV-18). Observing stops when the link goes down: a host that comes back asks again. Also wakes
-/// for `src/power.rs`: properties the guard changed and the deferred answers of `plug.vbus_cycle`.
+/// Serves requests; every [PUMP_PERIOD](crate::log::PUMP_PERIOD) moves the defmt log into its store
+/// (`src/log.rs`) and sends what reliable streams have; while a host observes anything, sends the observed properties
+/// that are due every [OBSERVE_TICK] (SRV-18). Observing stops when the link goes down: a host that comes back asks
+/// again; the log stays in its store for a host that resumes it. Also wakes for `src/power.rs`: properties the guard
+/// changed and the deferred answers of `plug.vbus_cycle`.
 #[embassy_executor::task]
 async fn server_task(mut server: UsbServer<'static, UsbDriver>, state: &'static mut ServerState) {
     let mut buf = [0u8; OBSERVE_BUF_LEN];
+    let mut stream_buf = [0u8; STREAM_BUF_LEN];
     loop {
         let observing = state.observe.budget_in_use() > 0;
-        let tick = async {
-            if observing {
-                Timer::after(OBSERVE_TICK).await
-            } else {
-                core::future::pending().await
-            }
+        let tick = if observing {
+            OBSERVE_TICK
+        } else {
+            crate::log::PUMP_PERIOD
         };
-        match select3(server.wait(), tick, power::wait_event()).await {
+        match select3(server.wait(), Timer::after(tick), power::wait_event()).await {
             Either3::First(ready) => {
                 if let Some(event) = server.handle(ready, state).await {
                     info!("{:?}", event);
                     if matches!(event, LinkEvent::Down(_)) {
                         state.observe.reset();
+                        state.log_frames.detach();
                     }
                 }
             }
@@ -373,16 +376,31 @@ async fn server_task(mut server: UsbServer<'static, UsbDriver>, state: &'static 
                 }
             }
         }
-        if observing && server.is_up() {
+        crate::log::pump(&mut state.log_frames).await;
+        if server.is_up() {
             let now = Instant::now();
-            state.meter_poll(now);
             let now_us = now.as_micros();
+            if observing {
+                state.meter_poll(now);
+                if state
+                    .poll_properties(&mut server.sink(), (), now_us, &mut buf)
+                    .await
+                    .is_err()
+                {
+                    cnt!(observe_send_errors: u32);
+                }
+            }
             if state
-                .poll_properties(&mut server.sink(), (), now_us, &mut buf)
+                .poll_streams(
+                    &mut server.sink(),
+                    now_us / 1000,
+                    &mut stream_buf,
+                    STREAM_BUDGET,
+                )
                 .await
                 .is_err()
             {
-                cnt!(observe_send_errors: u32);
+                cnt!(stream_send_errors: u32);
             }
         }
     }

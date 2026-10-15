@@ -135,4 +135,18 @@ impl ServerState {
     > {
         Unimplemented.into()
     }
+
+    pub(super) async fn debug_log_flood(
+        &mut self,
+        _cx: &mut Context<'_, impl EventOut>,
+        count: u32,
+    ) -> RpcResult<()> {
+        if !cfg!(feature = "debug-api") {
+            return RpcResult::Unimplemented;
+        }
+        for i in 0..count {
+            defmt::info!("flood {=u32} of {=u32}", i + 1, count);
+        }
+        Ready(())
+    }
 }
