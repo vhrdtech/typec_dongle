@@ -14,12 +14,16 @@ IDs refer to [FEATURES.md](FEATURES.md).
   backup words with the used counts and the build id, `reset`), `device.label` (name and notes, in RAM until the
   settings store, API-19), `leds` as `ww_indication` (`mode` `AllOff` / `OnlyEssential`, which keeps the power LED,
   / `Normal`; `brightness` in five steps; `identify` blinks both LEDs at full brightness for the given time, at most
-  10 min, `Busy` while one runs). `device.firmware.BUILD_RECORD` is left out.
+  10 min, `Busy` while one runs). `device.firmware.BUILD_RECORD` is left out. Tested 15 Oct 2026 on B153A: `ww
+  info`, `ww report`, `ww counters` complete (ELF by build id; log waits for API-10), label / LEDs from Python,
+  identify seen in the LED timer registers.
 
 ### Changed
 
 - A HardFault or panic no longer hangs the dongle: the record is saved and the MCU resets (FW-13); it shows in the
   boot log and in `device.last_reset`. With a debugger attached a panic still stops the core as panic-probe did.
+  Tested 15 Oct 2026 on B153A with a forced HardFault (pc 0xFFFFFFF0): `ww report` shows `Fault`, pc and the
+  symbolized stack; `last_reset.clear` empties the record. A panic is not tested on hardware.
 - Both LEDs now run at one brightness, `Normal` (peak 128 of 255) by default: the power LED was at full brightness
   before. `leds.brightness` `Highest` gives the old look.
 - embedded_bedrock template upgrade 0.5.0 (`f10b345`) -> `ec04ab4`: crash capture (`bedrock_crash`), GNU build id,
