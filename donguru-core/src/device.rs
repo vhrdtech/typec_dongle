@@ -84,9 +84,25 @@ impl DeviceEntry {
     }
 }
 
+/// `5-1.2`: the bus without the leading zeros nusb keeps on Linux (`005`), as sysfs and `lsusb -t` write it.
 fn usb_path(bus_id: &str, port_chain: &[u8]) -> String {
     let ports: Vec<String> = port_chain.iter().map(|p| p.to_string()).collect();
-    format!("{bus_id}-{}", ports.join("."))
+    format!("{}-{}", strip_zeros(bus_id), ports.join("."))
+}
+
+fn strip_zeros(n: &str) -> &str {
+    match n.trim_start_matches('0') {
+        "" if !n.is_empty() => "0",
+        s => s,
+    }
+}
+
+/// A path as typed (`005-1.2`, `5-1.2`) in the form of [DeviceEntry::path].
+fn normalize_path(p: &str) -> String {
+    match p.split_once('-') {
+        Some((bus, ports)) => format!("{}-{ports}", strip_zeros(bus)),
+        None => p.to_string(),
+    }
 }
 
 /// Picks one dongle: by index in [list], serial number (or a unique prefix of it, any case) or USB path.
@@ -195,7 +211,10 @@ pub fn select<'e>(
     };
     let found: Vec<&DeviceEntry> = match selector {
         Selector::Index(i) => entries.iter().filter(|e| e.index == *i).collect(),
-        Selector::Path(p) => entries.iter().filter(|e| e.path == *p).collect(),
+        Selector::Path(p) => {
+            let p = normalize_path(p);
+            entries.iter().filter(|e| e.path == p).collect()
+        }
         Selector::Serial(s) => {
             let exact: Vec<_> = entries
                 .iter()
@@ -397,7 +416,7 @@ mod tests {
                 signature: wire_weaver_client::ww_version::ApiHashOwned { hash: vec![] },
             }),
             usb: Some(wire_weaver_client::UsbLocation {
-                bus_id: "3".into(),
+                bus_id: "003".into(),
                 port_chain: ports,
                 vid,
                 pid: USB_PID,
