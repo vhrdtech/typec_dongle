@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-10-15
+
 ### Added
 
 - Plug and header power (API-11, FW-8, FW-14; `donguru_api` unchanged at 0.2.0): `plug.vbus_mode` and
