@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-15
+
 ### Changed
 
 - WireWeaver uses double-buffered USB bulk endpoints (embassy-rs/embassy#7275, from a git dependency until it is
