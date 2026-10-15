@@ -6,6 +6,15 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-15
+
+### Added
+
+- `debug.led_set(led, mode)`: drive the power or status LED directly (API-8), behind the `debug-api` cargo feature
+  (on by default).
+- `device.*` contract constants: `firmware.FIRMWARE` (name, version, profile), `board.BOARD` ("Donguru B153" rev A,
+  variant from the strap, serial), `uid.IDS` (the STM32 UID), `counters.INFO`, `log.DEFMT`, `leds.NAMES` (API-8).
+
 ### Changed
 
 - `donguru_api` 0.2.0, the whole v1 API tree declared (API-8). **Breaks old hosts**: 0.1 and 0.2 don't connect (no
@@ -29,13 +38,6 @@ IDs refer to [FEATURES.md](FEATURES.md).
   KiB (API-8; the breakdown below was measured before the VBUS modes, at 227.3 KiB). Introspection with docs costs 8.5 KiB (no docs 217.8 KiB, none 212.8 KiB), under the 15 KiB rule, so
   the docs stay on the device. The `debug` level behind the `debug-api` feature saves 0.2 KiB when cut (its
   dispatch stays, the API is the same). At `opt-level = "s"` the same tree is 174.8 KiB (baseline 90.3 KiB).
-
-### Added
-
-- `debug.led_set(led, mode)`: drive the power or status LED directly (API-8), behind the `debug-api` cargo feature
-  (on by default).
-- `device.*` contract constants: `firmware.FIRMWARE` (name, version, profile), `board.BOARD` ("Donguru B153" rev A,
-  variant from the strap, serial), `uid.IDS` (the STM32 UID), `counters.INFO`, `log.DEFMT`, `leds.NAMES` (API-8).
 
 ### Removed
 
