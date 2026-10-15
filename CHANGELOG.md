@@ -6,6 +6,16 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Changed
+
+- Builds against wire_weaver master again, where API enums get a variant for values from a newer version (SW-47),
+  `donguru_api` 0.1.4, same bytes on the wire, older CLIs keep working:
+  - `BoardVariant` keeps its own `Unknown` (hub PID matched no part); a variant from a newer firmware reads as
+    `BoardVariant::Other(n)` (`future_version = Other`): new boards will add variants (API-7).
+  - `SwdOrientation` is `no_future_version`: a Type-C plug has two orientations, the set is complete (API-4).
+  - `swd_mode`: a mode from a newer host arrives as `SwdMode::Unknown` and the write is refused, the current mode
+    stays (counter `swd_mode_unknown`) (API-5).
+
 ## [0.8.0] - 2026-10-14
 
 ### Added

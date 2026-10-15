@@ -8,7 +8,7 @@
 
 use crate::{cmsis_dap, hub, led, swd};
 use cnt::cnt;
-use defmt::{info, unwrap};
+use defmt::{info, unwrap, warn};
 use donguru_api::{BoardVariant, SwdMode, SwdOrientation};
 use embassy_executor::Spawner;
 use embassy_stm32::{peripherals, usb};
@@ -64,6 +64,12 @@ impl ServerState {
     }
 
     async fn set_swd_mode(&mut self, _cx: &mut Context<'_, impl EventOut>, mode: SwdMode) -> SetResult<()> {
+        // a mode from a newer host: refuse it, keep the current one
+        if let SwdMode::Unknown(n) = mode {
+            warn!("swd mode {} unknown, refused", n);
+            cnt!(swd_mode_unknown: u32);
+            return SetError(());
+        }
         info!("swd mode set");
         swd::set_mode(mode);
         Set

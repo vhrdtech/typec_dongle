@@ -81,18 +81,27 @@ async fn read_board_variant_strap(pa10: Peri<'static, PA10>) -> BoardVariant {
 /// Board variant [`bring_up`] reads from the PA10 strap (module doc), shared with `src/ww.rs` for the
 /// read-only `board_variant` WireWeaver property (FW-11 hw_info). A plain atomic rather than a
 /// [`Signal`]/[`embassy_sync::mutex::Mutex`]: readers only ever want the latest value, never to wait for a
-/// change, and [`BoardVariant`] is a fieldless enum, so its default discriminants fit a `u8` losslessly.
-static BOARD_VARIANT: AtomicU8 = AtomicU8::new(BoardVariant::Unknown as u8);
+/// change. Holds [`VARIANT_UNKNOWN`], [`VARIANT_MAIN`] or [`VARIANT_PLUS`] ([`BoardVariant`] has a field in its
+/// future-version variant, so no `as u8`).
+static BOARD_VARIANT: AtomicU8 = AtomicU8::new(VARIANT_UNKNOWN);
+const VARIANT_UNKNOWN: u8 = 0;
+const VARIANT_MAIN: u8 = 1;
+const VARIANT_PLUS: u8 = 2;
 
 fn set_board_variant(variant: BoardVariant) {
-    BOARD_VARIANT.store(variant as u8, Ordering::Relaxed);
+    let v = match variant {
+        BoardVariant::Main => VARIANT_MAIN,
+        BoardVariant::Plus => VARIANT_PLUS,
+        BoardVariant::Unknown | BoardVariant::Other(_) => VARIANT_UNKNOWN,
+    };
+    BOARD_VARIANT.store(v, Ordering::Relaxed);
 }
 
 /// Board variant [`bring_up`] read from the PA10 strap, [`BoardVariant::Unknown`] before it has run.
 pub fn board_variant() -> BoardVariant {
     match BOARD_VARIANT.load(Ordering::Relaxed) {
-        x if x == BoardVariant::Main as u8 => BoardVariant::Main,
-        x if x == BoardVariant::Plus as u8 => BoardVariant::Plus,
+        VARIANT_MAIN => BoardVariant::Main,
+        VARIANT_PLUS => BoardVariant::Plus,
         _ => BoardVariant::Unknown,
     }
 }

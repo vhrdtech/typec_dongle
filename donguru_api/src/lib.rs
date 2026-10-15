@@ -41,8 +41,9 @@ pub trait DonguruApi {
     property!(ro board_variant: BoardVariant);
 }
 
-/// Cable orientation for the SWD-host pins, see [`DonguruApi::swd_orientation`].
-#[derive_shrink_wrap(borrowed, derive(Copy, Clone, Debug, PartialEq, Eq), ww_repr = nib)]
+/// Cable orientation for the SWD-host pins, see [`DonguruApi::swd_orientation`]. A Type-C plug has two
+/// orientations, no more: complete by nature, no future-version variant (wire_weaver SW-47).
+#[derive_shrink_wrap(borrowed, derive(Copy, Clone, Debug, PartialEq, Eq), ww_repr = nib, no_future_version)]
 pub enum SwdOrientation {
     /// SBU1 = SWCLK, SBU2 = SWDIO
     Normal,
@@ -50,7 +51,8 @@ pub enum SwdOrientation {
     Swapped,
 }
 
-/// How the SWD-host drives the plug SBU lines, see [`DonguruApi::swd_mode`].
+/// How the SWD-host drives the plug SBU lines, see [`DonguruApi::swd_mode`]. A mode from a newer host arrives as
+/// `Unknown` (wire_weaver SW-47) and the write is refused.
 #[derive_shrink_wrap(borrowed, derive(Copy, Clone, Debug, PartialEq, Eq), ww_repr = nib)]
 pub enum SwdMode {
     /// GPIO bit-bang on PA1/PA0, straight on the SBU lines, level shifter off: up to about 3.7 MHz.
@@ -63,8 +65,9 @@ pub enum SwdMode {
     Spi,
 }
 
-/// Board variant, see [`DonguruApi::board_variant`].
-#[derive_shrink_wrap(borrowed, derive(Copy, Clone, Debug, PartialEq, Eq), ww_repr = nib)]
+/// Board variant, see [`DonguruApi::board_variant`]. New boards add variants: a host reads one it doesn't know as
+/// [`Other`](BoardVariant::Other) (wire_weaver SW-47; `Unknown` is taken by the unmatched hub PID).
+#[derive_shrink_wrap(borrowed, derive(Copy, Clone, Debug, PartialEq, Eq), ww_repr = nib, future_version = Other)]
 pub enum BoardVariant {
     /// 2-port USB2512B hub (U301).
     Main,

@@ -34,12 +34,13 @@ pub fn board_variant_from_strap(pa10_high: bool) -> BoardVariant {
     }
 }
 
-/// `usb251xb` variant to build the config for. [`BoardVariant::Unknown`] is not a reachable result of
-/// [`board_variant_from_strap`] (the strap always reads high or low), but [`hub_config`] still needs a
-/// definite answer for it: falls back to the smaller Main part, same as a genuine detection failure would.
+/// `usb251xb` variant to build the config for. [`BoardVariant::Unknown`] and [`BoardVariant::Other`] (a newer
+/// board, as a host reads it) are not reachable results of [`board_variant_from_strap`] (the strap always reads
+/// high or low), but [`hub_config`] still needs a definite answer for them: falls back to the smaller Main part,
+/// same as a genuine detection failure would.
 fn usb251xb_variant(variant: BoardVariant) -> Variant {
     match variant {
-        BoardVariant::Main | BoardVariant::Unknown => Variant::Usb2512b,
+        BoardVariant::Main | BoardVariant::Unknown | BoardVariant::Other(_) => Variant::Usb2512b,
         BoardVariant::Plus => Variant::Usb2514b,
     }
 }
@@ -61,7 +62,7 @@ const HUB_CURRENT_SELF: Milliamps = Milliamps(2);
 fn swapped_ports(variant: BoardVariant) -> &'static [Port] {
     match variant {
         BoardVariant::Plus => &[Port::Port2, Port::Port4],
-        BoardVariant::Main | BoardVariant::Unknown => &[Port::Port2],
+        BoardVariant::Main | BoardVariant::Unknown | BoardVariant::Other(_) => &[Port::Port2],
     }
 }
 

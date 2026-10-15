@@ -224,8 +224,10 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   for the bench power-cut test (FW-15). `donguru_api` 0.1.1.
 - 🧪 **API-5 `swd_mode`**: rw property, `SwdMode::BitBang` (default) or `SwdMode::Spi` (FW-21), next to
   `swd_orientation`; takes effect on the next SWD transfer. Additive, `donguru_api` 0.1.2: older hosts keep working.
+  A mode from a newer host (read as `SwdMode::Unknown`, wire_weaver SW-47) is refused, the current one stays.
 - 🧪 **API-7 `board_variant`**: ro property, `BoardVariant::Main` / `Plus` / `Unknown` (FW-22), for host tooling
   and future `hw_info` (FW-11). Additive, `donguru_api` 0.1.3: older hosts keep working.
+  A variant from a newer firmware reads as `BoardVariant::Other(n)` on the host (`future_version = Other`, SW-47).
 
 ## Host library (`CORE`)
 
