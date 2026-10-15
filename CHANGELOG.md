@@ -6,6 +6,16 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- Power meter in SI units (API-12, FW-3): `meter.reading` (VBUS_IN, current towards the DUT, power, one ADC window),
+  `temperature`, `totals` (charge, energy, peak current, since) with `reset_totals`, `window` (default 10 ms),
+  `deadband` (default 20 mV / 10 mA; `OnChange` observers are marked only beyond it, `totals` once a second),
+  `calibration` (nominal until FW-9). Integer milli values, no host change needed: API items existed since 0.2.0.
+- `adc` (`ww_adc::Adc`): channels `vbus_in`, `current`, `vdda`, `temperature`, `button`, `io9`, `io7`, `io10` with
+  raw code and value in milli units; `sbu1` / `sbu2` answer `Busy` for now. Not checked on a board yet.
+- Firmware size, release build, `just fw-size`: FLASH 259.5 KiB of 510 KiB (0.13.0 recorded 243.5 KiB).
+
 ## [0.15.0] - 2026-10-15
 
 ### Added

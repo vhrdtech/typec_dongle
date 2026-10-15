@@ -17,6 +17,7 @@
 //!   The datasheet only guarantees the single point TS_CAL1, so the slope is the typical Avg_Slope.
 
 use core::cell::Cell;
+use core::sync::atomic::{AtomicU32, Ordering};
 
 use defmt::{info, unwrap, warn};
 use embassy_futures::select::{Either, select};
@@ -30,7 +31,7 @@ use embassy_stm32::{pac, rcc};
 use embassy_sync::blocking_mutex::Mutex;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::signal::Signal;
-use embassy_time::{Duration, block_for};
+use embassy_time::{Duration, Instant, block_for};
 use static_cell::StaticCell;
 
 use crate::{AdcResources, Irqs};
@@ -77,6 +78,11 @@ const CURRENT_AMP_GAIN: i32 = 50;
 /// Voltage divider in front of PA3, Vin = Vpin * (top + bottom) / bottom (x7.17, up to ~25.8 V at 3.6 V).
 const PA3_R_TOP_OHM: u32 = 10_000;
 const PA3_R_BOT_OHM: u32 = 1_620;
+/// One sequence takes this long (see `OVS_RATIO`), per [`ChannelSet`]: sets how many sequences make a window.
+const BASE_SEQUENCE_US: u32 = 622;
+const EXTENDED_SEQUENCE_US: u32 = 898;
+/// Default averaging window of the meter reading (API-12 `meter.window`).
+pub const DEFAULT_WINDOW_US: u32 = 10_000;
 #[cfg(feature = "debug-adc")]
 const LOG_PERIOD: Duration = Duration::from_secs(1);
 
@@ -112,6 +118,99 @@ pub struct Readings {
     pub p2_mv: Option<u16>,
     /// PB12
     pub p3_mv: Option<u16>,
+    /// The converter codes the values above come from (12 bit, averaged), for `adc.read`'s `raw`.
+    pub raw: Raw,
+    /// Boot-relative time of the update, ms.
+    pub t_ms: u32,
+}
+
+/// 12 bit codes, averaged like the values. `p*` are 0 when their channel is not in the sequence.
+#[derive(Clone, Copy, Default, defmt::Format)]
+pub struct Raw {
+    pub vref: u16,
+    pub temp: u16,
+    pub input_voltage: u16,
+    pub button_switch: u16,
+    pub input_current: u16,
+    pub p0: u16,
+    pub p2: u16,
+    pub p3: u16,
+}
+
+/// Charge, energy and peak current since `since`, integrated over every update (API-12 `meter.totals`).
+/// Kept in mC and mJ with the sub-unit remainder in nC / pJ, so no 64-bit division runs in the ADC task.
+#[derive(Clone, Copy, Default, defmt::Format)]
+pub struct Totals {
+    /// Net charge towards the DUT, mC.
+    pub charge_mc: i32,
+    charge_rem_nc: i32,
+    /// Net energy towards the DUT, mJ.
+    pub energy_mj: i32,
+    energy_rem_pj: i64,
+    /// Largest current seen, in magnitude, signed like `input_current_ma`.
+    pub peak_ma: i16,
+    /// Start of the totals, ms since boot.
+    pub since_ms: u32,
+}
+
+impl Totals {
+    fn add(&mut self, current_ma: i32, power_uw: i32, dt_us: u32) {
+        // mA x us = nC, uW x us = pJ
+        self.charge_rem_nc += current_ma * dt_us as i32;
+        let carry = self.charge_rem_nc / 1_000_000;
+        self.charge_rem_nc -= carry * 1_000_000;
+        self.charge_mc = self.charge_mc.saturating_add(carry);
+
+        self.energy_rem_pj += power_uw as i64 * dt_us as i64;
+        let carry = (self.energy_rem_pj / 1_000_000_000) as i32;
+        self.energy_rem_pj -= carry as i64 * 1_000_000_000;
+        self.energy_mj = self.energy_mj.saturating_add(carry);
+
+        if current_ma.unsigned_abs() > self.peak_ma.unsigned_abs() as u32 {
+            self.peak_ma = current_ma as i16;
+        }
+    }
+}
+
+static TOTALS: Mutex<CriticalSectionRawMutex, Cell<Totals>> = Mutex::new(Cell::new(Totals {
+    charge_mc: 0,
+    charge_rem_nc: 0,
+    energy_mj: 0,
+    energy_rem_pj: 0,
+    peak_ma: 0,
+    since_ms: 0,
+}));
+
+/// Totals since boot or the last [`reset_totals`].
+pub fn totals() -> Totals {
+    TOTALS.lock(Cell::get)
+}
+
+/// Starts the totals from zero now.
+pub fn reset_totals() {
+    let now_ms = Instant::now().as_millis() as u32;
+    TOTALS.lock(|t| {
+        t.set(Totals {
+            since_ms: now_ms,
+            ..Totals::default()
+        })
+    });
+}
+
+static WINDOW_US: AtomicU32 = AtomicU32::new(DEFAULT_WINDOW_US);
+
+/// Longest averaging window: one DMA half buffer of the quickest set.
+pub const WINDOW_MAX_US: u32 = (HALF_LEN / BASE.len()) as u32 * BASE_SEQUENCE_US;
+/// Shortest: one sequence.
+pub const WINDOW_MIN_US: u32 = EXTENDED_SEQUENCE_US;
+
+/// Averaging window of [`Readings`], in us; the ADC task takes it at the next update.
+pub fn set_window_us(us: u32) {
+    WINDOW_US.store(us, Ordering::Relaxed);
+}
+
+pub fn window_us() -> u32 {
+    WINDOW_US.load(Ordering::Relaxed)
 }
 
 static LATEST: Mutex<CriticalSectionRawMutex, Cell<Option<Readings>>> = Mutex::new(Cell::new(None));
@@ -348,6 +447,7 @@ async fn run(
 
     let pos = |input: Input| order.iter().position(|&i| i == input);
     let mut samples = [0u16; HALF_LEN];
+    let mut last_update: Option<Instant> = None;
     #[cfg(feature = "debug-adc")]
     let mut next_log = embassy_time::Instant::now();
     loop {
@@ -365,20 +465,18 @@ async fn run(
             continue;
         }
 
-        // Newest sequence, averaged by the hardware oversampling: already in 1/16 LSB (<= 65520)
-        let newest = &samples[HALF_LEN - order.len()..];
-        let avg_x16 = |p: usize| newest[p] as u32;
-        // Software averaging over all sequences of the half buffer, on top of the hardware oversampling:
-        // let n = (HALF_LEN / order.len()) as u32;
-        // let avg_x16 = |p: usize| {
-        //     let sum: u32 = samples
-        //         .iter()
-        //         .skip(p)
-        //         .step_by(order.len())
-        //         .map(|&s| s as u32)
-        //         .sum();
-        //     (sum + n / 2) / n
-        // };
+        // The newest `n` sequences of the half buffer (the meter window, at least one), averaged on top of the
+        // hardware oversampling: in 1/16 LSB (<= 65520)
+        let sequence_us = match set {
+            ChannelSet::Base => BASE_SEQUENCE_US,
+            ChannelSet::Extended => EXTENDED_SEQUENCE_US,
+        };
+        let n = (window_us() / sequence_us).clamp(1, (HALF_LEN / order.len()) as u32);
+        let newest = &samples[HALF_LEN - n as usize * order.len()..];
+        let avg_x16 = |p: usize| {
+            let sum: u32 = newest.iter().skip(p).step_by(order.len()).map(|&s| s as u32).sum();
+            (sum + n / 2) / n
+        };
 
         let vref_x16 = avg_x16(unwrap!(pos(Input::Vrefint))).max(1);
         let vdda_mv =
@@ -430,7 +528,21 @@ async fn run(
         let temp_cdeg =
             TS_CAL1_TEMP_CDEG + (vsense_x16 - v30_x16) * (100 * 1000 / 16) / AVG_SLOPE_UV_PER_C;
 
+        let code = |input: Input| pos(input).map_or(0, |p| ((avg_x16(p) + 8) / 16) as u16);
+        let now = Instant::now();
+        let now_ms = now.as_millis() as u32;
         let readings = Readings {
+            raw: Raw {
+                vref: code(Input::Vrefint),
+                temp: code(Input::Temp),
+                input_voltage: code(Input::Pa3),
+                button_switch: code(Input::Pa7),
+                input_current: code(Input::Pb0),
+                p0: code(Input::Pb1),
+                p2: code(Input::Pa2),
+                p3: code(Input::Pb12),
+            },
+            t_ms: now_ms,
             vdda_mv: vdda_mv as u16,
             temp_cdeg: temp_cdeg as i16,
             input_voltage_mv,
@@ -444,6 +556,19 @@ async fn run(
         };
         LATEST.lock(|l| l.set(Some(readings)));
         crate::power::on_adc();
+
+        // totals: this update's value over the time since the last one (the first one after a (re)start has no dt)
+        if let Some(last) = last_update.replace(now) {
+            let dt_us = now.duration_since(last).as_micros().min(100_000) as u32;
+            let current_ma = input_current_ma as i32;
+            // mV x mA = uW
+            let power_uw = input_voltage_mv as i32 * current_ma;
+            TOTALS.lock(|t| {
+                let mut v = t.get();
+                v.add(current_ma, power_uw, dt_us);
+                t.set(v);
+            });
+        }
 
         #[cfg(feature = "debug-adc")]
         if embassy_time::Instant::now() >= next_log {

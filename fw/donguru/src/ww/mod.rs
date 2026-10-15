@@ -89,6 +89,8 @@ pub struct ServerState {
     label: device::Label,
     /// `leds`: global mode, brightness and the end of a running identify.
     leds: leds::LedsState,
+    /// `meter`: deadband and what was last announced to observers.
+    meter: meter::MeterState,
 }
 
 impl ServerState {
@@ -111,6 +113,7 @@ impl ServerState {
             counters_page: [UVlq32(0); ww_counters::MAX_WORDS],
             label: device::Label::new(),
             leds: leds::LedsState::new(),
+            meter: meter::MeterState::new(),
         }
     }
 
@@ -371,7 +374,9 @@ async fn server_task(mut server: UsbServer<'static, UsbDriver>, state: &'static 
             }
         }
         if observing && server.is_up() {
-            let now_us = Instant::now().as_micros();
+            let now = Instant::now();
+            state.meter_poll(now);
+            let now_us = now.as_micros();
             if state
                 .poll_properties(&mut server.sink(), (), now_us, &mut buf)
                 .await

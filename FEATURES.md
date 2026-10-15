@@ -309,8 +309,13 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   J-Link. Not tested: data cut seen in `lsusb` (B129A has no USB; needs a USB DUT on the plug), a U601 fault, above
   5.5 V with a PD charger, observe pushes (read back instead: the Python bindings don't observe yet). With FW-8,
   FW-14. ^revB
-- 📋 **API-12 Power meter in SI units**: one coherent V / I / P reading, temperature, charge and energy totals,
-  deadband for on-change observers; ADC1 as `ww_adc::Adc` with named channels (raw and volts). With FW-3. ^revB
+- 🧪 **API-12 power-meter**: `meter.reading` (V / I / P from one ADC window), `temperature`, `totals` +
+  `reset_totals`, `window`, `deadband` (observers marked changed only beyond it), `calibration` (nominal until FW-9);
+  `adc` as `ww_adc::Adc` with the named channels, raw code and value (`fw/donguru/src/ww/meter.rs`, `ww/adc.rs`,
+  integration in `src/adc.rs`). Built, not yet checked on a board against a DMM. Open: `adc.sbu1` / `sbu2` answer
+  `Busy` until the SBU level (API-14) owns PA0 / PA1; `window` is 0.9 .. 9.3 ms (one to one half DMA buffer of
+  sequences), longer needs averaging across updates. A read of `io7` / `io9` / `io10` switches the ADC to the
+  extended set and stays there (meter keeps working, sequence 0.62 -> 0.90 ms). With FW-3. ^revB
 - 📋 **API-13 Button and switch**: observable button (with a press counter) and slide switch, counted event stream.
   With FW-4. ^revB
 - 📋 **API-14 SBU owner and UART on SBU**: one function at a time on the plug SBU lines, `sbu.release`; `uart[0]` as
