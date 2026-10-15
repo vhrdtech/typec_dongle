@@ -101,6 +101,11 @@ pub struct Readings {
     /// Current through the shunt sensed on PB0 ([`SHUNT_MOHM`], [`CURRENT_AMP_GAIN`]), positive when the
     /// DUT is charged (computer to DUT), negative when the DUT feeds the computer.
     pub input_current_ma: i16,
+    /// Highest [`Readings::input_voltage_mv`] of all sequences in the half buffer, for the VBUS guard
+    /// (`src/power.rs`): a short rise between two updates isn't missed.
+    pub peak_input_voltage_mv: u16,
+    /// [`Readings::input_current_ma`] of the biggest magnitude in the half buffer, either sign.
+    pub peak_input_current_ma: i16,
     /// PB1. P0, P2 and P3 are `None` with [`ChannelSet::Base`]; P1 is not on an ADC capable pin.
     pub p0_mv: Option<u16>,
     /// PA2
@@ -381,19 +386,43 @@ async fn run(
         let to_mv = |p: usize| ((vdda_mv * avg_x16(p) + FULL_SCALE * 8) / (FULL_SCALE * 16)) as u16;
         let mv = |input: Input| pos(input).map(to_mv);
         // Scaled back through the divider from the 1/16 mV pin voltage to keep resolution
-        let pa3_pin_x16 = vdda_mv * avg_x16(unwrap!(pos(Input::Pa3))) / FULL_SCALE;
-        let div = 16 * PA3_R_BOT_OHM;
-        let input_voltage_mv =
-            ((pa3_pin_x16 * (PA3_R_TOP_OHM + PA3_R_BOT_OHM) + div / 2) / div) as u16;
+        let input_mv = |code_x16: u32| {
+            let pa3_pin_x16 = vdda_mv * code_x16 / FULL_SCALE;
+            let div = 16 * PA3_R_BOT_OHM;
+            ((pa3_pin_x16 * (PA3_R_TOP_OHM + PA3_R_BOT_OHM) + div / 2) / div) as u16
+        };
+        let pa3 = unwrap!(pos(Input::Pa3));
+        let pb0 = unwrap!(pos(Input::Pb0));
+        let input_voltage_mv = input_mv(avg_x16(pa3));
         // Offset from the VDDA / 2 reference in codes (ratiometric, so exact whatever VDDA is), then
         // mA = mV * 1000 / (gain * shunt_mOhm), from the 1/16 mV voltage to keep resolution
         // REF minus output: the amplifier output drops below REF when the DUT is charged (B153A INA181 IN+ on the
         // plug side of the shunt), and charging is positive
-        let pb0_code_x16 = (FULL_SCALE * 8) as i32 - avg_x16(unwrap!(pos(Input::Pb0))) as i32;
-        let pb0_x16 = pb0_code_x16 * vdda_mv as i32 / FULL_SCALE as i32;
-        let div = 16 * CURRENT_AMP_GAIN * SHUNT_MOHM;
-        let half = if pb0_x16 < 0 { -div / 2 } else { div / 2 };
-        let input_current_ma = ((pb0_x16 * 1000 + half) / div) as i16;
+        let current_ma = |code_x16: u32| {
+            let pb0_code_x16 = (FULL_SCALE * 8) as i32 - code_x16 as i32;
+            let pb0_x16 = pb0_code_x16 * vdda_mv as i32 / FULL_SCALE as i32;
+            let div = 16 * CURRENT_AMP_GAIN * SHUNT_MOHM;
+            let half = if pb0_x16 < 0 { -div / 2 } else { div / 2 };
+            ((pb0_x16 * 1000 + half) / div) as i16
+        };
+        let input_current_ma = current_ma(avg_x16(pb0));
+
+        // Worst case of all sequences in the half buffer, for the guard: highest PA3 code, PB0 code furthest from
+        // the VDDA / 2 reference (codes only here, one conversion each at the end)
+        let mut pa3_max = 0u16;
+        let (mut pb0_min, mut pb0_max) = (u16::MAX, 0u16);
+        for seq in samples.chunks_exact(order.len()) {
+            pa3_max = pa3_max.max(seq[pa3]);
+            pb0_min = pb0_min.min(seq[pb0]);
+            pb0_max = pb0_max.max(seq[pb0]);
+        }
+        let peak_input_voltage_mv = input_mv(pa3_max as u32);
+        let (i_low, i_high) = (current_ma(pb0_min as u32), current_ma(pb0_max as u32));
+        let peak_input_current_ma = if i_low.unsigned_abs() >= i_high.unsigned_abs() {
+            i_low
+        } else {
+            i_high
+        };
 
         // Sensor voltage and V30 in 1/16 mV, then (dV / Avg_Slope) in 0.01 °C
         let vsense_x16 = (vdda_mv * avg_x16(unwrap!(pos(Input::Temp))) / FULL_SCALE) as i32;
@@ -407,11 +436,14 @@ async fn run(
             input_voltage_mv,
             button_switch_mv: unwrap!(mv(Input::Pa7)),
             input_current_ma,
+            peak_input_voltage_mv,
+            peak_input_current_ma,
             p0_mv: mv(Input::Pb1),
             p2_mv: mv(Input::Pa2),
             p3_mv: mv(Input::Pb12),
         };
         LATEST.lock(|l| l.set(Some(readings)));
+        crate::power::on_adc();
 
         #[cfg(feature = "debug-adc")]
         if embassy_time::Instant::now() >= next_log {

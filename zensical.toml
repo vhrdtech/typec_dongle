@@ -17,6 +17,7 @@ nav = [
       "user/index.md",
       { "Quickstart" = "user/quickstart.md" },
       { "Usage" = "user/usage.md" },
+      { "Power and data switches" = "user/power.md" },
       { "Scripting" = "user/scripting.md" },
   ]
   },

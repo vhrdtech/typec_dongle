@@ -23,11 +23,11 @@ mod sbu;
 mod swd;
 mod uart;
 
-use crate::{cmsis_dap, hub as hub_ctl, swd as swd_host};
+use crate::{cmsis_dap, hub as hub_ctl, power, swd as swd_host};
 use cnt::cnt;
 use defmt::{info, unwrap};
 use embassy_executor::Spawner;
-use embassy_futures::select::{Either, select};
+use embassy_futures::select::{Either3, select3};
 use embassy_stm32::{peripherals, usb};
 use embassy_time::{Duration, Instant, Timer};
 use embassy_usb::driver::{Direction, EndpointAddress};
@@ -135,7 +135,7 @@ mod server_impl {
     wire_weaver::ww_codegen!(
         donguru_api :: DonguruApi for super::ServerState,
         server = true, no_alloc = true, use_async = true,
-        method_model = "_=immediate",
+        method_model = "plug_vbus_cycle=deferred, _=immediate",
         property_model = "_=get_set",
         const_model = "BOARD|IDS|INFO|BUILD_ID=fn",
         omit = ["device.firmware.BUILD_RECORD"],
@@ -328,26 +328,46 @@ async fn usb_task(mut usb: UsbDevice<'static, UsbDriver>) {
 }
 
 /// Serves requests and, while a host observes anything, sends the observed properties that are due every
-/// [OBSERVE_TICK] (SRV-18). Observing stops when the link goes down: a host that comes back asks again.
+/// [OBSERVE_TICK] (SRV-18). Observing stops when the link goes down: a host that comes back asks again. Also wakes
+/// for `src/power.rs`: properties the guard changed and the deferred answers of `plug.vbus_cycle`.
 #[embassy_executor::task]
 async fn server_task(mut server: UsbServer<'static, UsbDriver>, state: &'static mut ServerState) {
     let mut buf = [0u8; OBSERVE_BUF_LEN];
     loop {
         let observing = state.observe.budget_in_use() > 0;
-        let ready = if observing {
-            match select(server.wait(), Timer::after(OBSERVE_TICK)).await {
-                Either::First(ready) => Some(ready),
-                Either::Second(()) => None,
+        let tick = async {
+            if observing {
+                Timer::after(OBSERVE_TICK).await
+            } else {
+                core::future::pending().await
             }
-        } else {
-            Some(server.wait().await)
         };
-        if let Some(ready) = ready
-            && let Some(event) = server.handle(ready, state).await
-        {
-            info!("{:?}", event);
-            if matches!(event, LinkEvent::Down(_)) {
-                state.observe.reset();
+        match select3(server.wait(), tick, power::wait_event()).await {
+            Either3::First(ready) => {
+                if let Some(event) = server.handle(ready, state).await {
+                    info!("{:?}", event);
+                    if matches!(event, LinkEvent::Down(_)) {
+                        state.observe.reset();
+                    }
+                }
+            }
+            Either3::Second(()) => {}
+            Either3::Third(()) => {
+                state.power_changed();
+                while let Some(done) = power::take_cycle_done() {
+                    if done.seq != 0
+                        && server.is_up()
+                        && ServerState::plug_vbus_cycle_send_return(
+                            &mut server.sink(),
+                            done.seq,
+                            plug::cycle_result(done.result),
+                        )
+                        .await
+                        .is_err()
+                    {
+                        cnt!(vbus_cycle_answer_errors: u32, warn);
+                    }
+                }
             }
         }
         if observing && server.is_up() {
@@ -359,6 +379,19 @@ async fn server_task(mut server: UsbServer<'static, UsbDriver>, state: &'static 
             {
                 cnt!(observe_send_errors: u32);
             }
+        }
+    }
+}
+
+impl ServerState {
+    /// Marks what `src/power.rs` changed on its own (a trip, a fault, the end of a cycle).
+    fn power_changed(&mut self) {
+        let changes = power::take_changes();
+        if changes & power::PLUG_VBUS != 0 {
+            self.mark_changed_plug_vbus();
+        }
+        if changes & power::HEADER_VBUS_SW != 0 {
+            self.mark_changed_header_vbus_sw();
         }
     }
 }

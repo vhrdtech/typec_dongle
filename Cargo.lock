@@ -582,6 +582,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "donguru_power"
+version = "0.12.0"
+dependencies = [
+ "donguru_api",
+ "ww_si",
+]
+
+[[package]]
 name = "either"
 version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

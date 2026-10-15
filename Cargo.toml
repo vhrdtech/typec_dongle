@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["donguru-cli", "donguru-core", "donguru_api", "donguru_dap", "donguru_hub"]
+members = ["donguru-cli", "donguru-core", "donguru_api", "donguru_dap", "donguru_hub", "donguru_power"]
 
 [workspace.package]
 version = "0.14.0"

@@ -8,6 +8,7 @@ mod hub;
 mod init;
 mod last_reset;
 mod led;
+mod power;
 mod swd;
 mod ww;
 
@@ -18,9 +19,7 @@ use defmt_rtt as _;
 use assign_resources::assign_resources;
 use cortex_m_rt::exception;
 use embassy_stm32::{
-    Peri, bind_interrupts, dma,
-    gpio::{Level, Output, Pull, Speed},
-    peripherals,
+    Peri, bind_interrupts, dma, peripherals,
     rcc::{
         AHBPrescaler, APBPrescaler, Hsi, Hsi48Config, HsiSysDiv, Pll, PllMul, PllPDiv, PllPreDiv,
         PllRDiv, PllSource, Sysclk,
@@ -71,11 +70,17 @@ assign_resources! {
         pa10: PA10,
     }
     pwr: PwrResources {
-        /// PWR_EN: U601 AOZ1375 enable, receptacle VBUS -> plug VBUS. R601 pull-down, off at reset. Driven only
-        /// with the `plug-vbus-on` feature (stopgap until FW-8), left at its reset state otherwise.
+        /// PWR_EN: U601 AOZ1375 enable, receptacle VBUS -> plug VBUS. R601 pull-down, off at reset. Driven by
+        /// `plug.vbus_mode` through the guard (`src/power.rs`, API-11).
         pa6: PA6,
-        /// ~PWR_FLT: U601 FLTB, open drain with no external pull-up (hw_b153a.md §3).
+        /// ~PWR_FLT: U601 FLTB, open drain with no external pull-up (hw_b153a.md §3): the MCU's pull-up.
         pc14: PC14,
+        /// 5V_EN: header J101 pin 10 VBUS_SW through Q101/Q102, R109 pull-down (hw_b153a.md §10, FW-14).
+        pd1: PD1,
+        /// DATA_CUT: U701 S, R702 pull-down, high disconnects the DUT's USB data (hw_b153a.md §7).
+        pa9: PA9,
+        /// RELAY_EN: U101 photo-MOS LED through R106, high closes RL1-RL2.
+        pa5: PA5,
     }
     swd: SwdResources {
         /// SBU1 net, plug side of the level shifter (hw_b153a.md §8): SWCLK in [`donguru_api::Orientation::Normal`],
@@ -162,16 +167,9 @@ async fn main(spawner: embassy_executor::Spawner) {
         },
     );
 
-    // Stopgap (P2534#12oct-1338b, until FW-8): plug VBUS on from boot so one cable powers the DUT and carries
-    // SWD. Off in normal builds: on the P2625 power-cut bench plug VBUS must stay off (the DUT runs from Q102).
-    if cfg!(feature = "plug-vbus-on") {
-        let fault = embassy_stm32::gpio::Input::new(r.pwr.pc14, Pull::Up);
-        let pwr_en = Output::new(r.pwr.pa6, Level::High, Speed::Low);
-        info!("plug VBUS on (plug-vbus-on), fault: {}", fault.is_low());
-        // Kept for the life of the firmware: dropping either would put its pin back to analog.
-        core::mem::forget(pwr_en);
-        core::mem::forget(fault);
-    }
+    // Before the ADC task, which feeds its guard: plug and header VBUS off, data connected, relay open (API-11)
+    power::init(r.pwr);
+    spawner.spawn(unwrap!(power::power_task()));
 
     spawner.spawn(unwrap!(adc::adc_task(r.adc, adc::ChannelSet::Base)));
     spawner.spawn(unwrap!(button::button_task()));
