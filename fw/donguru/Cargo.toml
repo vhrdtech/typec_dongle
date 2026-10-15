@@ -79,7 +79,7 @@ debug = 2               # debug info does not end up in flash
 debug-assertions = false
 incremental = false
 lto = "fat"
-opt-level = "z"         # 3 = speed, s = size, z = smaller
+opt-level = 3           # speed: USB throughput depends on it (FW-24), 113 KB vs 87 KB for "z"
 overflow-checks = false
 
 # Do not optimize build scripts / proc-macros: faster clean builds
