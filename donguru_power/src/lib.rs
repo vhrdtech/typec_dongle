@@ -128,7 +128,6 @@ pub struct Switch {
     current_measured: bool,
 }
 
-
 impl Switch {
     /// `ForceOff` and off, the boot state (hw_b153a.md §14). `current_measured`: whether the samples' current is
     /// this switch's (plug: yes, header: no).

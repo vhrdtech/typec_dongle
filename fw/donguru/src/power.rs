@@ -14,7 +14,7 @@ use core::cell::RefCell;
 
 use cnt::cnt;
 use defmt::{info, warn};
-use donguru_api::{DataPath, VbusMode, VbusState};
+use donguru_api::{DataPath, GuardTrip, VbusMode, VbusState};
 use donguru_power::{CycleError, ModeError, Sample, Switch};
 use embassy_futures::select::{Either, select};
 use embassy_stm32::gpio::{Input, Level, Output, Pull, Speed};
@@ -139,12 +139,8 @@ pub fn set_mode(which: Which, mode: VbusMode) -> Result<(), ModeError> {
         res
     });
     match res {
-        Ok(()) => info!(
-            "{} VBUS mode set, {}",
-            which,
-            defmt::Debug2Format(&state(which))
-        ),
-        Err(e) => warn!("{} VBUS mode refused: {}", which, defmt::Debug2Format(&e)),
+        Ok(()) => info!("{} VBUS mode set, {}", which, state_name(state(which))),
+        Err(e) => warn!("{} VBUS mode refused: {}", which, error_name(e)),
     }
     res
 }
@@ -183,19 +179,11 @@ pub fn on_adc() {
         }
     }
     if let Some(st) = changed.0 {
-        warn!(
-            "plug VBUS cut: {} at {}",
-            defmt::Debug2Format(&st),
-            defmt::Debug2Format(&s)
-        );
+        log_cut("plug VBUS cut", st, s);
         notify(PLUG_VBUS);
     }
     if let Some(st) = changed.1 {
-        warn!(
-            "header VBUS_SW cut: {} at {}",
-            defmt::Debug2Format(&st),
-            defmt::Debug2Format(&s)
-        );
+        log_cut("header VBUS_SW cut", st, s);
         notify(HEADER_VBUS_SW);
     }
 }
@@ -250,10 +238,15 @@ fn finish(req: CycleRequest) {
         p.apply();
         res
     });
+    // the current just before switching back on shows VBUS really was off (~0 mA)
     info!(
-        "plug VBUS cycle done after {} ms: {}",
+        "plug VBUS cycle done after {} ms ({} mA while off): {}",
         req.started.elapsed().as_millis() as u32,
-        defmt::Debug2Format(&result)
+        s.map_or(0, |s| s.current_ma),
+        match result {
+            Ok(st) => state_name(st),
+            Err(e) => error_name(e),
+        }
     );
     if CYCLE_DONE
         .try_send(CycleDone {
@@ -283,7 +276,14 @@ pub fn take_cycle_done() -> Option<CycleDone> {
 }
 
 pub fn set_data(path: DataPath) {
-    info!("plug data {}", defmt::Debug2Format(&path));
+    info!(
+        "plug data {}",
+        if path == DataPath::Cut {
+            "cut"
+        } else {
+            "connected"
+        }
+    );
     with(|p| p.data_cut.set_level(Level::from(path == DataPath::Cut)));
 }
 
@@ -302,4 +302,41 @@ pub fn set_relay(closed: bool) {
 
 pub fn relay() -> bool {
     with(|p| p.relay.is_set_high())
+}
+
+// Names for the log: `Debug2Format` would pull in `core::fmt` and every `Debug` impl (~20 KiB here).
+fn state_name(st: VbusState) -> &'static str {
+    match st {
+        VbusState::Off => "Off",
+        VbusState::On => "On",
+        VbusState::Fault => "Fault",
+        VbusState::Tripped(GuardTrip::OverVoltage) => "Tripped(OverVoltage)",
+        VbusState::Tripped(GuardTrip::OverCurrent) => "Tripped(OverCurrent)",
+        VbusState::Tripped(GuardTrip::OverPower) => "Tripped(OverPower)",
+        #[allow(unreachable_patterns)] // future variants
+        _ => "?",
+    }
+}
+
+fn error_name(e: ModeError) -> &'static str {
+    match e {
+        ModeError::Invalid => "invalid limits",
+        ModeError::OverVoltage { .. } => "VBUS over max_voltage",
+        ModeError::NoMeasurement => "no measurement yet",
+        ModeError::CurrentNotMeasured => "Auto without a current measurement",
+    }
+}
+
+fn log_cut(what: &str, st: VbusState, s: Option<Sample>) {
+    let s = s.unwrap_or(Sample {
+        vbus_mv: 0,
+        current_ma: 0,
+    });
+    warn!(
+        "{}: {} at {} mV, {} mA",
+        what,
+        state_name(st),
+        s.vbus_mv,
+        s.current_ma
+    );
 }
