@@ -215,6 +215,13 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   13 lints (doc list indentation in `hub.rs` / `swd.rs`, operator precedence in `led.rs`, an empty `loop {}` in
   `main.rs`, unused `ChannelSet::Extended`, `adc::set_channels` and `Brightness::Dim`); `just clippy` covers only
   the host workspace, so nothing catches them. Found 15 Oct 2026.
+- 🚧 **FW-24 WireWeaver USB throughput** (P2534#15oct-1747): was ~30% of USB FS bulk (`ww usb-loopback`, 1 KB
+  messages: 152 round trips/s, 373 kB/s host -> device, 316 kB/s device -> host). Done: flash prefetch on
+  (`main.rs`, embassy-stm32 0.6 leaves it off on the G0); wire_weaver TR-12 (U2Head byte fast path, replies
+  flushed when no request waits). Pending outside this repo: double-buffered bulk endpoints, which need
+  embassy-stm32 with usb_v4 double buffering (patch written, not upstream yet) and an embassy-usb release with
+  `endpoint_bulk_*_double_buffered`; measured with that patch: 1 KB 330 round trips/s, 697 kB/s host -> device,
+  489 kB/s device -> host. Tested 15 Oct 2026 on B153A.
 
 ## API (`API`)
 
