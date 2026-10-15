@@ -6,11 +6,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
-### Fixed
-
-- Firmware runs with the flash prefetch on: embassy-stm32 0.6 left it off at 64 MHz, so code ran 8-16% slower;
-  WireWeaver over USB 1 KB messages (`ww usb-loopback`) 373 -> 399 kB/s host -> device, 317 -> 451 kB/s device ->
-  host (FW-24). Tested on B153A.
+## [0.10.0] - 2026-10-15
 
 ### Changed
 
@@ -19,6 +15,12 @@ IDs refer to [FEATURES.md](FEATURES.md).
   `ww usb-loopback` with this branch's wire_weaver: 1 KB messages 123 -> 214 round trips/s, 258 -> 419 kB/s host ->
   device, 307 -> 470 kB/s device -> host; 64 B messages 584 -> 2400 round trips/s. Flash 87 -> 113 KB of 510 KB
   (FW-24). Tested on B153A.
+
+### Fixed
+
+- Firmware runs with the flash prefetch on: embassy-stm32 0.6 left it off at 64 MHz, so code ran 8-16% slower;
+  WireWeaver over USB 1 KB messages (`ww usb-loopback`) 373 -> 399 kB/s host -> device, 317 -> 451 kB/s device ->
+  host (FW-24). Tested on B153A.
 
 ## [0.9.0] - 2026-10-15
 
