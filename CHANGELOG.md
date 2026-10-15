@@ -6,6 +6,14 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Fixed
+
+- Firmware: flip-link stack overflow protection is really in effect: `linker = "flip-link"` in
+  `fw/donguru/.cargo/config.toml` (embedded_bedrock ROB-12). The template's `cargo:rustc-linker` line in `build.rs`
+  is no build-script directive, so the firmware linked without it and the stack sat above `.data` / `.bss`. Now the
+  stack runs from below `.data` down to the start of RAM, checked in the ELFs of dev, release and both examples;
+  not yet on a board (FW-1).
+
 ### Changed
 
 - Builds against wire_weaver master again, where API enums get a variant for values from a newer version (SW-47),

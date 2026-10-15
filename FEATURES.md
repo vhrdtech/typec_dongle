@@ -34,7 +34,9 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 
 - 🧪 **FW-1 Firmware base**: embassy on STM32G0B1CE, 64 MHz from HSI16 + PLL, USB clock from HSI48 trimmed by CRS,
   embedded_bedrock template 0.5.0 (`bedrock_fw.json`), defmt over RTT, `cnt` RAM and backup-register counters,
-  fault handlers. 2K config page reserved at the end of flash (`memory.x`), not used yet.
+  fault handlers. 2K config page reserved at the end of flash (`memory.x`), not used yet. Stack overflow protection
+  by flip-link (`linker` in `fw/donguru/.cargo/config.toml`; until 15 Oct 2026 the template's `build.rs` line had no
+  effect): the stack sits below `.data` / `.bss` and an overflow faults. Not yet checked on a board.
 - ✅ **FW-2 LEDs**: power and status LEDs on PF0 / PF1 with on / off / blink / breath animations and perceptual
   brightness (`src/led.rs`). B153A.
 - ✅ **FW-3 ADC sampling**: continuous ADC1 into a DMA ring buffer with hardware oversampling and calibration;
@@ -209,6 +211,11 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   P2534#14oct-1439): reads PA10 high → `BoardVariant::Main` on 2 cold power-cycles (true replug, J-Link VTref
   0.00 V between them) and 2 debugger-forced resets, hub attaching correctly every time. 🧪 because Plus is
   untested hardware.
+- 🐛 **FW-23 Firmware not clippy clean**: `cargo clippy --bins --examples -- -D warnings` in `fw/donguru` fails with
+  13 lints (doc list indentation in `hub.rs` / `swd.rs`, operator precedence in `led.rs`, an empty `loop {}` in
+  `main.rs`, unused `ChannelSet::Extended`, `adc::set_channels` and `Brightness::Dim`); `just clippy` covers only
+  the host workspace, so nothing catches them. Found 15 Oct 2026.
+
 ## API (`API`)
 
 - 📋 **FW-14 Switched VBUS on the header** (J101 pin 10, PD1 `5V_EN`, net to be renamed VBUS_SW): it is the computer's

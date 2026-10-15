@@ -8,8 +8,6 @@ fn main() {
     println!("cargo:rustc-link-search={}", out.display());
     println!("cargo:rerun-if-changed=memory.x");
 
-    // Stack overflow protection: https://github.com/knurling-rs/flip-link
-    println!("cargo:rustc-linker=flip-link");
     println!("cargo:rustc-link-arg=--nmagic");
     println!("cargo:rustc-link-arg=-Tlink.x");
     println!("cargo:rustc-link-arg=-Tdefmt.x");

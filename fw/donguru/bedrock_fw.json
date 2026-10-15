@@ -76,6 +76,15 @@
         "0.5.0: WireWeaver over USB, set up by hand in the existing layout: API crate donguru_api in the repo root (../../donguru_api, member of the root Cargo workspace), firmware stays in fw/donguru; src/ww.rs from the template with the USB driver created in main.rs (USB in assign_resources, USB_UCPD1_2 in main's Irqs) and led_on/led_off switching the status LED via led::set instead of owning PF1"
       ],
       "notes": "wire_weaver crates via relative path deps to ~/git/wire_weaver (not git). dev/release/examples build, fmt clean, .cnt_bkp_buffer still at 0x4000B100. USB enumeration and `ww list`/`ww introspect` not yet tested on hardware."
+    },
+    {
+      "date": "2026-10-15",
+      "from": "f10b345",
+      "to": "f10b345",
+      "applied": [
+        "ROB-12 (template [Unreleased] after 0.5.0), ahead of the other changes since 0.5.0: flip-link through linker = \"flip-link\" in .cargo/config.toml, the cargo:rustc-linker line removed from build.rs (cargo ignored it, flip-link was never used)"
+      ],
+      "notes": "Only ROB-12 taken; template.commit stays at 0.5.0, so the next upgrade still offers everything else after it (crash capture, build id, ...). Checked in the ELFs: _stack_start = start of .data, stack down to the start of RAM. Not yet on hardware."
     }
   ],
   "rejected": [],
