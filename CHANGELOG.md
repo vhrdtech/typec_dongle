@@ -6,6 +6,22 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- donguru-core talks to the dongle over wire_weaver_client (CORE-1): enumeration from the USB descriptors (VID:PID
+  `c0de:cafe` + API id `donguru_api`), selection by index / serial / USB path (auto when one is connected), the
+  generated `donguru_api` 0.2 client and a typed facade per level of the API tree, the B153A net-name table for
+  `debug`. Errors keep the device's category (`Refused`, `InUse`, ...) and typed error (`OverVoltage { measured }`).
+- In-process mock dongle (`mock` feature, CORE-3): `DonguruApi` served on `ww_device::Server` in the same process,
+  the test double for the CLI, GUI and Python bindings.
+- `dg device list` and `dg device info` (CLI-7, text / json / jsonl). Tested 15 Oct 2026 on B153A on omarchy-m1:
+  the dongle is listed (API 0.2.0), `device info` reads variant Main, board "Donguru B153" rev A, firmware, UID.
+
+### Changed
+
+- Exit codes: an item the firmware doesn't implement and an incompatible firmware API exit with 4 (device error),
+  like a device error (CORE-2).
+
 ## [0.13.0] - 2026-10-15
 
 ### Added

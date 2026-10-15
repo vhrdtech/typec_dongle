@@ -313,12 +313,20 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 
 ## Host library (`CORE`)
 
-- ⬜ **CORE-1 Device enumeration and selection**: `list()` is `todo!()`, `select` resolves nothing yet
-  (`donguru-core/src/device.rs`). Selectors: serial, index, USB path; auto-select when exactly one dongle is present.
-  ^revB
+- ✅ **CORE-1 Device enumeration and selection** (`donguru-core/src/device.rs`): `list()` from the USB descriptors
+  without opening (VID:PID `c0de:cafe` and API id `donguru_api`, sorted by path), `Selector` by index, serial (any
+  case, unique prefix) or USB path (`5-1.2`), auto-select when exactly one; `Dongle::open` with the version check.
+  The generated `donguru_api` client (`client.rs`) and a typed facade per level (`levels.rs`: device, settings, leds,
+  meter, plug, header, sbu, inputs, hub, swd, uart / i2c / gpio by `Side`, adc, debug) with `Error::{Device (kind +
+  typed error), Unimplemented, Timeout, Incompatible, Link}`; the B153A net names (`nets.rs`, hw_b153a.md §11).
+  Tested 15 Oct 2026 on B153A (omarchy-m1): `dg device list` finds it, `dg device info` reads `device.variant`
+  (Main), board, firmware, UID.
 - ✅ **CORE-2 Error type**: `thiserror` errors mapped to exit codes by the CLI (`donguru-core/src/error.rs`).
-- 📋 **CORE-3 Transport trait with a mock**: so commands can be tested without hardware (design doc, *Transport
-  model*).
+- ✅ **CORE-3 In-process mock instead of a transport trait** (`donguru-core/src/mock/`, feature `mock`): the generated
+  `DonguruApi` server on `ww_device::Server` over wire_weaver_client's `in_process` transport, so tests run the real
+  host stack (link setup, version check, timeouts, observe). Models the Donguru levels with the firmware's rules
+  (VBUS guard, SBU ownership, refused debug pins); IO arrays and streams answer `Unimplemented`.
+  `donguru-core/tests/mock.rs` covers every level, device errors, `Unimplemented`, observe and a stuck device.
 - 📋 **CORE-4 Python bindings** over the Rust core. ^v1.0
 - ✅ **CORE-5 SWD link memtest** (`donguru-core/src/swd_memtest.rs`): memtest-style patterns over any
   `WordMemory` (data bus walking 1/0, Barr address bus, solid, checkerboard, address-in-address, moving inversions
@@ -340,7 +348,8 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - ⬜ **CLI-5 `gpio read / write / configure / watch`**: arguments parsed, prints "not implemented". Needs FW-10,
   API-3, CORE-1.
 - ⬜ **CLI-6 `usb list / attach / detach / power / data`**: stub. Needs FW-8, API-3. ^revB
-- ⬜ **CLI-7 `device list / info / select`, `info`**: stub. Needs CORE-1. ^revB
+- 🚧 **CLI-7 `device list / info / select`, `info`**: `device list` and `device info` work (text / json / jsonl,
+  `donguru-cli/src/commands/device.rs`), tested 15 Oct 2026 on B153A; `device select` and top-level `info` are stubs.
 - 🚧 **CLI-8 `udev`**: `generate` writes the rule (uaccess / group / all); `install`, `uninstall`, `status` are stubs.
 - ⬜ **CLI-9 `config generate / show / path / validate`**: stub. Layering per the design doc (defaults, system,
   user, project file, `DONGURU_*`, flags).
