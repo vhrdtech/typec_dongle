@@ -293,6 +293,9 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 📋 **API-21 USB NCM and embassy-net**: CDC-NCM network interface with a DHCP server, the same API over WebSocket and
   UDP, and a ~1 KiB http start page that loads the browser UI from our web server (cargo feature `net`). ^revB
 
+- 📋 **API-22 WebUSB landing page**: WebUSB capability and landing-page URL on the WireWeaver interface (no new
+  endpoints), so the https web UI (with WebGPU) reaches the dongle from Chromium. ^revB
+
 ## Host library (`CORE`)
 
 - ⬜ **CORE-1 Device enumeration and selection**: `list()` is `todo!()`, `select` resolves nothing yet
