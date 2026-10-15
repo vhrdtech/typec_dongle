@@ -6,6 +6,32 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- Plug and header power (API-11, FW-8, FW-14; `donguru_api` unchanged at 0.2.0): `plug.vbus_mode` and
+  `header.vbus_sw_mode` (`ForceOff`, `ForceOn { max_voltage }`, `Auto { max_voltage, max_current, max_power }`, plug
+  only) drive the switches through a firmware-side guard that checks the receptacle VBUS, the current and the power on
+  every ADC update (~15 ms) and cuts the switch, reported as `Tripped(..)` in `plug.vbus` / `header.vbus_sw`; the
+  AOZ1375 latch shows as `Fault`. A guarded mode above `max_voltage` is refused, a trip or fault stays until the next
+  mode write. `plug.vbus_cycle(off, release_sbu)` (0..60 s) answers when VBUS is back on; `plug.data` cuts the DUT's
+  USB data (U701), `header.relay` closes U101; all observable. Boot: everything off, data connected, relay open.
+  Docs: `docs/user/power.md`. Tested 15 Oct 2026 on B153A + B129A at 5.2 V (on / off, refusals, OverCurrent /
+  OverPower / OverVoltage trips, cycles of 100 ms to 2 s answered after the off time, pins through the J-Link); not
+  tested: data cut in `lsusb` (needs a USB DUT), a U601 fault, a PD charger above 5.5 V. Needs wire_weaver SRV-20
+  (deferred answers on nested levels).
+- `donguru_power` crate: the modes and the guard as a host-tested state machine (API-11).
+
+### Changed
+
+- Firmware size, release build, `just fw-size`: FLASH 243.4 -> 260.7 KiB of 510 KiB, RAM 16.1 -> 16.6 KiB, `cnt` RAM
+  60 -> 76 B (API-11: handlers and observe of the six properties, the deferred cycle answer, the guard and its ADC
+  peaks).
+
+### Removed
+
+- The `plug-vbus-on` firmware feature: plug VBUS is off at boot and switched with `plug.vbus_mode` (API-11). A
+  persisted boot mode (`device.settings.plug_vbus_at_boot`) comes with API-19.
+
 ## [0.14.0] - 2026-10-15
 
 ### Added

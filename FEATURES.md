@@ -57,7 +57,9 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   HUB-7 (the port swap itself, needs a device on the plug) not yet done — landing as is, HUB-7 later.
 - 📋 **FW-7 USART on SBU with automatic TX/RX flip**: bridge to the host (CDC-ACM or over WireWeaver), flip by
   cable orientation. ^revB
-- 📋 **FW-8 Power switch and USB data switches** per downstream port, with safe defaults at boot. ^revB
+- 🚧 **FW-8 Power switch and USB data switches** per downstream port, with safe defaults at boot: plug VBUS (U601),
+  plug data (U701) and the relay through API-11 (`fw/donguru/src/power.rs`), all off / connected / open at boot.
+  Tested 15 Oct 2026 on B153A (API-11). Open: the Plus variant's hub port 3 / 4 (no per-port hub control in v1). ^revB
 - 📋 **FW-9 Power meter calibration**: offsets and gain per board, stored in the config page. ^v1.0
 - 📋 **FW-10 GPIO and I2C** on the external pins. ^v1.0
 - ✅ **FW-11 `fw_info` / `hw_info`** (embedded_bedrock device contract): served as `device.firmware`
@@ -232,11 +234,19 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   trips/s, 540 kB/s each way. Tested 15 Oct 2026 on B153A. Open: back to crates.io embassy once #7275 is released;
   device -> host stays ~520 kB/s with the device ~30% idle (CRC burst per message, copies: wire_weaver TR-12).
 
+- 🐛 **FW-25 B129A answers no SWD through the CMSIS-DAP**: on 15 Oct 2026, with B129A powered from the plug (~10 mA),
+  `probe-rs read --probe c0de:cafe` gets "No target responded" / a protocol error in both `plug.orientation`s,
+  also with main's firmware (`a9fdc0a` + `plug-vbus-on`), which read it on 13 Oct. Nobody flashed or rewired B129A
+  in between (ecc-safe-flash). To check: the cable / breakout, B129A's own SWD with a J-Link, the SBU lines on a
+  scope.
+
 ## API (`API`)
 
-- 📋 **FW-14 Switched VBUS on the header** (J101 pin 10, PD1 `5V_EN`, net to be renamed VBUS_SW): it is the computer's
-  VBUS as it is, 5 V or up to 20 V after PD. Off at boot; report the receptacle voltage (PA3) with the state; turn it
-  off when VBUS changes unless the user allowed a higher voltage. ^revB
+- 🧪 **FW-14 Switched VBUS on the header** (J101 pin 10, PD1 `5V_EN`, net to be renamed VBUS_SW): it is the computer's
+  VBUS as it is, 5 V or up to 20 V after PD. Off at boot; `header.vbus_sw_mode` `ForceOn { max_voltage }` cuts it
+  when the receptacle VBUS goes above the limit (API-11); `Auto` is refused, its current isn't measured (the shunt is
+  on the plug path only). Tested 15 Oct 2026 on B153A at 5.2 V (cut on a later rise above a lowered limit, PD1 seen
+  high); not with a PD charger above 5.5 V, so 🧪. The receptacle voltage with the state is the meter's (API-12). ^revB
 - ✅ **API-1 WireWeaver over USB**: `DonguruApi` served by `fw/donguru/src/ww/` (USB FS, VID:PID `c0de:cafe`, API
   id in a string descriptor for `ww list`). Fixed endpoint registers: EP1 OUT / EP2 IN WireWeaver (double-buffered),
   EP3 CMSIS-DAP (API-8). Tested 15 Oct 2026 on B153A with `ww list` / `ww introspect`.
@@ -263,8 +273,9 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `ww introspect` shows the tree, the moved items read and write, `plug.orientation` observed end to end with a
   generated client. Plug and header VBUS are modes (`plug.vbus_mode`, `header.vbus_sw_mode`: `ForceOff` /
   `ForceOn` / `Auto` with limits; `device.settings.plug_vbus_at_boot` replaces the `plug-vbus-on` feature once
-  implemented, API-11). Open: a CMSIS-DAP `probe-rs` read of B129A with `plug.orientation` (B129A is fed only
-  through the plug, so it waits for API-11's `vbus_mode`), so 🧪. `ww info` ends with an error from `ww` itself (double disconnect, wire_weaver).
+  implemented, API-11). Open: a CMSIS-DAP `probe-rs` read of B129A with `plug.orientation`: tried 15 Oct 2026 with
+  B129A powered through `plug.vbus_mode` (API-11), no SWD answer in either orientation, also with main's firmware
+  (FW-25), so 🧪. `ww info` ends with an error from `ww` itself (double disconnect, wire_weaver).
 
 - 📋 **API-8 API tree 0.2.0**: `donguru_api` 0.2.0 with every level declared (`device`, `leds`, `meter`, `plug`,
   `header`, `sbu`, `inputs`, `hub`, `swd`, `uart[]`, `i2c[]`, `gpio[]`, `adc`, `debug`), the 0.1 root items moved
@@ -283,8 +294,21 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   runs. ^revB
 - 📋 **API-10 defmt log over WireWeaver**: `ww_log::LogDefmt` through `ww_defmt_logger`, RTT kept as a tee, logs kept
   across a crash in a persistent RAM store. ^revB
-- 📋 **API-11 Plug and header power**: plug VBUS on / off / timed cycle and header VBUS_SW behind a firmware-side guard
-  (max voltage, optional current trip), AOZ1375 fault, plug data switch, relay; all observable. With FW-8, FW-14. ^revB
+- 🧪 **API-11 Plug and header power**: `plug.vbus_mode` / `header.vbus_sw_mode` (`ForceOff`, `ForceOn { max_voltage }`,
+  `Auto` with voltage, current and power limits, plug only) with the state in `plug.vbus` / `header.vbus_sw` (`Off`,
+  `On`, `Fault`, `Tripped(..)`), `plug.vbus_cycle(off, release_sbu)` answered when VBUS is back on (deferred),
+  `plug.data` (U701), `header.relay`; all observable. The guard runs on every ADC update (~15 ms) against the worst
+  voltage and |current| of the update; a guarded mode is refused above `max_voltage`; trips and the AOZ1375 fault
+  (FLTB PC14, two updates low) latch until the next mode write, which re-arms. Logic in `donguru_power` (host tests),
+  pins and tasks in `fw/donguru/src/power.rs`, handlers in `src/ww/plug.rs` / `header.rs`; docs
+  `docs/user/power.md`. Needs wire_weaver SRV-20 (deferred answers on nested levels). Tested 15 Oct 2026 on B153A +
+  B129A (~10 mA load) at 5.2 V: on / off, refused at a lower `max_voltage`, OverCurrent and OverPower trips 8 ms
+  after switching on (B129A's inrush peak 42-55 mA), header cut on a later rise above a lowered `max_voltage`,
+  cycles of 100 / 250 / 300 / 500 / 2000 ms answered after the off time (host 103..2000 ms, firmware timer to the
+  ms), `WrongState` in `ForceOff`, `InvalidArgument` above 60 s, PA5 / PA6 / PA9 / PD1 read high through the
+  J-Link. Not tested: data cut seen in `lsusb` (B129A has no USB; needs a USB DUT on the plug), a U601 fault, above
+  5.5 V with a PD charger, observe pushes (read back instead: the Python bindings don't observe yet). With FW-8,
+  FW-14. ^revB
 - 📋 **API-12 Power meter in SI units**: one coherent V / I / P reading, temperature, charge and energy totals,
   deadband for on-change observers; ADC1 as `ww_adc::Adc` with named channels (raw and volts). With FW-3. ^revB
 - 📋 **API-13 Button and switch**: observable button (with a press counter) and slide switch, counted event stream.
