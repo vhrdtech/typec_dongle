@@ -6,13 +6,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
-### Fixed
-
-- Firmware: flip-link stack overflow protection is really in effect: `linker = "flip-link"` in
-  `fw/donguru/.cargo/config.toml` (embedded_bedrock ROB-12). The template's `cargo:rustc-linker` line in `build.rs`
-  is no build-script directive, so the firmware linked without it and the stack sat above `.data` / `.bss`. Now the
-  stack runs from below `.data` down to the start of RAM, checked in the ELFs of dev, release and both examples;
-  not yet on a board (FW-1).
+## [0.9.0] - 2026-10-15
 
 ### Changed
 
@@ -23,6 +17,14 @@ IDs refer to [FEATURES.md](FEATURES.md).
   - `SwdOrientation` is `no_future_version`: a Type-C plug has two orientations, the set is complete (API-4).
   - `swd_mode`: a mode from a newer host arrives as `SwdMode::Unknown` and the write is refused, the current mode
     stays (counter `swd_mode_unknown`) (API-5).
+
+### Fixed
+
+- Firmware: flip-link stack overflow protection is really in effect: `linker = "flip-link"` in
+  `fw/donguru/.cargo/config.toml` (embedded_bedrock ROB-12). The template's `cargo:rustc-linker` line in `build.rs`
+  is no build-script directive, so the firmware linked without it and the stack sat above `.data` / `.bss`. Now the
+  stack runs from below `.data` down to the start of RAM, checked in the ELFs of dev, release and both examples;
+  not yet on a board (FW-1).
 
 ## [0.8.0] - 2026-10-14
 
