@@ -227,12 +227,12 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 🚧 **FW-24 WireWeaver USB throughput** (P2534#15oct-1747): was ~30% of USB FS bulk (`ww usb-loopback`, 1 KB
   messages: 152 round trips/s, 373 kB/s host -> device, 316 kB/s device -> host). Done: flash prefetch on
   (`main.rs`, embassy-stm32 0.6 leaves it off on the G0); release `opt-level = 3` instead of "z" (~40% faster
-  here); wire_weaver TR-12 (U2Head byte fast path, replies flushed when no request waits); double-buffered bulk
+  here); WireWeaver TR-12 (U2Head byte fast path, replies flushed when no request waits); double-buffered bulk
   endpoints (`src/ww/mod.rs`, `WireWeaverClass::with_endpoints`) from embassy-rs/embassy#7275, through a git dependency on
   the romixlab/embassy `donguru-0.6-double-buffer` branch (`fw/donguru/Cargo.toml` `[patch.crates-io]`). Release
   build now: 1 KB 335 round trips/s, 664-676 kB/s host -> device, 520 kB/s device -> host; 64 B 2400-2500 round
   trips/s, 540 kB/s each way. Tested 15 Oct 2026 on B153A. Open: back to crates.io embassy once #7275 is released;
-  device -> host stays ~520 kB/s with the device ~30% idle (CRC burst per message, copies: wire_weaver TR-12).
+  device -> host stays ~520 kB/s with the device ~30% idle (CRC burst per message, copies: WireWeaver TR-12).
 
 - ✅ **FW-25 B129A answers no SWD through the CMSIS-DAP** (not a Donguru bug): from 15 Oct 2026 `probe-rs read
   --probe c0de:cafe` got a timeout / a protocol error from B129A, also with v0.6.0, the firmware that read it on
@@ -255,7 +255,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   again with the non-blocking RTT tee (FW-27) and no probe attached, ~2 s after the timeout: not the RTT.
 - ✅ **FW-27 RTT log never blocks**: the firmware runs the same with or without a probe: `ww_defmt_logger`'s RTT tee
   writes each frame whole or skips it, with the channel forced to NoBlockSkip before every write, as probe-rs
-  switches it to blocking on attach. Code: wire_weaver `ww_defmt_logger` (`tee_frame`, `rtt_skipped()`, host test
+  switches it to blocking on attach. Code: WireWeaver `ww_defmt_logger` (`tee_frame`, `rtt_skipped()`, host test
   `rtt_tee_never_blocks`), `fw/donguru/src/log.rs`; `debug.log_flood` yields between lines. Tested 16 Oct 2026 on
   B153A: three floods of 1000 with probe-rs attached and three without, each 227 lines + "773 lost" over USB, no ADC
   overrun from any of them (probe-rs showed what fit, 753 of 3000 lines); a line costs ~62 us instead of ~620 us
@@ -280,7 +280,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   cable orientation of everything on SBU (rw + observe, `Auto` / `Normal` / `Swapped`; `Auto` acts as `Normal` until
   CC detection) and the Hi-Z disconnect for the bench power-cut test (FW-15). Only the SWD-host uses them so far.
 - 🧪 **API-5 `swd.mode`** (was `swd_mode`, moved in 0.2.0): `SwdMode::BitBang` (default) or `SwdMode::Spi` (FW-21);
-  takes effect on the next SWD transfer. A mode from a newer host (read as `SwdMode::Unknown`, wire_weaver SW-47) is
+  takes effect on the next SWD transfer. A mode from a newer host (read as `SwdMode::Unknown`, WireWeaver SW-47) is
   refused with `InvalidArgument`, the current one stays.
 - 🧪 **API-7 `device.variant`** (was `board_variant`, moved in 0.2.0): ro property, `BoardVariant::Main` / `Plus` /
   `Unknown` (FW-22); also the variant of `device.board.BOARD`. A variant from a newer firmware reads as
@@ -299,7 +299,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   API-11), tested 16 Oct 2026 on B153A + B129A in both cable orientations, 64 KB of flash at 1000 kHz, three reads each,
   all identical: `Normal` on v0.19.0 firmware in 1.59 s, `Swapped` with the cable flipped on v0.20.1 in 1.52-1.56 s;
   the other orientation gives an SWD protocol error each time, as it should. `plug.orientation` was set in RAM
-  through the J-Link (the CLI's `swd orientation` is not implemented yet). `ww info` ends with an error from `ww` itself (double disconnect, wire_weaver).
+  through the J-Link (the CLI's `swd orientation` is not implemented yet). `ww info` ends with an error from `ww` itself (double disconnect, WireWeaver).
 
 - ✅ **API-9 Device contract**: `device.firmware` (`FirmwareInfo`, build id), `device.last_reset` (`LastReset`:
   cause, crash record, boot count, clear), `device.board`, `device.uid`, `device.label` (`UserInfo`: name 32 B and
@@ -307,11 +307,11 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   used words, build id; `watch` not implemented, polling `read` covers USB), `leds` as `ww_indication` (mode:
   `OnlyEssential` keeps the power LED; brightness in five steps; `identify` blinks both LEDs, `Busy` while running;
   RAM only). Code: `fw/donguru/src/ww/device.rs`, `ww/leds.rs`, `src/led.rs`, `src/last_reset.rs`. With FW-11,
-  FW-13. Tested 15 Oct 2026 on B153A: `ww info`, `ww report` and `ww counters` (wire_weaver `987f09a9`) read
+  FW-13. Tested 15 Oct 2026 on B153A: `ww info`, `ww report` and `ww counters` (WireWeaver `987f09a9`) read
   everything, the ELF found by build id (the log part waits for API-10); label, LED mode, brightness and identify
   from Python, identify seen as a full-brightness blink in the TIM14 / TIM15 compare registers, `Busy` while it
   runs. ^revB
-- ✅ **API-10 defmt log over WireWeaver**: `ww_log::LogDefmt` at `device.log` through `ww_defmt_logger` (wire_weaver
+- ✅ **API-10 defmt log over WireWeaver**: `ww_log::LogDefmt` at `device.log` through `ww_defmt_logger` (WireWeaver
   STD-26), RTT kept as a tee (channel `defmt`, probe-rs / `cnt run` unchanged); the log store a `PersistentRamRing`
   of 8 KiB in `.uninit` (DropOldest), its session started at boot or continued after a soft reset, so the log from
   before a host connects and from before a crash arrives when a host resumes it; `device.log.DEFMT` with encoding
@@ -328,7 +328,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   voltage and |current| of the update; a guarded mode is refused above `max_voltage`; trips and the AOZ1375 fault
   (FLTB PC14, two updates low) latch until the next mode write, which re-arms. Logic in `donguru_power` (host tests),
   pins and tasks in `fw/donguru/src/power.rs`, handlers in `src/ww/plug.rs` / `header.rs`; docs
-  `docs/user/power.md`. Needs wire_weaver SRV-20 (deferred answers on nested levels). Tested 15 Oct 2026 on B153A +
+  `docs/user/power.md`. Needs WireWeaver SRV-20 (deferred answers on nested levels). Tested 15 Oct 2026 on B153A +
   B129A (~10 mA load) at 5.2 V: on / off, refused at a lower `max_voltage`, OverCurrent and OverPower trips 8 ms
   after switching on (B129A's inrush peak 42-55 mA), header cut on a later rise above a lowered `max_voltage`,
   cycles of 100 / 250 / 300 / 500 / 2000 ms answered after the off time (host 103..2000 ms, firmware timer to the
@@ -362,7 +362,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   hub SMBus registers, UCPD1/2 state and role, raw LEDs, peripheral register reads (P2534#14oct-1014). ^revB
 
 - 📋 **API-19 Persistent settings**: `device.settings` as `rw` properties kept in flash by the new `ww_settings` store
-  (sparse shrink_wrap records, power-cut safe, 4 pages at the end of flash): label, plug VBUS at boot (replaces the
+  (sparse ShrinkWrap records, power-cut safe, 4 pages at the end of flash): label, plug VBUS at boot (replaces the
   `plug-vbus-on` feature), button action, meter window / deadband, UART default; a factory key for FW-9. ^revB
 - 📋 **API-20 SBU UART as CDC-ACM**: the SBU USART also as `/dev/ttyACM*`; one owner at a time (ACM while the tty is
   open, else WireWeaver), the owner shown in `sbu.function`, WireWeaver gets `InUse`, `sbu.release` overrides. With

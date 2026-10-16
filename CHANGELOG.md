@@ -6,6 +6,10 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Changed
+
+- Docs: product names written WireWeaver and ShrinkWrap in prose (P2534).
+
 ## [0.20.1] - 2026-10-16
 
 ### Fixed
