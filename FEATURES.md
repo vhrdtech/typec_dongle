@@ -236,7 +236,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 
 - ✅ **FW-25 B129A answers no SWD through the CMSIS-DAP** (not a Donguru bug): from 15 Oct 2026 `probe-rs read
   --probe c0de:cafe` got a timeout / a protocol error from B129A, also with v0.6.0, the firmware that read it on
-  13 Oct. Cause: B129A's core was held in reset by the unpowered M2K (ADALM2000) whose scope leads were still on its
+  13 Oct. Cause, as far as seen from here: B129A's core was held in reset by the unpowered M2K (ADALM2000) whose scope leads were still on its
   J2 from the 13 Oct measurements (16 Oct 2026, fw25). The SWD link itself worked all along (DPIDR 0x0BC11477,
   debug power-up acknowledged), but DHCSR read 0x02000001 with S_RESET_ST set again on every read, no halt even with
   VC_CORERESET + C_HALT (pyOCD attach), RAM / RCC / DBGMCU read 0, and a plug VBUS power cycle didn't change it.
