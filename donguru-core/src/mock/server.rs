@@ -1304,6 +1304,15 @@ impl MockServer {
         Ready(())
     }
 
+    // the mock keeps no log (`device.log` answers Unimplemented): nothing to flood
+    async fn debug_log_flood(
+        &mut self,
+        _cx: &mut Context<'_, impl EventOut>,
+        _count: u32,
+    ) -> RpcResult<()> {
+        Ready(())
+    }
+
     async fn debug_reg_read(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,

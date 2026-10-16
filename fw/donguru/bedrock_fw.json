@@ -106,7 +106,8 @@
   "nuances": [
     "src/main.rs is hand-written (64 MHz PLL clock tree, assign-resources, spawned adc/button tasks): never replace it with the template's, only port individual changes (e.g. counter macros in DefaultHandler/HardFault) by hand",
     "embassy-stm32 uses time-driver-tim4 on purpose: time-driver-any picks TIM15, which drives the PF1 LED. Keep it when Cargo.toml template changes",
-    "Local Cargo.toml additions to keep: embassy-usb, embassy-futures, [features] debug-adc/debug-button, [[bin]] test=false, defmt-rtt disable-blocking-mode",
+    "Local Cargo.toml additions to keep: embassy-usb, embassy-futures, [features] debug-adc/debug-button, [[bin]] test=false, defmt-rtt only as a dev-dependency for the examples",
+    "Logging (API-10): the global defmt logger is ww_defmt_logger (src/log.rs) with its RTT tee set up by rtt-target (channel defmt, 1 KiB, NoBlockSkip), not the template's defmt-rtt; keep it when the template's logging changes. The log store sits in .uninit.donguru_log next to bedrock_crash's record",
     "src/adc.rs, button.rs, led.rs, examples/, scripts/size.py are local-only (not from the template), but they use the cnt macros, so update them together with template counter-syntax changes",
     "WireWeaver layout differs from the template's: the API crate is donguru_api/ in the repo root (two levels up, in the root workspace, uses workspace edition/license), the firmware is fw/donguru/ (not firmware/). When regenerating with --wire-weaver, map <out>/donguru_api -> ../../donguru_api and <out>/firmware -> . ; the generator writes absolute --ww-src paths, keep the relative ../../../wire_weaver (firmware) and ../../wire_weaver (API crate) paths",
     "USB is set up in main.rs (UsbResources, Irqs, usb::Driver::new) and passed to ww::start; ww.rs has no bind_interrupts/usb_driver. ServerState owns no LED: PF1 is the PWM status LED owned by led::led_task, the API calls led::set",

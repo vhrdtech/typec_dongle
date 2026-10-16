@@ -300,8 +300,14 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   everything, the ELF found by build id (the log part waits for API-10); label, LED mode, brightness and identify
   from Python, identify seen as a full-brightness blink in the TIM14 / TIM15 compare registers, `Busy` while it
   runs. ^revB
-- 📋 **API-10 defmt log over WireWeaver**: `ww_log::LogDefmt` through `ww_defmt_logger`, RTT kept as a tee, logs kept
-  across a crash in a persistent RAM store. ^revB
+- 🧪 **API-10 defmt log over WireWeaver**: `ww_log::LogDefmt` at `device.log` through `ww_defmt_logger` (wire_weaver
+  STD-26), RTT kept as a tee (channel `defmt`, probe-rs / `cnt run` unchanged); the log store a `PersistentRamRing`
+  of 8 KiB in `.uninit` (DropOldest), its session started at boot or continued after a soft reset, so the log from
+  before a host connects and from before a crash arrives when a host resumes it; `device.log.DEFMT` with encoding
+  and build id; `debug.log_flood` for the lost-count test (`donguru_api` 0.2.1). Code: `fw/donguru/src/log.rs`,
+  server task in `ww/mod.rs`; host test tool `donguru-core/examples/device_log.rs` until CLI-19. Built, not tested on
+  hardware yet: boot log over USB and RTT at once, exact `lost` under `--flood`, a line from before a forced fault
+  after the reset. ^revB
 - 🧪 **API-11 Plug and header power**: `plug.vbus_mode` / `header.vbus_sw_mode` (`ForceOff`, `ForceOn { max_voltage }`,
   `Auto` with voltage, current and power limits, plug only) with the state in `plug.vbus` / `header.vbus_sw` (`Off`,
   `On`, `Fault`, `Tripped(..)`), `plug.vbus_cycle(off, release_sbu)` answered when VBUS is back on (deferred),

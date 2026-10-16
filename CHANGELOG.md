@@ -6,6 +6,25 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- defmt log over WireWeaver (API-10; `donguru_api` 0.2.0 -> 0.2.1, additive, 0.2.0 hosts still connect):
+  `device.log.frames` carries the firmware's defmt log, whole frames, with the exact number of lines dropped;
+  `device.log.DEFMT` gives the encoding and the build id to find the ELF. The log is kept in 8 KiB of RAM that
+  survives a soft reset, from boot on: a host that resumes the stream gets the lines from before it connected and from
+  before a crash (not the fault handler's own line; not across a power cut). RTT still shows the log with a probe
+  attached. Test tool: `cargo run -p donguru-core --example device_log -- --elf ...` (`--flood N`). Not tested on
+  hardware yet.
+- `debug.log_flood(count)`: logs `count` lines at once to check the lost count (API-10).
+
+### Changed
+
+- Firmware: defmt's logger is `ww_defmt_logger` instead of `defmt-rtt` (API-10). The RTT channel `defmt` is now set
+  up by `rtt-target`, NoBlockSkip as before; a probe that switches it to blocking makes log calls wait for it.
+- Firmware size, release build, `just fw-size`: FLASH 261.3 -> 281.7 KiB of 510 KiB, RAM 16.6 -> 33.8 KiB (API-10:
+  the 8 KiB store and its 128 B header slots, the logger's 4 KiB ring and 1 KiB packing buffers, the reliable stream
+  sender and its CRCs).
+
 ## [0.16.0] - 2026-10-16
 
 ### Added
