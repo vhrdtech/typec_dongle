@@ -8,4 +8,5 @@ pub mod cli;
 pub mod commands;
 pub mod context;
 pub mod exit;
+pub mod project_config;
 pub mod theme;

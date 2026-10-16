@@ -68,8 +68,11 @@ async fn device_contract() {
     let summary = device.summary().await.unwrap();
     assert_eq!(summary.variant, BoardVariant::Main);
     assert_eq!(summary.label.as_deref(), Some("bench 2"));
-    assert!(summary.last_reset.is_none());
-    unimplemented(device.last_reset().await);
+    let last_reset = summary.last_reset.expect("last_reset is modeled (API-9)");
+    assert_eq!(last_reset.cause, ww_firmware_info::ResetCause::PowerOn);
+    assert_eq!(device.boot_count().await.unwrap(), 1);
+    device.clear_last_reset().await.unwrap();
+    assert_eq!(device.boot_count().await.unwrap(), 0);
 
     mock.with(|s| s.variant = BoardVariant::Plus).await;
     assert_eq!(device.variant().await.unwrap(), BoardVariant::Plus);
@@ -550,4 +553,53 @@ async fn open_missing_in_process_device() {
         panic!("opened a device that isn't there");
     };
     assert!(matches!(e, Error::NoDevice(_)), "{e:?}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn counters_report_with_nothing_to_decode() {
+    let (_mock, dongle) = start("core/counters").await;
+    // the mock's INFO has no used words: nothing to decode, so no ELF is needed at all (CLI-19)
+    let report = dongle
+        .device()
+        .counters(None, false)
+        .await
+        .expect("decode counters");
+    assert!(report.counters.is_empty());
+    assert!(report.warning.is_none());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn log_dump_before_the_device_ever_logged() {
+    let (_mock, dongle) = start("core/log").await;
+    // no session yet (API-10 not implemented by the firmware either): an empty report, not an error, no ELF needed
+    let report = dongle
+        .device()
+        .log_dump(None, false)
+        .await
+        .expect("dump the log");
+    assert!(report.lines.is_empty());
+    assert_eq!(report.lost, 0);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn reset_cause_and_clear() {
+    let (mock, dongle) = start("core/reset_cause").await;
+    let device = dongle.device();
+    mock.with(|s| {
+        s.last_reset_cause = ww_firmware_info::ResetCause::Watchdog;
+        s.last_reset_message = "wdg".into();
+        s.boot_count = 3;
+    })
+    .await;
+    let record = device.last_reset().await.unwrap();
+    assert_eq!(record.cause, ww_firmware_info::ResetCause::Watchdog);
+    assert_eq!(record.message.as_str(), "wdg");
+    assert_eq!(device.boot_count().await.unwrap(), 3);
+
+    device.clear_last_reset().await.unwrap();
+    assert_eq!(
+        device.last_reset().await.unwrap().cause,
+        ww_firmware_info::ResetCause::PowerOn
+    );
+    assert_eq!(device.boot_count().await.unwrap(), 0);
 }

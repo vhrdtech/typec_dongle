@@ -24,7 +24,7 @@ use crate::client::generated::donguru_api_donguru_api as generated;
 use crate::client::observe::*;
 use crate::{Error, Result};
 
-async fn read<T: DeserializeShrinkWrapOwned + fmt::Debug>(
+pub(crate) async fn read<T: DeserializeShrinkWrapOwned + fmt::Debug>(
     item: &str,
     p: PreparedRead<T>,
 ) -> Result<T> {
@@ -48,11 +48,14 @@ where
     p.write().await.map_err(|e| Error::call(item, e))
 }
 
-async fn call_plain<T: DeserializeShrinkWrapOwned>(item: &str, p: PreparedCall<T>) -> Result<T> {
+pub(crate) async fn call_plain<T: DeserializeShrinkWrapOwned>(
+    item: &str,
+    p: PreparedCall<T>,
+) -> Result<T> {
     p.call().await.map_err(|e| Error::client(item, e))
 }
 
-async fn call<T, E>(item: &str, p: PreparedCall<T, CallError<E>>) -> Result<T>
+pub(crate) async fn call<T, E>(item: &str, p: PreparedCall<T, CallError<E>>) -> Result<T>
 where
     T: DeserializeShrinkWrapOwned,
     E: DeserializeShrinkWrapOwned
@@ -155,12 +158,77 @@ impl<'a> Device<'a> {
         write("UserInfo::name", self.c.device().label().write_name(label)).await
     }
 
+    /// Free-form notes about the unit; `Ok(None)` when the firmware has no room for them (`UserInfo::CAPABILITIES`).
+    pub async fn notes(&self) -> Result<Option<String>> {
+        optional(
+            read("UserInfo::notes", self.c.device().label().read_notes())
+                .await
+                .map(|n| n.into_inner()),
+        )
+    }
+
+    /// Sets the notes, at most 256 bytes.
+    pub async fn set_notes(&self, notes: &str) -> Result<()> {
+        let notes = MaxLen::new(notes.to_string())
+            .map_err(|_| Error::Link(format!("notes are longer than 256 bytes: {notes:?}")))?;
+        write(
+            "UserInfo::notes",
+            self.c.device().label().write_notes(notes),
+        )
+        .await
+    }
+
     pub async fn last_reset(&self) -> Result<ww_firmware_info::ResetRecordOwned> {
         call_plain(
             "LastReset::last_reset",
             self.c.device().last_reset().last_reset(),
         )
         .await
+    }
+
+    /// Boots since the boot counter was cleared.
+    pub async fn boot_count(&self) -> Result<u32> {
+        call_plain(
+            "LastReset::boot_count",
+            self.c.device().last_reset().boot_count(),
+        )
+        .await
+    }
+
+    /// Forgets the crash record and zeroes the boot counter, after the host saved them.
+    pub async fn clear_last_reset(&self) -> Result<()> {
+        call_plain("LastReset::clear", self.c.device().last_reset().clear()).await
+    }
+
+    /// `device.counters`, decoded with the firmware's ELF found by its build id (CLI-19): [crate::counters].
+    pub async fn counters(
+        &self,
+        elf: Option<&std::path::Path>,
+        force: bool,
+    ) -> Result<crate::counters::CountersReport> {
+        crate::counters::report(self.c.device(), elf, force).await
+    }
+
+    /// `device.log`'s stored defmt frames so far, decoded with the firmware's ELF found by its build id (CLI-19):
+    /// [crate::log].
+    pub async fn log_dump(
+        &self,
+        elf: Option<&std::path::Path>,
+        force: bool,
+    ) -> Result<crate::log::LogReport> {
+        crate::log::dump(self.c.device(), elf, force).await
+    }
+
+    /// Like [Device::log_dump], then keeps streaming new lines to `on_line` until the link drops or the device
+    /// closes the log. `on_warning` runs once first if the ELF couldn't be checked or doesn't match (`--force`).
+    pub async fn log_follow(
+        &self,
+        elf: Option<&std::path::Path>,
+        force: bool,
+        on_line: impl FnMut(&str),
+        on_warning: impl FnOnce(&str),
+    ) -> Result<()> {
+        crate::log::follow(self.c.device(), elf, force, on_line, on_warning).await
     }
 
     /// Everything of the contract at once; parts the firmware doesn't implement yet are `None`.

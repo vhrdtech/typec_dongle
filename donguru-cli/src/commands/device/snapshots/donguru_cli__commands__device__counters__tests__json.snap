@@ -1,0 +1,5 @@
+---
+source: donguru-cli/src/commands/device/counters.rs
+expression: "String::from_utf8(json).unwrap()"
+---
+{"build_id":"abcd","counters":[{"buffer":"RAM","name":"fw/hard_faults","severity":"warn","unit":"","value":3},{"buffer":"BKP","name":"button/presses","severity":"info","unit":"presses","value":128}],"elf":"fw.elf","warning":null}

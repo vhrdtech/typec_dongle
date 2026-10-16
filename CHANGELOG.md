@@ -6,6 +6,26 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- `dg info` and `dg device select` (CLI-7): `info` is `device info`'s contract summary (firmware, board/variant,
+  uid, label, last reset) under the short, no-noun spelling; `select SELECTOR` resolves against the connected
+  dongles and pins the serial in `./donguru.toml`, read as the lowest-priority `--device` fallback.
+- `dg device label [NAME] [--notes]`, `dg device reset-cause [--clear]`, `dg device counters [--watch]` and
+  `dg device log [--follow]` (CLI-19): the `UserInfo` name/notes; `LastReset`'s cause, message, boot count and
+  crash record with `clear`; `ww_counters` and the stored `ww_log` defmt frames, decoded with the firmware's ELF
+  found by its build id (`cnt_core`, `defmt-decoder`, the same mechanism `ww counters` / `ww report` use).
+- `donguru_api` unchanged at 0.2.0; `donguru-core` gains `Device::notes`/`set_notes`, `boot_count`,
+  `clear_last_reset`, `counters`, `log_dump`, `log_follow` and the `counters`/`log` modules behind them.
+- The v1 CLI command tree, written into `docs/design/cli/index.md` as the spec (no open questions left there).
+
+### Changed
+
+- The mock (CORE-3) now models `device.last_reset` / `boot_count` / `clear` and `device.label.notes`
+  (`notes_max` was 0, now 256 to match the firmware); `device.counters` / `device.log` still answer
+  `Unimplemented` for their own RPCs, as the firmware does until API-10 and more counters land.
+- `donguru` binary no longer duplicates the CLI's module tree; it uses the `donguru_cli` library crate directly.
+
 ## [0.17.0] - 2026-10-16
 
 ### Added

@@ -3,9 +3,11 @@
 //! bindings. With the `mock` feature, [mock] serves `DonguruApi` in the same process, as the test double.
 
 pub mod client;
+pub mod counters;
 pub mod device;
 pub mod error;
 pub mod levels;
+pub mod log;
 #[cfg(feature = "mock")]
 pub mod mock;
 pub mod nets;

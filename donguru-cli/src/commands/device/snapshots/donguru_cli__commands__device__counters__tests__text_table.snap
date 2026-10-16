@@ -1,0 +1,6 @@
+---
+source: donguru-cli/src/commands/device/counters.rs
+expression: "String::from_utf8(text).unwrap()"
+---
+RAM  warn    fw/hard_faults 3
+BKP  info    button/presses 128 presses

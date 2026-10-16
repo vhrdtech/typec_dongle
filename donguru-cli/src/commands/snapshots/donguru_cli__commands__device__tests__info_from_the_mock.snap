@@ -1,0 +1,13 @@
+---
+source: donguru-cli/src/commands/device.rs
+expression: "String::from_utf8(text).unwrap()"
+---
+path        cli/device_info
+serial      
+variant     Main
+board       Donguru B153 rev A
+firmware    donguru-mock 0.2.0
+api         ?
+uid         0049002A3133510B37363436
+label       bench
+last reset  PowerOn

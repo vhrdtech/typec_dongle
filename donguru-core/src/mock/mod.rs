@@ -12,7 +12,10 @@
 //! ```
 //!
 //! What the mock models ([MockState]), with the rules the firmware keeps:
-//! - `device`: variant, board, UID, label, settings (in RAM); counters, log and last reset answer `Unimplemented`.
+//! - `device`: variant, board, UID, label with notes, settings (in RAM), last reset (cause, message, boot count,
+//!   `clear`); counters and the log report their `INFO`/`DEFMT` (zero used words, no build id, no session), their
+//!   RPCs (`read`, `reset`, `watch`, the log stream) answer `Unimplemented` until API-10/the real counter layout
+//!   land in the firmware.
 //! - `leds`: mode, brightness, identify (`Unsupported` above 60 s).
 //! - `meter`: the reading, temperature and totals the test puts into the state; window 1 ms..=1 s.
 //! - `plug` / `header`: `vbus_mode` with the guard against the meter's `vbus_in` (above the mode's `max_voltage`
@@ -36,6 +39,7 @@ use wire_weaver::prelude::*;
 use wire_weaver::ww_error::CommonError;
 use wire_weaver::{EventWriter, MessageSink, WireWeaverAsyncApiBackend};
 use wire_weaver_client::in_process::{self, TokioClock};
+use ww_firmware_info::ResetCause;
 use ww_si::{Ampere, Baud, Coulomb, DegreeCelsius, Joule, Prefix, Second, Volt, Watt};
 
 use crate::device::DeviceEntry;
@@ -94,6 +98,13 @@ pub struct MockState {
     pub uid: [u8; 12],
     pub serial: String,
     pub label: String,
+    pub label_notes: String,
+    /// `device.last_reset`: cause, message and boots-since-crash a test can set, `clear()` resets them (API-9).
+    pub last_reset_cause: ResetCause,
+    pub last_reset_message: String,
+    pub last_reset_boots_since_crash: u32,
+    /// Boots since `clear()`.
+    pub boot_count: u32,
     pub settings: MockSettings,
     pub leds_mode: ww_indication::Mode,
     pub leds_brightness: ww_indication::Brightness,
@@ -144,6 +155,11 @@ impl Default for MockState {
             uid,
             serial: uid.iter().map(|b| format!("{b:02X}")).collect(),
             label: String::new(),
+            label_notes: String::new(),
+            last_reset_cause: ResetCause::PowerOn,
+            last_reset_message: String::new(),
+            last_reset_boots_since_crash: 0,
+            boot_count: 1,
             settings: MockSettings::default(),
             leds_mode: ww_indication::Mode::Normal,
             leds_brightness: ww_indication::Brightness::Normal,

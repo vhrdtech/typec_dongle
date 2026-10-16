@@ -1,0 +1,5 @@
+---
+source: donguru-cli/src/commands/device/label.rs
+expression: "String::from_utf8(json).unwrap()"
+---
+{"name":"bench","notes":null}

@@ -1,13 +1,25 @@
 //! `donguru device` - enumerate and inspect dongles.
 
 use std::io::Write;
+use std::path::Path;
 
 use crate::cli::Format;
 use crate::context::Context;
 use crate::exit::ExitCode;
+use crate::project_config;
 use clap::Subcommand;
 use donguru_core::levels::DeviceSummary;
 use donguru_core::{DeviceEntry, Dongle, Selector};
+
+mod counters;
+mod label;
+mod log;
+mod reset_cause;
+
+pub use counters::Counters;
+pub use label::Label;
+pub use log::Log;
+pub use reset_cause::ResetCause;
 
 #[derive(Debug, Subcommand)]
 pub enum Device {
@@ -17,10 +29,21 @@ pub enum Device {
     /// Show identity, serial and firmware version
     Info,
     /// Persist a default device for this project
+    ///
+    /// Resolves SELECTOR against the connected dongles and writes its serial number to the `device` key of
+    /// `./donguru.toml`, so later commands in this directory (and below it) pick it without `--device`.
     Select {
         /// Device selector (serial number, index or USB path)
         selector: String,
     },
+    /// Show or set the user label (`UserInfo`): a name and free-text notes
+    Label(Label),
+    /// Stored defmt log, decoded with the firmware's ELF (API-10)
+    Log(Log),
+    /// `cnt` counters, decoded with the firmware's ELF (API-9)
+    Counters(Counters),
+    /// Cause of the last reset, and the crash record if there is one (API-9)
+    ResetCause(ResetCause),
 }
 
 pub fn run(ctx: &Context, command: Device) -> anyhow::Result<ExitCode> {
@@ -34,11 +57,7 @@ pub fn run(ctx: &Context, command: Device) -> anyhow::Result<ExitCode> {
             Ok(ExitCode::Success)
         }
         Device::Info => {
-            let selector = ctx
-                .device
-                .as_deref()
-                .map(str::parse::<Selector>)
-                .transpose()?;
+            let selector = selector(ctx)?;
             let (entry, summary) = runtime()?.block_on(async {
                 let dongle = Dongle::open(selector.as_ref()).await?;
                 let summary = dongle.device().summary().await?;
@@ -50,9 +69,52 @@ pub fn run(ctx: &Context, command: Device) -> anyhow::Result<ExitCode> {
             Ok(ExitCode::Success)
         }
         Device::Select { selector } => {
-            super::stub(&format!("device select {selector}"), ExitCode::Failure)
+            let parsed: Selector = selector.parse()?;
+            let entries = runtime()?.block_on(donguru_core::device::list())?;
+            let entry = donguru_core::device::select(&entries, Some(&parsed))?;
+            let pin = Selector::Serial(entry.serial.clone());
+            let path = project_config::set_device_selector(&pin.to_string())?;
+            print_select(ctx.format, &pin, &path, &mut std::io::stdout().lock())?;
+            Ok(ExitCode::Success)
         }
+        Device::Label(cmd) => label::run(ctx, cmd),
+        Device::Log(cmd) => log::run(ctx, cmd),
+        Device::Counters(cmd) => counters::run(ctx, cmd),
+        Device::ResetCause(cmd) => reset_cause::run(ctx, cmd),
     }
+}
+
+fn print_select(
+    format: Format,
+    pin: &Selector,
+    path: &Path,
+    out: &mut impl Write,
+) -> anyhow::Result<()> {
+    match format {
+        Format::Text => writeln!(out, "pinned {pin} in {}", path.display())?,
+        Format::Json | Format::Jsonl => writeln!(
+            out,
+            "{}",
+            serde_json::json!({ "device": pin.to_string(), "path": path })
+        )?,
+    }
+    Ok(())
+}
+
+/// The device selector from `--device` / `DONGURU_DEVICE` / `./donguru.toml`, parsed; `None` auto-selects the only
+/// connected dongle.
+pub(crate) fn selector(ctx: &Context) -> anyhow::Result<Option<Selector>> {
+    Ok(ctx
+        .device
+        .as_deref()
+        .map(str::parse::<Selector>)
+        .transpose()?)
+}
+
+/// Opens the selected dongle, for the subcommands that need one call and then close it.
+pub(crate) async fn open(ctx: &Context) -> anyhow::Result<Dongle> {
+    let selector = selector(ctx)?;
+    Ok(Dongle::open(selector.as_ref()).await?)
 }
 
 /// The async runtime of one command: the WireWeaver client runs its event loop on it.
@@ -118,7 +180,9 @@ fn print_list(format: Format, entries: &[DeviceEntry], out: &mut impl Write) -> 
     Ok(())
 }
 
-fn print_info(
+/// Shared by `dg info` and `dg device info`: the device contract in one read (firmware, board/variant, uid,
+/// label, last reset; CLI-7).
+pub(crate) fn print_info(
     format: Format,
     entry: &DeviceEntry,
     s: &DeviceSummary,
@@ -133,21 +197,27 @@ fn print_info(
         .board
         .as_ref()
         .map(|b| format!("{} rev {}", b.name.as_str(), b.revision.as_str()));
+    let last_reset = s.last_reset.as_ref().map(|r| format!("{:?}", r.cause));
     match format {
         Format::Text => {
             let missing = "(not in this firmware)".to_string();
-            writeln!(out, "path      {}", entry.path)?;
-            writeln!(out, "serial    {}", entry.serial)?;
-            writeln!(out, "variant   {variant}")?;
-            writeln!(out, "board     {}", board.as_ref().unwrap_or(&missing))?;
-            writeln!(out, "firmware  {}", firmware.as_ref().unwrap_or(&missing))?;
+            writeln!(out, "path        {}", entry.path)?;
+            writeln!(out, "serial      {}", entry.serial)?;
+            writeln!(out, "variant     {variant}")?;
+            writeln!(out, "board       {}", board.as_ref().unwrap_or(&missing))?;
+            writeln!(out, "firmware    {}", firmware.as_ref().unwrap_or(&missing))?;
             writeln!(
                 out,
-                "api       {}",
+                "api         {}",
                 entry.api_version.as_deref().unwrap_or("?")
             )?;
-            writeln!(out, "uid       {}", s.uid.as_ref().unwrap_or(&missing))?;
-            writeln!(out, "label     {}", s.label.as_ref().unwrap_or(&missing))?;
+            writeln!(out, "uid         {}", s.uid.as_ref().unwrap_or(&missing))?;
+            writeln!(out, "label       {}", s.label.as_ref().unwrap_or(&missing))?;
+            writeln!(
+                out,
+                "last reset  {}",
+                last_reset.as_ref().unwrap_or(&missing)
+            )?;
         }
         Format::Json | Format::Jsonl => {
             let v = serde_json::json!({
@@ -159,6 +229,7 @@ fn print_info(
                 "api_version": entry.api_version,
                 "uid": s.uid,
                 "label": s.label,
+                "last_reset_cause": last_reset,
             });
             writeln!(out, "{v}")?;
         }
@@ -185,16 +256,11 @@ mod tests {
         });
         let mut text = Vec::new();
         print_info(Format::Text, &entry, &summary, &mut text).unwrap();
-        let text = String::from_utf8(text).unwrap();
-        assert!(text.contains("variant   Main"), "{text}");
-        assert!(text.contains("board     Donguru B153 rev A"), "{text}");
-        assert!(text.contains("label     bench"), "{text}");
+        insta::assert_snapshot!(String::from_utf8(text).unwrap());
 
         let mut json = Vec::new();
         print_info(Format::Json, &entry, &summary, &mut json).unwrap();
-        let json: serde_json::Value = serde_json::from_slice(&json).unwrap();
-        assert_eq!(json["variant"], "Main");
-        assert_eq!(json["uid"], "0049002A3133510B37363436");
+        insta::assert_snapshot!(String::from_utf8(json).unwrap());
     }
 
     #[test]

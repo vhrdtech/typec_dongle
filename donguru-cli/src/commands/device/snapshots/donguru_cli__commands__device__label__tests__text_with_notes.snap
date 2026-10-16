@@ -1,0 +1,6 @@
+---
+source: donguru-cli/src/commands/device/label.rs
+expression: "String::from_utf8(text).unwrap()"
+---
+name   "bench"
+notes  "on the shelf"

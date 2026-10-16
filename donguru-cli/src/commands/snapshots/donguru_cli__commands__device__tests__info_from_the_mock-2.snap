@@ -1,0 +1,5 @@
+---
+source: donguru-cli/src/commands/device.rs
+expression: "String::from_utf8(json).unwrap()"
+---
+{"api_version":null,"board":"Donguru B153 rev A","firmware":"donguru-mock 0.2.0","label":"bench","last_reset_cause":"PowerOn","path":"cli/device_info","serial":"","uid":"0049002A3133510B37363436","variant":"Main"}

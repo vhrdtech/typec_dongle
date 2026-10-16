@@ -114,21 +114,33 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> RpcResult<ww_firmware_info::ResetRecord<'_>> {
-        Unimplemented.into()
+        Ready(ww_firmware_info::ResetRecord {
+            cause: self.state.last_reset_cause,
+            build_id: MaxLen::new_unchecked(RefVec::new_bytes(&[])),
+            uptime: None,
+            fault: None,
+            stack: MaxLen::new_unchecked(RefVec::Slice { slice: &[] }),
+            message: MaxLen::new_unchecked(self.state.last_reset_message.as_str()),
+            boots_since_crash: self.state.last_reset_boots_since_crash,
+        })
     }
 
     async fn device_last_reset_boot_count(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> RpcResult<u32> {
-        Unimplemented.into()
+        Ready(self.state.boot_count)
     }
 
     async fn device_last_reset_clear(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> RpcResult<()> {
-        Unimplemented.into()
+        self.state.last_reset_cause = ww_firmware_info::ResetCause::PowerOn;
+        self.state.last_reset_message.clear();
+        self.state.last_reset_boots_since_crash = 0;
+        self.state.boot_count = 0;
+        Ready(())
     }
 
     // ---- ww_board_info::BoardInfo at device.board ----
@@ -158,9 +170,10 @@ impl MockServer {
     async fn set_device_label_notes(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _value: wire_weaver::shrink_wrap::MaxLen<&'_ str, 256>,
+        value: wire_weaver::shrink_wrap::MaxLen<&'_ str, 256>,
     ) -> SetResult<ww_user_info::UserInfoError<'_>> {
-        Unimplemented.into()
+        self.state.label_notes = value.to_string();
+        Set
     }
 
     async fn get_device_label_notes(
@@ -168,7 +181,7 @@ impl MockServer {
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<wire_weaver::shrink_wrap::MaxLen<&'_ str, 256>, ww_user_info::UserInfoError<'_>>
     {
-        Unimplemented.into()
+        Value(MaxLen::new_unchecked(self.state.label_notes.as_str()))
     }
 
     // ---- ww_counters::Counters at device.counters ----
@@ -1392,7 +1405,7 @@ impl api_impl::DonguruApiConsts for MockServer {
 
     const DEVICE_LABEL_CAPABILITIES: ww_user_info::UserInfoCaps = ww_user_info::UserInfoCaps {
         name_max: 32,
-        notes_max: 0,
+        notes_max: 256,
         persistent: false,
     };
 

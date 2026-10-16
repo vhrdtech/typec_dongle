@@ -1,0 +1,8 @@
+---
+source: donguru-cli/src/commands/device/reset_cause.rs
+expression: "String::from_utf8(text).unwrap()"
+---
+cause              PowerOn
+boot count         1
+boots since crash  0
+firmware build id  abcd

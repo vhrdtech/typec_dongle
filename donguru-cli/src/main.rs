@@ -1,8 +1,4 @@
-mod cli;
-mod commands;
-mod context;
-mod exit;
-mod theme;
+use donguru_cli::{cli, commands, context, exit};
 
 fn main() -> std::process::ExitCode {
     let cli = cli::Cli::parse_styled();

@@ -10,9 +10,11 @@ other Unix tools.
 
 !!! info "Status"
 
-    This is a **design document**. It captures intent and decisions. Where a
-    detail is still open it is marked with a *TBD* note so it can be resolved
-    during implementation.
+    This is a **design document**: it is the spec of the full v1 command
+    tree, including commands no release has yet. What is actually built and
+    what still answers "not implemented" is tracked in
+    [FEATURES.md](https://github.com/vhrdtech/typec_dongle/blob/main/FEATURES.md),
+    not duplicated here.
 
 ## Goals
 
@@ -44,14 +46,16 @@ dongle from a host computer. It must be:
 The Donguru dongle exposes several subsystems. The CLI groups its commands to
 match them:
 
-| Subsystem   | Responsibility                                              |
-| ----------- | ----------------------------------------------------------- |
-| Firmware    | Report firmware version and update the dongle firmware.     |
-| GPIO        | Read and drive general-purpose I/O pins.                    |
-| USB Hub     | Enable/disable and inspect downstream USB ports.            |
-| Power       | Control the power switch and read the power meter (V/I).    |
-| Bus bridge  | USART / I2C access for prototyping and debugging.           |
-| Device      | Enumerate and select dongles, report identity and status.   |
+| Subsystem        | Responsibility                                                               |
+| ---------------- | ----------------------------------------------------------------------------|
+| Device           | Enumerate and select dongles; the device contract (firmware, board, UID, user label, counters, stored log, last reset). |
+| Power            | Plug and header VBUS, the power meter (V/I/P), data switch.                  |
+| SBU / UART       | Who owns the plug SBU lines, SWD-host orientation, UART over SBU.           |
+| GPIO / I2C / ADC | Read and drive general-purpose I/O, I2C buses, named ADC channels.          |
+| USB Hub          | Inspect and recover the downstream USB hub.                                 |
+| LEDs / input     | Power and status LED mode, the button and slide switch.                     |
+| Firmware         | Report firmware version and update the dongle firmware.                     |
+| Bring-up         | Raw pin, hub register and UCPD access for board bring-up (behind `debug`).   |
 
 ## Transport model
 
@@ -71,12 +75,12 @@ flowchart LR
 
 Design Notes:
 
-- The transport layer should be **abstracted behind a trait** so the RPC surface can
-  be exercised in tests with a mock, and so an alternative transport (e.g. a
-  raw serial fallback) can be added later without touching command code.
-- Firmware update is exposed through the same front end even though its
-  underlying mechanism (bootloader/DFU flow) is *TBD*. The user-facing command
-  is stable regardless of how flashing is implemented.
+- Commands are tested against an **in-process mock** instead of a hand-written transport trait (CORE-3,
+  `donguru-core/src/mock/`): the generated `DonguruApi` server runs on WireWeaver's own `in_process` transport, so
+  tests exercise the same host stack (link setup, version check, timeouts, observe) as the real USB link, with no
+  parallel abstraction to keep in sync.
+- Firmware update is exposed through the same front end even though its underlying mechanism (CLI-10, FW-12) isn't
+  built yet. The user-facing command is stable regardless of how flashing is implemented.
 
 ## Many small tools behind a single front end
 
@@ -116,41 +120,51 @@ mechanism.
 
 ## Command tree
 
-The following is the intended top-level surface. Names are chosen to be short
-and memorable, every node supports `--help`.
+The following is the full v1 surface (design `prj/P2534-donguru/design/api-v1.md`), built up one piece at a time;
+FEATURES.md's `CLI-*` ids say which of it exists today. `dg` is the short alias for `donguru`. Every command accepts
+`--format text|json|jsonl`; a `watch`-style command polls at `--interval` until WireWeaver's observe lands on the
+host side (CLT-28), then switches to observe with no change to its output.
 
 ```text
-donguru
-├── device            # enumerate and inspect dongles
-│   ├── list          # (alias: ls) list connected dongles
-│   ├── info          # identity, serial, firmware version
-│   └── select        # persist a default device for this project
-├── gpio
-│   ├── read <pin>    # read one or more pins
-│   ├── write <pin> <level>
-│   ├── mode <pin> <in|out|...>
-│   └── watch <pin>   # stream level changes until interrupted
-├── usb               # downstream hub ports
-│   ├── list          # port map and status
-│   ├── on <port>     # enable a downstream port
-│   └── off <port>    # disable a downstream port
-├── power
-│   ├── on|off        # power switch to downstream devices
-│   ├── status        # switch state
-│   ├── meter         # instantaneous voltage/current
-│   └── watch         # stream meter readings until interrupted
-├── i2c
-│   ├── scan          # probe the bus for devices
-│   ├── read <addr> <reg> [len]
-│   └── write <addr> <reg> <bytes...>
-├── uart              # USART bridge
-│   └── ...           # TBD: open/attach a serial bridge
-├── fw                # firmware
-│   ├── version       # report running firmware version
-│   └── update <image>  # update the dongle firmware
-├── completions <shell>  # generate shell completions
-├── config            # generate a default config, and inspect/evaluate the effective one
-└── help
+dg info                                   # contract summary: firmware, board/variant, uid, label, last reset (CLI-7)
+dg device list | info | select            # enumeration, identity, pin a default device for this project (CLI-7)
+dg device label [NAME] [--notes ..]       # the user_info name and free-text notes (CLI-19)
+dg device log [--follow]                  # stored defmt log, decoded with the ELF found by its build id (CLI-19)
+dg device counters [--watch]              # cnt counters, decoded with the ELF found by its build id (CLI-19)
+dg device reset-cause [--clear]           # cause of the last reset, crash record if there is one (CLI-19)
+dg power status                           # plug VBUS + header VBUS_SW + meter in one table (CLI-11)
+dg power on|off [--allow-voltage 20V] [--trip 2A]
+dg power cycle [--off 500ms] [--release-sbu]
+dg power meter                            # one reading: V, I, P, T, totals
+dg power watch [--interval 100ms|--on-change]
+dg power totals [--reset]
+dg usb status | connect | disconnect      # plug data switch (U701) (CLI-6)
+dg header vbus on|off|status [--allow-voltage V]   # CLI-16 warning + confirmation above 5.5 V
+dg header relay on|off|status
+dg sbu status | release                   # who owns SBU, V_SBU, pull-ups (CLI-20)
+dg sbu orientation [auto|normal|swapped]
+dg uart open [--baud 115200 --parity none ..]   # terminal; stdin -> tx, rx -> stdout, works in pipes (CLI-20)
+dg uart monitor                           # both SBU lines, tagged A / B
+dg uart pty                               # a pty for tools that want a tty (picocom, pyserial)
+dg uart break [--for 250ms]
+dg i2c scan | read | write | transfer [--bus plug|header]   (CLI-12)
+dg gpio read|write|mode|watch <pin>       # pins: io7..io10, sbu1, sbu2, a2, b2 (CLI-5)
+dg adc read [CHANNEL..] [--raw]           # named channels (CLI-22)
+dg input status | watch                   # button, switch, events (CLI-22)
+dg hub status | recover                   # (CLI-22)
+dg led mode all-off|essential|normal | brightness LEVEL | identify [5s]   (CLI-21)
+dg swd status | mode | release(-> sbu release) | memtest   (CLI-17, CLI-18)
+dg fw version | update                    # CLI-10
+dg debug pin get|set|af NAME              # net names from hw_b153a.md: dg debug pin set RELAY_EN high (CLI-23)
+dg debug pins [--boot] [--diff]           # dump, diff against the expected reset state
+dg debug hub read|write REG
+dg debug ucpd [1|2] [--role rd|rp1a5|off]
+dg debug reg ADDR [N]
+dg settings show | set KEY VALUE | reset [--factory]   # device.settings
+dg udev generate | install | uninstall | status        # Linux udev rule (CLI-8)
+dg config generate | show | path | validate             # layered configuration (CLI-9)
+dg completions <shell>                    # shell completions (CLI-3)
+dg top                                    # 💡 live dashboard of every observed level (CLI-24, idea)
 ```
 
 ## Global flags
@@ -229,7 +243,7 @@ layer omits.
 | 0 (lowest)     | Built-in defaults     | Compiled-in fallback values.               |
 | 1              | Config file: global   | System-wide (e.g. `/etc/donguru/config.toml`). |
 | 2              | Config file: user     | Per-user (e.g. `~/.config/donguru/config.toml`). |
-| 3              | Config file: project  | `donguru.toml`/`.donguru.toml` found by walking up from the CWD. |
+| 3              | Config file: project  | `donguru.toml` found by walking up from the CWD. |
 | 4              | Environment variables | `DONGURU_`-prefixed variables.             |
 | 5 (highest)    | Command-line flags    | Explicit flags.                            |
 
@@ -240,9 +254,10 @@ Higher priority numbers override lower ones on a per-key basis.
     - **global** — system-wide (e.g. `/etc/donguru/config.toml`).
     - **user** — per-user, via the platform config dir
       (e.g. `~/.config/donguru/config.toml`).
-    - **project** — a `donguru.toml` (or `.donguru.toml`) discovered by walking
-      up from the current directory, so a repository can pin settings such as a
-      default device.
+    - **project** — a `donguru.toml` discovered by walking up from the current
+      directory, so a repository can pin settings such as a default device
+      (the only key written today, by `device select`; CLI-9 builds the rest
+      of the layering).
 - **Environment variables** use a `DONGURU_` prefix and mirror the key path
   (e.g. `DONGURU_DEVICE`, `DONGURU_OUTPUT`).
 - **Command-line flags** always win.
@@ -252,16 +267,19 @@ default timeouts, log verbosity.
 
 ## Device selection
 
-With multiple dongles connected, a single device is chosen by, in order:
+With multiple dongles connected, a single device is chosen by, in order (CORE-1, CLI-7):
 
 1. `--device/-d <selector>` flag,
-2. `DONGURU_DEVICE` environment variable,
-3. a `device` key from the config layers (e.g. a project pin),
+2. `DONGURU_DEVICE` environment variable (the flag's `env`, so it wins at the same priority as the flag itself),
+3. the `device` key of the nearest `./donguru.toml` found by walking up from the current directory, written by
+   `device select SELECTOR` (the rest of the config layering, CLI-9, is still open),
 4. auto-selection when exactly one dongle is present.
 
-A *selector* may be a serial number, an index, or a USB path. If none of the
-above resolves to exactly one device, the CLI errors and asks the user to
-disambiguate (and `device list` shows the choices).
+A *selector* is, without a prefix: a number below 1000 (an index into `device list`), `<bus>-<port>[.<port>...]`
+(a USB path, e.g. `3-1.2`), or anything else a serial number (any case, a unique prefix is enough). The prefixed
+forms `index:N`, `serial:S` and `path:P` pick one unambiguously, which is what `device select` writes (a serial,
+since it survives a replug on a different port). If no selector resolves to exactly one device, the CLI errors
+(exit code 3) and asks the user to disambiguate; `device list` shows the choices.
 
 ## Extensibility
 
@@ -280,9 +298,15 @@ output format) via environment variables (e.g. `DONGURU_DEVICE`,
 This preserves the single-front-end user experience while letting features be
 developed, shipped, and versioned independently.
 
-## Open questions
+## Exit codes
 
-- **WireWeaver surface** — the exact RPC schema and how firmware update is
-  carried over it (*TBD*, tracked with firmware work).
-- **Windows specifics** — driver/enumeration differences for USB access on
-  Windows (lowest priority target).
+A public contract once shipped (`donguru-cli/src/exit.rs`): keep these stable and documented.
+
+| Code | Meaning                                                             |
+| ---- | -------------------------------------------------------------------- |
+| 0    | Success.                                                              |
+| 1    | Failure: no more specific category applies.                          |
+| 2    | Bad arguments: wrong or invalid argument or argument vector.          |
+| 3    | No device: none matched the selector, or the selection was ambiguous. |
+| 4    | Device error: the dongle answered with an error, or its firmware doesn't implement the item asked for. |
+| 5    | Timeout: the dongle didn't answer in time.                            |
