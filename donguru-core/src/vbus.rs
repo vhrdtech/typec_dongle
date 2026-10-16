@@ -1,5 +1,10 @@
 //! Builds a [`VbusMode`] from plain volts and amps, so the CLI, the GUI and Python don't each depend on `ww_si`'s
 //! constructors to drive `plug.vbus_mode` / `header.vbus_sw_mode` (API-11, `docs/user/power.md`).
+//!
+//! Values are built as integer millivolts/milliamps/milliwatts, never floats: the firmware's `ww_si` has only the
+//! `i32`/`u32` number types (`fw/donguru/Cargo.toml`, flash and no FPU reasons, `AGENTS.md` "M0+ rules"), so a
+//! `NumericValue::F32` a host sends doesn't decode there at all (`PropertyDesFailed`, found testing CLI-11 on
+//! B153A: `Volt::volts_f32` passed the mock, which has no such restriction, but not the real firmware).
 
 use donguru_api::VbusMode;
 use ww_si::{Ampere, Prefix, Volt, Watt};
@@ -8,10 +13,22 @@ use ww_si::{Ampere, Prefix, Volt, Watt};
 /// a PD charger that renegotiated above 5 V.
 pub const DEFAULT_MAX_VOLTAGE_V: f64 = 5.5;
 
+fn millivolts(v: f64) -> Volt {
+    Volt::millivolts((v * 1000.0).round() as i32)
+}
+
+fn milliamps(a: f64) -> Ampere {
+    Ampere::milliamperes((a * 1000.0).round() as i32)
+}
+
+fn milliwatts(w: f64) -> Watt {
+    Watt::new(Prefix::Milli, (w * 1000.0).round() as i32)
+}
+
 /// `ForceOn { max_voltage }` at `max_voltage_v` volts.
 pub fn force_on(max_voltage_v: f64) -> VbusMode {
     VbusMode::ForceOn {
-        max_voltage: Volt::volts_f32(max_voltage_v as f32),
+        max_voltage: millivolts(max_voltage_v),
     }
 }
 
@@ -20,9 +37,9 @@ pub fn force_on(max_voltage_v: f64) -> VbusMode {
 /// extra power ceiling to pick.
 pub fn auto(max_voltage_v: f64, max_current_a: f64) -> VbusMode {
     VbusMode::Auto {
-        max_voltage: Volt::volts_f32(max_voltage_v as f32),
-        max_current: Ampere::amperes_f32(max_current_a as f32),
-        max_power: Watt::new(Prefix::Unit, (max_voltage_v * max_current_a) as f32),
+        max_voltage: millivolts(max_voltage_v),
+        max_current: milliamps(max_current_a),
+        max_power: milliwatts(max_voltage_v * max_current_a),
     }
 }
 
