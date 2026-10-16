@@ -6,6 +6,11 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- `just fw-size` now stores the release build's ELF in the ELF cache (`cnt elf add`) after building (CORE-7), so
+  `dg device counters` / `dg device log` can find it by build id later without `--elf`.
+
 ## [0.19.1] - 2026-10-16
 
 ### Fixed

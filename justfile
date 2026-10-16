@@ -117,3 +117,4 @@ fw-size:
     fi
     printf "\nCounters:\n"
     cnt list "$elf"
+    cnt elf add "$elf"

@@ -411,6 +411,15 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   the limit trips"). Found while building CLI-11 / CLI-16: `dg power on` / `dg header vbus on` cope either way (they
   read back `vbus` after the write and fail the exit code unless it is `On`), but a CORE-3 test relying on the
   mock's `Set` to refuse would be testing the wrong thing. Fix: give the mock the same refusal `donguru_power` has.
+- 🚧 **CORE-7 ELF keeper: `dg` always finds the firmware ELF** (CLI-19's `device counters` / `device log` decode):
+  `cnt_core::elf::resolve` already does the lookup (`WW_ELF_PATH`, then `~/.cache/ww/elf`, then `target/`) that
+  `donguru-core/src/counters.rs` / `src/log.rs` call. Done: `just fw-size`'s release build now calls
+  `cnt elf add "$elf"` after building, so every release build this repo makes is cached by build id. Open, both
+  outside this repo (see `prj/P2534-donguru/design/elf-keeper.md`): the actual day-to-day flash path, `cargo run`
+  in `fw/donguru` through the `cnt run` cargo runner, never calls `elf::add` either — that's a `cnt` repo change,
+  proposed, not made; and sharing a kept ELF across the mesh's PCs (the board is flashed on whichever PC has it,
+  `dg` runs on any PC) needs a decision (a synced directory added to `WW_ELF_PATH` recommended over per-tag GitHub
+  release assets, which would need new CI and would miss untagged dev builds) — also proposed, not built.
 
 ## CLI (`CLI`)
 
