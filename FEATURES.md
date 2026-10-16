@@ -237,13 +237,16 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 🐛 **FW-25 B129A answers no SWD through the CMSIS-DAP**: on 15 Oct 2026, with B129A powered from the plug (~10 mA),
   `probe-rs read --probe c0de:cafe` gets "No target responded" / a protocol error in both `plug.orientation`s,
   also with main's firmware (`a9fdc0a` + `plug-vbus-on`), which read it on 13 Oct. Nobody flashed or rewired B129A
-  in between (ecc-safe-flash). To check: the cable / breakout, B129A's own SWD with a J-Link, the SBU lines on a
-  scope. Firmware reviewed 16 Oct 2026 (fw25): from v0.6.0 (13 Oct) to `a9fdc0a` the SWD wire path is unchanged
-  apart from formatting (`swd.rs`, `cmsis_dap.rs`: `Orientation::Auto` acting as `Normal`, CMSIS-DAP fixed on EP3),
-  the embassy fork differs from 0.6.0 only in USB, and nothing new claims PA0/PA1, PD0/PD2, PD3, PB2 or PC15; the
-  "No target responded" answer means the DAP itself works. So a firmware cause is unlikely; a hardware bisect
-  (v0.6.0 / v0.9.0 / v0.11.0 with `plug-vbus-on`) and scope reads (PD0/PD2 during `DAP_Connect`, PA0/PA1 MODER)
-  are still to do: the board was off omarchy-m1 on 16 Oct.
+  in between (ecc-safe-flash). Root cause narrowed 16 Oct 2026 (fw25), the cause is on B129A, not in Donguru's firmware: v0.6.0 (the
+  13 Oct build) and v0.11.0, both with `plug-vbus-on`, fail the same way as main. In `Normal` (right for the cable
+  as plugged) the SWD link works: DPIDR 0x0BC11477, debug power-up acknowledged; but B129A's core is held in reset:
+  DHCSR reads 0x02000001 with S_RESET_ST set again on every read, no halt even with VC_CORERESET + C_HALT (pyOCD
+  attach), RAM / RCC / DBGMCU read 0, and a plug VBUS power cycle (PA6) doesn't change it. `Swapped` gives an SWD
+  protocol error, as expected for this orientation. B153A side checked through the J-Link during `DAP_Connect`:
+  PA0/PA1 outputs, PD0/PD2 driven high, PD3 high, PA6 on, PC14 no fault. Line test with CC high: SBU2 (PA0) pulled
+  up (target SWDIO), SBU1 (PA1) held low by R28 even against the MCU pull-up (SWCLK), so B129A's SWD mux switches.
+  Firmware since v0.6.0: the SWD wire path is unchanged apart from formatting. To check by hand on B129A: NRST and
+  3V3 levels, its reset button, leftover flying leads on J2 (M2K scope, 13 Oct).
 
 ## API (`API`)
 
@@ -279,8 +282,8 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   generated client. Plug and header VBUS are modes (`plug.vbus_mode`, `header.vbus_sw_mode`: `ForceOff` /
   `ForceOn` / `Auto` with limits; `device.settings.plug_vbus_at_boot` replaces the `plug-vbus-on` feature once
   implemented, API-11). Open: a CMSIS-DAP `probe-rs` read of B129A with `plug.orientation`: tried 15 Oct 2026 with
-  B129A powered through `plug.vbus_mode` (API-11), no SWD answer in either orientation, also with main's firmware
-  (FW-25), so 🧪. `ww info` ends with an error from `ww` itself (double disconnect, wire_weaver).
+  B129A powered through `plug.vbus_mode` (API-11), no SWD answer in either orientation, also with main's firmware;
+  16 Oct: B129A's core is held in reset (FW-25), so 🧪. `ww info` ends with an error from `ww` itself (double disconnect, wire_weaver).
 
 - 📋 **API-8 API tree 0.2.0**: `donguru_api` 0.2.0 with every level declared (`device`, `leds`, `meter`, `plug`,
   `header`, `sbu`, `inputs`, `hub`, `swd`, `uart[]`, `i2c[]`, `gpio[]`, `adc`, `debug`), the 0.1 root items moved
