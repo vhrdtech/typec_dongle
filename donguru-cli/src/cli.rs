@@ -109,9 +109,17 @@ pub enum Command {
     #[command(subcommand)]
     Device(crate::commands::device::Device),
 
-    /// Control downstream USB port(s)
+    /// USB data to the device under test (plug data switch)
     #[command(subcommand)]
     Usb(crate::commands::usb::Usb),
+
+    /// Plug VBUS, the power meter and the header's switched VBUS and relay
+    #[command(subcommand, display_order = 10)]
+    Power(crate::commands::power::Power),
+
+    /// Header J101: switched VBUS and the relay
+    #[command(subcommand, display_order = 11)]
+    Header(crate::commands::header::Header),
 
     /// Read and drive general-purpose I/O pins
     #[command(subcommand)]

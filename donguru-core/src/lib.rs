@@ -12,6 +12,7 @@ pub mod log;
 pub mod mock;
 pub mod nets;
 pub mod swd_memtest;
+pub mod vbus;
 
 pub use device::{DeviceEntry, Dongle, Selector};
 pub use donguru_api as api;

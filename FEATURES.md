@@ -375,7 +375,9 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   case, unique prefix) or USB path (`5-1.2`), auto-select when exactly one; `Dongle::open` with the version check.
   The generated `donguru_api` client (`client.rs`) and a typed facade per level (`levels.rs`: device, settings, leds,
   meter, plug, header, sbu, inputs, hub, swd, uart / i2c / gpio by `Side`, adc, debug) with `Error::{Device (kind +
-  typed error), Unimplemented, Timeout, Incompatible, Link}`; the B153A net names (`nets.rs`, hw_b153a.md §11).
+  typed error), Unimplemented, Timeout, Incompatible, Link}`; the B153A net names (`nets.rs`, hw_b153a.md §11);
+  `vbus.rs` builds a `VbusMode` from plain volts/amps (`force_on`, `auto`), used by `dg power on` / `dg header
+  vbus on` (CLI-11, CLI-16) so the CLI doesn't need `ww_si`'s constructors itself.
   Tested 15 Oct 2026 on B153A (omarchy-m1): `dg device list` finds it, `dg device info` reads `device.variant`
   (Main), board, firmware, UID.
 - ✅ **CORE-2 Error type**: `thiserror` errors mapped to exit codes by the CLI (`donguru-core/src/error.rs`).
@@ -391,6 +393,14 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   flipped bits). Unit-tested against fake RAM with a stuck bit, an aliased address bit, swapped byte lanes and rare
   read flips. Feature `probe-rs` (`swd_memtest/probe.rs`): attach through any CMSIS-DAP v2 probe at a given speed,
   halt, save the region, run, restore, resume; probe-rs without its C HID backend.
+- 🐛 **CORE-6 Mock's VBUS guard doesn't refuse, it trips**: `docs/user/power.md` and `donguru_power` (the firmware
+  logic crate, `donguru_power/src/lib.rs`'s `Switch::set_mode`, tested in `refused_over_the_limit_changes_nothing`)
+  both say writing a guarded mode while VBUS is already over `max_voltage` is `Refused` and changes nothing. The
+  mock's `MockState::apply` (`donguru-core/src/mock/mod.rs`) instead always applies the write and reports
+  `Tripped(OverVoltage)`, as `donguru-core/tests/mock.rs`'s `plug_vbus_guard_and_cycle` shows ("switching on above
+  the limit trips"). Found while building CLI-11 / CLI-16: `dg power on` / `dg header vbus on` cope either way (they
+  read back `vbus` after the write and fail the exit code unless it is `On`), but a CORE-3 test relying on the
+  mock's `Set` to refuse would be testing the wrong thing. Fix: give the mock the same refusal `donguru_power` has.
 
 ## CLI (`CLI`)
 
@@ -404,7 +414,11 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   it, and list plugins in `donguru help`.
 - ⬜ **CLI-5 `gpio read / write / configure / watch`**: arguments parsed, prints "not implemented". Needs FW-10,
   API-3, CORE-1.
-- ⬜ **CLI-6 `usb list / attach / detach / power / data`**: stub. Needs FW-8, API-3. ^revB
+- 🧪 **CLI-6 `usb status / connect / disconnect`**: the plug's USB data switch (U701) over `plug.data`
+  (`donguru-cli/src/commands/usb.rs`); exit code reflects the data path actually ending up where asked, not just
+  that the call succeeded. Replaces the earlier `usb list / attach / detach / power / data` sketch (no per-port hub
+  control in v1, see API-11's note). Snapshot-tested against the mock (CORE-3) and 16 Oct 2026 on B153A rev A
+  (`status`, `connect`, `disconnect`). ^revB
 - ✅ **CLI-7 `device list / info / select`, `info`**: `device list` / `device info` (text / json / jsonl,
   `donguru-cli/src/commands/device.rs`), tested 15 Oct 2026 on B153A. `device select` resolves the selector against
   the connected dongles and pins the serial in `./donguru.toml` (`donguru-cli/src/project_config.rs`), read back as
@@ -418,10 +432,21 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - ⬜ **CLI-9 `config generate / show / path / validate`**: stub. Layering per the design doc (defaults, system,
   user, project file, `DONGURU_*`, flags).
 - 📋 **CLI-10 `fw version` / `fw update`**: in the design doc, not in the command tree yet. Needs FW-11, FW-12.
-- 📋 **CLI-11 `power on / off / status / meter / watch`**: in the design doc, not in the command tree yet. ^revB
-- 📋 **CLI-16 Header VBUS output with a clear warning**: enabling the header's switched VBUS (FW-14) shows the present
-  voltage and a warning that it is the computer's VBUS, not a regulated 5 V; above 5.5 V it needs an explicit
-  confirmation flag. Same warning in the GUI, Python and docs. ^revB
+- 🧪 **CLI-11 `power status / on / off / cycle / meter / watch / totals`** (`donguru-cli/src/commands/power.rs`):
+  `status` tables plug + header + meter in one read; `on` (`--allow-voltage`, `--trip`) and `off` read back `vbus`
+  after the write and fail the exit code unless it ended up where asked (`On` / `Off`), covering a trip or a latched
+  fault without the host needing its own copy of the guard; `cycle --off --release-sbu`; `meter` one reading;
+  `totals [--reset]` in mAh / mWh; `watch [--interval | --on-change]` streams `meter.reading` through CLT-28 observe
+  until Ctrl-C (`--format json` is refused: use text or jsonl). `donguru_core::vbus` builds the mode from plain
+  volts/amps. `meter`/`watch`/`totals` need API-12 (session power-meter, not landed): against today's firmware they
+  answer `Unimplemented`; against the mock (CORE-3) everything works. Snapshot-tested against the mock; not yet run
+  on a board. ^revB
+- 🧪 **CLI-16 Header VBUS output with a clear warning** (`donguru-cli/src/commands/header.rs`): `header vbus on`
+  always prints the present receptacle voltage (from `meter.reading`, or just the warning if the meter isn't
+  implemented yet) and a warning that VBUS_SW is the computer's own VBUS, not a regulated 5 V supply; going above
+  the 5.5 V default needs `--allow-voltage`, which is the explicit confirmation (same flags as CLI-11's `power on`).
+  `header relay on / off / status` (U101). Same warning text still needed in the GUI, Python and docs (only
+  `docs/user/power.md` has it so far). Snapshot-tested against the mock; not yet run on a board. ^revB
 - 📋 **CLI-12 `i2c scan / read / write` and `uart`**: in the design doc, not in the command tree yet.
 - 🐛 **CLI-13 Exit codes differ from the notes**: `src/exit.rs` has device error = 4, timeout = 5 and no transport
   code; `developer-notes.md` has transport = 4, device = 5, timeout = 6. Decide before anything ships.
