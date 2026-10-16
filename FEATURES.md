@@ -411,19 +411,23 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   the limit trips"). Found while building CLI-11 / CLI-16: `dg power on` / `dg header vbus on` cope either way (they
   read back `vbus` after the write and fail the exit code unless it is `On`), but a CORE-3 test relying on the
   mock's `Set` to refuse would be testing the wrong thing. Fix: give the mock the same refusal `donguru_power` has.
-- 🚧 **CORE-7 ELF keeper: `dg` always finds the firmware ELF** (CLI-19's `device counters` / `device log` decode):
-  `cnt_core::elf::resolve` already does the lookup (`WW_ELF_PATH`, [`config_dirs`], then `~/.cache/ww/elf`, then
-  `target/`) that `donguru-core/src/counters.rs` / `src/log.rs` call. Done, in this repo: `just fw-size`'s release
-  build calls `cnt elf add "$elf"` after building. Done, upstream in `cnt` (0.5.0 -> 0.6.0, proposed and built per
-  `prj/P2534-donguru/design/elf-keeper.md`): `cnt run` (the actual day-to-day flash path, `cargo run` in
-  `fw/donguru`) now caches the ELF it just flashed the same way; `cnt_core::elf` gained a config file
-  (`~/.config/ww/config.toml`'s `[elf] dirs`, `~` expanded) for a directory synced between machines, read before
-  the local ELF directory, and `add`'s default target when one is set — so a flash on either dev PC publishes
-  straight into it. Declared as the mesh's `ww-elf` Syncthing share (`tpm` `area/ops/provision.toml`) between
-  gpd-omarchy and omarchy-m1, and the config file written on both; **waiting on `tpm provision approve` on each
-  PC** before Syncthing actually creates the folder. Open: `cnt` 0.6.0 not yet installed on omarchy-m1 (skipped
-  while the board's other sessions had it busy); the hardware check — flash on the board, `dg device counters` /
-  `dg device log` with no `--elf` — not yet run, queued for the board.
+- ✅ **CORE-7 ELF keeper: `dg` always finds the firmware ELF** (CLI-19's `device counters` / `device log` decode):
+  `cnt_core::elf::resolve` already did the lookup (`WW_ELF_PATH`, then `~/.cache/ww/elf`, then `target/`) that
+  `donguru-core/src/counters.rs` / `src/log.rs` call; `just fw-size`'s release build calls `cnt elf add "$elf"`
+  after building. Upstream in `cnt` (0.5.0, proposed and built per `prj/P2534-donguru/design/elf-keeper.md`, lands
+  as 0.5.1): `cnt run` (the actual day-to-day flash path, `cargo run` in `fw/donguru`) now caches the ELF it just
+  flashed the same way; `cnt_core::elf` gained a config file (`~/.config/ww/config.toml`'s `[elf] dirs`, `~`
+  expanded) for a directory synced between machines, read before the local ELF directory and `add`'s default
+  target when one's set, so a flash on either dev PC publishes straight into it — declared as the mesh's `ww-elf`
+  Syncthing share (`tpm` `area/ops/provision.toml`) between gpd-omarchy and omarchy-m1, approved and syncing on
+  both (round-tripped a test ELF each way, ~10-15 s). Tested 16 Oct 2026 on B153A rev A: flashed `fw/donguru` via
+  `cargo run` (the `cnt run` runner); the ELF landed in the shared directory and synced to the other PC within
+  seconds; `dg device counters` and `dg device log`, **no `--elf`**, found it by build id and decoded real
+  counter names and defmt log lines (`device log`'s own "malformed frame (wrong ELF?)" noise is a pre-existing
+  API-10/FW-27 framing issue, not an ELF-finding one). The hardware check needed `donguru-core`'s crates.io
+  `cnt_core = "0.5"` temporarily `[patch.crates-io]`d to the branch's local path, since `cnt` 0.5.1 isn't
+  published yet; reverted after, nothing committed with it — once `cnt` lands this works with a plain
+  `cargo update -p cnt_core`.
 
 ## CLI (`CLI`)
 
