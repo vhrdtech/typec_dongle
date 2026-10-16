@@ -85,21 +85,6 @@ IDs refer to [FEATURES.md](FEATURES.md).
 - Firmware size, release build, `just fw-size`: FLASH 276.8 -> 297.7 KiB of 510 KiB, RAM 16.7 -> 33.9 KiB (API-10:
   the 8 KiB store and its 128 B header slots, the logger's 4 KiB ring and 1 KiB packing buffers, the reliable stream
   sender and its CRCs).
-=======
-### Added
-
-- `dg power status / on / off / cycle / meter / watch / totals` (CLI-11): a combined plug + header + meter table,
-  the VBUS modes with `--allow-voltage` / `--trip`, `cycle --off --release-sbu`, one meter reading, charge/energy
-  totals in mAh/mWh with `--reset`, and `watch` streaming `meter.reading` through observe until Ctrl-C. `on` / `off`
-  / `cycle` exit non-zero unless VBUS actually ended up where asked. `meter` / `totals` / `watch` need API-12
-  (not landed): `Unimplemented` against today's firmware, full support against the mock.
-- `dg usb status / connect / disconnect` (CLI-6): the plug's USB data switch (U701), replacing the earlier stub's
-  port-based tree (no per-port hub control in v1).
-- `dg header vbus status / on / off` and `dg header relay status / on / off` (CLI-16): `vbus on` always prints the
-  present receptacle voltage and a warning that VBUS_SW is the computer's own VBUS, not a regulated 5 V supply;
-  `--allow-voltage` is the explicit confirmation needed above 5.5 V.
-- `donguru_core::vbus`: builds a `VbusMode` from plain volts/amps for the CLI, the GUI and Python.
->>>>>>> ec01841 (feat(cli): power, usb and header VBUS commands (CLI-11, CLI-6, CLI-16))
 
 ## [0.16.0] - 2026-10-16
 
