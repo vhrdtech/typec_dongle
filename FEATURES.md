@@ -285,7 +285,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 🧪 **API-7 `device.variant`** (was `board_variant`, moved in 0.2.0): ro property, `BoardVariant::Main` / `Plus` /
   `Unknown` (FW-22); also the variant of `device.board.BOARD`. A variant from a newer firmware reads as
   `BoardVariant::Other(n)` on the host (`future_version = Other`, SW-47).
-- 🧪 **API-8 API tree 0.2.0**: `donguru_api` 0.2.0 declares the whole v1 tree (design: tpm
+- ✅ **API-8 API tree 0.2.0**: `donguru_api` 0.2.0 declares the whole v1 tree (design: tpm
   `prj/P2534-donguru/design/api-v1.md`): `device` (contract traits, `variant`, `settings`), `leds`, `meter`, `plug`,
   `header`, `sbu`, `inputs`, `hub`, `swd`, `uart[]`, `i2c[]`, `gpio[]`, `adc`, `debug`. Handlers in one module per
   level (`fw/donguru/src/ww/`); observed properties served by `poll_properties` in the server task; `debug` behind
@@ -296,10 +296,10 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   generated client. Plug and header VBUS are modes (`plug.vbus_mode`, `header.vbus_sw_mode`: `ForceOff` /
   `ForceOn` / `Auto` with limits; `device.settings.plug_vbus_at_boot` replaces the `plug-vbus-on` feature once
   implemented, API-11). CMSIS-DAP `probe-rs` read of B129A, powered through `plug.vbus_mode` (`donguru power on`,
-  API-11), tested 16 Oct 2026 on B153A + B129A with v0.19.0 firmware: 64 KB of flash at 1000 kHz in 1.59 s, three
-  reads identical, in `Normal` (the cable as plugged); `Swapped` gives an SWD protocol error, as it should with this
-  cable orientation. Open: a read with the cable flipped and `plug.orientation` `Swapped` (needs hands on the
-  cable; the CLI's `swd orientation` is not implemented yet, so it was set in RAM through the J-Link), so 🧪. `ww info` ends with an error from `ww` itself (double disconnect, wire_weaver).
+  API-11), tested 16 Oct 2026 on B153A + B129A in both cable orientations, 64 KB of flash at 1000 kHz, three reads each,
+  all identical: `Normal` on v0.19.0 firmware in 1.59 s, `Swapped` with the cable flipped on v0.20.1 in 1.52-1.56 s;
+  the other orientation gives an SWD protocol error each time, as it should. `plug.orientation` was set in RAM
+  through the J-Link (the CLI's `swd orientation` is not implemented yet). `ww info` ends with an error from `ww` itself (double disconnect, wire_weaver).
 
 - 📋 **API-8 API tree 0.2.0**: `donguru_api` 0.2.0 with every level declared (`device`, `leds`, `meter`, `plug`,
   `header`, `sbu`, `inputs`, `hub`, `swd`, `uart[]`, `i2c[]`, `gpio[]`, `adc`, `debug`), the 0.1 root items moved
