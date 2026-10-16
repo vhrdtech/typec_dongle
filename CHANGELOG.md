@@ -10,6 +10,12 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 - `just fw-size` now stores the release build's ELF in the ELF cache (`cnt elf add`) after building (CORE-7), so
   `dg device counters` / `dg device log` can find it by build id later without `--elf`.
+- `cnt` 0.6.0 (upstream, not a typec_dongle change, CORE-7): `cnt run`, the cargo runner `fw/donguru` flashes
+  with, now caches the flashed ELF by build id the same way; `cnt_core::elf` reads a config file
+  (`~/.config/ww/config.toml`'s `[elf] dirs`) for a directory shared between machines, in addition to
+  `WW_ELF_PATH`, so a board flashed on one dev PC is found by `dg` on another. That directory is declared as the
+  `ww-elf` Syncthing share between gpd-omarchy and omarchy-m1 (`tpm area/ops/provision.toml`), waiting on an
+  approval on each PC before Syncthing creates it.
 
 ## [0.19.1] - 2026-10-16
 

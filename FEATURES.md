@@ -412,14 +412,18 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   read back `vbus` after the write and fail the exit code unless it is `On`), but a CORE-3 test relying on the
   mock's `Set` to refuse would be testing the wrong thing. Fix: give the mock the same refusal `donguru_power` has.
 - 🚧 **CORE-7 ELF keeper: `dg` always finds the firmware ELF** (CLI-19's `device counters` / `device log` decode):
-  `cnt_core::elf::resolve` already does the lookup (`WW_ELF_PATH`, then `~/.cache/ww/elf`, then `target/`) that
-  `donguru-core/src/counters.rs` / `src/log.rs` call. Done: `just fw-size`'s release build now calls
-  `cnt elf add "$elf"` after building, so every release build this repo makes is cached by build id. Open, both
-  outside this repo (see `prj/P2534-donguru/design/elf-keeper.md`): the actual day-to-day flash path, `cargo run`
-  in `fw/donguru` through the `cnt run` cargo runner, never calls `elf::add` either — that's a `cnt` repo change,
-  proposed, not made; and sharing a kept ELF across the mesh's PCs (the board is flashed on whichever PC has it,
-  `dg` runs on any PC) needs a decision (a synced directory added to `WW_ELF_PATH` recommended over per-tag GitHub
-  release assets, which would need new CI and would miss untagged dev builds) — also proposed, not built.
+  `cnt_core::elf::resolve` already does the lookup (`WW_ELF_PATH`, [`config_dirs`], then `~/.cache/ww/elf`, then
+  `target/`) that `donguru-core/src/counters.rs` / `src/log.rs` call. Done, in this repo: `just fw-size`'s release
+  build calls `cnt elf add "$elf"` after building. Done, upstream in `cnt` (0.5.0 -> 0.6.0, proposed and built per
+  `prj/P2534-donguru/design/elf-keeper.md`): `cnt run` (the actual day-to-day flash path, `cargo run` in
+  `fw/donguru`) now caches the ELF it just flashed the same way; `cnt_core::elf` gained a config file
+  (`~/.config/ww/config.toml`'s `[elf] dirs`, `~` expanded) for a directory synced between machines, read before
+  the local ELF directory, and `add`'s default target when one is set — so a flash on either dev PC publishes
+  straight into it. Declared as the mesh's `ww-elf` Syncthing share (`tpm` `area/ops/provision.toml`) between
+  gpd-omarchy and omarchy-m1, and the config file written on both; **waiting on `tpm provision approve` on each
+  PC** before Syncthing actually creates the folder. Open: `cnt` 0.6.0 not yet installed on omarchy-m1 (skipped
+  while the board's other sessions had it busy); the hardware check — flash on the board, `dg device counters` /
+  `dg device log` with no `--elf` — not yet run, queued for the board.
 
 ## CLI (`CLI`)
 
