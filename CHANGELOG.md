@@ -18,8 +18,13 @@ IDs refer to [FEATURES.md](FEATURES.md).
   present receptacle voltage and a warning that VBUS_SW is the computer's own VBUS, not a regulated 5 V supply;
   `--allow-voltage` is the explicit confirmation needed above 5.5 V.
 - `donguru_core::vbus`: builds a `VbusMode` from plain volts/amps for the CLI, the GUI and Python, as integer
-  millivolts/milliamps/milliwatts (the firmware's `ww_si` has no `f32`: a float-encoded value doesn't decode there
-  at all, found testing `dg power on` on B153A).
+  millivolts/milliamps/milliwatts and (`power cycle`'s `off`) milliseconds: the firmware's `ww_si` has no `f32`, so
+  a float-encoded value doesn't decode there at all (`PropertyDesFailed` / `ArgsDesFailed`, found and fixed testing
+  on B153A).
+- Tested 16 Oct 2026 on B153A rev A, no DUT: `power status/on/off/cycle/meter/watch/totals`, `usb
+  status/connect/disconnect`, `header vbus status/on/off`, `header relay status/on/off`, text/json/jsonl. Plug
+  VBUS switches and the meter confirms the draw (~16 mA); `header vbus on`'s warning shows the real measured
+  voltage. Not tested: a trip or `Auto`'s current/power limits under load (needs a DUT).
 
 ## [0.18.0] - 2026-10-16
 

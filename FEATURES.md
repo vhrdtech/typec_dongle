@@ -432,21 +432,25 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - ⬜ **CLI-9 `config generate / show / path / validate`**: stub. Layering per the design doc (defaults, system,
   user, project file, `DONGURU_*`, flags).
 - 📋 **CLI-10 `fw version` / `fw update`**: in the design doc, not in the command tree yet. Needs FW-11, FW-12.
-- 🧪 **CLI-11 `power status / on / off / cycle / meter / watch / totals`** (`donguru-cli/src/commands/power.rs`):
+- ✅ **CLI-11 `power status / on / off / cycle / meter / watch / totals`** (`donguru-cli/src/commands/power.rs`):
   `status` tables plug + header + meter in one read; `on` (`--allow-voltage`, `--trip`) and `off` read back `vbus`
   after the write and fail the exit code unless it ended up where asked (`On` / `Off`), covering a trip or a latched
   fault without the host needing its own copy of the guard; `cycle --off --release-sbu`; `meter` one reading;
   `totals [--reset]` in mAh / mWh; `watch [--interval | --on-change]` streams `meter.reading` through CLT-28 observe
-  until Ctrl-C (`--format json` is refused: use text or jsonl). `donguru_core::vbus` builds the mode from plain
-  volts/amps. `meter`/`watch`/`totals` need API-12 (session power-meter, not landed): against today's firmware they
-  answer `Unimplemented`; against the mock (CORE-3) everything works. Snapshot-tested against the mock; not yet run
-  on a board. ^revB
-- 🧪 **CLI-16 Header VBUS output with a clear warning** (`donguru-cli/src/commands/header.rs`): `header vbus on`
+  until Ctrl-C (`--format json` is refused: use text or jsonl). `donguru_core::vbus` builds the mode, and `cycle`'s
+  `off` time, as integer millivolts/milliamps/milliseconds (the firmware's `ww_si` has no `f32`: a float-encoded
+  value sent to it doesn't decode at all, `PropertyDesFailed` / `ArgsDesFailed` — found testing on B153A, fixed
+  before anything shipped with the bug). Snapshot-tested against the mock (CORE-3) and 16 Oct 2026 on B153A rev A
+  without a DUT: `status`, `on`/`off` (plug VBUS actually switches, meter confirms ~16 mA draw), `cycle --off 300ms`,
+  `meter`, `totals` and `totals --reset`, `watch --interval` streaming real readings, text/json/jsonl. Not tested: a
+  trip or `Auto`'s current/power limits under real load (needs a DUT). ^revB
+- ✅ **CLI-16 Header VBUS output with a clear warning** (`donguru-cli/src/commands/header.rs`): `header vbus on`
   always prints the present receptacle voltage (from `meter.reading`, or just the warning if the meter isn't
   implemented yet) and a warning that VBUS_SW is the computer's own VBUS, not a regulated 5 V supply; going above
   the 5.5 V default needs `--allow-voltage`, which is the explicit confirmation (same flags as CLI-11's `power on`).
   `header relay on / off / status` (U101). Same warning text still needed in the GUI, Python and docs (only
-  `docs/user/power.md` has it so far). Snapshot-tested against the mock; not yet run on a board. ^revB
+  `docs/user/power.md` has it so far). Snapshot-tested against the mock and 16 Oct 2026 on B153A rev A: `vbus
+  status/on/off` (the warning shows the real measured voltage), `relay status/on/off`. ^revB
 - 📋 **CLI-12 `i2c scan / read / write` and `uart`**: in the design doc, not in the command tree yet.
 - 🐛 **CLI-13 Exit codes differ from the notes**: `src/exit.rs` has device error = 4, timeout = 5 and no transport
   code; `developer-notes.md` has transport = 4, device = 5, timeout = 6. Decide before anything ships.
