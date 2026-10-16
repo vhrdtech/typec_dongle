@@ -6,6 +6,13 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Fixed
+
+- The RTT log never blocks the firmware (FW-27): with probe-rs attached, a burst of logging used to wait for the
+  probe inside the logger (probe-rs sets the channel to blocking), holding up other tasks (an ADC overrun during a
+  flood). Now each line goes to RTT whole or is skipped there, whatever mode the probe set; the USB log
+  (`device.log`) still gets it. Needs wire_weaver `ww_defmt_logger` with the non-blocking tee (STD-26 fix).
+
 ## [0.19.0] - 2026-10-16
 
 ### Added

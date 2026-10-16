@@ -252,6 +252,11 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   window, seconds after the kill, so the meter loses a window. Seen 16 Oct 2026 on B153A with the API-10 firmware;
   no overrun idle for 2 min nor with a host reading the log for 60 s. Not checked on main's firmware with an observer
   killed the same way. Suspect: USB interrupts while the IN endpoint NAKs (double-buffered endpoints, FW-24).
+- 🧪 **FW-27 RTT log never blocks**: the firmware runs the same with or without a probe: `ww_defmt_logger`'s RTT tee
+  writes each frame whole or skips it, with the channel forced to NoBlockSkip before every write, as probe-rs
+  switches it to blocking on attach (before, a flood of 1000 lines with probe-rs attached stalled other tasks: an ADC
+  overrun). Code: wire_weaver `ww_defmt_logger` (`tee_frame`, `rtt_skipped()`), `fw/donguru/src/log.rs`. Host-tested
+  (`rtt_tee_never_blocks`); on hardware: a flood with probe-rs attached, no ADC overrun.
 
 ## API (`API`)
 

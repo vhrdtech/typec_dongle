@@ -34,8 +34,9 @@ static mut AREA: MaybeUninit<RamArea<STORE_LEN>> = MaybeUninit::uninit();
 /// The RTT channel `defmt`, the logger's tee. First thing in main: nothing logged before it reaches RTT (it still
 /// goes into the ring).
 pub fn init_rtt() {
-    // NoBlockSkip as defmt-rtt's `disable-blocking-mode` did; probe-rs may switch the channel to blocking while
-    // attached, then a log call waits for it to read
+    // Never blocks (FW-27): the logger writes each frame whole or skips it, in NoBlockSkip even when probe-rs
+    // switches the channel to blocking on attach, so the firmware runs the same with or without a probe. A burst
+    // faster than the probe reads loses lines on RTT only; the USB log has them.
     let channels = rtt_init! {
         up: {
             0: {
