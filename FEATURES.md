@@ -301,11 +301,6 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   the other orientation gives an SWD protocol error each time, as it should. `plug.orientation` was set in RAM
   through the J-Link (the CLI's `swd orientation` is not implemented yet). `ww info` ends with an error from `ww` itself (double disconnect, wire_weaver).
 
-- 📋 **API-8 API tree 0.2.0**: `donguru_api` 0.2.0 with every level declared (`device`, `leds`, `meter`, `plug`,
-  `header`, `sbu`, `inputs`, `hub`, `swd`, `uart[]`, `i2c[]`, `gpio[]`, `adc`, `debug`), the 0.1 root items moved
-  (`swd_orientation` -> `plug.orientation`, `swd_mode` -> `swd.mode`, `swd_release` -> `sbu.release`,
-  `board_variant` -> `device.variant`, `led_on/off` -> `debug.led_set`), new items `Unimplemented` until their item
-  lands; one handler module per level. Breaks 0.1 hosts (none but `ww`). ^revB
 - ✅ **API-9 Device contract**: `device.firmware` (`FirmwareInfo`, build id), `device.last_reset` (`LastReset`:
   cause, crash record, boot count, clear), `device.board`, `device.uid`, `device.label` (`UserInfo`: name 32 B and
   notes 256 B, RAM only until the settings store, API-19), `device.counters` (`ww_counters`: RAM and BKP buffers,
