@@ -89,6 +89,10 @@ async fn main() -> Result<()> {
     let mut frames = log.frames_resume(cursor).call().await?;
     if let Some(count) = args.flood {
         dongle.client().debug().log_flood(count).call().await?;
+        // lost lines are reported with the next line the dongle logs: one more, once the flood has left the
+        // logger's ring, so the count shows without waiting for the dongle's next log line
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        dongle.client().debug().log_flood(1).call().await?;
     }
 
     let mut decoder = table.new_stream_decoder();

@@ -9,9 +9,14 @@ IDs refer to [FEATURES.md](FEATURES.md).
 ### Fixed
 
 - The RTT log never blocks the firmware (FW-27): with probe-rs attached, a burst of logging used to wait for the
-  probe inside the logger (probe-rs sets the channel to blocking), holding up other tasks (an ADC overrun during a
-  flood). Now each line goes to RTT whole or is skipped there, whatever mode the probe set; the USB log
-  (`device.log`) still gets it. Needs wire_weaver `ww_defmt_logger` with the non-blocking tee (STD-26 fix).
+  probe inside the logger (probe-rs sets the channel to blocking), holding up other tasks. Now each line goes to RTT
+  whole or is skipped there, whatever mode the probe set; the USB log (`device.log`) still gets it. A line costs
+  ~62 us instead of ~620 us with probe-rs attached. 512 B more RAM. Needs wire_weaver `ww_defmt_logger` with the
+  non-blocking tee (STD-26 fix). Tested 16 Oct 2026 on B153A: floods of 1000 lines with and without probe-rs, exact
+  lost counts, no ADC overrun.
+- `debug.log_flood` yields between lines, so other tasks run during the flood (it overran the ADC with the probe
+  fixed too); `device_log --flood` logs one more line after it, which carries the count of the lines lost at the end
+  (a loss is reported with the next line).
 
 ## [0.19.0] - 2026-10-16
 

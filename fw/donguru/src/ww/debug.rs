@@ -146,6 +146,9 @@ impl ServerState {
         }
         for i in 0..count {
             defmt::info!("flood {=u32} of {=u32}", i + 1, count);
+            // other tasks (the ADC) run between the lines; the log isn't pumped before the end (same task), so the
+            // flood still overruns the logger's ring as meant
+            embassy_futures::yield_now().await;
         }
         Ready(())
     }
