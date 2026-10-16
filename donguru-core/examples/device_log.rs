@@ -5,6 +5,7 @@
 //! ```sh
 //! cargo run -p donguru-core --example device_log -- --elf fw/donguru/target/thumbv6m-none-eabi/debug/donguru
 //! cargo run -p donguru-core --example device_log -- --elf ... --flood 1000   # overload the logger on purpose
+//! cargo run -p donguru-core --example device_log -- --elf ... --flood 3 --no-read   # lines left in the store
 //! ```
 
 use anyhow::{Context, Result, bail};
@@ -31,6 +32,9 @@ struct Args {
     /// Make the dongle log this many lines at once after connecting (`debug.log_flood`)
     #[arg(long)]
     flood: Option<u32>,
+    /// Only make the dongle log (`--flood`) and exit: the lines stay in its store, e.g. to see them survive a crash
+    #[arg(long, requires = "flood")]
+    no_read: bool,
 }
 
 #[tokio::main]
@@ -63,6 +67,16 @@ async fn main() -> Result<()> {
             bail!("{msg} (--force to use it anyway)");
         }
         println!("warning: {msg}");
+    }
+
+    if args.no_read {
+        dongle
+            .client()
+            .debug()
+            .log_flood(args.flood.unwrap_or(0))
+            .call()
+            .await?;
+        return Ok(());
     }
 
     // resume the session the dongle started at boot (or kept from before a reset), from its start

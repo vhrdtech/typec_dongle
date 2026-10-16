@@ -247,6 +247,12 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   up (target SWDIO), SBU1 (PA1) held low by R28 even against the MCU pull-up (SWCLK), so B129A's SWD mux switches.
   Firmware since v0.6.0: the SWD wire path is unchanged apart from formatting. To check by hand on B129A: NRST and
   3V3 levels, its reset button, leftover flying leads on J2 (M2K scope, 13 Oct).
+- 🐛 **FW-26 ADC DMA overrun while writing to a host that died**: a host process killed without disconnecting leaves
+  the server task writing (log stream events since API-10, observed properties before) until the 250 ms packet
+  timeouts end in "USB write timed out"; one or two `ADC: DMA ring buffer overrun` (`adc_overruns`) show up in that
+  window, seconds after the kill, so the meter loses a window. Seen 16 Oct 2026 on B153A with the API-10 firmware;
+  no overrun idle for 2 min nor with a host reading the log for 60 s. Not checked on main's firmware with an observer
+  killed the same way. Suspect: USB interrupts while the IN endpoint NAKs (double-buffered endpoints, FW-24).
 
 ## API (`API`)
 
@@ -300,14 +306,16 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   everything, the ELF found by build id (the log part waits for API-10); label, LED mode, brightness and identify
   from Python, identify seen as a full-brightness blink in the TIM14 / TIM15 compare registers, `Busy` while it
   runs. ^revB
-- 🧪 **API-10 defmt log over WireWeaver**: `ww_log::LogDefmt` at `device.log` through `ww_defmt_logger` (wire_weaver
+- ✅ **API-10 defmt log over WireWeaver**: `ww_log::LogDefmt` at `device.log` through `ww_defmt_logger` (wire_weaver
   STD-26), RTT kept as a tee (channel `defmt`, probe-rs / `cnt run` unchanged); the log store a `PersistentRamRing`
   of 8 KiB in `.uninit` (DropOldest), its session started at boot or continued after a soft reset, so the log from
   before a host connects and from before a crash arrives when a host resumes it; `device.log.DEFMT` with encoding
   and build id; `debug.log_flood` for the lost-count test (`donguru_api` 0.2.1). Code: `fw/donguru/src/log.rs`,
-  server task in `ww/mod.rs`; host test tool `donguru-core/examples/device_log.rs` until CLI-19. Built, not tested on
-  hardware yet: boot log over USB and RTT at once, exact `lost` under `--flood`, a line from before a forced fault
-  after the reset. ^revB
+  server task in `ww/mod.rs`; host test tool `donguru-core/examples/device_log.rs` until CLI-19. Tested 16 Oct 2026
+  on B153A: the boot log over USB and RTT at once; `--flood 1000` gives 227 lines and "773 lost", RTT (probe-rs,
+  blocking) all 1000; lines logged before a HardFault forced through the J-Link arrive after the reset, with the
+  session continued and `last reset: Fault`. A live run arrives before the backfill, the tool prints in arrival
+  order. See FW-26. ^revB
 - 🧪 **API-11 Plug and header power**: `plug.vbus_mode` / `header.vbus_sw_mode` (`ForceOff`, `ForceOn { max_voltage }`,
   `Auto` with voltage, current and power limits, plug only) with the state in `plug.vbus` / `header.vbus_sw` (`Off`,
   `On`, `Fault`, `Tripped(..)`), `plug.vbus_cycle(off, release_sbu)` answered when VBUS is back on (deferred),
