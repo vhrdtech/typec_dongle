@@ -238,7 +238,12 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `probe-rs read --probe c0de:cafe` gets "No target responded" / a protocol error in both `plug.orientation`s,
   also with main's firmware (`a9fdc0a` + `plug-vbus-on`), which read it on 13 Oct. Nobody flashed or rewired B129A
   in between (ecc-safe-flash). To check: the cable / breakout, B129A's own SWD with a J-Link, the SBU lines on a
-  scope.
+  scope. Firmware reviewed 16 Oct 2026 (fw25): from v0.6.0 (13 Oct) to `a9fdc0a` the SWD wire path is unchanged
+  apart from formatting (`swd.rs`, `cmsis_dap.rs`: `Orientation::Auto` acting as `Normal`, CMSIS-DAP fixed on EP3),
+  the embassy fork differs from 0.6.0 only in USB, and nothing new claims PA0/PA1, PD0/PD2, PD3, PB2 or PC15; the
+  "No target responded" answer means the DAP itself works. So a firmware cause is unlikely; a hardware bisect
+  (v0.6.0 / v0.9.0 / v0.11.0 with `plug-vbus-on`) and scope reads (PD0/PD2 during `DAP_Connect`, PA0/PA1 MODER)
+  are still to do: the board was off omarchy-m1 on 16 Oct.
 
 ## API (`API`)
 
