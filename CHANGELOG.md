@@ -15,7 +15,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 - `adc` (`ww_adc::Adc`): channels `vbus_in`, `current`, `vdda`, `temperature`, `button`, `io9`, `io7`, `io10` with
   raw code and value in milli units; `sbu1` / `sbu2` answer `Busy` for now.
 - Tested 15 Oct 2026 on B153A without DUT power (needs API-11): values plausible, totals integrate, `OnChange`
-  observers quiet on an idle DUT. Not compared with a DMM under load yet.
+  observers quiet on an idle DUT. Under load (B129A on the plug, ForceOn 5.5 V, 16 Oct): 16 mA with a 6 mA idle offset, totals 16.4 mC/s, peak
+  39 mA at switch-on, observers quiet. No DMM; calibration is FW-9.
 - Firmware size, release build, `just fw-size`: FLASH 259.5 KiB of 510 KiB (0.13.0 recorded 243.5 KiB).
 
 ## [0.15.0] - 2026-10-15

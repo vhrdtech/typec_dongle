@@ -314,8 +314,11 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `adc` as `ww_adc::Adc` with the named channels, raw code and value (`fw/donguru/src/ww/meter.rs`, `ww/adc.rs`,
   integration in `src/adc.rs`). Tested 15 Oct 2026 on B153A (no DUT power: plug VBUS needs API-11): reading 5.217 V / 6 mA
   idle, temperature 33.6 °C, totals grow (1.2 C and 6.2 J in 217 s, matches 5.5 mA at 5.2 V), observe `OnChange`
-  quiet on an idle DUT (reading once, totals 1/s), `adc.read` of every channel but `sbu1` / `sbu2`. Still open:
-  comparison with a DMM under load on B129A (needs API-11 landed), where the offset / gain of FW-9 matter. Open: `adc.sbu1` / `sbu2` answer
+  quiet on an idle DUT (reading once, totals 1/s), `adc.read` of every channel but `sbu1` / `sbu2`. Under load, 16 Oct 2026 on B153A + B129A
+  (`plug.vbus_mode` ForceOn 5.5 V): 5.217 V, 16 mA (idle offset 6 mA, so ~10 mA as B129A is known), 83 mW, `totals`
+  grow 16.4 mC/s and 85 mJ per 1 s step, peak 39 mA at switch-on (window-averaged inrush, plug-power saw 42-55 mA),
+  observe quiet under the steady load. Not compared with a DMM: the ~6 mA idle offset is what FW-9 calibration
+  removes. FLASH 259.5 KiB. Open: `adc.sbu1` / `sbu2` answer
   `Busy` until the SBU level (API-14) owns PA0 / PA1; `window` is 0.9 .. 14.9 ms (one sequence up to one half DMA buffer of
   sequences), longer needs averaging across updates. A read of `io7` / `io9` / `io10` switches the ADC to the
   extended set and stays there (meter keeps working, sequence 0.62 -> 0.90 ms). With FW-3. ^revB
