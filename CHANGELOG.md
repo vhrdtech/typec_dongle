@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.1] - 2026-10-16
+
 ### Fixed
 
 - `dg device counters` and `dg device log` find the firmware ELF in the shared directory of `~/.config/ww/config.toml` `[elf] dirs` (the ww-elf share, CORE-7): donguru-core needs cnt_core 0.5.1, which reads it.
