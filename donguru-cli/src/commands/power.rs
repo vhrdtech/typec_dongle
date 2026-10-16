@@ -348,7 +348,8 @@ fn off(ctx: &Context) -> anyhow::Result<ExitCode> {
 }
 
 fn cycle(ctx: &Context, off: Duration, release_sbu: bool) -> anyhow::Result<ExitCode> {
-    let off_s = Second::seconds_f32(off.as_secs_f32());
+    // Integer milliseconds: the firmware's `ww_si` has no `f32` (see `donguru_core::vbus`'s doc comment).
+    let off_s = Second::milliseconds(off.as_millis() as i32);
     let state = super::with_dongle(ctx, async |dongle| {
         dongle.plug().vbus_cycle(off_s, release_sbu).await
     })?;
