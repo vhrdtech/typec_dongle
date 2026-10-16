@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-10-16
+
 ### Added
 
 - Power meter in SI units (API-12, FW-3): `meter.reading` (VBUS_IN, current towards the DUT, power, one ADC window),
