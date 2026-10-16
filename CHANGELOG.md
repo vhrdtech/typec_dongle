@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-10-16
+
 ### Added
 
 - `dg info` and `dg device select` (CLI-7): `info` is `device info`'s contract summary (firmware, board/variant,
