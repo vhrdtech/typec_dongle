@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-10-16
+
 ### Added
 
 - defmt log over WireWeaver (API-10; `donguru_api` 0.2.0 -> 0.2.1, additive, 0.2.0 hosts still connect):
