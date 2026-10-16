@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.19.1] - 2026-10-16
+
 ### Fixed
 
 - The RTT log never blocks the firmware (FW-27): with probe-rs attached, a burst of logging used to wait for the
