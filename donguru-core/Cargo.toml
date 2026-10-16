@@ -32,7 +32,7 @@ ww_user_info = { path = "../../wire_weaver/ww_stdlib/ww_user_info", features = [
 # CMSIS-DAP v2 only: the default cmsisdap_v1 pulls in hidapi (C)
 probe-rs = { version = "0.32", optional = true, default-features = false, features = ["builtin-targets"] }
 # `device.counters` and `device.log` decoded with the firmware's ELF, found by its build id (CLI-19)
-cnt_core = "0.5"
+cnt_core = "0.5.1"
 defmt-decoder = "1.1"
 
 [features]
