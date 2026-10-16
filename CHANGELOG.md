@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-10-16
+
 ### Added
 
 - `dg power status / on / off / cycle / meter / watch / totals` (CLI-11): a combined plug + header + meter table,
