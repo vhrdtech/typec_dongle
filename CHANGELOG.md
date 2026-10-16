@@ -18,6 +18,11 @@ IDs refer to [FEATURES.md](FEATURES.md).
 - `donguru_api` unchanged at 0.2.0; `donguru-core` gains `Device::notes`/`set_notes`, `boot_count`,
   `clear_last_reset`, `counters`, `log_dump`, `log_follow` and the `counters`/`log` modules behind them.
 - The v1 CLI command tree, written into `docs/design/cli/index.md` as the spec (no open questions left there).
+- Tested 16 Oct 2026 on B153A rev A (text and json, exit codes): `info`, `device info/select/label/reset-cause`
+  all work end to end, including a real decoded crash record (`HardFault`) cleared by `reset-cause --clear`;
+  `device log` takes the "nothing yet" path (API-10 not built); `device counters` reaches the real ELF-by-build-id
+  lookup and fails with the documented message since no firmware ELF was cached for this board's build id — the
+  happy decode path still needs a firmware build with its ELF kept around.
 
 ### Changed
 

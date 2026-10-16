@@ -405,12 +405,15 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - ⬜ **CLI-5 `gpio read / write / configure / watch`**: arguments parsed, prints "not implemented". Needs FW-10,
   API-3, CORE-1.
 - ⬜ **CLI-6 `usb list / attach / detach / power / data`**: stub. Needs FW-8, API-3. ^revB
-- 🧪 **CLI-7 `device list / info / select`, `info`**: `device list` / `device info` (text / json / jsonl,
+- ✅ **CLI-7 `device list / info / select`, `info`**: `device list` / `device info` (text / json / jsonl,
   `donguru-cli/src/commands/device.rs`), tested 15 Oct 2026 on B153A. `device select` resolves the selector against
   the connected dongles and pins the serial in `./donguru.toml` (`donguru-cli/src/project_config.rs`), read back as
   the lowest-priority layer in `Context::from_cli` (before CLI-9's full layering). Top-level `info` is `device
   info`'s summary (now with `last_reset`) under the short, no-noun spelling. Tested against the mock
-  (`info_from_the_mock`, `project_config::tests`); `select` and the new `info` content not yet run on hardware.
+  (`info_from_the_mock`, `project_config::tests`) and 16 Oct 2026 on B153A rev A: `info` and `device info` (text and
+  json) agree, `device select 0` pins the serial in `donguru.toml` and is picked up as the device default on the
+  next invocation, `device info --device serial:<bogus>` exits `NoDevice` (3), an unknown subcommand exits
+  `BadArgs` (2).
 - 🚧 **CLI-8 `udev`**: `generate` writes the rule (uaccess / group / all); `install`, `uninstall`, `status` are stubs.
 - ⬜ **CLI-9 `config generate / show / path / validate`**: stub. Layering per the design doc (defaults, system,
   user, project file, `DONGURU_*`, flags).
@@ -433,7 +436,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `--passes`, `--no-restore`; text with colour and a spinner, `json`/`jsonl`; exit 1 on any mismatch. Tested
   12 Oct 2026 on B153A + B129A (STM32G0B1).
 
-- 🧪 **CLI-19 `device label / log / counters / reset-cause`**: the device contract from `dg` (API-9, API-10).
+- ✅ **CLI-19 `device label / log / counters / reset-cause`**: the device contract from `dg` (API-9, API-10).
   `device label [NAME] [--notes]` gets/sets `UserInfo` name and notes. `device reset-cause [--clear]` shows
   `LastReset`'s cause, message, boot count and crash record, `--clear` forgets it. `device counters [--watch]` and
   `device log [--follow]` decode `ww_counters` / `ww_log` with the firmware's ELF found by its build id
@@ -444,7 +447,14 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   is mock-tested for those two; real decoding needs hardware and firmware that has `cnt`/defmt counters to show.
   Tested against the mock (`donguru-core/tests/mock.rs`: `reset_cause_and_clear`,
   `counters_report_with_nothing_to_decode`, `log_dump_before_the_device_ever_logged`; CLI renderers via insta
-  snapshots). Not yet run on hardware. ^revB
+  snapshots), and 16 Oct 2026 on B153A rev A: `device label` gets and sets name/notes (text and json);
+  `device reset-cause` decoded a real stored crash record (`HardFault`, boot count, crash uptime, stack dump) left
+  by an earlier session's board use, and `--clear` forgot it (boot count and crash fields back to zero on the next
+  read); `device log` took the "nothing yet" path (API-10 not built) with an empty log, exit 0; `device counters`
+  found a non-zero build id and reached the ELF-by-build-id lookup for real, failing with the documented "no ELF
+  with that build id in the cache or target/" message since no firmware ELF was cached — the happy decode path
+  (ELF present) is still untested, needs a firmware build whose ELF is kept around (`cnt elf add` or `target/`) at
+  test time. ^revB
 - 📋 **CLI-20 `sbu` and `uart`**: `sbu status / release / orientation`, `uart open / monitor / pty / break` (API-14). ^revB
 - 📋 **CLI-21 `led mode / brightness / identify`** (API-9).
 - 📋 **CLI-22 `adc`, `input`, `hub`**: `adc read`, `input status / watch`, `hub status / recover` (API-12, API-13,
