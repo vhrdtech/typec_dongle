@@ -2,7 +2,6 @@
 
 #show: lab.with(
   title: [Hello Donguru],
-  level: "first-hour",
   time: "5 min",
   needs: ([Donguru], [a computer with a USB-C port and `dg` installed]),
   features: ("CLI-7", "CLI-19"),

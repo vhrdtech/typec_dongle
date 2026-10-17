@@ -24,7 +24,7 @@ serve-docs:
 
 # Typst flags of the lab book: the vhrd package's fonts and the build stamp on every page
 labs-fonts := env("HOME") / ".local/share/typst/packages/local/vhrd/0.9.2/fonts"
-labs-flags := "--root labs --font-path " + labs-fonts + " --input git=" + `git describe --always --dirty --exclude '*'` + " --input 'built=" + `date +'%-d %b %Y %H:%M'` + "'"
+labs-flags := "--root . --font-path " + labs-fonts + " --input git=" + `git describe --always --dirty --exclude '*'` + " --input 'built=" + `date +'%-d %b %Y %H:%M'` + "'"
 
 # Lab book for the website: HTML pages, the book and every lab as PDF, into site/labs
 [group: 'docs']

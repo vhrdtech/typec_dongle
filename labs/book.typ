@@ -1,6 +1,6 @@
 // The whole lab book as one PDF: `just labs-book`.
 #import "lib.typ": *
-#import "labs.typ": labs
+#import "labs.typ": parts
 
 #show: book-style.with(docrev: "Draft")
 
@@ -17,8 +17,18 @@
 ]
 
 #text(18pt, weight: "bold")[Labs]
-#outline(title: none, target: heading.where(level: 1))
+#outline(title: none, target: heading.where(level: 1).or(heading.where(level: 1, supplement: [Part])))
 
-#for slug in labs { lab-at(labs, slug) }
+#for part in parts {
+  let lv = levels.at(part.level)
+  heading(level: 1, supplement: [Part], outlined: false)[#lv.name]
+  text(12pt, fill: brand.grey, lv.about)
+  for slug in part.labs { lab-at(parts, slug) }
+}
+
+= Features the labs use
+Every feature the labs rely on, with its status in FEATURES.md: what is missing comes first.
+
+#feature-map()
 
 #back-cover()

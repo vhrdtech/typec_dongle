@@ -2,7 +2,6 @@
 
 #show: lab.with(
   title: [How much does my phone charge with?],
-  level: "first-hour",
   time: "15 min",
   needs: ([Donguru], [a phone with a USB-C port], [a USB-C charger or the computer's port]),
   features: ("API-12", "CLI-11"),

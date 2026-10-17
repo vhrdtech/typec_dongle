@@ -1,8 +1,8 @@
 // One lab as a PDF while writing it: `just lab SLUG` (typst watch with --input lab=SLUG).
 #import "lib.typ": *
-#import "labs.typ": labs
+#import "labs.typ": parts
 
-#let slug = sys.inputs.at("lab", default: labs.first())
+#let slug = sys.inputs.at("lab", default: parts.first().labs.first())
 #show: book-style.with(docrev: "Preview")
 
-#lab-at(labs, slug)
+#lab-at(parts, slug)
