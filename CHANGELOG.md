@@ -6,6 +6,10 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- Lab book (PKG-5): `labs/`, one Typst file per lab, built into one PDF (`just labs-book`) and web pages with a PDF per lab (`just build-labs`); first labs: Hello Donguru, How much does my phone charge with?
+
 ## [0.20.2] - 2026-10-16
 
 ### Changed

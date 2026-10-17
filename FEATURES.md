@@ -521,6 +521,11 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - ✅ **PKG-2 CI and hooks**: `just verify` in GitHub Actions, prek pre-commit / pre-push hooks.
 - 📋 **PKG-3 Packages**: `.deb` / `.rpm` first, then Homebrew and Chocolatey; man pages, completions and the udev rule
   installed by the package (`docs/design/packaging/`). ^v1.0
+- 🚧 **PKG-5 Lab book**: short labs from easy to insane (goal, setup photo, steps in CLI / Python / GUI, what you
+  should see, what next), one Typst file per lab in `labs/`, built into one PDF (`just labs-book`) and HTML pages
+  with per-lab PDFs for the website (`just build-labs`, Typst 0.15 bundle export, experimental). First labs:
+  `hello`, `phone-charging`, not yet run on a board for real output. Not in the published site yet: the docs CI
+  needs Typst and the vhrd package. Catalog of planned labs: tpm `prj/P2534-donguru/design/lab-book.md`.
 - 📋 **PKG-4 License**: the workspace says `license = "TBD"`. ^v1.0
 
 ## Dropped and superseded

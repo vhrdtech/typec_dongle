@@ -22,6 +22,27 @@ build-docs:
 serve-docs:
     uv run --with zensical zensical serve
 
+# Typst flags of the lab book: the vhrd package's fonts and the build stamp on every page
+labs-fonts := env("HOME") / ".local/share/typst/packages/local/vhrd/0.9.2/fonts"
+labs-flags := "--root labs --font-path " + labs-fonts + " --input git=" + `git describe --always --dirty --exclude '*'` + " --input 'built=" + `date +'%-d %b %Y %H:%M'` + "'"
+
+# Lab book for the website: HTML pages, the book and every lab as PDF, into site/labs
+[group: 'docs']
+build-labs:
+    typst compile {{ labs-flags }} --features html,bundle -f bundle labs/site.typ site/labs
+
+# The whole lab book as one PDF, into target/labs
+[group: 'docs']
+labs-book:
+    mkdir -p target/labs
+    typst compile {{ labs-flags }} labs/book.typ target/labs/donguru-lab-book.pdf
+
+# One lab as PDF, rebuilt on every save while writing it, e.g. `just lab phone-charging`
+[group: 'docs']
+lab SLUG:
+    mkdir -p target/labs
+    typst watch {{ labs-flags }} --input lab={{ SLUG }} labs/preview.typ target/labs/{{ SLUG }}.pdf
+
 # Rust edition, used when formatting individual files. `cargo fmt` reads
 # this from Cargo.toml, but a bare `rustfmt` invocation does not and
 # would otherwise fall back to edition 2015.
