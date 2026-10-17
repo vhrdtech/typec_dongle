@@ -32,4 +32,14 @@
     "test-farm",
     "voltage-sweep",
   )),
+  (level: "developer", labs: (
+    "swd-over-usb-c",
+    "swd-memtest",
+    "logs-and-current",
+    "crash-reports",
+    "sbu-convention",
+    "network-over-usb",
+    "webusb",
+    "own-api-method",
+  )),
 )

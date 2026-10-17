@@ -282,6 +282,10 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 💡 **FW-33 Sequences on the dongle**: a short list of steps stored in flash (PD request / PPS level, power on/off
   with limits, sweep, wait, mark) run by the firmware without a computer (FW-28 `run-seq`), with the meter logged
   per step for reading back. Small interpreter, no scripting language. Lab `voltage-sweep`.
+- 💡 **FW-34 RTT reader on the dongle**: Donguru finds the DUT's RTT control block over its own SWD link and streams the
+  up-channels to the host, stamped with the meter's clock, so log and current share one time axis without
+  probe-rs. defmt decoding stays on the host (ELF). Excludes a probe-rs session at the same time. Lab
+  `logs-and-current`.
 
 ## API (`API`)
 
@@ -409,6 +413,12 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   sequence pauses while it runs. Lab `inrush`.
 - 💡 **API-27 Cable e-marker**: read the e-marker of the cable on the receptacle with SOP' (needs VCONN from
   Donguru's side or a source that supplies it): current, voltage, speed, length, vendor. Lab `cable-check`.
+- 💡 **API-28 UART over TCP on NCM**: with API-21, the SBU UART as a raw TCP port (2323, like ser2net), one more
+  owner next to WireWeaver and ACM under the same one-owner rule. Lab `network-over-usb`.
+- 💡 **API-29 `ext` level for user code**: a level in `DonguruApi` reserved for firmware forks (`ww_impl!(ext: Ext)`,
+  empty in the official firmware), versioned apart from the rest, so a fork adds methods without changing
+  `donguru_api`'s version and the official `dg` keeps working. `dg info` shows a firmware with an `ext` as custom.
+  Lab `own-api-method`.
 
 ## Host library (`CORE`)
 
@@ -471,6 +481,9 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 💡 **CORE-10 Remote dongles**: `dg serve` shares a PC's dongles over the network (WireWeaver over UDP / WebSocket
   through the host), `dg --remote HOST` and `donguru.connect(HOST)` use them like local ones. Needs authentication and
   an allow-list before it listens beyond localhost: security-sensitive, plan on `top`. Lab `test-farm`.
+- 💡 **CORE-11 Dynamic calls**: call any method or property by its path through the firmware's introspection,
+  without the generated client knowing it (`dg.call("ext.morse", text=...)`), for forks and newer firmware. Lab
+  `own-api-method`.
 
 ## CLI (`CLI`)
 
@@ -593,6 +606,10 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `test-farm`.
 - 💡 **CLI-37 `dg seq load | run | result`**: sequences (FW-33) from a TOML file, run now or standalone, results as
   csv / json. Lab `voltage-sweep`.
+- 💡 **CLI-38 `dg trace`**: the DUT's RTT / defmt log (FW-34) and the meter on one timeline: `--elf`, `--for`, a jsonl
+  record, `trace view` in the terminal or as HTML. Lab `logs-and-current`.
+- 💡 **CLI-39 `dg call PATH ARGS`**: dynamic call of any firmware item (CORE-11), json in and out. Lab
+  `own-api-method`.
 
 ## GUI (`GUI`)
 
@@ -600,6 +617,8 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   Power tab (a switch per output, cycle with off time, guard limits), a Meter tab (live V / I / P plot, totals with
   reset), a PD tab (offers as cards, message timeline). Labs `hello`, `phone-charging`, `kill-switch`,
   `charger-inspector`. The browser UI over NCM / WebUSB (API-21, API-22) is the same app built for wasm.
+- 💡 **GUI-2 Trace timeline**: current plot over log lines on one time axis (CLI-38's data), hover a spike to see
+  the line before it. Lab `logs-and-current`.
 
 ## Packaging and docs (`PKG`)
 
@@ -619,6 +638,9 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   convention; sold with it or as an accessory. Labs `serial-console`, `i2c-on-the-plug`.
 - 💡 **PKG-7 GitHub Action** (`vhrdtech/donguru-action`): installs `dg` on a self-hosted runner, takes the dongle's
   lock (CORE-8) for the job, uploads the console and power numbers as artifacts. Lab `ci-runner`.
+- 💡 **PKG-8 SBU convention for DUT boards**: a docs page and a reference design (mux, CC debug-accessory detection,
+  ESD, KiCad snippet) for products that want SWD and a UART on their USB-C port with Donguru as the other end;
+  generalizes B129A's SWD_SEL circuit. Lab `sbu-convention`.
 
 ## Dropped and superseded
 
