@@ -10,4 +10,16 @@
     "charger-inspector",
     "button-shortcut",
   )),
+  (level: "bench", labs: (
+    "overnight-log",
+    "standby-current",
+    "inrush",
+    "cable-check",
+    "safe-first-power-on",
+    "relay-and-header-power",
+    "serial-console",
+    "i2c-on-the-plug",
+    "header-gpio-adc",
+    "update-donguru",
+  )),
 )

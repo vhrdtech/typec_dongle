@@ -265,6 +265,13 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   power bank): `device.settings.standalone` = `Off` (default) / `PdInspect` (ask the source for its capabilities,
   blink the result, keep it for `dg pd last`) / `PowerLog` (record the meter into flash until a computer reads it).
   The plug stays off whatever the other settings say. Lab `charger-inspector`. Needs API-23, API-19.
+- 💡 **FW-29 Meter history on the device**: one averaged point a second (V, I, P, energy) for the last 24 h in a RAM
+  ring (~17 KiB), so a host that sleeps or reconnects backfills its log without holes; `meter.history(since)` as a
+  stream. Lost on a power cut of the dongle itself. Lab `overnight-log`.
+- 💡 **FW-30 Fast current trip from the ADC analog watchdog**: the G0's ADC AWD on the current channel opens the plug
+  switch from its interrupt within microseconds of a sample beyond the trip, instead of the guard's ~15 ms update;
+  the guard keeps the slower voltage and power checks. Needs the trip current in ADC counts after FW-9 calibration.
+  Lab `safe-first-power-on`.
 
 ## API (`API`)
 
@@ -384,6 +391,14 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `Auto` (follow the computer side, the default), replacing FW-17's hardcoded drive. Lets a DUT be a source (power
   bank, phone with reverse charging) and is what back-feeding needs: the guard opens the switch while both sides
   source. Lab `who-feeds-whom`.
+- 💡 **API-25 Meter zero and averages with uncertainty**: `meter.zero()` learns the current offset while the plug is
+  off (the INA181's offset is worth tens of mA on a 5 mΩ shunt), `meter.average(window)` returns mean / min / max and
+  a one-sigma error. One ADC step is ~3 mA: the docs say what the meter can and can't resolve. Lab `standby-current`.
+- 💡 **API-26 High-rate meter capture**: current and voltage at up to ~50 kSa/s into a RAM buffer, started by a
+  trigger (power on, a current level, now) and read out as a stream (`ww_adc::AdcStream` or own); the regular
+  sequence pauses while it runs. Lab `inrush`.
+- 💡 **API-27 Cable e-marker**: read the e-marker of the cable on the receptacle with SOP' (needs VCONN from
+  Donguru's side or a source that supplies it): current, voltage, speed, length, vendor. Lab `cable-check`.
 
 ## Host library (`CORE`)
 
@@ -537,6 +552,14 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   event while it runs, prints each event and the command's exit code (API-13). Lab `button-shortcut`.
 - 💡 **CLI-28 Power direction**: `dg power meter` / `watch` show `→ DUT` / `← DUT` next to the signed current, json
   gets `"direction"`. Lab `who-feeds-whom`.
+- 💡 **CLI-29 `dg power log | plot | record`**: `log FILE --interval --for` (append, backfill from FW-29 after a
+  sleep, `--summary`), `plot FILE -o PNG` (V / I / P over time, a summary line), `record --rate --for --trigger`
+  (API-26). Labs `overnight-log`, `inrush`.
+- 💡 **CLI-30 `dg power zero` and `meter --average DURATION`** with min / max and the error (API-25). Labs
+  `standby-current`, `cable-check`.
+- 💡 **CLI-31 `dg cable info`**: the receptacle cable's e-marker (API-27). Lab `cable-check`.
+- 💡 **CLI-32 `dg power on --report`**: peak current, time to settle and the settled current after switching on,
+  from the meter's readings around the switch (API-12; finer with API-26). Lab `safe-first-power-on`.
 
 ## GUI (`GUI`)
 
@@ -558,6 +581,9 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `hello`, `phone-charging`, not yet run on a board for real output. Not in the published site yet: the docs CI
   needs Typst and the vhrd package. Catalog of planned labs: tpm `prj/P2534-donguru/design/lab-book.md`.
 - 📋 **PKG-4 License**: the workspace says `license = "TBD"`. ^v1.0
+- 💡 **PKG-6 SBU breakout**: a small USB-C receptacle board with SBU1, SBU2, CC, VBUS, GND (and D+/D-) on 2.54 mm
+  pins and labels, for wiring Donguru's SBU functions (UART, I2C, SWD, GPIO) to a board without Donguru's SBU
+  convention; sold with it or as an accessory. Labs `serial-console`, `i2c-on-the-plug`.
 
 ## Dropped and superseded
 
