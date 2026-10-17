@@ -17,8 +17,9 @@ Control Donguru from a browser tab: no install, no driver, works on a locked-dow
 2. Click "Connect" and pick Donguru in the browser's device list.
 3. The app opens: power switch, meter plot, UART terminal.
 
-#tip[Only one program can hold Donguru's control interface: while the page has it, `dg` can't, and the page says so.
-  Its network and SWD interfaces stay usable.]
+#tip[The page holds Donguru's USB control interface while it is open. `dg` keeps working next to it: through the
+  local WireWeaver server (which shares the USB interface between programs) or over the network interface (NCM).
+  See the lab "Many clients at once".]
 
 == What you should see
 

@@ -8,7 +8,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ### Added
 
-- Lab book (PKG-5): `labs/`, 47 labs in six levels from first hour to insane, one Typst file each, built into one PDF (`just labs-book`) and web pages with a PDF per lab (`just build-labs`); each lab shows the status of the features it uses, read from FEATURES.md, and the book ends with a map of every feature the labs need.
+- Lab book (PKG-5): `labs/`, 48 labs in six levels from first hour to insane, one Typst file each, built into one PDF (`just labs-book`) and web pages with a PDF per lab (`just build-labs`); each lab shows the status of the features it uses, read from FEATURES.md, and the book ends with a map of every feature the labs need.
 
 ## [0.20.2] - 2026-10-16
 

@@ -30,8 +30,9 @@ to.
 The laptop shows "charging" and `dg` keeps running on it. In USB-C, the side that sources power is the USB host by
 default; Donguru swaps the data role with PD (`DR_Swap`) so the laptop stays host while it sinks power.
 
-#safety[40 W through a dongle: keep Donguru in the open, watch `dg power status`'s temperature, and set the guard to
-  the voltage you agreed. Laptops without PD data-role swap lose the USB link: the lab then ends there.]
+#safety[Tens of watts through a dongle: the switch is rated 5 A, so up to 100 W at 20 V is the design target, to be
+  confirmed on rev B. Keep Donguru in the open, watch `dg power status`'s temperature, and set the guard to the voltage
+  you agreed. Laptops without PD data-role swap lose the USB link: the lab then ends there.]
 
 == What next
 

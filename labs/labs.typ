@@ -40,6 +40,7 @@
     "sbu-convention",
     "network-over-usb",
     "webusb",
+    "many-clients",
     "own-api-method",
   )),
   (level: "hacker", labs: (

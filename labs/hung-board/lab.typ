@@ -3,7 +3,7 @@
 #show: lab.with(
   title: [Reviving a hung board],
   time: "20 min",
-  needs: ([Donguru], [a board that sometimes hangs: a Raspberry Pi, a dev board on a long test]),
+  needs: ([Donguru], [a board that sometimes hangs: a single-board computer, a dev board on a long test]),
   features: ("CLI-11", "CLI-33", "FW-31", "API-15"),
 )
 
@@ -17,7 +17,7 @@ Donguru alone, watching a heartbeat pin, so it works even when the computer is b
 #steps(cli: [
   ```sh
   # host side: ping the board, cycle it after 3 missed answers in a row
-  dg watchdog --check "ping -c1 -W2 raspberrypi.local" --every 10s --misses 3 --off 2s
+  dg watchdog --check "ping -c1 -W2 sbc.local" --every 10s --misses 3 --off 2s
   #  12:01:10 ok · 12:01:20 ok · 12:01:30 miss 1 · ... · 12:01:50 cycled (3 misses) · 12:02:31 ok
   # on the dongle: the board toggles a pin at least every 5 s, or Donguru cycles it
   dg watchdog device --pin io7 --timeout 5s --off 2s --grace 60s   # grace: time to boot
@@ -29,7 +29,7 @@ Donguru alone, watching a heartbeat pin, so it works even when the computer is b
   dg = donguru.open()
   misses = 0
   while True:
-      ok = subprocess.run(["ping", "-c1", "-W2", "raspberrypi.local"]).returncode == 0
+      ok = subprocess.run(["ping", "-c1", "-W2", "sbc.local"]).returncode == 0
       misses = 0 if ok else misses + 1
       if misses == 3:
           dg.power.cycle(off=2.0); misses = 0; time.sleep(60)

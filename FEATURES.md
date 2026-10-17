@@ -439,6 +439,11 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 💡 **API-32 Receptacle as a source**: Rp and a PD source on UCPD1 towards the computer, so a power bank on the plug
   can charge the computer, with a PD data-role swap so the computer stays the USB host (else it loses `dg`). Rev A
   refuses Rp on UCPD1 (hw_b153a.md §14): rev B question. Lab `laptop-from-power-bank`.
+- 💡 **API-33 Many clients without fights**: USB (through the local server, CORE-12) and NCM (API-21) clients at the
+  same time, by design: every state change is pushed to all observers; a request carries its client's identity, so
+  logs and events say who switched what; functions one client must drive alone (UART TX, an SWD session, a capture)
+  are leased to one client and others get "held by X" instead of interfering; a lease ends with its client. Lab
+  `many-clients`.
 
 ## Host library (`CORE`)
 
@@ -493,7 +498,8 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   published yet; reverted after, nothing committed with it — once `cnt` lands this works with a plain
   `cargo update -p cnt_core`.
 - 💡 **CORE-8 Dongle lock**: a host-side lock per dongle serial (a lock file / advisory lock taken by donguru-core),
-  so two processes or two CI jobs don't drive the same dongle; `dg device lock --wait`, held for a command or a
+  so two CI jobs don't drive the same dongle (exclusive functions are API-33's leases once
+  CORE-12 lets several processes share it); `dg device lock --wait`, held for a command or a
   session. Labs `ci-runner`, `test-farm`.
 - 💡 **CORE-9 pytest plugin** (`pytest-donguru`): a `dut` fixture (power-cycled device, console, meter), per-test
   energy and peak current in the report, console output kept on failure; `--donguru`, `--donguru-uart`. Lab
@@ -504,6 +510,9 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 💡 **CORE-11 Dynamic calls**: call any method or property by its path through the firmware's introspection,
   without the generated client knowing it (`dg.call("ext.morse", text=...)`), for forks and newer firmware. Lab
   `own-api-method`.
+- 💡 **CORE-12 Through the local WireWeaver server**: donguru-core (CLI, Python, GUI) connects to a running `ww serve`
+  over IPC when there is one, and opens the USB interface itself only when there isn't, so any number of local
+  programs use one dongle at once. The server itself is wire_weaver's (not built yet). Lab `many-clients`.
 
 ## CLI (`CLI`)
 
@@ -643,6 +652,8 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   HTML report. Lab `pd-edge-cases`.
 - 💡 **CLI-45 `dg sbu usb on | off`**: Plus variant, the SBU pair to hub port 4 (`sbu.route_usb`, API-14). Lab
   `usb-over-sbu`.
+- 💡 **CLI-46 `dg clients`**: who is connected (USB through the server, NCM), what they observe and which leases they
+  hold (API-33). Lab `many-clients`.
 
 ## GUI (`GUI`)
 
@@ -662,7 +673,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - ✅ **PKG-2 CI and hooks**: `just verify` in GitHub Actions, prek pre-commit / pre-push hooks.
 - 📋 **PKG-3 Packages**: `.deb` / `.rpm` first, then Homebrew and Chocolatey; man pages, completions and the udev rule
   installed by the package (`docs/design/packaging/`). ^v1.0
-- 🚧 **PKG-5 Lab book**: 47 labs in six levels (first hour, bench, automation, developer, hacker, insane), one Typst
+- 🚧 **PKG-5 Lab book**: 48 labs in six levels (first hour, bench, automation, developer, hacker, insane), one Typst
   file each in `labs/` (goal, setup, steps in CLI / Python / GUI, what you should see, what next), built into one
   PDF (`just labs-book`) and HTML pages with per-lab PDFs (`just build-labs`, Typst 0.15 bundle export,
   experimental). Labs describe Donguru as it should be: each lists the feature IDs it relies on, the header shows
@@ -678,6 +689,9 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 💡 **PKG-8 SBU convention for DUT boards**: a docs page and a reference design (mux, CC debug-accessory detection,
   ESD, KiCad snippet) for products that want SWD and a UART on their USB-C port with Donguru as the other end;
   generalizes B129A's SWD_SEL circuit. Lab `sbu-convention`.
+- 💡 **PKG-9 Pigtails**: a short cable for rev B's plug pads with both CC lines (a cut regular cable carries only one,
+  so no debug accessory mode), as an accessory and possibly a Donguru with one soldered on from the start. Lab
+  `broken-plug-bypass`.
 
 ## Dropped and superseded
 
