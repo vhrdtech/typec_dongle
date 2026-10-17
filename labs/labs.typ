@@ -22,4 +22,14 @@
     "header-gpio-adc",
     "update-donguru",
   )),
+  (level: "automation", labs: (
+    "hung-board",
+    "hotplug-torture",
+    "power-cut-test",
+    "energy-per-operation",
+    "ci-runner",
+    "pytest-fixture",
+    "test-farm",
+    "voltage-sweep",
+  )),
 )

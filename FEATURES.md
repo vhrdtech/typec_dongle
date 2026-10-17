@@ -272,6 +272,16 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   switch from its interrupt within microseconds of a sample beyond the trip, instead of the guard's ~15 ms update;
   the guard keeps the slower voltage and power checks. Needs the trip current in ADC counts after FW-9 calibration.
   Lab `safe-first-power-on`.
+- 💡 **FW-31 Watchdog on the dongle**: the DUT shows it is alive by toggling a pin (header IO or plug SBU) or printing
+  a line on the SBU UART; when it stays silent for `timeout` (after a `grace` for booting) Donguru cycles the plug
+  VBUS by itself, counts the cycles (persistently) and keeps going with no computer. Lab `hung-board`.
+- 💡 **FW-32 Precisely timed power events**: `plug.vbus_cycle` gains `after` (delay from the call, so a host-side
+  trigger lands at an exact point) and a `pulse(off)` for dropouts of ~100 µs to ms, driven from a timer, not the
+  executor. How short a dropout the DUT really sees depends on the AOZ1375's turn-on: measure it. Lab
+  `power-cut-test`.
+- 💡 **FW-33 Sequences on the dongle**: a short list of steps stored in flash (PD request / PPS level, power on/off
+  with limits, sweep, wait, mark) run by the firmware without a computer (FW-28 `run-seq`), with the meter logged
+  per step for reading back. Small interpreter, no scripting language. Lab `voltage-sweep`.
 
 ## API (`API`)
 
@@ -452,6 +462,15 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `cnt_core = "0.5"` temporarily `[patch.crates-io]`d to the branch's local path, since `cnt` 0.5.1 isn't
   published yet; reverted after, nothing committed with it — once `cnt` lands this works with a plain
   `cargo update -p cnt_core`.
+- 💡 **CORE-8 Dongle lock**: a host-side lock per dongle serial (a lock file / advisory lock taken by donguru-core),
+  so two processes or two CI jobs don't drive the same dongle; `dg device lock --wait`, held for a command or a
+  session. Labs `ci-runner`, `test-farm`.
+- 💡 **CORE-9 pytest plugin** (`pytest-donguru`): a `dut` fixture (power-cycled device, console, meter), per-test
+  energy and peak current in the report, console output kept on failure; `--donguru`, `--donguru-uart`. Lab
+  `pytest-fixture`.
+- 💡 **CORE-10 Remote dongles**: `dg serve` shares a PC's dongles over the network (WireWeaver over UDP / WebSocket
+  through the host), `dg --remote HOST` and `donguru.connect(HOST)` use them like local ones. Needs authentication and
+  an allow-list before it listens beyond localhost: security-sensitive, plan on `top`. Lab `test-farm`.
 
 ## CLI (`CLI`)
 
@@ -560,6 +579,20 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 💡 **CLI-31 `dg cable info`**: the receptacle cable's e-marker (API-27). Lab `cable-check`.
 - 💡 **CLI-32 `dg power on --report`**: peak current, time to settle and the settled current after switching on,
   from the meter's readings around the switch (API-12; finer with API-26). Lab `safe-first-power-on`.
+- 💡 **CLI-33 `dg watchdog`**: host side `--check CMD --every --misses --off` (cycle the DUT when a check keeps
+  failing, jsonl log of checks and cycles), and `watchdog device --pin | --uart --timeout --grace` to arm FW-31.
+  Lab `hung-board`.
+- 💡 **CLI-34 `dg power measure -- CMD`** (or `--for DURATION`): meter exactly the span of a command: time, energy,
+  charge, peak, mean; `--repeat N`; the command's exit code passes through. Labs `energy-per-operation`,
+  `ci-runner`.
+- 💡 **CLI-35 `dg uart expect PATTERN`**: wait for a line or regex on the UART with `--timeout`, `--fail-on PATTERN`,
+  `--log FILE`; exit 0 / 1 / 5 (timeout). Also in Python as `console.expect()`. Labs `power-cut-test`,
+  `ci-runner`.
+- 💡 **CLI-36 `dg each PATTERN -- COMMAND`** and `device list --tree`: run one command on every dongle whose label
+  matches, in parallel, a result line each, non-zero if any failed; the tree shows dongles by hub and port. Lab
+  `test-farm`.
+- 💡 **CLI-37 `dg seq load | run | result`**: sequences (FW-33) from a TOML file, run now or standalone, results as
+  csv / json. Lab `voltage-sweep`.
 
 ## GUI (`GUI`)
 
@@ -584,6 +617,8 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 💡 **PKG-6 SBU breakout**: a small USB-C receptacle board with SBU1, SBU2, CC, VBUS, GND (and D+/D-) on 2.54 mm
   pins and labels, for wiring Donguru's SBU functions (UART, I2C, SWD, GPIO) to a board without Donguru's SBU
   convention; sold with it or as an accessory. Labs `serial-console`, `i2c-on-the-plug`.
+- 💡 **PKG-7 GitHub Action** (`vhrdtech/donguru-action`): installs `dg` on a self-hosted runner, takes the dongle's
+  lock (CORE-8) for the job, uploads the console and power numbers as artifacts. Lab `ci-runner`.
 
 ## Dropped and superseded
 
