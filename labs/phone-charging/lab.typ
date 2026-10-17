@@ -4,7 +4,7 @@
   title: [How much does my phone charge with?],
   time: "15 min",
   needs: ([Donguru], [a phone with a USB-C port], [a USB-C charger or the computer's port]),
-  features: ("API-12", "CLI-11"),
+  features: ("API-12", "CLI-11", "CORE-4", "GUI-1"),
 )
 
 == Goal
@@ -32,6 +32,18 @@ the phone and measures it on the way.
   dg power totals                      # mAh and Wh since the reset
   dg power watch -f jsonl >> phone.jsonl   # or log it for a plot later
   ```
+], python: [
+  ```python
+  import donguru
+  import matplotlib.pyplot as plt     # uv add donguru matplotlib
+  dg = donguru.open()
+  dg.power.on()
+  df = dg.meter.record(seconds=600, interval=1.0)   # a pandas DataFrame: time, voltage, current, power
+  df.plot(x="time", y="power"); plt.show()
+  print(dg.meter.totals())            # charge 412 mAh, energy 2.1 Wh, since 600 s
+  ```
+], gui: [
+  The Meter tab plots voltage, current and power live; "Totals" shows mAh and Wh with a reset button.
 ])
 
 == What you should see

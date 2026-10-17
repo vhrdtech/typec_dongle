@@ -31,7 +31,7 @@
 #let status-words = (
   "✅": ("built", status.ok), "🧪": ("untested", status.info), "🚧": ("in progress", status.info),
   "📋": ("planned", status.neutral), "💡": ("idea", status.neutral), "⬜": ("stub", status.neutral),
-  "🐛": ("bug", status.error),
+  "🐛": ("bug", status.error), "⛔": ("blocked", status.error), "🔍": ("to check", status.neutral),
 )
 #let feature-word(id) = status-words.at(feature-status.at(id, default: "?"), default: ("unknown", status.error))
 #let built(id) = feature-status.at(id, default: none) == "✅"
@@ -84,7 +84,8 @@
 #let steps(cli: none, python: none, gui: none) = {
   for (name, body) in (("CLI", cli), ("Python", python), ("GUI", gui)) {
     if body != none {
-      _div("steps", [#strong(name) #body], block(breakable: true, [#text(fill: brand.grey, weight: "bold", name) #body]))
+      _div("steps", [#strong(name) #body],
+        block(breakable: true, [#block(below: 0.5em, text(fill: brand.grey, weight: "bold", name)) #body]))
     }
   }
 }
@@ -142,7 +143,7 @@
   for (slug, l) in seen {
     for id in l.features { uses.insert(id, uses.at(id, default: ()) + (slug,)) }
   }
-  let order = ("🐛", "⬜", "💡", "📋", "🚧", "🧪", "✅", "?")
+  let order = ("?", "⛔", "🐛", "⬜", "💡", "📋", "🔍", "🚧", "🧪", "✅")
   let rank(id) = order.position(s => s == feature-status.at(id, default: "?"))
   let ids = uses.keys().sorted(key: id => (rank(id), id))
   table(columns: (auto, auto, 1fr), table.header([Feature], [Status], [Labs]),

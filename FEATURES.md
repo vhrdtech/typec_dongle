@@ -261,6 +261,10 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   overrun from any of them (probe-rs showed what fit, 753 of 3000 lines); a line costs ~62 us instead of ~620 us
   with the blocking channel. Before, the flood overran the ADC twice over: the blocking RTT channel and a flood
   handler that never yielded (~62 ms in one go, still an overrun with the tee fixed).
+- 💡 **FW-28 Standalone mode**: what Donguru does when it powers up with no computer on the receptacle (a charger, a
+  power bank): `device.settings.standalone` = `Off` (default) / `PdInspect` (ask the source for its capabilities,
+  blink the result, keep it for `dg pd last`) / `PowerLog` (record the meter into flash until a computer reads it).
+  The plug stays off whatever the other settings say. Lab `charger-inspector`. Needs API-23, API-19.
 
 ## API (`API`)
 
@@ -372,6 +376,14 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 
 - 📋 **API-22 WebUSB landing page**: WebUSB capability and landing-page URL on the WireWeaver interface (no new
   endpoints), so the https web UI (with WebGPU) reaches the dongle from Chromium. ^revB
+- 💡 **API-23 Receptacle side as its own level (`host`)**: the computer / charger side has no level today (only
+  `meter.vbus_in`). `host.cc` (who sources, Type-C current from Rp), `host.pd`: PD sink on UCPD1 with
+  `source_caps` (PDOs incl. PPS), `request(pdo, voltage, current)`, the current contract, `last_source` (kept for
+  FW-28) and a `messages` stream of decoded PD messages. Lab `charger-inspector`, `pd-sniffing`.
+- 💡 **API-24 Plug CC role**: `plug.cc_role` = `Off` / `Sink` (Rd) / `Source { current }` (Rp 0.9 / 1.5 / 3 A) /
+  `Auto` (follow the computer side, the default), replacing FW-17's hardcoded drive. Lets a DUT be a source (power
+  bank, phone with reverse charging) and is what back-feeding needs: the guard opens the switch while both sides
+  source. Lab `who-feeds-whom`.
 
 ## Host library (`CORE`)
 
@@ -391,7 +403,9 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   host stack (link setup, version check, timeouts, observe). Models the Donguru levels with the firmware's rules
   (VBUS guard, SBU ownership, refused debug pins); IO arrays and streams answer `Unimplemented`.
   `donguru-core/tests/mock.rs` covers every level, device errors, `Unimplemented`, observe and a stuck device.
-- 📋 **CORE-4 Python bindings** over the Rust core. ^v1.0
+- 📋 **CORE-4 Python bindings** over the Rust core (PyO3 + maturin, `uv add donguru`): `donguru.list()`,
+  `donguru.open(selector)`, levels as attributes (`dg.power.on()`, `dg.meter.read()`, `dg.meter.watch()`,
+  `dg.meter.record()` → pandas, `dg.inputs.events()`), SI values as floats. The labs use this shape. ^v1.0
 - ✅ **CORE-5 SWD link memtest** (`donguru-core/src/swd_memtest.rs`): memtest-style patterns over any
   `WordMemory` (data bus walking 1/0, Barr address bus, solid, checkerboard, address-in-address, moving inversions
   per chunk, byte lanes, seeded xorshift64* random), mismatches counted and located (address, expected, read,
@@ -513,6 +527,23 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 📋 **CLI-23 `debug`**: pins by net name or port pin, boot-state diff, hub registers, UCPD, register reads (API-18).
   ^revB
 - 💡 **CLI-24 `dg top`**: one live screen of every observed level.
+- 💡 **CLI-25 `dg cc` and `dg pd`**: `cc status` (role and Type-C current on both sides), `cc plug --role
+  source|sink|off|auto` (API-24); `pd caps | request V | watch | last` on the receptacle side (API-23). Labs
+  `who-feeds-whom`, `charger-inspector`.
+- 💡 **CLI-26 `dg usb cycle`**: `--off DURATION`, `--with-power` (data and VBUS together, a real unplug), `--wait
+  VID:PID` (until the OS lists the device again; prints the time it took, exit code 5 on timeout). The host-side
+  wait is donguru-core, the timing the firmware's. Lab `usb-unplug`.
+- 💡 **CLI-27 `dg input on press|release|long-press|switch -- CMD`**: runs a host command on a button or switch
+  event while it runs, prints each event and the command's exit code (API-13). Lab `button-shortcut`.
+- 💡 **CLI-28 Power direction**: `dg power meter` / `watch` show `→ DUT` / `← DUT` next to the signed current, json
+  gets `"direction"`. Lab `who-feeds-whom`.
+
+## GUI (`GUI`)
+
+- 💡 **GUI-1 `dg ui`**: native egui app over USB (the same donguru-core): a dongle list with labels and identify, a
+  Power tab (a switch per output, cycle with off time, guard limits), a Meter tab (live V / I / P plot, totals with
+  reset), a PD tab (offers as cards, message timeline). Labs `hello`, `phone-charging`, `kill-switch`,
+  `charger-inspector`. The browser UI over NCM / WebUSB (API-21, API-22) is the same app built for wasm.
 
 ## Packaging and docs (`PKG`)
 

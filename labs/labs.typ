@@ -4,5 +4,10 @@
   (level: "first-hour", labs: (
     "hello",
     "phone-charging",
+    "who-feeds-whom",
+    "kill-switch",
+    "usb-unplug",
+    "charger-inspector",
+    "button-shortcut",
   )),
 )
