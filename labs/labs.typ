@@ -42,4 +42,22 @@
     "webusb",
     "own-api-method",
   )),
+  (level: "hacker", labs: (
+    "pd-both-sides",
+    "explore-an-accessory",
+    "plug-voltage-mod",
+    "can-on-the-plug",
+    "logic-analyzer",
+    "broken-plug-bypass",
+    "donguru-as-dev-board",
+  )),
+  (level: "insane", labs: (
+    "donguru-debugs-donguru",
+    "daisy-chain",
+    "laptop-from-power-bank",
+    "soak-test",
+    "pd-edge-cases",
+    "usb-over-sbu",
+    "rack-console",
+  )),
 )

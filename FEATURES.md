@@ -263,8 +263,11 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   handler that never yielded (~62 ms in one go, still an overrun with the tee fixed).
 - 💡 **FW-28 Standalone mode**: what Donguru does when it powers up with no computer on the receptacle (a charger, a
   power bank): `device.settings.standalone` = `Off` (default) / `PdInspect` (ask the source for its capabilities,
-  blink the result, keep it for `dg pd last`) / `PowerLog` (record the meter into flash until a computer reads it).
-  The plug stays off whatever the other settings say. Lab `charger-inspector`. Needs API-23, API-19.
+  blink the result, keep it for `dg pd last`) / `PdBridge { max_voltage }` (sink to the charger, source to the DUT,
+  both conversations kept, API-30) / `RunSeq` (FW-33) / `PowerLog` (record the meter into flash until a computer
+  reads it).
+  The plug stays off unless the mode itself switches it, within its limits. Labs `charger-inspector`,
+  `pd-both-sides`, `voltage-sweep`. Needs API-23, API-19.
 - 💡 **FW-29 Meter history on the device**: one averaged point a second (V, I, P, energy) for the last 24 h in a RAM
   ring (~17 KiB), so a host that sleeps or reconnects backfills its log without holes; `meter.history(since)` as a
   stream. Lost on a power cut of the dongle itself. Lab `overnight-log`.
@@ -286,6 +289,15 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   up-channels to the host, stamped with the meter's clock, so log and current share one time axis without
   probe-rs. defmt decoding stays on the host (ELF). Excludes a probe-rs session at the same time. Lab
   `logs-and-current`.
+- 💡 **FW-35 Plug-side VBUS sense**: the voltage after the switch and shunt (`+V2`) on an ADC channel, as
+  `meter.reading.vbus_out`: the DUT's real voltage, the switch drop, back-feed seen with the plug off. Rev A: a board
+  mod (two resistors to a free ADC pin) behind the feature `plug-vsense`; rev B: the divider on the board. Labs
+  `plug-voltage-mod`, `daisy-chain`.
+- 💡 **FW-36 FDCAN on the plug**: FDCAN1 on SBU (PB8 / PB9) and FDCAN2 on A2 / B2 (PB13 / PB5), classic CAN and CAN
+  FD, logic level (a transceiver on the DUT side for a real bus); A2/B2 have no over-voltage protection. Lab
+  `can-on-the-plug`.
+- 💡 **FW-37 Logic analyzer on the header**: timer-paced DMA sampling of IO7..IO10 into a RAM buffer with a trigger and
+  pre-trigger, streamed to the host; a few MS/s buffered, less continuous (USB FS). Lab `logic-analyzer`.
 
 ## API (`API`)
 
@@ -419,6 +431,14 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   empty in the official firmware), versioned apart from the rest, so a fork adds methods without changing
   `donguru_api`'s version and the official `dg` keeps working. `dg info` shows a firmware with an `ext` as custom.
   Lab `own-api-method`.
+- 💡 **API-30 PD source on the plug**: UCPD2 as a PD source towards the DUT: offer a PDO list (from the receptacle's
+  contract when bridging, or a scripted scenario), record the DUT's requests and timings, renegotiate, hard reset.
+  Spec-conformant messages only. Labs `pd-both-sides`, `pd-edge-cases`.
+- 💡 **API-31 CAN levels**: `can[]` as `ww_can_bus::Can` (0 = SBU / FDCAN1, 1 = A2B2 / FDCAN2): bitrate, FD data
+  rate, frames as a stream with timestamps, send. Lab `can-on-the-plug`.
+- 💡 **API-32 Receptacle as a source**: Rp and a PD source on UCPD1 towards the computer, so a power bank on the plug
+  can charge the computer, with a PD data-role swap so the computer stays the USB host (else it loses `dg`). Rev A
+  refuses Rp on UCPD1 (hw_b153a.md §14): rev B question. Lab `laptop-from-power-bank`.
 
 ## Host library (`CORE`)
 
@@ -610,6 +630,19 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   record, `trace view` in the terminal or as HTML. Lab `logs-and-current`.
 - 💡 **CLI-39 `dg call PATH ARGS`**: dynamic call of any firmware item (CORE-11), json in and out. Lab
   `own-api-method`.
+- 💡 **CLI-40 `dg probe pins` and `dg uart detect`**: measure each plug pin floating / with a weak pull-up / with a
+  weak pull-down and name what it sees (CC role, idle UART, pull-ups); try common baud rates on a toggling line
+  until text is readable. Lab `explore-an-accessory`.
+- 💡 **CLI-41 `dg can open | dump | send`** (API-31), candump format, `--socketcan` on Linux; a python-can
+  interface `donguru`. Lab `can-on-the-plug`.
+- 💡 **CLI-42 `dg la capture`** (FW-37): channels, rate, trigger, pre-trigger, sigrok `.sr` output for PulseView.
+  Lab `logic-analyzer`.
+- 💡 **CLI-43 `dg soak`**: a weighted random sequence of events (power cycle, USB cycle, pulse, idle) from a TOML
+  file with a check after each, `--seed`, `--for`; `soak report`, `soak replay --from N`. Lab `soak-test`.
+- 💡 **CLI-44 `dg pd scenarios list | run`** (API-30): spec-conformant source scenarios against a DUT's PD sink, an
+  HTML report. Lab `pd-edge-cases`.
+- 💡 **CLI-45 `dg sbu usb on | off`**: Plus variant, the SBU pair to hub port 4 (`sbu.route_usb`, API-14). Lab
+  `usb-over-sbu`.
 
 ## GUI (`GUI`)
 
@@ -619,6 +652,8 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `charger-inspector`. The browser UI over NCM / WebUSB (API-21, API-22) is the same app built for wasm.
 - 💡 **GUI-2 Trace timeline**: current plot over log lines on one time axis (CLI-38's data), hover a spike to see
   the line before it. Lab `logs-and-current`.
+- 💡 **GUI-3 Farm view**: dongles (local or through `dg serve`) as a grid of tiles: label, power, last console line,
+  console and power-cycle buttons. Labs `rack-console`, `test-farm`.
 
 ## Packaging and docs (`PKG`)
 
@@ -627,11 +662,13 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - ✅ **PKG-2 CI and hooks**: `just verify` in GitHub Actions, prek pre-commit / pre-push hooks.
 - 📋 **PKG-3 Packages**: `.deb` / `.rpm` first, then Homebrew and Chocolatey; man pages, completions and the udev rule
   installed by the package (`docs/design/packaging/`). ^v1.0
-- 🚧 **PKG-5 Lab book**: short labs from easy to insane (goal, setup photo, steps in CLI / Python / GUI, what you
-  should see, what next), one Typst file per lab in `labs/`, built into one PDF (`just labs-book`) and HTML pages
-  with per-lab PDFs for the website (`just build-labs`, Typst 0.15 bundle export, experimental). First labs:
-  `hello`, `phone-charging`, not yet run on a board for real output. Not in the published site yet: the docs CI
-  needs Typst and the vhrd package. Catalog of planned labs: tpm `prj/P2534-donguru/design/lab-book.md`.
+- 🚧 **PKG-5 Lab book**: 47 labs in six levels (first hour, bench, automation, developer, hacker, insane), one Typst
+  file each in `labs/` (goal, setup, steps in CLI / Python / GUI, what you should see, what next), built into one
+  PDF (`just labs-book`) and HTML pages with per-lab PDFs (`just build-labs`, Typst 0.15 bundle export,
+  experimental). Labs describe Donguru as it should be: each lists the feature IDs it relies on, the header shows
+  their status read from FEATURES.md, and the book ends with a feature map, missing first. Most features they use
+  are 💡 items added for them. Missing: photos, real output from a rev B board, publishing (docs CI needs Typst and
+  the vhrd package, P2534#17oct-1150). Catalog and findings: tpm `prj/P2534-donguru/design/lab-book*.md`.
 - 📋 **PKG-4 License**: the workspace says `license = "TBD"`. ^v1.0
 - 💡 **PKG-6 SBU breakout**: a small USB-C receptacle board with SBU1, SBU2, CC, VBUS, GND (and D+/D-) on 2.54 mm
   pins and labels, for wiring Donguru's SBU functions (UART, I2C, SWD, GPIO) to a board without Donguru's SBU
