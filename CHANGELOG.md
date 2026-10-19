@@ -10,6 +10,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 - Firmware: handlers that never await are plain `fn`s, only the ones that do (settings and label writes, meter reads, `plug.vbus_cycle`, `sbu.release`, `adc.read`, `debug.log_flood`) stay `async` (WireWeaver SRV-21 `handler_model`); a property whose setter awaits keeps an async getter too. Release FLASH at opt-level 3 397.8 -> 385.2 KiB (-12.6), at z 282.2 -> 262.1 KiB (-20.2). Not run on a board yet.
 - Firmware: built with WireWeaver's fixed error site numbers (SRV-22): an error's `err_seq` names the same site in every build, and the error arms of the server are shared code. Release FLASH at opt-level 3 385.2 -> 383.5 KiB (-1.7), at z 262.1 -> 260.6 KiB (-1.5). No code change in the firmware.
+- Firmware: built with WireWeaver's one observe table code (SRV-23) and one observe loop (SRV-24) for every trait level, instead of a copy per level. Release FLASH at opt-level 3 383.5 -> 363.1 KiB (-20.4), at z 260.6 -> 246.4 KiB (-14.2). No code change in the firmware.
 
 ## [0.20.7] - 2026-10-19
 
