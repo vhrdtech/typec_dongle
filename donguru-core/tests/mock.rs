@@ -4,9 +4,7 @@
 use std::time::Duration;
 
 use donguru_core::api::*;
-use donguru_core::client::observe::{
-    BatchedOwned, PlugObserve, PowerMeterObserve, on_change, samples,
-};
+use donguru_core::client::observe::{BatchedOwned, PlugObserve, PowerMeterObserve, on_change};
 use donguru_core::levels::Side;
 use donguru_core::mock::MockDevice;
 use donguru_core::{DeviceErrorKind, Dongle, Error};
