@@ -39,7 +39,7 @@ impl ServerState {
     pub(super) fn credit_uart_tx(
         &mut self,
         index_chain: [UNib32; 1],
-    ) -> &mut ww_client_server::credit::SinkCredit {
+    ) -> &mut ww_stream::sink::SinkCredit {
         // the generated code checked the index against `valid_indices_root_uart`
         let i = (index_chain[0].0 as usize).min(COUNT - 1);
         &mut self.uart_tx_credit[i]

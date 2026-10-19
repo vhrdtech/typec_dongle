@@ -41,7 +41,7 @@ use wire_weaver_usb_embassy::ww_device::LinkEvent;
 use wire_weaver_usb_embassy::{
     LinkConfig, ServerBuffers, State as WwState, UsbDevice, UsbServer, UsbTimings, WireWeaverClass,
 };
-use ww_client_server::credit::SinkCredit;
+use ww_stream::sink::SinkCredit;
 use ww_stream::observe::ObserveLimits;
 use ww_stream::tx::Counted;
 use ww_uid::{UidKind, UidSource, UniqueId};

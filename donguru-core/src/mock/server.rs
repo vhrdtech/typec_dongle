@@ -26,7 +26,7 @@ pub struct MockServer {
     /// Counted streams of `uart[]` and `gpio[].pin[]`, never opened (`Unimplemented`)
     pub unopened: ww_stream::tx::Counted,
     /// `uart[].tx` credit: nothing accepted
-    pub uart_tx_credit: ww_client_server::credit::SinkCredit,
+    pub uart_tx_credit: ww_stream::sink::SinkCredit,
     /// Sessions of counted and reliable streams opened so far
     pub stream_sessions: u32,
     /// Observed properties: what the host observes and when it is due, see `poll_properties`; `meter.reading`
@@ -47,7 +47,7 @@ impl MockServer {
             device_log_frames_stream: ww_stream::tx::Reliable::new(ww_stream::store::RamRing::new()),
             inputs_events_stream: ww_stream::tx::Counted::new(),
             unopened: ww_stream::tx::Counted::new(),
-            uart_tx_credit: ww_client_server::credit::SinkCredit::new(0),
+            uart_tx_credit: ww_stream::sink::SinkCredit::new(0),
             stream_sessions: 0,
             observe: api_impl::ObserveState::new(
                 ww_stream::observe::ObserveLimits::DEFAULT,
@@ -818,7 +818,7 @@ impl MockServer {
     fn credit_uart_tx(
         &mut self,
         _index_chain: [UNib32; 1],
-    ) -> &mut ww_client_server::credit::SinkCredit {
+    ) -> &mut ww_stream::sink::SinkCredit {
         &mut self.uart_tx_credit
     }
 
