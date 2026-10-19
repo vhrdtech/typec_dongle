@@ -17,3 +17,9 @@ pub mod vbus;
 pub use device::{DeviceEntry, Dongle, Selector};
 pub use donguru_api as api;
 pub use error::{DeviceError, DeviceErrorKind, Error, Result};
+
+/// Power into the DUT of a meter reading, in W: `vbus_in` x `current` (the device doesn't send it, it is exactly
+/// this product; the U601 drop is not measured).
+pub fn reading_power_w(r: &api::MeterReading) -> f64 {
+    r.vbus_in.to_f64() * r.current.to_f64()
+}

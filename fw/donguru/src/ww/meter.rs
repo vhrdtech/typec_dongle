@@ -242,8 +242,6 @@ fn reading_from(mv: i32, ma: i32) -> MeterReading {
     MeterReading {
         vbus_in: Volt::milli(mv),
         current: Ampere::milli(ma),
-        // mV x mA = uW
-        power: Watt::milli(mv * ma / 1000),
     }
 }
 

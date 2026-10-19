@@ -387,7 +387,7 @@ level!(
 );
 
 impl Meter<'_> {
-    /// One reading: VBUS_IN, current to the DUT, power, from the same ADC window.
+    /// One reading: VBUS_IN and current to the DUT, from the same ADC window; [crate::reading_power_w] for power.
     pub async fn reading(&self) -> Result<MeterReading> {
         read("PowerMeter::reading", self.c.meter().read_reading()).await
     }

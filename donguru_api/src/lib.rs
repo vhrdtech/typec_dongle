@@ -154,8 +154,8 @@ pub struct MeterReading {
     pub vbus_in: Volt,
     /// Current from the computer to the DUT (INA181, PB0), positive towards the DUT.
     pub current: Ampere,
-    /// `vbus_in` x `current`; the U601 drop is not measured.
-    pub power: Watt,
+    // power is `vbus_in` x `current`, computed by the host (`donguru_core::reading_power_w`); the U601 drop is not
+    // measured
 }
 
 /// Totals since boot or [`PowerMeter::reset_totals`].

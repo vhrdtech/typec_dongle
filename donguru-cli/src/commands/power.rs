@@ -165,7 +165,7 @@ fn reading_text(r: &MeterReading) -> String {
         "{:.3} V   {:.1} mA   {:.1} mW",
         r.vbus_in.to_f64(),
         r.current.to_f64() * 1000.0,
-        r.power.to_f64() * 1000.0
+        donguru_core::reading_power_w(r) * 1000.0
     )
 }
 
@@ -173,7 +173,7 @@ fn reading_json(r: &MeterReading) -> serde_json::Value {
     serde_json::json!({
         "vbus_in_v": r.vbus_in.to_f64(),
         "current_ma": r.current.to_f64() * 1000.0,
-        "power_mw": r.power.to_f64() * 1000.0,
+        "power_mw": donguru_core::reading_power_w(r) * 1000.0,
     })
 }
 

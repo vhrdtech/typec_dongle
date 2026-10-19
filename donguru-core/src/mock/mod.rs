@@ -41,7 +41,7 @@ use wire_weaver::ww_error::CommonError;
 use wire_weaver::{EventWriter, MessageSink, WireWeaverAsyncApiBackend};
 use wire_weaver_client::in_process::{self, TokioClock};
 use ww_firmware_info::ResetCause;
-use ww_si::{Ampere, Baud, Coulomb, DegreeCelsius, Joule, Prefix, Second, Volt, Watt};
+use ww_si::{Ampere, Baud, Coulomb, DegreeCelsius, Joule, Prefix, Second, Volt};
 
 use crate::device::DeviceEntry;
 use crate::{Dongle, Result};
@@ -172,7 +172,6 @@ impl Default for MockState {
             reading: MeterReading {
                 vbus_in: Volt::new(Prefix::Milli, 5_000i32),
                 current: Ampere::new(Prefix::Milli, 0i32),
-                power: Watt::new(Prefix::Milli, 0i32),
             },
             temperature: DegreeCelsius::new(Prefix::Unit, 30i32),
             totals: MockState::zero_totals(),
