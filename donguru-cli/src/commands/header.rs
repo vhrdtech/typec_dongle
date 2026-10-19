@@ -153,7 +153,7 @@ mod tests {
         dongle
             .header()
             .set_vbus_sw_mode(VbusMode::ForceOn {
-                max_voltage: donguru_core::api::Volt::millivolts(5_500i32),
+                max_voltage: donguru_core::api::Volt::milli(5_500i32),
             })
             .await
             .unwrap();

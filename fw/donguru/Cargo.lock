@@ -185,18 +185,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "console"
-version = "0.16.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e96a4956774c13c126a8b5af4daa79384f4d826534c95a02d76afb39e2ab64e3"
-dependencies = [
- "encode_unicode",
- "libc",
- "unicode-width",
- "windows-sys",
-]
-
-[[package]]
 name = "const-oid"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -901,12 +889,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "encode_unicode"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34aa73646ffb006b8f5147f3dc182bd4bcb190227ce861fc4a4844bf8e3cb2c0"
-
-[[package]]
 name = "equivalent"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1329,15 +1311,6 @@ name = "regex-syntax"
 version = "0.8.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
-
-[[package]]
-name = "relative-path"
-version = "2.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bca40a312222d8ba74837cb474edef44b37f561da5f773981007a10bbaa992b0"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "replace_with"
@@ -1820,12 +1793,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c6f5d3c3b1bf09027a88a6bc961fc00497d651009560b5463668dc81b0fa87a8"
 
 [[package]]
-name = "unicode-width"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4ac048d71ede7ee76d585517add45da530660ef4390e49b098733c6e897f254"
-
-[[package]]
 name = "usb-device"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1981,7 +1948,6 @@ version = "0.5.0"
 dependencies = [
  "anyhow",
  "cargo_toml",
- "console",
  "convert_case",
  "hex",
  "pest",
@@ -1989,7 +1955,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "regex",
- "relative-path",
  "ron",
  "semver 1.0.28",
  "shrink_wrap",
@@ -2009,7 +1974,6 @@ dependencies = [
  "pathsearch",
  "proc-macro2",
  "quote",
- "relative-path",
  "subprocess",
  "syn 3.0.6",
  "wire_weaver_core",
@@ -2103,6 +2067,7 @@ dependencies = [
  "ww_client_server",
  "ww_framer",
  "ww_link",
+ "ww_tap",
 ]
 
 [[package]]
@@ -2197,7 +2162,7 @@ dependencies = [
 
 [[package]]
 name = "ww_self"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "serde",
@@ -2209,7 +2174,7 @@ dependencies = [
 
 [[package]]
 name = "ww_si"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "defmt 1.1.1",
  "shrink_wrap",
@@ -2221,9 +2186,17 @@ name = "ww_stream"
 version = "0.5.0"
 dependencies = [
  "crc",
+ "portable-atomic",
  "wire_weaver",
  "ww_client_server",
  "ww_si",
+]
+
+[[package]]
+name = "ww_tap"
+version = "0.1.0"
+dependencies = [
+ "wire_weaver",
 ]
 
 [[package]]

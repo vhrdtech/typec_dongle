@@ -474,7 +474,12 @@ async fn run(
         let n = (window_us() / sequence_us).clamp(1, (HALF_LEN / order.len()) as u32);
         let newest = &samples[HALF_LEN - n as usize * order.len()..];
         let avg_x16 = |p: usize| {
-            let sum: u32 = newest.iter().skip(p).step_by(order.len()).map(|&s| s as u32).sum();
+            let sum: u32 = newest
+                .iter()
+                .skip(p)
+                .step_by(order.len())
+                .map(|&s| s as u32)
+                .sum();
             (sum + n / 2) / n
         };
 

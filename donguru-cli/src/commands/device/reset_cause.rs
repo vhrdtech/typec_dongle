@@ -61,12 +61,7 @@ fn print_reset_cause(
                 "boots since crash", record.boots_since_crash
             )?;
             if let Some(uptime) = record.uptime {
-                writeln!(
-                    out,
-                    "{:<W$}{:.3} s",
-                    "uptime at crash",
-                    uptime.to_f64_seconds()
-                )?;
+                writeln!(out, "{:<W$}{:.3} s", "uptime at crash", uptime.to_f64())?;
             }
             if !build_id.is_empty() {
                 writeln!(out, "{:<W$}{build_id}", "firmware build id")?;
@@ -92,7 +87,7 @@ fn print_reset_cause(
                 "cause": format!("{:?}", record.cause),
                 "boot_count": boot_count,
                 "boots_since_crash": record.boots_since_crash,
-                "uptime_s": record.uptime.map(|u| u.to_f64_seconds()),
+                "uptime_s": record.uptime.map(|u| u.to_f64()),
                 "build_id": build_id,
                 "message": record.message.as_str(),
                 "fault": record.fault.as_ref().map(|f| format!("{f:?}")),

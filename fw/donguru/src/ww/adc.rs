@@ -13,7 +13,7 @@ use wire_weaver::prelude::*;
 use wire_weaver::ww_error::CommonError;
 use ww_adc::{AdcCapabilities, AdcError, ChannelInfo, Reading};
 use ww_si::ww_numeric::NumericValue;
-use ww_si::{BaseUnit, Prefix, Second};
+use ww_si::{Prefix, SIExpr, Second, units};
 
 /// How long a read of an extended channel waits for the set switch.
 const SWITCH_WAIT: Duration = Duration::from_millis(250);
@@ -54,11 +54,11 @@ enum Unit {
 }
 
 impl Unit {
-    const fn base(self) -> BaseUnit<'static> {
+    const fn expr(self) -> SIExpr<'static> {
         match self {
-            Unit::Volt => BaseUnit::Volt,
-            Unit::Ampere => BaseUnit::Ampere,
-            Unit::Celsius => BaseUnit::DegreeCelsius,
+            Unit::Volt => SIExpr::named(<units::Volt as ww_si::Unit>::EXPR),
+            Unit::Ampere => SIExpr::named(<units::Ampere as ww_si::Unit>::EXPR),
+            Unit::Celsius => SIExpr::named(<units::DegreeCelsius as ww_si::Unit>::EXPR),
         }
     }
 }
@@ -90,7 +90,7 @@ const fn info(index: usize) -> ChannelInfo<'static> {
     };
     ChannelInfo {
         name: MaxLen::new_unchecked(name),
-        unit: unit.base(),
+        unit: unit.expr(),
         prefix: Prefix::Milli,
         min: NumericValue::I32(min),
         max: NumericValue::I32(max),
@@ -130,7 +130,9 @@ impl ServerState {
             return Ready(Err(AdcError::Common(CommonError::Busy)));
         }
         let mut r = readings().await;
-        if matches!(ch, Ch::Io9 | Ch::Io7 | Ch::Io10) && r.is_none_or(|r| value_of(ch, &r).is_none()) {
+        if matches!(ch, Ch::Io9 | Ch::Io7 | Ch::Io10)
+            && r.is_none_or(|r| value_of(ch, &r).is_none())
+        {
             adc::set_channels(ChannelSet::Extended);
             let deadline = Instant::now() + SWITCH_WAIT;
             r = loop {
@@ -155,10 +157,7 @@ impl ServerState {
         Ready(Ok(Reading {
             value: NumericValue::I32(value),
             raw: raw as u32,
-            t: Second {
-                prefix: Prefix::Milli,
-                value: NumericValue::I32(t_ms as i32),
-            },
+            t: Second::milli(t_ms as i32),
         }))
     }
 
@@ -167,7 +166,9 @@ impl ServerState {
         _cx: &mut Context<'_, impl EventOut>,
     ) -> RpcResult<AdcCapabilities<'_>> {
         Ready(AdcCapabilities {
-            channels: MaxLen::new_unchecked(RefVec::Slice { slice: &CHANNEL_INFO }),
+            channels: MaxLen::new_unchecked(RefVec::Slice {
+                slice: &CHANNEL_INFO,
+            }),
         })
     }
 }

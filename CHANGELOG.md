@@ -10,6 +10,10 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 - Lab book (PKG-5): `labs/`, 48 labs in six levels from first hour to insane, one Typst file each, built into one PDF (`just labs-book`) and web pages with a PDF per lab (`just build-labs`); each lab shows the status of the features it uses, read from FEATURES.md, and the book ends with a map of every feature the labs need.
 
+### Changed
+
+- Firmware, API crate, host library and CLI built against WireWeaver master of 19 Oct 2026 (`ww_si` 0.2, STD-38): quantities are one generic `Quantity<U>`, `adc` channel units are `SIExpr` (STD-37). The bytes of every value are the same, but the API model (and so the API hash) changed: a CLI and a firmware from before this change don't talk to each other, update both. Built, not yet run on a board.
+
 ## [0.20.2] - 2026-10-16
 
 ### Changed

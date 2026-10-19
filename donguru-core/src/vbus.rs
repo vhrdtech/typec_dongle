@@ -14,11 +14,11 @@ use ww_si::{Ampere, Prefix, Volt, Watt};
 pub const DEFAULT_MAX_VOLTAGE_V: f64 = 5.5;
 
 fn millivolts(v: f64) -> Volt {
-    Volt::millivolts((v * 1000.0).round() as i32)
+    Volt::milli((v * 1000.0).round() as i32)
 }
 
 fn milliamps(a: f64) -> Ampere {
-    Ampere::milliamperes((a * 1000.0).round() as i32)
+    Ampere::milli((a * 1000.0).round() as i32)
 }
 
 fn milliwatts(w: f64) -> Watt {

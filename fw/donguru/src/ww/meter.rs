@@ -58,10 +58,6 @@ pub(super) async fn readings() -> Option<Readings> {
     }
 }
 
-fn milli<T>(make: impl Fn(Prefix, NumericValue) -> T, v: i32) -> T {
-    make(Prefix::Milli, NumericValue::I32(v))
-}
-
 /// A value of any integer encoding in units of `prefix`, `None` for what an integer can't hold.
 fn to_prefixed(value: &NumericValue, from: Prefix, to: Prefix) -> Option<i32> {
     let v = i32::try_from(value.to_i128()?).ok()?;
@@ -139,10 +135,7 @@ impl ServerState {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<Second, CommonError<'_>> {
-        Value(Second {
-            prefix: Prefix::Micro,
-            value: NumericValue::I32(adc::window_us() as i32),
-        })
+        Value(Second::micro(adc::window_us() as i32))
     }
 
     pub(super) async fn set_meter_deadband(
@@ -158,7 +151,9 @@ impl ServerState {
                 self.meter.deadband_ma = ma as u32;
                 Set
             }
-            _ => SetError(invalid("deadband must be a non-negative integer number of mV / mA")),
+            _ => SetError(invalid(
+                "deadband must be a non-negative integer number of mV / mA",
+            )),
         }
     }
 
@@ -167,8 +162,8 @@ impl ServerState {
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<MeterDeadband, CommonError<'_>> {
         Value(MeterDeadband {
-            voltage: milli(|prefix, value| Volt { prefix, value }, self.meter.deadband_mv as i32),
-            current: milli(|prefix, value| Ampere { prefix, value }, self.meter.deadband_ma as i32),
+            voltage: Volt::milli(self.meter.deadband_mv as i32),
+            current: Ampere::milli(self.meter.deadband_ma as i32),
         })
     }
 
@@ -179,9 +174,9 @@ impl ServerState {
         // FW-9 brings factory data: nominal values until then
         Value(MeterCalibration {
             calibrated: false,
-            vbus_in_offset: milli(|prefix, value| Volt { prefix, value }, 0),
+            vbus_in_offset: Volt::milli(0),
             vbus_in_gain_ppm: 0,
-            current_offset: milli(|prefix, value| Ampere { prefix, value }, 0),
+            current_offset: Ampere::milli(0),
             current_gain_ppm: 0,
         })
     }
@@ -217,28 +212,24 @@ fn reading_of(r: &Readings) -> MeterReading {
     let mv = r.input_voltage_mv as i32;
     let ma = r.input_current_ma as i32;
     MeterReading {
-        vbus_in: milli(|prefix, value| Volt { prefix, value }, mv),
-        current: milli(|prefix, value| Ampere { prefix, value }, ma),
+        vbus_in: Volt::milli(mv),
+        current: Ampere::milli(ma),
         // mV x mA = uW
-        power: milli(|prefix, value| Watt { prefix, value }, mv * ma / 1000),
+        power: Watt::milli(mv * ma / 1000),
     }
 }
 
 fn temperature_of(r: &Readings) -> DegreeCelsius {
     // 0.01 °C -> m°C
-    milli(|prefix, value| DegreeCelsius { prefix, value }, r.temp_cdeg as i32 * 10)
+    DegreeCelsius::milli(r.temp_cdeg as i32 * 10)
 }
 
 fn totals_of(t: &adc::Totals) -> MeterTotals {
     let now_ms = Instant::now().as_millis() as u32;
     MeterTotals {
-        charge: milli(|prefix, value| Coulomb { prefix, value }, t.charge_mc),
-        energy: milli(|prefix, value| Joule { prefix, value }, t.energy_mj),
-        peak_current: milli(|prefix, value| Ampere { prefix, value }, t.peak_ma as i32),
-        since: Second {
-            prefix: Prefix::Milli,
-            value: NumericValue::I32(now_ms.wrapping_sub(t.since_ms) as i32),
-        },
+        charge: Coulomb::milli(t.charge_mc),
+        energy: Joule::milli(t.energy_mj),
+        peak_current: Ampere::milli(t.peak_ma as i32),
+        since: Second::milli(now_ms.wrapping_sub(t.since_ms) as i32),
     }
 }
-
