@@ -71,10 +71,8 @@ impl ServerState {
     ) -> SetResult<ww_user_info::UserInfoError<'_>> {
         // the bound is checked when the request is read (MaxLen), so this never cuts
         let name = ArrayString::try_from(*value).unwrap_or_default();
-        match {
-            self.user.set(now_ms(), |s| s.label = name);
-            self.persist_settings().await
-        } {
+        self.user.set(now_ms(), |s| s.label = name);
+        match self.persist_settings().await {
             Ok(()) => Set,
             Err(e) => SetError(e.into()),
         }
@@ -95,10 +93,8 @@ impl ServerState {
         value: wire_weaver::shrink_wrap::MaxLen<&'_ str, 256>,
     ) -> SetResult<ww_user_info::UserInfoError<'_>> {
         let notes = ArrayString::try_from(*value).unwrap_or_default();
-        match {
-            self.user.set(now_ms(), |s| s.notes = notes);
-            self.persist_settings().await
-        } {
+        self.user.set(now_ms(), |s| s.notes = notes);
+        match self.persist_settings().await {
             Ok(()) => Set,
             Err(e) => SetError(e.into()),
         }
@@ -187,10 +183,8 @@ impl ServerState {
         if Limits::from_mode(&value).is_err() {
             return SetError(meter::invalid("not a mode plug.vbus_mode takes"));
         }
-        match {
-            self.user.set(now_ms(), |s| s.plug_vbus_at_boot = value);
-            self.persist_settings().await
-        } {
+        self.user.set(now_ms(), |s| s.plug_vbus_at_boot = value);
+        match self.persist_settings().await {
             Ok(()) => Set,
             Err(e) => SetError(e),
         }
@@ -209,10 +203,8 @@ impl ServerState {
         _cx: &mut Context<'_, impl EventOut>,
         value: donguru_api::ButtonAction,
     ) -> SetResult<CommonError<'_>> {
-        match {
-            self.user.set(now_ms(), |s| s.button_action = value);
-            self.persist_settings().await
-        } {
+        self.user.set(now_ms(), |s| s.button_action = value);
+        match self.persist_settings().await {
             Ok(()) => Set,
             Err(e) => SetError(e),
         }
@@ -234,10 +226,8 @@ impl ServerState {
             return SetError(meter::invalid(meter::WINDOW_INVALID));
         };
         crate::adc::set_window_us(us);
-        match {
-            self.user.set(now_ms(), |s| s.meter_window = value);
-            self.persist_settings().await
-        } {
+        self.user.set(now_ms(), |s| s.meter_window = value);
+        match self.persist_settings().await {
             Ok(()) => Set,
             Err(e) => SetError(e),
         }
@@ -259,10 +249,8 @@ impl ServerState {
             return SetError(meter::invalid(meter::DEADBAND_INVALID));
         };
         self.meter.set_deadband(mv, ma);
-        match {
-            self.user.set(now_ms(), |s| s.meter_deadband = value);
-            self.persist_settings().await
-        } {
+        self.user.set(now_ms(), |s| s.meter_deadband = value);
+        match self.persist_settings().await {
             Ok(()) => Set,
             Err(e) => SetError(e),
         }
@@ -281,10 +269,8 @@ impl ServerState {
         _cx: &mut Context<'_, impl EventOut>,
         value: ww_uart::UartConfig,
     ) -> SetResult<CommonError<'_>> {
-        match {
-            self.user.set(now_ms(), |s| s.uart_plug = value);
-            self.persist_settings().await
-        } {
+        self.user.set(now_ms(), |s| s.uart_plug = value);
+        match self.persist_settings().await {
             Ok(()) => Set,
             Err(e) => SetError(e),
         }
