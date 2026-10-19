@@ -14,7 +14,7 @@ impl ServerState {
 
     // ww_uart::Uart at uart[]
 
-    pub(super) async fn uart_rx(
+    pub(super) fn uart_rx(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 1],
@@ -22,14 +22,14 @@ impl ServerState {
         RpcResult::Unimplemented
     }
 
-    pub(super) async fn close_uart_rx(
+    pub(super) fn close_uart_rx(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 1],
     ) {
     }
 
-    pub(super) async fn stream_uart_rx(
+    pub(super) fn stream_uart_rx(
         &mut self,
         _index_chain: [UNib32; 1],
     ) -> &mut ww_stream::tx::Counted {
@@ -45,7 +45,7 @@ impl ServerState {
         &mut self.uart_tx_credit[i]
     }
 
-    pub(super) async fn sideband_uart_tx(
+    pub(super) fn sideband_uart_tx(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 1],
@@ -55,7 +55,7 @@ impl ServerState {
         None
     }
 
-    pub(super) async fn write_uart_tx(
+    pub(super) fn write_uart_tx(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 1],
@@ -63,7 +63,7 @@ impl ServerState {
     ) {
     }
 
-    pub(super) async fn uart_capabilities(
+    pub(super) fn uart_capabilities(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 1],
@@ -71,7 +71,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn uart_configure(
+    pub(super) fn uart_configure(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 1],
@@ -80,7 +80,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn uart_set_pin_level(
+    pub(super) fn uart_set_pin_level(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 1],
@@ -90,7 +90,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn uart_send_break(
+    pub(super) fn uart_send_break(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 1],
@@ -99,7 +99,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn uart_tx_pending(
+    pub(super) fn uart_tx_pending(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 1],
@@ -108,7 +108,7 @@ impl ServerState {
     }
 
     // optional, can be left out with omit = ["uart.monitor"]
-    pub(super) async fn uart_monitor(
+    pub(super) fn uart_monitor(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 1],
@@ -117,14 +117,14 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn close_uart_monitor(
+    pub(super) fn close_uart_monitor(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 1],
     ) {
     }
 
-    pub(super) async fn stream_uart_monitor(
+    pub(super) fn stream_uart_monitor(
         &mut self,
         _index_chain: [UNib32; 1],
     ) -> &mut ww_stream::tx::Counted {

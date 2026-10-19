@@ -11,7 +11,7 @@ impl ServerState {
 
     // ww_i2c::I2c at i2c[]
 
-    pub(super) async fn i2c_i2c_capabilities(
+    pub(super) fn i2c_i2c_capabilities(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 1],
@@ -19,7 +19,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn i2c_i2c_configure(
+    pub(super) fn i2c_i2c_configure(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 1],
@@ -28,7 +28,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn i2c_i2c_write(
+    pub(super) fn i2c_i2c_write(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 1],
@@ -39,7 +39,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn i2c_i2c_read(
+    pub(super) fn i2c_i2c_read(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 1],
@@ -51,7 +51,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn i2c_i2c_scan(
+    pub(super) fn i2c_i2c_scan(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 1],
@@ -64,7 +64,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn i2c_i2c_transaction(
+    pub(super) fn i2c_i2c_transaction(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 1],
@@ -77,7 +77,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn i2c_i2c_lines_state(
+    pub(super) fn i2c_i2c_lines_state(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 1],
@@ -85,7 +85,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn i2c_i2c_wiggle_clock(
+    pub(super) fn i2c_i2c_wiggle_clock(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 1],
@@ -94,7 +94,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn i2c_i2c_set_pullups(
+    pub(super) fn i2c_i2c_set_pullups(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 1],
@@ -103,7 +103,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn i2c_i2c_pullups(
+    pub(super) fn i2c_i2c_pullups(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 1],

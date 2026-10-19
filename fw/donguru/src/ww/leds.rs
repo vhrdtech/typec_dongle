@@ -41,7 +41,7 @@ impl ServerState {
     // ww_indication::Indication at leds
 
     /// `OnlyEssential` keeps the power LED: the status LED is decoration.
-    pub(super) async fn set_leds_mode(
+    pub(super) fn set_leds_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: ww_indication::Mode,
@@ -62,14 +62,14 @@ impl ServerState {
         Set
     }
 
-    pub(super) async fn get_leds_mode(
+    pub(super) fn get_leds_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<ww_indication::Mode, ()> {
         Value(self.leds.mode)
     }
 
-    pub(super) async fn set_leds_brightness(
+    pub(super) fn set_leds_brightness(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: ww_indication::Brightness,
@@ -91,7 +91,7 @@ impl ServerState {
         Set
     }
 
-    pub(super) async fn get_leds_brightness(
+    pub(super) fn get_leds_brightness(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<ww_indication::Brightness, ()> {
@@ -99,7 +99,7 @@ impl ServerState {
     }
 
     /// Both LEDs blink at full brightness, whatever the mode; `Busy` while one runs.
-    pub(super) async fn leds_identify(
+    pub(super) fn leds_identify(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         duration: ww_si::Second,

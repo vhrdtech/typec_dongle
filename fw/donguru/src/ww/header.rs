@@ -7,14 +7,14 @@ use wire_weaver::prelude::*;
 impl ServerState {
     // donguru_api::Header at header
 
-    pub(super) async fn get_header_vbus_sw(
+    pub(super) fn get_header_vbus_sw(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<donguru_api::VbusState, ()> {
         Value(power::state(Which::Header))
     }
 
-    pub(super) async fn set_header_vbus_sw_mode(
+    pub(super) fn set_header_vbus_sw_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: donguru_api::VbusMode,
@@ -29,14 +29,14 @@ impl ServerState {
         }
     }
 
-    pub(super) async fn get_header_vbus_sw_mode(
+    pub(super) fn get_header_vbus_sw_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<donguru_api::VbusMode, CommonError<'_>> {
         Value(power::mode(Which::Header))
     }
 
-    pub(super) async fn set_header_relay(
+    pub(super) fn set_header_relay(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: bool,
@@ -46,7 +46,7 @@ impl ServerState {
         Set
     }
 
-    pub(super) async fn get_header_relay(
+    pub(super) fn get_header_relay(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<bool, ()> {

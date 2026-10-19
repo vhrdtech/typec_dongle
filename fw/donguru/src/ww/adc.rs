@@ -161,7 +161,7 @@ impl ServerState {
         }))
     }
 
-    pub(super) async fn adc_capabilities(
+    pub(super) fn adc_capabilities(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> RpcResult<AdcCapabilities<'_>> {

@@ -18,7 +18,7 @@ impl ServerState {
         ValidIndices::range_u32(0..4)
     }
 
-    pub(super) async fn gpio_capabilities(
+    pub(super) fn gpio_capabilities(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 1],
@@ -26,7 +26,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn gpio_configure(
+    pub(super) fn gpio_configure(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 1],
@@ -35,7 +35,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn gpio_name(
+    pub(super) fn gpio_name(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 1],
@@ -43,7 +43,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn gpio_read_inputs(
+    pub(super) fn gpio_read_inputs(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 1],
@@ -63,7 +63,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn gpio_write_outputs(
+    pub(super) fn gpio_write_outputs(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 1],
@@ -77,7 +77,7 @@ impl ServerState {
 
     // ww_gpio::Pin at gpio[].pin[]
 
-    pub(super) async fn gpio_pin_set_output_level(
+    pub(super) fn gpio_pin_set_output_level(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 2],
@@ -86,7 +86,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn gpio_pin_toggle(
+    pub(super) fn gpio_pin_toggle(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 2],
@@ -94,7 +94,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn gpio_pin_output_level(
+    pub(super) fn gpio_pin_output_level(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 2],
@@ -102,7 +102,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn gpio_pin_input_level(
+    pub(super) fn gpio_pin_input_level(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 2],
@@ -110,7 +110,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn gpio_pin_event(
+    pub(super) fn gpio_pin_event(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 2],
@@ -119,21 +119,21 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn close_gpio_pin_event(
+    pub(super) fn close_gpio_pin_event(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 2],
     ) {
     }
 
-    pub(super) async fn stream_gpio_pin_event(
+    pub(super) fn stream_gpio_pin_event(
         &mut self,
         _index_chain: [UNib32; 2],
     ) -> &mut ww_stream::tx::Counted {
         &mut self.unopened
     }
 
-    pub(super) async fn gpio_pin_set_mode(
+    pub(super) fn gpio_pin_set_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 2],
@@ -143,7 +143,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn gpio_pin_mode(
+    pub(super) fn gpio_pin_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 2],
@@ -151,7 +151,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn set_gpio_pin_pull(
+    pub(super) fn set_gpio_pin_pull(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 2],
@@ -160,7 +160,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn get_gpio_pin_pull(
+    pub(super) fn get_gpio_pin_pull(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 2],
@@ -168,7 +168,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn set_gpio_pin_speed(
+    pub(super) fn set_gpio_pin_speed(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 2],
@@ -177,7 +177,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn get_gpio_pin_speed(
+    pub(super) fn get_gpio_pin_speed(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 2],
@@ -185,7 +185,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn gpio_pin_capabilities(
+    pub(super) fn gpio_pin_capabilities(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _index_chain: [UNib32; 2],

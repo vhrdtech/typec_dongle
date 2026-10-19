@@ -10,7 +10,7 @@ use wire_weaver::prelude::*;
 impl ServerState {
     // donguru_api::Bringup at debug
 
-    pub(super) async fn debug_pin_set(
+    pub(super) fn debug_pin_set(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _pin: donguru_api::McuPin,
@@ -20,7 +20,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn debug_pin_get(
+    pub(super) fn debug_pin_get(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _pin: donguru_api::McuPin,
@@ -28,7 +28,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn debug_pin_af(
+    pub(super) fn debug_pin_af(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _pin: donguru_api::McuPin,
@@ -37,21 +37,21 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn debug_pins(
+    pub(super) fn debug_pins(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> RpcResult<donguru_api::PinDump<'_>> {
         Unimplemented.into()
     }
 
-    pub(super) async fn debug_boot_pins(
+    pub(super) fn debug_boot_pins(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> RpcResult<donguru_api::PinDump<'_>> {
         Unimplemented.into()
     }
 
-    pub(super) async fn debug_hub_read(
+    pub(super) fn debug_hub_read(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _reg: u8,
@@ -65,7 +65,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn debug_hub_write(
+    pub(super) fn debug_hub_write(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _reg: u8,
@@ -74,7 +74,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn debug_ucpd(
+    pub(super) fn debug_ucpd(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _port: donguru_api::UcpdPort,
@@ -82,7 +82,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn debug_ucpd_role(
+    pub(super) fn debug_ucpd_role(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _port: donguru_api::UcpdPort,
@@ -91,7 +91,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn debug_led_set(
+    pub(super) fn debug_led_set(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         led: donguru_api::Led,
@@ -122,7 +122,7 @@ impl ServerState {
         Ready(())
     }
 
-    pub(super) async fn debug_reg_read(
+    pub(super) fn debug_reg_read(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _addr: u32,

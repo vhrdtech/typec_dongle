@@ -10,7 +10,7 @@ use wire_weaver::prelude::*;
 impl ServerState {
     // donguru_api::Swd at swd
 
-    pub(super) async fn set_swd_mode(
+    pub(super) fn set_swd_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         mode: SwdMode,
@@ -29,14 +29,14 @@ impl ServerState {
         Set
     }
 
-    pub(super) async fn get_swd_mode(
+    pub(super) fn get_swd_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<SwdMode, CommonError<'_>> {
         Value(swd::mode())
     }
 
-    pub(super) async fn get_swd_session(
+    pub(super) fn get_swd_session(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<donguru_api::SwdSession, ()> {

@@ -25,7 +25,7 @@ use ww_user_info::{MAX_NAME_LEN, MAX_NOTES_LEN, UserInfoCaps};
 impl ServerState {
     // donguru_api::Device at device
 
-    pub(super) async fn get_device_variant(
+    pub(super) fn get_device_variant(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<donguru_api::BoardVariant, ()> {
@@ -36,21 +36,21 @@ impl ServerState {
 
     // ww_firmware_info::LastReset at device.last_reset
 
-    pub(super) async fn device_last_reset_last_reset(
+    pub(super) fn device_last_reset_last_reset(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> RpcResult<ww_firmware_info::ResetRecord<'_>> {
         Ready(last_reset::record(&self.last_reset))
     }
 
-    pub(super) async fn device_last_reset_boot_count(
+    pub(super) fn device_last_reset_boot_count(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> RpcResult<u32> {
         Ready(self.last_reset.boot_count())
     }
 
-    pub(super) async fn device_last_reset_clear(
+    pub(super) fn device_last_reset_clear(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> RpcResult<()> {
@@ -110,7 +110,7 @@ impl ServerState {
 
     // ww_counters::Counters at device.counters
 
-    pub(super) async fn device_counters_read(
+    pub(super) fn device_counters_read(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         buffer: ww_counters::CounterBuffer,
@@ -128,7 +128,7 @@ impl ServerState {
         Ready(read_words(words, used, offset, &mut self.counters_page))
     }
 
-    pub(super) async fn device_counters_reset(
+    pub(super) fn device_counters_reset(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         buffer: ww_counters::CounterBuffer,
@@ -138,7 +138,7 @@ impl ServerState {
     }
 
     // optional, can be left out with omit = ["device.counters.watch"]; polling `read` covers USB
-    pub(super) async fn device_counters_watch(
+    pub(super) fn device_counters_watch(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _period: ww_si::Second,
@@ -146,29 +146,29 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn close_device_counters_watch(
+    pub(super) fn close_device_counters_watch(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) {
     }
 
-    pub(super) async fn stream_device_counters_watch(&mut self) -> &mut ww_stream::tx::Counted {
+    pub(super) fn stream_device_counters_watch(&mut self) -> &mut ww_stream::tx::Counted {
         &mut self.unopened
     }
 
     // ww_log::LogDefmt at device.log: the defmt log (src/log.rs). Its session starts at boot, so a host that resumes
     // it gets the log from before it connected (and from before a crash); opening it anew drops what is kept.
 
-    pub(super) async fn device_log_frames(
+    pub(super) fn device_log_frames(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> RpcResult<Result<(), ww_log::LogError<'_>>> {
         Ready(Ok(()))
     }
 
-    pub(super) async fn close_device_log_frames(&mut self, _cx: &mut Context<'_, impl EventOut>) {}
+    pub(super) fn close_device_log_frames(&mut self, _cx: &mut Context<'_, impl EventOut>) {}
 
-    pub(super) async fn stream_device_log_frames(&mut self) -> &mut crate::log::Stream {
+    pub(super) fn stream_device_log_frames(&mut self) -> &mut crate::log::Stream {
         &mut self.log_frames
     }
 

@@ -11,14 +11,14 @@ use wire_weaver::prelude::*;
 impl ServerState {
     // donguru_api::Plug at plug
 
-    pub(super) async fn get_plug_vbus(
+    pub(super) fn get_plug_vbus(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<donguru_api::VbusState, ()> {
         Value(power::state(Which::Plug))
     }
 
-    pub(super) async fn set_plug_vbus_mode(
+    pub(super) fn set_plug_vbus_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: donguru_api::VbusMode,
@@ -35,7 +35,7 @@ impl ServerState {
         }
     }
 
-    pub(super) async fn get_plug_vbus_mode(
+    pub(super) fn get_plug_vbus_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<donguru_api::VbusMode, CommonError<'_>> {
@@ -70,7 +70,7 @@ impl ServerState {
         }
     }
 
-    pub(super) async fn set_plug_data(
+    pub(super) fn set_plug_data(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: DataPath,
@@ -80,14 +80,14 @@ impl ServerState {
         Set
     }
 
-    pub(super) async fn get_plug_data(
+    pub(super) fn get_plug_data(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<DataPath, CommonError<'_>> {
         Value(power::data())
     }
 
-    pub(super) async fn set_plug_orientation(
+    pub(super) fn set_plug_orientation(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         orientation: donguru_api::Orientation,
@@ -99,14 +99,14 @@ impl ServerState {
         Set
     }
 
-    pub(super) async fn get_plug_orientation(
+    pub(super) fn get_plug_orientation(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<donguru_api::Orientation, ()> {
         Value(swd::orientation())
     }
 
-    pub(super) async fn get_plug_cc(
+    pub(super) fn get_plug_cc(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<donguru_api::CcState, ()> {

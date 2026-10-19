@@ -136,14 +136,14 @@ impl ServerState {
         Value(temperature_of(&r))
     }
 
-    pub(super) async fn get_meter_totals(
+    pub(super) fn get_meter_totals(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<MeterTotals, ()> {
         Value(totals_of(&adc::totals()))
     }
 
-    pub(super) async fn meter_reset_totals(
+    pub(super) fn meter_reset_totals(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> RpcResult<()> {
@@ -152,7 +152,7 @@ impl ServerState {
         Ready(())
     }
 
-    pub(super) async fn set_meter_window(
+    pub(super) fn set_meter_window(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: Second,
@@ -164,14 +164,14 @@ impl ServerState {
         Set
     }
 
-    pub(super) async fn get_meter_window(
+    pub(super) fn get_meter_window(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<Second, CommonError<'_>> {
         Value(Second::micro(adc::window_us() as i32))
     }
 
-    pub(super) async fn set_meter_deadband(
+    pub(super) fn set_meter_deadband(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: MeterDeadband,
@@ -183,7 +183,7 @@ impl ServerState {
         Set
     }
 
-    pub(super) async fn get_meter_deadband(
+    pub(super) fn get_meter_deadband(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<MeterDeadband, CommonError<'_>> {
@@ -193,7 +193,7 @@ impl ServerState {
         })
     }
 
-    pub(super) async fn get_meter_calibration(
+    pub(super) fn get_meter_calibration(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<MeterCalibration, ()> {

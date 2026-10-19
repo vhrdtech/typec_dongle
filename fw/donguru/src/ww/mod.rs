@@ -177,6 +177,9 @@ mod server_impl {
     wire_weaver::ww_codegen!(
         donguru_api :: DonguruApi for super::ServerState,
         server = true, no_alloc = true, use_async = true,
+        // handlers that await (flash writes, ADC readings, the VBUS cycle, the log flood) are async, all others
+        // plain `fn`s (SRV-21): an `async fn` that never awaits still costs flash as a state of the dispatcher
+        handler_model = "debug.log_flood|device.label.*|device.settings.*|sbu.release|adc.read|plug.vbus_cycle|meter.reading|meter.temperature=async, _=sync",
         method_model = "plug_vbus_cycle=deferred, _=immediate",
         property_model = "_=get_set",
         // rows of samples per batch: ~20 ms of meter.reading sequences

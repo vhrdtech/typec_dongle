@@ -9,7 +9,7 @@ use wire_weaver::prelude::*;
 impl ServerState {
     // donguru_api::Sbu at sbu
 
-    pub(super) async fn get_sbu_function(
+    pub(super) fn get_sbu_function(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<donguru_api::SbuFunction, ()> {
@@ -27,14 +27,14 @@ impl ServerState {
         Ready(())
     }
 
-    pub(super) async fn get_sbu_level(
+    pub(super) fn get_sbu_level(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<ww_si::Volt, ()> {
         Unimplemented.into()
     }
 
-    pub(super) async fn set_sbu_pullups(
+    pub(super) fn set_sbu_pullups(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _value: bool,
@@ -42,14 +42,14 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) async fn get_sbu_pullups(
+    pub(super) fn get_sbu_pullups(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<bool, wire_weaver::ww_error::CommonError<'_>> {
         Unimplemented.into()
     }
 
-    pub(super) async fn sbu_route_usb(
+    pub(super) fn sbu_route_usb(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _enabled: bool,
