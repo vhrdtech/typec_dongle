@@ -228,10 +228,12 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   messages: 152 round trips/s, 373 kB/s host -> device, 316 kB/s device -> host). Done: flash prefetch on
   (`main.rs`, embassy-stm32 0.6 leaves it off on the G0), off again since FW-38 (ES0548); release `opt-level = 3` instead of "z" (~40% faster
   here); WireWeaver TR-12 (U2Head byte fast path, replies flushed when no request waits); double-buffered bulk
-  endpoints (`src/ww/mod.rs`, `WireWeaverClass::with_endpoints`) from embassy-rs/embassy#7275, through a git dependency on
-  the romixlab/embassy `donguru-0.6-double-buffer` branch (`fw/donguru/Cargo.toml` `[patch.crates-io]`). Release
+  endpoints (`src/ww/mod.rs`, `WireWeaverClass::with_endpoints`) from embassy-rs/embassy#7275, merged; embassy from
+  upstream main at a pinned rev (`fw/donguru/Cargo.toml` `[patch.crates-io]`, 19 Oct 2026; before: the romixlab/embassy
+  `donguru-0.6-double-buffer` fork). Release
   build now: 1 KB 335 round trips/s, 664-676 kB/s host -> device, 520 kB/s device -> host; 64 B 2400-2500 round
-  trips/s, 540 kB/s each way. Tested 15 Oct 2026 on B153A. Open: back to crates.io embassy once #7275 is released;
+  trips/s, 540 kB/s each way. Tested 15 Oct 2026 on B153A. Open: back to
+  crates.io embassy once the next embassy-stm32 release ships;
   device -> host stays ~520 kB/s with the device ~30% idle (CRC burst per message, copies: WireWeaver TR-12).
 
 - ✅ **FW-25 B129A answers no SWD through the CMSIS-DAP** (not a Donguru bug): from 15 Oct 2026 `probe-rs read

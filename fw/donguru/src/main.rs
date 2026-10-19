@@ -132,30 +132,34 @@ async fn main(spawner: embassy_executor::Spawner) {
     let mut config = embassy_stm32::Config::default();
     // SYSCLK 64 MHz (max): HSI16 / 1 * 8 = 128 MHz VCO, / 2. AHB and APB undivided, also 64 MHz.
     config.rcc.hsi = Some(Hsi {
-        sys_div: HsiSysDiv::DIV1,
+        sys_div: HsiSysDiv::Div1,
     });
     config.rcc.pll = Some(Pll {
-        source: PllSource::HSI,
-        prediv: PllPreDiv::DIV1,
-        mul: PllMul::MUL8,
+        source: PllSource::Hsi,
+        prediv: PllPreDiv::Div1,
+        mul: PllMul::Mul8,
         // ADC 32 MHz: the fastest clock at which the longest sample time still gives Vtemp its 5 us
-        divp: Some(PllPDiv::DIV4),
+        divp: Some(PllPDiv::Div4),
         divq: None,
-        divr: Some(PllRDiv::DIV2),
+        divr: Some(PllRDiv::Div2),
     });
-    config.rcc.sys = Sysclk::PLL1_R;
-    config.rcc.ahb_pre = AHBPrescaler::DIV1;
-    config.rcc.apb1_pre = APBPrescaler::DIV1;
+    config.rcc.sys = Sysclk::Pll1R;
+    config.rcc.ahb_pre = AHBPrescaler::Div1;
+    config.rcc.apb1_pre = APBPrescaler::Div1;
     // USB from HSI48, trimmed by CRS from USB SOF
     config.rcc.hsi48 = Some(Hsi48Config {
         sync_from_usb: true,
     });
-    config.rcc.mux.adcsel = Adcsel::PLL1_P;
-    config.rcc.mux.usbsel = Usbsel::HSI48;
+    config.rcc.mux.adcsel = Adcsel::Pll1P;
+    config.rcc.mux.usbsel = Usbsel::Hsi48;
     let p = embassy_stm32::init(config);
-    // Flash prefetch stays off (embassy-stm32 0.6 leaves it off on the G0): on the G0B1 a prefetch can fail on a
-    // branch or call into the other flash bank (ES0548 2.2.10, not fixed in any revision, no workaround but prefetch
-    // off), the CPU then runs wrong instructions and faults. This image spans both 256 KiB banks (FW-38).
+    // Flash prefetch off again: embassy-stm32 main turns it on with the 2 wait states 64 MHz needs (embassy#7276), but
+    // on the G0B1 a prefetch can fail on a branch or call into the other flash bank (ES0548 2.2.10, every silicon
+    // revision, no workaround but prefetch off), the CPU then runs wrong instructions. This image spans both 256 KiB
+    // banks (FW-38).
+    embassy_stm32::pac::FLASH
+        .acr()
+        .modify(|w| w.set_prften(false));
     init::init();
     let r = split_resources!(p);
 
@@ -182,7 +186,7 @@ async fn main(spawner: embassy_executor::Spawner) {
     spawner.spawn(unwrap!(hub::watchdog_task(hub)));
 
     // Composite USB device (FS, HSI48 clock above): WireWeaver and CMSIS-DAP v2 (FW-15), see src/ww/mod.rs.
-    let usb_driver = usb::Driver::new(r.usb.usb, Irqs, r.usb.pa12, r.usb.pa11);
+    let usb_driver = usb::Driver::new(r.usb.usb, r.usb.pa12, r.usb.pa11, Irqs);
     let swd_host = swd::SwdHost::new(r.swd);
     // device.settings and the label (API-19): their boot values are applied by ww::start
     let settings = settings::open(r.settings.flash).await;

@@ -403,7 +403,7 @@ impl Bus {
             });
             self.port
                 .moder()
-                .modify(|w| w.set_moder(d, vals::Moder::OUTPUT));
+                .modify(|w| w.set_moder(d, vals::Moder::Output));
         });
     }
 
@@ -414,7 +414,7 @@ impl Bus {
         cortex_m::interrupt::free(|_| {
             self.port
                 .moder()
-                .modify(|w| w.set_moder(d, vals::Moder::INPUT))
+                .modify(|w| w.set_moder(d, vals::Moder::Input))
         });
     }
 }
@@ -482,9 +482,9 @@ fn spi_frame(bits: u32, tx: u32) -> swd::Result<u32> {
     spi.cr2().modify(|w| {
         w.set_ds(spi_vals::Ds::from_bits(bits as u8 - 1));
         w.set_frxth(if small {
-            spi_vals::Frxth::QUARTER
+            spi_vals::Frxth::Quarter
         } else {
-            spi_vals::Frxth::HALF
+            spi_vals::Frxth::Half
         });
     });
     // A data-register access as wide as the frame: a 16-bit write of a frame of 8 bits or less sends two.
@@ -520,17 +520,17 @@ fn shifter_modes(sck: bool, mosi: bool) {
             w.set_moder(
                 PB_SCK,
                 if sck {
-                    vals::Moder::ALTERNATE
+                    vals::Moder::Alternate
                 } else {
-                    vals::Moder::OUTPUT
+                    vals::Moder::Output
                 },
             );
             w.set_moder(
                 PB_MOSI,
                 if mosi {
-                    vals::Moder::ALTERNATE
+                    vals::Moder::Alternate
                 } else {
-                    vals::Moder::INPUT
+                    vals::Moder::Input
                 },
             );
         })
@@ -668,18 +668,18 @@ impl SwdPins {
         cortex_m::interrupt::free(|_| {
             gpio.bsrr().write(|w| w.set_br(c, true));
             gpio.otyper().modify(|w| {
-                w.set_ot(c, vals::Ot::PUSH_PULL);
-                w.set_ot(d, vals::Ot::PUSH_PULL);
+                w.set_ot(c, vals::Ot::PushPull);
+                w.set_ot(d, vals::Ot::PushPull);
             });
             gpio.ospeedr().modify(|w| {
-                w.set_ospeedr(c, vals::Ospeedr::MEDIUM_SPEED);
-                w.set_ospeedr(d, vals::Ospeedr::MEDIUM_SPEED);
+                w.set_ospeedr(c, vals::Ospeedr::MediumSpeed);
+                w.set_ospeedr(d, vals::Ospeedr::MediumSpeed);
             });
             gpio.pupdr().modify(|w| {
-                w.set_pupdr(c, vals::Pupdr::FLOATING);
-                w.set_pupdr(d, vals::Pupdr::PULL_UP);
+                w.set_pupdr(c, vals::Pupdr::Floating);
+                w.set_pupdr(d, vals::Pupdr::PullUp);
             });
-            gpio.moder().modify(|w| w.set_moder(c, vals::Moder::OUTPUT));
+            gpio.moder().modify(|w| w.set_moder(c, vals::Moder::Output));
         });
         Bus {
             port: gpio,
@@ -698,15 +698,15 @@ impl SwdPins {
             self.b.set_as_input(Pull::None);
             let spi = pac::SPI2;
             spi.cr1().write(|w| {
-                w.set_mstr(spi_vals::Mstr::MASTER);
+                w.set_mstr(spi_vals::Mstr::Master);
                 w.set_ssm(true);
                 w.set_ssi(true);
-                w.set_lsbfirst(spi_vals::Lsbfirst::LSBFIRST);
+                w.set_lsbfirst(spi_vals::Lsbfirst::LsbFirst);
                 w.set_br(spi_vals::Br::from_bits(self.spi_br.unwrap_or(7)));
             });
             spi.cr2().write(|w| {
-                w.set_ds(spi_vals::Ds::BITS8);
-                w.set_frxth(spi_vals::Frxth::QUARTER);
+                w.set_ds(spi_vals::Ds::Bits8);
+                w.set_frxth(spi_vals::Frxth::Quarter);
             });
             spi.cr1().modify(|w| w.set_spe(true));
             cortex_m::interrupt::free(|_| {
@@ -715,26 +715,26 @@ impl SwdPins {
                     w.set_br(PB_MOSI, true);
                 });
                 gpio.otyper().modify(|w| {
-                    w.set_ot(PB_SCK, vals::Ot::PUSH_PULL);
-                    w.set_ot(PB_MOSI, vals::Ot::PUSH_PULL);
+                    w.set_ot(PB_SCK, vals::Ot::PushPull);
+                    w.set_ot(PB_MOSI, vals::Ot::PushPull);
                 });
                 gpio.ospeedr().modify(|w| {
-                    w.set_ospeedr(PB_SCK, vals::Ospeedr::HIGH_SPEED);
-                    w.set_ospeedr(PB_MOSI, vals::Ospeedr::HIGH_SPEED);
+                    w.set_ospeedr(PB_SCK, vals::Ospeedr::HighSpeed);
+                    w.set_ospeedr(PB_MOSI, vals::Ospeedr::HighSpeed);
                 });
                 // the shifter's own 10K pull-ups hold the lines while OE is high
                 gpio.pupdr().modify(|w| {
-                    w.set_pupdr(PB_SCK, vals::Pupdr::FLOATING);
-                    w.set_pupdr(PB_MOSI, vals::Pupdr::FLOATING);
-                    w.set_pupdr(PB_MISO, vals::Pupdr::FLOATING);
+                    w.set_pupdr(PB_SCK, vals::Pupdr::Floating);
+                    w.set_pupdr(PB_MOSI, vals::Pupdr::Floating);
+                    w.set_pupdr(PB_MISO, vals::Pupdr::Floating);
                 });
                 gpio.afr(PB_SCK / 8).modify(|w| w.set_afr(PB_SCK % 8, 1));
                 gpio.afr(PB_MOSI / 8).modify(|w| w.set_afr(PB_MOSI % 8, 0));
                 gpio.afr(PB_MISO / 8).modify(|w| w.set_afr(PB_MISO % 8, 4));
                 gpio.moder().modify(|w| {
-                    w.set_moder(PB_SCK, vals::Moder::OUTPUT);
-                    w.set_moder(PB_MOSI, vals::Moder::OUTPUT);
-                    w.set_moder(PB_MISO, vals::Moder::ALTERNATE);
+                    w.set_moder(PB_SCK, vals::Moder::Output);
+                    w.set_moder(PB_MOSI, vals::Moder::Output);
+                    w.set_moder(PB_MISO, vals::Moder::Alternate);
                 });
             });
             self.shifter.oe.set_high();
@@ -743,7 +743,7 @@ impl SwdPins {
             cortex_m::interrupt::free(|_| {
                 gpio.bsrr().write(|w| w.set_br(PB_SCK, true));
                 gpio.moder()
-                    .modify(|w| w.set_moder(PB_SCK, vals::Moder::OUTPUT));
+                    .modify(|w| w.set_moder(PB_SCK, vals::Moder::Output));
             });
         }
         Bus {

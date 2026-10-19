@@ -6,6 +6,10 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Changed
+
+- Firmware: embassy from upstream main (embassy-rs/embassy 262fdba, pinned in `fw/donguru/Cargo.toml` `[patch.crates-io]`) instead of the romixlab/embassy `donguru-0.6-double-buffer` fork, now that the double-buffered bulk endpoints (embassy-rs/embassy#7275) and the G0 flash prefetch (#7276, turned off again here, FW-38) are merged; back to crates.io once the next embassy-stm32 release ships (FW-24). Ported to main's API: CamelCase PAC enums (`main.rs` clocks, `swd.rs` GPIO and SPI), `usb::Driver::new` takes the interrupt binding last, `uid::uid()` returns a reference, and the ADC on the unified driver (`adc.rs`): embassy now sets each channel's sample time (SMPSEL) and waits for CCRDY itself, so the SMPR rewrite and the CCRDY dance are gone; the 8-run averaged calibration stays (after `disable()`, as CCR and CALFACT need ADEN = 0). Checked on B153A, 19 Oct 2026: ADC1 SMPR reads 0x00300076 (SMP1 79.5, SMP2 160.5 cycles, SMPSEL12/13 = Vtemp/Vrefint on SMP2), meter samples 622 us apart as calculated for the Base set, 1 KB loopback 310-313 round trips/s, 642 / 492 kB/s, 64 B 2.1k/s, 368 / 520 kB/s (prefetch off on both, the fork build is within 2%); release FLASH 398.2 -> 401.8 KiB, RAM unchanged, stack high-water 10.0 KiB on both (painted, under `ww usb-loopback`).
+
 ## [0.20.6] - 2026-10-19
 
 ### Fixed

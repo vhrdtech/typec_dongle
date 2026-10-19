@@ -131,24 +131,25 @@ debug-assertions = false
 opt-level = 0
 overflow-checks = false
 
-# Double-buffered USB bulk endpoints on the G0 (FW-24): embassy-rs/embassy#7275 is not released yet. The fork's
-# donguru-0.6-double-buffer branch is tag embassy-stm32-v0.6.0 with that driver backported (and embassy-usb's
-# endpoint_bulk_*_double_buffered). All embassy crates come from the same tree, as embassy-stm32's path dependencies
-# would otherwise clash with the crates.io ones. Back to crates.io once #7275 is released.
+# embassy from upstream main at a pinned rev: double-buffered USB bulk endpoints on the G0 (embassy-rs/embassy#7275,
+# FW-24) are merged but not released (crates.io embassy-stm32 is 0.6.0). main still has the versions asked for above
+# (0.6.0 / 0.10.0 / 0.5.1 / 0.8.0), so the dependency lines stay the crates.io ones and this block swaps the source;
+# every embassy crate comes from the same tree, as embassy-stm32's path dependencies would otherwise clash with the
+# crates.io ones. The code uses main's API (CamelCase PAC enums, unified ADC driver, `usb::Driver::new` interrupt
+# last). Back to crates.io: drop this block once the next embassy-stm32 release ships (bump the versions above).
 [patch.crates-io]
-embassy-stm32 = { git = "https://github.com/romixlab/embassy", rev = "17b1c246f43fd11485c9d7be5a0a1a739ff591ed" }
-embassy-usb = { git = "https://github.com/romixlab/embassy", rev = "17b1c246f43fd11485c9d7be5a0a1a739ff591ed" }
-embassy-usb-driver = { git = "https://github.com/romixlab/embassy", rev = "17b1c246f43fd11485c9d7be5a0a1a739ff591ed" }
-embassy-hal-internal = { git = "https://github.com/romixlab/embassy", rev = "17b1c246f43fd11485c9d7be5a0a1a739ff591ed" }
-embassy-embedded-hal = { git = "https://github.com/romixlab/embassy", rev = "17b1c246f43fd11485c9d7be5a0a1a739ff591ed" }
-embassy-sync = { git = "https://github.com/romixlab/embassy", rev = "17b1c246f43fd11485c9d7be5a0a1a739ff591ed" }
-embassy-time = { git = "https://github.com/romixlab/embassy", rev = "17b1c246f43fd11485c9d7be5a0a1a739ff591ed" }
-embassy-time-driver = { git = "https://github.com/romixlab/embassy", rev = "17b1c246f43fd11485c9d7be5a0a1a739ff591ed" }
-embassy-time-queue-utils = { git = "https://github.com/romixlab/embassy", rev = "17b1c246f43fd11485c9d7be5a0a1a739ff591ed" }
-embassy-executor = { git = "https://github.com/romixlab/embassy", rev = "17b1c246f43fd11485c9d7be5a0a1a739ff591ed" }
-embassy-executor-macros = { git = "https://github.com/romixlab/embassy", rev = "17b1c246f43fd11485c9d7be5a0a1a739ff591ed" }
-embassy-executor-timer-queue = { git = "https://github.com/romixlab/embassy", rev = "17b1c246f43fd11485c9d7be5a0a1a739ff591ed" }
-embassy-futures = { git = "https://github.com/romixlab/embassy", rev = "17b1c246f43fd11485c9d7be5a0a1a739ff591ed" }
-embassy-net-driver = { git = "https://github.com/romixlab/embassy", rev = "17b1c246f43fd11485c9d7be5a0a1a739ff591ed" }
-embassy-net-driver-channel = { git = "https://github.com/romixlab/embassy", rev = "17b1c246f43fd11485c9d7be5a0a1a739ff591ed" }
-embassy-usb-synopsys-otg = { git = "https://github.com/romixlab/embassy", rev = "17b1c246f43fd11485c9d7be5a0a1a739ff591ed" }
+embassy-stm32 = { git = "https://github.com/embassy-rs/embassy", rev = "262fdba545e8bc7affce0225c6ccd276b8125a86" }
+embassy-usb = { git = "https://github.com/embassy-rs/embassy", rev = "262fdba545e8bc7affce0225c6ccd276b8125a86" }
+embassy-usb-driver = { git = "https://github.com/embassy-rs/embassy", rev = "262fdba545e8bc7affce0225c6ccd276b8125a86" }
+embassy-hal-internal = { git = "https://github.com/embassy-rs/embassy", rev = "262fdba545e8bc7affce0225c6ccd276b8125a86" }
+embassy-embedded-hal = { git = "https://github.com/embassy-rs/embassy", rev = "262fdba545e8bc7affce0225c6ccd276b8125a86" }
+embassy-sync = { git = "https://github.com/embassy-rs/embassy", rev = "262fdba545e8bc7affce0225c6ccd276b8125a86" }
+embassy-time = { git = "https://github.com/embassy-rs/embassy", rev = "262fdba545e8bc7affce0225c6ccd276b8125a86" }
+embassy-time-driver = { git = "https://github.com/embassy-rs/embassy", rev = "262fdba545e8bc7affce0225c6ccd276b8125a86" }
+embassy-time-queue-utils = { git = "https://github.com/embassy-rs/embassy", rev = "262fdba545e8bc7affce0225c6ccd276b8125a86" }
+embassy-executor = { git = "https://github.com/embassy-rs/embassy", rev = "262fdba545e8bc7affce0225c6ccd276b8125a86" }
+embassy-executor-macros = { git = "https://github.com/embassy-rs/embassy", rev = "262fdba545e8bc7affce0225c6ccd276b8125a86" }
+embassy-executor-timer-queue = { git = "https://github.com/embassy-rs/embassy", rev = "262fdba545e8bc7affce0225c6ccd276b8125a86" }
+embassy-futures = { git = "https://github.com/embassy-rs/embassy", rev = "262fdba545e8bc7affce0225c6ccd276b8125a86" }
+embassy-net-driver-channel = { git = "https://github.com/embassy-rs/embassy", rev = "262fdba545e8bc7affce0225c6ccd276b8125a86" }
+embassy-usb-synopsys-otg = { git = "https://github.com/embassy-rs/embassy", rev = "262fdba545e8bc7affce0225c6ccd276b8125a86" }

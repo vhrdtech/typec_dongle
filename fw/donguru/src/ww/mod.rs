@@ -287,7 +287,6 @@ impl Default for UsbBuffers {
 
 static USB_BUFFERS: StaticCell<UsbBuffers> = StaticCell::new();
 static SERVER_STATE: StaticCell<ServerState> = StaticCell::new();
-static UID: StaticCell<[u8; 12]> = StaticCell::new();
 /// `server_impl::API_ID` with the user label (API-19), as the WireWeaver interface's string descriptor.
 static API_ID_LABELED: StaticCell<[u8; 256]> = StaticCell::new();
 
@@ -304,8 +303,8 @@ pub async fn start(
 ) {
     let buffers = USB_BUFFERS.init(UsbBuffers::default());
     // in a static, not on the task's future: the observe tables and stream states are a few hundred bytes
-    let state = SERVER_STATE
-        .init(ServerState::new(UID.init(embassy_stm32::uid::uid()), last_reset, settings).await);
+    let state =
+        SERVER_STATE.init(ServerState::new(embassy_stm32::uid::uid(), last_reset, settings).await);
     state.apply_boot_settings().await;
 
     let mut config = UsbConfig::new(0xc0de, 0xcafe);

@@ -21,10 +21,9 @@ use core::sync::atomic::{AtomicU32, Ordering};
 
 use defmt::{info, unwrap, warn};
 use embassy_futures::select::{Either, select};
-use embassy_stm32::adc::vals::Smpsel;
 use embassy_stm32::adc::{
-    Adc, AdcChannel, AdcConfig, AnyAdcChannel, CONTINUOUS, Clock, Exten, Ovsr, Ovss, Presc,
-    SampleTime, VREF_CALIB_MV,
+    Adc, AdcChannel, BorrowedAdcChannel, Clock, Config as AdcConfig, Oversampling,
+    OversamplingRatio, Prescaler, SampleTime, VREF_CALIB_MV,
 };
 use embassy_stm32::peripherals::ADC1;
 use embassy_stm32::{pac, rcc};
@@ -38,22 +37,21 @@ use crate::{AdcResources, Irqs};
 
 /// ADC clock = ADCSEL clock (PLL P, 32 MHz, set in main) / PRESC = 32 MHz.
 /// Must stay <= [`ADC_CLOCK_MAX_HZ`], checked at startup.
-const PRESC: Presc = Presc::DIV1;
+const PRESC: Prescaler = Prescaler::Div1;
 const ADC_CLOCK_MAX_HZ: u32 = 35_000_000;
 /// Vtemp and Vrefint: >= 5 us (ts_temp) and >= 4 us (ts_vrefint), checked at startup.
 /// 160.5 cycles = 5.02 us at 32 MHz. 79.5 cycles only reach 5 us up to 15.9 MHz, and 160.5 (the longest) up to
 /// 32.1 MHz, so the ADC clock must not exceed 32.1 MHz.
-const SAMPLE_TIME_INTERNAL: SampleTime = SampleTime::CYCLES160_5;
+const SAMPLE_TIME_INTERNAL: SampleTime = SampleTime::Cycles1605;
 const INTERNAL_SAMPLE_MIN_NS: u32 = 5_000;
 /// External pins. 79.5 cycles = 2.48 us at 32 MHz. 39.5 cycles (1.23 us) was too short for PA7 (button switch,
 /// read ~20 mV low), so keep this unless all sources on PA2, PA7, PB1, PB12 are low impedance.
-const SAMPLE_TIME_EXTERNAL: SampleTime = SampleTime::CYCLES79_5;
+const SAMPLE_TIME_EXTERNAL: SampleTime = SampleTime::Cycles795;
 /// Hardware oversampling: 32 conversions summed and shifted right by 1, so each DMA value is the channel
 /// average in 1/16 LSB (<= 65520, the 16 bit data register limit), the unit the conversions below work in.
 /// Conversion = sample time + 12.5 cycles, so at 32 MHz one oversampled channel takes 173 us (internal) or
 /// 92 us (external): one sequence every 622 us (Base, ~1.6 kHz) or 898 us (Extended, ~1.1 kHz).
-const OVS_RATIO: Ovsr = Ovsr::MUL32;
-const OVS_SHIFT: Ovss = Ovss::SHIFT1;
+const OVERSAMPLING: Oversampling = Oversampling::new(OversamplingRatio::X32, 1);
 /// Averaged calibration runs.
 const CAL_ITERATIONS: u32 = 8;
 /// DMA ring buffer length in samples. Every half (120) holds whole sequences of both sets (24 x 5, 15 x 8),
@@ -78,7 +76,7 @@ const CURRENT_AMP_GAIN: i32 = 50;
 /// Voltage divider in front of PA3, Vin = Vpin * (top + bottom) / bottom (x7.17, up to ~25.8 V at 3.6 V).
 const PA3_R_TOP_OHM: u32 = 10_000;
 const PA3_R_BOT_OHM: u32 = 1_620;
-/// One sequence takes this long (see `OVS_RATIO`), per [`ChannelSet`]: sets how many sequences make a window.
+/// One sequence takes this long (see `OVERSAMPLING`), per [`ChannelSet`]: sets how many sequences make a window.
 const BASE_SEQUENCE_US: u32 = 622;
 const EXTENDED_SEQUENCE_US: u32 = 898;
 /// Default averaging window of the meter reading (API-12 `meter.window`).
@@ -244,13 +242,13 @@ impl Input {
 /// Sample time in half ADC clock cycles.
 fn sample_half_cycles(t: SampleTime) -> u32 {
     match t {
-        SampleTime::CYCLES1_5 => 3,
-        SampleTime::CYCLES3_5 => 7,
-        SampleTime::CYCLES7_5 => 15,
-        SampleTime::CYCLES12_5 => 25,
-        SampleTime::CYCLES19_5 => 39,
-        SampleTime::CYCLES39_5 => 79,
-        SampleTime::CYCLES79_5 => 159,
+        SampleTime::Cycles15 => 3,
+        SampleTime::Cycles35 => 7,
+        SampleTime::Cycles75 => 15,
+        SampleTime::Cycles125 => 25,
+        SampleTime::Cycles195 => 39,
+        SampleTime::Cycles395 => 79,
+        SampleTime::Cycles795 => 159,
         _ => 321,
     }
 }
@@ -278,7 +276,7 @@ const EXTENDED: [Input; 8] = [
 ];
 
 /// Run the ADC calibration [`CAL_ITERATIONS`] times and apply the average of the resulting factors.
-/// Needs the regulator on, ADEN = 0 and DMAEN = 0 (true after `Adc::new*`). Leaves the ADC enabled.
+/// Needs the regulator on, ADEN = 0 and DMAEN = 0 (see [`disable`]). Leaves the ADC enabled.
 fn calibrate() -> u8 {
     let r = pac::ADC1;
     let mut sum = 0u32;
@@ -299,20 +297,13 @@ fn calibrate() -> u8 {
     factor
 }
 
-fn presc_div(p: Presc) -> u32 {
-    match p {
-        Presc::DIV1 => 1,
-        Presc::DIV2 => 2,
-        Presc::DIV4 => 4,
-        Presc::DIV6 => 6,
-        Presc::DIV8 => 8,
-        Presc::DIV10 => 10,
-        Presc::DIV12 => 12,
-        Presc::DIV16 => 16,
-        Presc::DIV32 => 32,
-        Presc::DIV64 => 64,
-        Presc::DIV128 => 128,
-        _ => 256,
+/// Turns the converter off (ADDIS), keeping the regulator on: `Adc::new_blocking` leaves it enabled, and CCR
+/// (VREFEN, TSEN) and the calibration need ADEN = 0. Needs ADSTART = 0.
+fn disable() {
+    let r = pac::ADC1;
+    if r.cr().read().aden() {
+        r.cr().modify(|w| w.set_addis(true));
+        while r.cr().read().aden() {}
     }
 }
 
@@ -344,7 +335,7 @@ async fn run(
     set: ChannelSet,
     mut meter_samples: Option<&mut crate::ww::MeterSamples>,
 ) -> ChannelSet {
-    let adc_hz = rcc::frequency::<ADC1>().0 / presc_div(PRESC);
+    let adc_hz = rcc::frequency::<ADC1>().0 / PRESC.divisor();
     let internal_ns = sample_half_cycles(SAMPLE_TIME_INTERNAL) * 500_000 / (adc_hz / 1000);
     defmt::assert!(
         adc_hz <= ADC_CLOCK_MAX_HZ,
@@ -358,20 +349,18 @@ async fn run(
     );
 
     // Pins are not switched to analog here: that is the GPIO reset state on G0 (except PA13/PA14)
-    let adc = Adc::new_with_config(
-        r.adc.reborrow(),
-        AdcConfig {
-            clock: Some(Clock::Async { div: PRESC }),
-            oversampling_ratio: Some(OVS_RATIO),
-            oversampling_shift: Some(OVS_SHIFT),
-            oversampling_enable: Some(true),
-            ..Default::default()
-        },
-    );
+    let mut config = AdcConfig::default();
+    config.clock = Clock::Async(PRESC);
+    config.oversampling = Some(OVERSAMPLING);
+    // Calibrated once (single run) and enabled: turned off again for the internal channels and our calibration
+    let mut adc = Adc::new_blocking(r.adc.reborrow(), config);
+    disable();
     // CCR (VREFEN, TSEN) is only writable while ADEN = 0, so before calibrate() enables the ADC
-    let vrefint = adc.enable_vrefint();
+    let mut vrefint = adc.enable_vrefint();
     let vrefint_cal = vrefint.calibrated_value() as u32;
-    let temp = adc.enable_temperature();
+    let mut temp = adc.enable_temperature();
+    let ccr = pac::ADC1.ccr().read();
+    defmt::assert!(ccr.vrefen() && ccr.tsen(), "ADC: VREFEN/TSEN not set");
     // SAFETY: factory calibration value in system memory, always readable
     let ts_cal1 = unsafe { TS_CAL1_ADDR.read_volatile() } as u32;
     let calfact = calibrate();
@@ -388,15 +377,15 @@ async fn run(
         ChannelSet::Base => &BASE,
         ChannelSet::Extended => &EXTENDED,
     };
-    let mut channels: [Option<AnyAdcChannel<'_, ADC1>>; 8] = [
+    let mut channels: [Option<BorrowedAdcChannel<'_, ADC1>>; 8] = [
         Some(r.pa2.reborrow().degrade_adc()),
         Some(r.pa3.reborrow().degrade_adc()),
         Some(r.pa7.reborrow().degrade_adc()),
         Some(r.pb0.reborrow().degrade_adc()),
         Some(r.pb1.reborrow().degrade_adc()),
         Some(r.pb12.reborrow().degrade_adc()),
-        Some(temp.degrade_adc()),
-        Some(vrefint.degrade_adc()),
+        Some(temp.reborrow_adc()),
+        Some(vrefint.reborrow_adc()),
     ];
     let mut last_ch = None;
     let mut hw_channels = [0u8; 8];
@@ -412,40 +401,18 @@ async fn run(
         (ch, input.sample_time())
     });
 
-    let mut ring = adc.into_ring_buffered(
-        r.dma.reborrow(),
-        dma_buf,
-        Irqs,
-        sequence,
-        CONTINUOUS,
-        Exten::DISABLED,
-    );
-    // embassy 0.6 does not set SMPSEL for the first channel using each sample time, leaving it on SMP1
-    // (Vtemp ended up with the external sample time), so program SMPR here. Allowed while ADSTART = 0.
-    pac::ADC1.smpr().write(|w| {
-        w.set_sample_time(0, SAMPLE_TIME_EXTERNAL);
-        w.set_sample_time(1, SAMPLE_TIME_INTERNAL);
-        for (&input, &hw) in order.iter().zip(&hw_channels) {
-            if input.sample_time() == SAMPLE_TIME_INTERNAL {
-                w.set_smpsel(hw as usize, Smpsel::SMP2);
-            }
-        }
-    });
-    // After a CHSELR write (CHSELRMOD = 0) conversions must not start before CCRDY. into_ring_buffered() may
-    // already have cleared that flag (it clears OVR with a read-modify-write of the write-1-to-clear ISR), so
-    // clear it and write CHSELR again to get a CCRDY we can wait for
-    let isr = pac::ADC1.isr();
-    isr.write(|w| w.set_ccrdy(true));
-    let chselr = pac::ADC1.chselr();
-    chselr.write_value(chselr.read());
-    let mut spins = 0u32;
-    while !isr.read().ccrdy() && spins < 100_000 {
-        spins += 1;
+    // Sample times per channel (SMPSEL) and CHSELR with its CCRDY handshake are set up by embassy
+    let mut ring = adc.into_ring_buffered(r.dma.reborrow(), dma_buf, Irqs, sequence, None);
+    let smpr = pac::ADC1.smpr().read();
+    for (&input, &hw) in order.iter().zip(&hw_channels) {
+        let slot = smpr.smpsel(hw as usize) as usize;
+        defmt::assert!(
+            smpr.smp(slot) == input.sample_time(),
+            "ADC: channel {} has the wrong sample time",
+            hw
+        );
     }
-    if !isr.read().ccrdy() {
-        warn!("ADC: CCRDY timeout");
-    }
-    isr.write(|w| w.set_ccrdy(true));
+    info!("ADC: SMPR {:#010x}", smpr.0);
     ring.start();
 
     let pos = |input: Input| order.iter().position(|&i| i == input);
