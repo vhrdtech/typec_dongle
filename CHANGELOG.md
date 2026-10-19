@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.3] - 2026-10-19
+
 ### Added
 
 - Power meter samples (API-12, WireWeaver API-39): `meter.reading` observed in `Samples` mode sends every ADC sequence (~1.6 kHz, not averaged over `meter.window`) with its own device time, as compressed batches; `dg power watch --samples` prints them (text or jsonl). `donguru_api` 0.3.0: the `reading` observe slot changed, old CLIs can't observe the meter of a new firmware and the other way round (with the `ww_si` 0.2 change above, update both). Release FLASH 351 -> 397 KiB, RAM +3.8 KiB. Tested 19 Oct 2026 on B153A + B129A: 1608 samples/s for 5 s, none missed.
