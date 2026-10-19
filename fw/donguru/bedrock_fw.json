@@ -10,7 +10,7 @@
     "version": "Unreleased"
   },
   "generated": "2026-09-30T18:59:40+02:00",
-  "command": "bedrock_gen.py new donguru --chip STM32G0B1CE --config-page --bkp-counters auto --counters --led PF1 --wire-weaver --ww-api donguru_api --ww-src ../../../wire_weaver",
+  "command": "bedrock_gen.py new donguru --chip STM32G0B1CE --embassy main --config-page --bkp-counters auto --counters --led PF1 --wire-weaver --ww-api donguru_api --ww-src ../../../wire_weaver",
   "answers": {
     "name": "donguru",
     "chip": "STM32G0B1CE",
@@ -25,6 +25,7 @@
     "main_ram": null,
     "bkp_counters": "auto",
     "framework": "embassy",
+    "embassy": "main",
     "log": "defmt",
     "log_level": "debug",
     "rtt_buffer": 1024,
