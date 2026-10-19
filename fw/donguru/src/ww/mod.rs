@@ -424,6 +424,7 @@ async fn server_task(mut server: UsbServer<'static, UsbDriver>, state: &'static 
                     if matches!(event, LinkEvent::Down(_)) {
                         state.observe.reset();
                         state.log_frames.detach();
+                        state.uart_rx.detach();
                     }
                 }
             }

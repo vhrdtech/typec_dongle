@@ -208,14 +208,7 @@ impl ServerState {
                 break;
             }
             let bytes = &buf[..n];
-            if !self.uart_rx.is_attached() {
-                // nobody receives: dropped, the host that opens the stream starts at the next byte
-                continue;
-            }
-            if !server.is_up() {
-                self.uart_rx.lost(n as u64);
-                continue;
-            }
+            // no host (or the link is down): rx_send counts the bytes as lost, the host sees how many it missed
             let chunk = RxChunk {
                 // the DMA ring is read in turns, not when the last byte arrived: no time of its own
                 end: None,
