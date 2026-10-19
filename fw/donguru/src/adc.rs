@@ -304,6 +304,9 @@ fn disable() {
     if r.cr().read().aden() {
         r.cr().modify(|w| w.set_addis(true));
         while r.cr().read().aden() {}
+        // G0: 2 ADC kernel clocks between disabling and the next kernel-side step (calibration, CALFACT), else the
+        // ADC may freeze (efton.sk STM32 gotcha 221); 1 us covers it at any ADC clock above 2 MHz
+        block_for(Duration::from_micros(1));
     }
 }
 
