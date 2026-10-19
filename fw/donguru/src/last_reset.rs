@@ -60,7 +60,12 @@ fn build_id() -> &'static [u8] {
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
     bedrock_crash::capture_panic(info, uptime_ms());
-    error!("{}", defmt::Display2Format(info));
+    // defmt only: Display2Format would keep core::fmt and every Display / Debug a panic message can reach
+    let msg = info.message().as_str().unwrap_or("(formatted message, see the crash record)");
+    match info.location() {
+        Some(l) => error!("panicked at {=str}:{=u32}:{=u32}: {=str}", l.file(), l.line(), l.column(), msg),
+        None => error!("panicked: {=str}", msg),
+    }
     bedrock_crash::panic_reset()
 }
 

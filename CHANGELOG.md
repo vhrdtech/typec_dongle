@@ -6,6 +6,10 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Changed
+
+- Firmware: the panic and HardFault log lines are written with defmt directly (location and literal message; the registers of the exception frame) instead of through `core::fmt`; the crash record keeps the full panic text. Release build 1.4 KiB smaller at opt-level z, 1.7 KiB at 3. Not run on a board yet.
+
 ## [0.20.4] - 2026-10-19
 
 ### Added
