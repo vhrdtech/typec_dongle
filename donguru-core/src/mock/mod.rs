@@ -26,7 +26,9 @@
 //! - `inputs`, `hub`, `swd`: state, button action, recover, mode.
 //! - `debug`: a register model of the pins with the firmware's refused pins, hub registers, UCPD roles (`Rp` on
 //!   UCPD1 refused), `reg_read` in peripheral space only.
-//! - `uart[]`, `i2c[]`, `gpio[]`, `adc` and the streams answer `Unimplemented`, as the firmware does until their
+//! - `uart[1]` (the header): the `tx` credit sink takes 2048 bytes ahead and loops them back to the counted `rx`
+//!   stream, as a jumper between IO7 and IO8 does on the firmware.
+//! - the rest of `uart[]`, `i2c[]`, `gpio[]`, `adc` and the streams answer `Unimplemented`, as the firmware does until their
 //!   pieces land; the arrays have their shape (`uart[0..2]`, `gpio[0..2].pin[0..4]`).
 
 mod server;
@@ -458,6 +460,7 @@ impl MockDevice {
                         ready = server.wait() => {
                             if let Some(ww_device::LinkEvent::Down(_)) = server.handle(ready, &mut backend).await {
                                 backend.server.observe.reset();
+                                backend.server.uart_rx.detach();
                             }
                         }
                         _ = tick.tick() => {

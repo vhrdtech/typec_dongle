@@ -664,3 +664,58 @@ async fn reset_cause_and_clear() {
     );
     assert_eq!(device.boot_count().await.unwrap(), 0);
 }
+
+/// `uart[1]` of the mock loops its tx credit sink back to its counted rx stream, as the firmware does with a jumper
+/// on the header: the sink goes on through `disconnect().keep_streams()` and `reconnect()`, and every byte reaches
+/// the line exactly once and in order (what the device could not give the host while it was away is a counted gap).
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn header_uart_loops_back_and_survives_reconnects() {
+    use wire_weaver_client::StreamEvent;
+    let (_mock, dongle) = start("mock/uart_loopback").await;
+    let uart = dongle.client().uart(1);
+    let mut rx = uart.rx().call().await.unwrap();
+    let mut tx = uart.tx().await.unwrap();
+    let data: Vec<u8> = (0..30_000u32).map(|i| (i * 7 + i / 251) as u8).collect();
+    for (n, piece) in data.chunks(256).enumerate() {
+        tx.send_bytes(piece).await.unwrap();
+        if n % 40 == 39 {
+            dongle
+                .client()
+                .cmd
+                .disconnect()
+                .keep_streams()
+                .await
+                .unwrap();
+            // the rx stream resumes with the sink
+            assert_eq!(dongle.client().cmd.reconnect().await.unwrap(), 2);
+        }
+    }
+    tx.flush().await.unwrap();
+    let mut line: Vec<Option<u8>> = vec![None; data.len()];
+    let mut seen = 0u64;
+    let mut lost = 0u64;
+    while seen + lost < data.len() as u64 {
+        let event = tokio::time::timeout(Duration::from_secs(5), rx.recv_event())
+            .await
+            .expect("the line delivers the rest")
+            .unwrap();
+        match event {
+            StreamEvent::Item { pos, value, .. } => {
+                for (i, b) in value.bytes.into_inner().into_iter().enumerate() {
+                    line[pos as usize + i] = Some(b);
+                    seen += 1;
+                }
+            }
+            StreamEvent::Gap { units, .. } => lost += units,
+            _ => {}
+        }
+    }
+    assert_eq!(seen + lost, data.len() as u64);
+    for (i, b) in line.iter().enumerate() {
+        if let Some(b) = b {
+            assert_eq!(*b, data[i], "byte {i}");
+        }
+    }
+    // nothing but the in-flight echoes of a drop can be missing
+    assert!(lost <= 3 * 2048, "lost {lost}");
+}

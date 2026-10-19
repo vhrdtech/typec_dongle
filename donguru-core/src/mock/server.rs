@@ -13,6 +13,9 @@ use super::{
     set_pin_mode,
 };
 
+/// Bytes the mock's `uart[1].tx` accepts ahead, as the firmware's
+const UART_TX_BUF: u32 = 2048;
+
 /// The mock device's server: [MockState] plus what the generated code needs.
 pub struct MockServer {
     /// The modelled dongle, changed by handlers and by [super::MockDevice::with].
@@ -25,8 +28,11 @@ pub struct MockServer {
     pub inputs_events_stream: ww_stream::tx::Counted,
     /// Counted streams of `uart[]` and `gpio[].pin[]`, never opened (`Unimplemented`)
     pub unopened: ww_stream::tx::Counted,
-    /// `uart[].tx` credit: nothing accepted
-    pub uart_tx_credit: ww_stream::sink::SinkCredit,
+    /// `uart[].tx` credit: `uart[0]` accepts nothing, `uart[1]` (the header, as in the firmware) takes
+    /// [UART_TX_BUF] bytes and loops them back to its `rx` stream at once
+    pub uart_tx_credit: [ww_stream::sink::SinkCredit; 2],
+    /// `uart[1].rx`
+    pub uart_rx: ww_stream::tx::Counted,
     /// Sessions of counted and reliable streams opened so far
     pub stream_sessions: u32,
     /// Observed properties: what the host observes and when it is due, see `poll_properties`; `meter.reading`
@@ -47,7 +53,14 @@ impl MockServer {
             device_log_frames_stream: ww_stream::tx::Reliable::new(ww_stream::store::RamRing::new()),
             inputs_events_stream: ww_stream::tx::Counted::new(),
             unopened: ww_stream::tx::Counted::new(),
-            uart_tx_credit: ww_stream::sink::SinkCredit::new(0),
+            uart_tx_credit: [
+                ww_stream::sink::SinkCredit::new(0),
+                ww_stream::sink::SinkCredit::sized_for(
+                    UART_TX_BUF,
+                    Some(ww_uart::UART_TX_MAX as u32),
+                ),
+            ],
+            uart_rx: ww_stream::tx::Counted::new(),
             stream_sessions: 0,
             observe: api_impl::ObserveState::new(
                 ww_stream::observe::ObserveLimits::DEFAULT,
@@ -799,9 +812,13 @@ impl MockServer {
     async fn uart_rx(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        index_chain: [UNib32; 1],
     ) -> RpcResult<()> {
-        RpcResult::Ready(())
+        if index_chain[0].0 == 1 {
+            RpcResult::Ready(())
+        } else {
+            RpcResult::Unimplemented
+        }
     }
 
     async fn close_uart_rx(
@@ -811,12 +828,16 @@ impl MockServer {
     ) {
     }
 
-    async fn stream_uart_rx(&mut self, _index_chain: [UNib32; 1]) -> &mut ww_stream::tx::Counted {
-        &mut self.unopened
+    async fn stream_uart_rx(&mut self, index_chain: [UNib32; 1]) -> &mut ww_stream::tx::Counted {
+        if index_chain[0].0 == 1 {
+            &mut self.uart_rx
+        } else {
+            &mut self.unopened
+        }
     }
 
-    fn credit_uart_tx(&mut self, _index_chain: [UNib32; 1]) -> &mut ww_stream::sink::SinkCredit {
-        &mut self.uart_tx_credit
+    fn credit_uart_tx(&mut self, index_chain: [UNib32; 1]) -> &mut ww_stream::sink::SinkCredit {
+        &mut self.uart_tx_credit[(index_chain[0].0 as usize).min(1)]
     }
 
     async fn sideband_uart_tx(
@@ -831,10 +852,24 @@ impl MockServer {
 
     async fn write_uart_tx(
         &mut self,
-        _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
-        _data: &wire_weaver::shrink_wrap::tail_bytes::TailBytes<'_>,
+        cx: &mut Context<'_, impl EventOut>,
+        index_chain: [UNib32; 1],
+        data: &wire_weaver::shrink_wrap::tail_bytes::TailBytes<'_>,
     ) {
+        // `uart[0]` has no credit; `uart[1]` is looped back to its rx at once
+        if index_chain[0].0 != 1 {
+            return;
+        }
+        self.uart_tx_credit[1].free(data.0.len() as u32);
+        let chunk = ww_uart::RxChunk {
+            end: None,
+            flags: None,
+            bytes: MaxLen::new_unchecked(RefVec::new_bytes(data.0)),
+        };
+        _ = api_impl::stream_data_ser()
+            .uart(1)
+            .rx_send(&mut self.uart_rx, &chunk, data.0.len() as u64, None, cx)
+            .await;
     }
 
     async fn uart_capabilities(
