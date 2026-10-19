@@ -6,6 +6,10 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- Firmware: the header UART, `uart[1]` (API-14, first part): USART5 on IO7 (header pin 1, TX) and IO8 (pin 2, RX), 8N1 at a fixed 921 600 Bd (`uart[].configure` is still `Unimplemented`). Its `tx` credit sink grants 2048 B (the TX pipe `src/uart.rs`), gets the credit back once the bytes are out on the line (the server task gives it back, it wakes for the UART), and its counted `rx` stream sends what the receiver's DMA ring collected as chunks of up to 512 B, bytes the firmware could not keep counted as lost in the next event; `capabilities` answers for it. `uart[0]` (plug SBU) is as before. Needs a jumper between header pins 1 and 2 to loop back. Hardware check: WireWeaver TEST-26.
+
 ## [0.20.9] - 2026-10-20
 
 ### Changed

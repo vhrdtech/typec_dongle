@@ -29,7 +29,7 @@ use crate::{cmsis_dap, hub as hub_ctl, power, settings, swd as swd_host};
 use cnt::cnt;
 use defmt::{info, unwrap};
 use embassy_executor::Spawner;
-use embassy_futures::select::{Either4, select4};
+use embassy_futures::select::{Either5, select5};
 use embassy_stm32::{peripherals, usb};
 use embassy_time::{Instant, Timer};
 use embassy_usb::driver::{Direction, EndpointAddress};
@@ -54,9 +54,6 @@ const MAX_MESSAGE_LEN: usize = 1024;
 const EP_WW_OUT: usize = 1;
 const EP_WW_IN: usize = 2;
 const EP_CMSIS_DAP: usize = 3;
-
-/// Bytes `uart[]`'s TX sink accepts ahead (its credit), the TX buffer of API-14. Nothing is accepted until then.
-const UART_TX_CREDIT: u32 = 0;
 
 /// Biggest `PropertyUpdate` event the link carries; a batch of samples is sealed before it outgrows one.
 const OBSERVE_BUF_LEN: usize = 512;
@@ -99,6 +96,8 @@ pub struct ServerState {
     log_frames: crate::log::Stream,
     /// `uart[].tx` credit, per index (API-14).
     uart_tx_credit: [SinkCredit; uart::COUNT],
+    /// `uart[1].rx`, the header UART's counted receive stream (`uart[0]` has none yet: `unopened`).
+    uart_rx: Counted,
     /// `device.uid.IDS`: the STM32 96-bit UID.
     uid: [UniqueId<'static>; 1],
     /// `device.last_reset`: reset cause and crash record read at boot (`src/last_reset.rs`).
@@ -139,10 +138,16 @@ impl ServerState {
             stream_sessions,
             unopened: Counted::new(),
             log_frames: crate::log::stream(stream_sessions).await,
+            // `uart[0]` has no hardware behind it yet: no credit, nothing is accepted. `uart[1]` accepts what its
+            // TX pipe holds, items of up to `UART_TX_MAX`
             uart_tx_credit: [
-                SinkCredit::new(UART_TX_CREDIT),
-                SinkCredit::new(UART_TX_CREDIT),
+                SinkCredit::new(0),
+                SinkCredit::sized_for(
+                    crate::uart::TX_BUF as u32,
+                    Some(ww_uart::UART_TX_MAX as u32),
+                ),
             ],
+            uart_rx: Counted::new(),
             uid: [UniqueId {
                 kind: UidKind::ChipUnique,
                 source: UidSource::InternalIc,
@@ -403,16 +408,17 @@ async fn server_task(mut server: UsbServer<'static, UsbDriver>, state: &'static 
             .observe
             .next_wake(Instant::now().as_micros())
             .map(wire_weaver_usb_embassy::ww_device::Instant::from_micros);
-        match select4(
+        match select5(
             server.wait_until(observe_at),
             Timer::at(next_pump),
             power::wait_event(),
             OBSERVE.wait(),
+            crate::uart::wait_event(),
         )
         .await
         {
             // a due `Ready` (observe_at came) leaves `handle` nothing to do
-            Either4::First(ready) => {
+            Either5::First(ready) => {
                 if let Some(event) = server.handle(ready, state).await {
                     info!("{:?}", event);
                     if matches!(event, LinkEvent::Down(_)) {
@@ -421,11 +427,11 @@ async fn server_task(mut server: UsbServer<'static, UsbDriver>, state: &'static 
                     }
                 }
             }
-            Either4::Second(()) => {
+            Either5::Second(()) => {
                 next_pump += crate::log::PUMP_PERIOD;
                 state.settings_idle().await;
             }
-            Either4::Third(()) => {
+            Either5::Third(()) => {
                 while let Some(done) = power::take_cycle_done() {
                     if done.seq != 0
                         && server.is_up()
@@ -442,7 +448,8 @@ async fn server_task(mut server: UsbServer<'static, UsbDriver>, state: &'static 
                 }
             }
             // a change from outside the server state (taken by next_wake / poll_properties) or a batch of samples
-            Either4::Fourth(()) => {}
+            Either5::Fourth(()) => {}
+            Either5::Fifth(()) => state.uart_pump(&mut server).await,
         }
         crate::log::pump(&mut state.log_frames).await;
         if server.is_up() {

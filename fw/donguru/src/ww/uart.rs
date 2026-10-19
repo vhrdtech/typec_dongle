@@ -1,7 +1,15 @@
 //! `uart[]`: 0 = plug SBU, 1 = header IO7/IO8 (`ww_uart::Uart`, API-14).
 
 use super::ServerState;
+use super::UsbDriver;
+use crate::uart;
+use embassy_time::Instant;
 use wire_weaver::prelude::*;
+use wire_weaver_usb_embassy::UsbServer;
+use ww_uart::{RxChunk, UART_CHUNK_MAX};
+
+/// `uart[]` index of the header UART, the only one with hardware behind it so far.
+const HEADER: usize = 1;
 
 /// Indices of `uart[]`: 0 = plug SBU, 1 = header.
 pub(super) const COUNT: usize = 2;
@@ -17,9 +25,13 @@ impl ServerState {
     pub(super) fn uart_rx(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        index_chain: [UNib32; 1],
     ) -> RpcResult<()> {
-        RpcResult::Unimplemented
+        if index_chain[0].0 as usize == HEADER {
+            Ready(())
+        } else {
+            RpcResult::Unimplemented
+        }
     }
 
     pub(super) fn close_uart_rx(
@@ -31,9 +43,13 @@ impl ServerState {
 
     pub(super) fn stream_uart_rx(
         &mut self,
-        _index_chain: [UNib32; 1],
+        index_chain: [UNib32; 1],
     ) -> &mut ww_stream::tx::Counted {
-        &mut self.unopened
+        if index_chain[0].0 as usize == HEADER {
+            &mut self.uart_rx
+        } else {
+            &mut self.unopened
+        }
     }
 
     pub(super) fn credit_uart_tx(
@@ -58,17 +74,46 @@ impl ServerState {
     pub(super) fn write_uart_tx(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
-        _data: &wire_weaver::shrink_wrap::tail_bytes::TailBytes<'_>,
+        index_chain: [UNib32; 1],
+        data: &wire_weaver::shrink_wrap::tail_bytes::TailBytes<'_>,
     ) {
+        // the other index has no credit, so nothing arrives for it
+        if index_chain[0].0 as usize == HEADER && uart::tx_write(data.0) < data.0.len() {
+            // the host kept to its credit, the pipe holds all of it
+            cnt::cnt!(uart_tx_overruns: u32, warn);
+        }
     }
 
     pub(super) fn uart_capabilities(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        index_chain: [UNib32; 1],
     ) -> RpcResult<ww_uart::Capabilities<'_>> {
-        Unimplemented.into()
+        if index_chain[0].0 as usize != HEADER {
+            return Unimplemented.into();
+        }
+        // one fixed rate until `configure` is implemented
+        Ready(ww_uart::Capabilities {
+            min_baud_rate: ww_uart::Baud::base(uart::BAUD),
+            max_baud_rate: ww_uart::Baud::base(uart::BAUD),
+            io_levels: MaxLen::new_unchecked(RefVec::Slice {
+                slice: &const {
+                    [ww_si::Volt::from_parts(
+                        ww_si::Prefix::Milli,
+                        ww_si::ww_numeric::NumericValue::U32(3300),
+                    )]
+                },
+            }),
+            io_level_min: None,
+            io_level_max: None,
+            hw_flow_control: false,
+            sw_flow_control: false,
+            high_z_mode: false,
+            test_mode: false,
+            back_feed_detector: false,
+            rx_buffer: uart::RX_BUF as u32,
+            tx_buffer: uart::TX_BUF as u32,
+        })
     }
 
     pub(super) fn uart_configure(
@@ -129,5 +174,63 @@ impl ServerState {
         _index_chain: [UNib32; 1],
     ) -> &mut ww_stream::tx::Counted {
         &mut self.unopened
+    }
+}
+
+impl ServerState {
+    /// The header UART has something for the host: credit to give back for bytes sent on the line, bytes received.
+    /// Called by the server task when [uart::wait_event] completes.
+    pub(super) async fn uart_pump(&mut self, server: &mut UsbServer<'static, UsbDriver>) {
+        let done = uart::take_tx_done();
+        if done > 0 {
+            self.uart_tx_credit[HEADER].free(done);
+            if server.is_up()
+                && let Some(ack) = self.uart_tx_credit[HEADER].take_ack()
+            {
+                let mut out = server.sink();
+                let r = super::server_impl::stream_data_ser()
+                    .uart(HEADER as u32)
+                    .tx_sideband_send(ack, &mut out)
+                    .await;
+                if r.is_err() {
+                    cnt::cnt!(uart_ack_errors: u32);
+                }
+            }
+        }
+        let dropped = uart::take_rx_dropped();
+        if dropped > 0 {
+            self.uart_rx.lost(dropped as u64);
+        }
+        let mut buf = [0u8; UART_CHUNK_MAX];
+        loop {
+            let n = uart::read_rx(&mut buf);
+            if n == 0 {
+                break;
+            }
+            let bytes = &buf[..n];
+            if !self.uart_rx.is_attached() {
+                // nobody receives: dropped, the host that opens the stream starts at the next byte
+                continue;
+            }
+            if !server.is_up() {
+                self.uart_rx.lost(n as u64);
+                continue;
+            }
+            let chunk = RxChunk {
+                // the DMA ring is read in turns, not when the last byte arrived: no time of its own
+                end: None,
+                flags: None,
+                bytes: MaxLen::new_unchecked(RefVec::new_bytes(bytes)),
+            };
+            let first = ww_si::Second::micro(Instant::now().as_micros() as u32);
+            let mut out = server.sink();
+            let r = super::server_impl::stream_data_ser()
+                .uart(HEADER as u32)
+                .rx_send(&mut self.uart_rx, &chunk, n as u64, Some(first), &mut out)
+                .await;
+            if r.is_err() {
+                cnt::cnt!(uart_rx_send_errors: u32);
+            }
+        }
     }
 }

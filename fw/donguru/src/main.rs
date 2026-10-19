@@ -12,6 +12,7 @@ mod log;
 mod power;
 mod settings;
 mod swd;
+mod uart;
 mod ww;
 
 use cnt::cnt; // cnt::bkp_cnt! for counters in backup registers
@@ -26,7 +27,7 @@ use embassy_stm32::{
         PllRDiv, PllSource, Sysclk,
         mux::{Adcsel, Usbsel},
     },
-    usb,
+    usart, usb,
 };
 
 assign_resources! {
@@ -113,6 +114,16 @@ assign_resources! {
         pb6: PB6,
         spi2: SPI2,
     }
+    uart: UartResources {
+        usart5: USART5,
+        /// IO7, header pin 1: USART5_TX (`src/uart.rs`)
+        pb3: PB3,
+        /// IO8, header pin 2: USART5_RX
+        pb4: PB4,
+        tx_dma: DMA1_CH2,
+        /// Must match the DMA interrupt bound in Irqs
+        rx_dma: DMA1_CH3,
+    }
     settings: SettingsResources {
         /// The ww_settings store in the last 4 pages of bank 2 (`SETTINGS` in memory.x, API-19).
         flash: FLASH,
@@ -121,6 +132,8 @@ assign_resources! {
 
 bind_interrupts!(pub struct Irqs {
     DMA1_CHANNEL1 => dma::InterruptHandler<peripherals::DMA1_CH1>;
+    DMA1_CHANNEL2_3 => dma::InterruptHandler<peripherals::DMA1_CH2>, dma::InterruptHandler<peripherals::DMA1_CH3>;
+    USART3_4_5_6_LPUART1 => usart::InterruptHandler<peripherals::USART5>;
     USB_UCPD1_2 => usb::InterruptHandler<peripherals::USB>;
 });
 
@@ -190,6 +203,7 @@ async fn main(spawner: embassy_executor::Spawner) {
     let swd_host = swd::SwdHost::new(r.swd);
     // device.settings and the label (API-19): their boot values are applied by ww::start
     let settings = settings::open(r.settings.flash).await;
+    uart::init(spawner, r.uart);
     ww::start(spawner, usb_driver, swd_host, last_reset, settings).await;
 
     info!("init done");
