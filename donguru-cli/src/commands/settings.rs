@@ -26,7 +26,7 @@ pub enum SettingKey {
     PlugVbusAtBoot,
     /// Boot value of `inputs.button_action`: `off`, `toggle-vbus`, `cycle-vbus` or `toggle-data`
     ButtonAction,
-    /// Boot value of `meter.window`: a duration, 1 ms..=1 s, e.g. `10ms`
+    /// Boot value of `meter.window`: a duration, 0.9 ms..=14.9 ms (one ADC buffer), e.g. `10ms`
     MeterWindow,
     /// Boot value of `meter.deadband`: `VOLT,AMPERE` (e.g. `20mV,10mA`), or `--voltage`/`--current`
     MeterDeadband,
@@ -277,15 +277,14 @@ fn window_json(window: Second) -> serde_json::Value {
 }
 
 fn set_meter_window(ctx: &Context, args: &Set) -> anyhow::Result<ExitCode> {
-    let value = args
-        .value
-        .as_deref()
-        .ok_or_else(|| anyhow::anyhow!("meter_window needs a duration, e.g. 10ms (1 ms..=1 s)"))?;
+    let value = args.value.as_deref().ok_or_else(|| {
+        anyhow::anyhow!("meter_window needs a duration, e.g. 10ms (0.9 ms..=14.9 ms)")
+    })?;
     let duration = humantime::parse_duration(value).map_err(|e| anyhow::anyhow!("{value}: {e}"))?;
     if duration.is_zero() {
         anyhow::bail!("{value}: must be greater than zero");
     }
-    let window = Second::milli(duration.as_millis() as i32);
+    let window = Second::micro(duration.as_micros().min(i32::MAX as u128) as i32);
     let got = super::with_dongle(ctx, async |dongle| {
         let s = dongle.device().settings();
         checked(s.set_meter_window(window).await)?;

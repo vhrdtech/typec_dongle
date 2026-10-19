@@ -311,6 +311,16 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `can-on-the-plug`.
 - 💡 **FW-37 Logic analyzer on the header**: timer-paced DMA sampling of IO7..IO10 into a RAM buffer with a trigger and
   pre-trigger, streamed to the host; a few MS/s buffered, less continuous (USB FS). Lab `logic-analyzer`.
+- 🐛 **FW-40 Small-message throughput down with event-driven observe** (WireWeaver SRV-25, branch server-size):
+  `ww usb-loopback` 64 B host -> device 361-366 kB/s before SRV-25 and on 0.20.6, 301-303 kB/s with it (-17%); 1 KB
+  host -> device 628-642 -> 618 kB/s; round trips and device -> host unchanged (B153A, 19 Oct 2026, same host and
+  `ww`). `server_task` calls `ObserveState::next_wake` twice per wake, also with nothing observed; skipping it while
+  `budget_in_use() == 0` gave back 351-357 kB/s. Likely fix in the generated `next_wake`: return early when nothing
+  is observed, before the batched meter level's outbox and cells walk.
+- 🐛 **FW-41 Hub bring-up loop after a probe-rs download and reset**: 0.20.6 flashed with `probe-rs download` and
+  started with `probe-rs reset` (J-Link, B153A, 19 Oct 2026) logged `hub: lost after brown-out, redoing bring-up`
+  every 0.6 s for over a minute and never enumerated; flashed and started by `cnt run` it came up at once. Seen
+  once, not chased: maybe FW-18's watchdog fighting a hub left in an odd state by the debugger reset.
 
 ## API (`API`)
 
@@ -697,10 +707,10 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `usb-over-sbu`.
 - 💡 **CLI-46 `dg clients`**: who is connected (USB through the server, NCM), what they observe and which leases they
   hold (API-33). Lab `many-clients`.
-- 🧪 **CLI-47 `dg settings show / set KEY VALUE / reset`** (`donguru-cli/src/commands/settings.rs`, API-19):
+- ✅ **CLI-47 `dg settings show / set KEY VALUE / reset`** (`donguru-cli/src/commands/settings.rs`, API-19):
   `show` prints every setting (text/json/jsonl); `set` changes one: `plug_vbus_at_boot off|on [--max-voltage
   V]|auto --trip A [--max-voltage V]` (reuses `donguru_core::vbus`, as `dg power on`), `button_action
-  off|toggle-vbus|cycle-vbus|toggle-data`, `meter_window DURATION` (1 ms..=1 s, e.g. `10ms`), `meter_deadband
+  off|toggle-vbus|cycle-vbus|toggle-data`, `meter_window DURATION` (0.9 ms..=14.9 ms, one ADC DMA half buffer, FW-3; e.g. `10ms`), `meter_deadband
   VOLT,AMPERE` (e.g. `20mV,10mA`) or `--voltage`/`--current`, `uart_plug "BAUD BITSPARITYSTOP"` (e.g. `"115200
   8N1"`, read-modify-write: only baud/bits/parity/stop change, the rest of `UartConfig` stays); `reset` calls
   `settings.reset` with no confirmation, printing what it resets first (every setting and the label; factory data
@@ -711,7 +721,8 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   (API-19) and so isn't a flag here. Tested against the mock (`donguru-core/tests/mock.rs`'s `settings` test,
   `donguru-cli/src/commands/settings.rs`'s unit/insta tests); not yet on hardware (API-19's flash store is
   built in session `ww-latest`).
-
+ Tested 19 Oct 2026 on B153A: show, set of every key (a too-long `meter_window` refused with the device's message), reset (label and settings to defaults).
+- 🐛 **CLI-48 `Broken pipe` when stdout closes early**: `dg power status | head -2` prints `donguru: error: Broken pipe (os error 32)` on stderr; a closed stdout should end the command quietly (exit 0 or the usual SIGPIPE status), as other CLIs do.
 ## GUI (`GUI`)
 
 - 💡 **GUI-1 `dg ui`**: native egui app over USB (the same donguru-core): a dongle list with labels and identify, a
