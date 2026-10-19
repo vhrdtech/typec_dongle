@@ -6,10 +6,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
-### Fixed
-
-- Observing `plug` sends its values (WireWeaver SRV-24 fix): `plug.cc` answers `Unimplemented`, and that one value made every `plug` update go out empty (`ww observe plug` showed `{}  missed 5`, also on 0.20.6), so `plug.vbus`, `vbus_mode`, `data` and `orientation` never reached a host. Now `cc` is left out and counted missed. Tested 19 Oct 2026 on B153A.
-- `dg settings set meter_window` says the range the firmware takes, 0.9 ms..=14.9 ms (one ADC DMA half buffer, FW-3), instead of 1 ms..=1 s (15 ms and up were refused with `window out of range`), and sends the window in microseconds, so `900us` or `1500us` are no longer cut to whole milliseconds (CLI-47). Tested 19 Oct 2026 on B153A.
+## [0.20.8] - 2026-10-19
 
 ### Changed
 
@@ -18,6 +15,11 @@ IDs refer to [FEATURES.md](FEATURES.md).
 - Firmware: handlers that never await are plain `fn`s, only the ones that do (settings and label writes, meter reads, `plug.vbus_cycle`, `sbu.release`, `adc.read`, `debug.log_flood`) stay `async` (WireWeaver SRV-21 `handler_model`); a property whose setter awaits keeps an async getter too. Release FLASH at opt-level 3 397.8 -> 385.2 KiB (-12.6), at z 282.2 -> 262.1 KiB (-20.2). Tested 19 Oct 2026 on B153A with SRV-22..25: settings show / set / reset, `plug.vbus_cycle`, the meter; device errors name their site (`BadIndex at level site 42 (index not valid)` for `uart[7]`, `Unimplemented at item site 2 (handler)`).
 - Firmware: built with WireWeaver's fixed error site numbers (SRV-22): an error's `err_seq` names the same site in every build, and the error arms of the server are shared code. Release FLASH at opt-level 3 385.2 -> 383.5 KiB (-1.7), at z 262.1 -> 260.6 KiB (-1.5). No code change in the firmware.
 - Firmware: built with WireWeaver's one observe table code (SRV-23) and one observe loop (SRV-24) for every trait level, instead of a copy per level. Release FLASH at opt-level 3 383.5 -> 363.1 KiB (-20.4), at z 260.6 -> 246.4 KiB (-14.2). No code change in the firmware.
+
+### Fixed
+
+- Observing `plug` sends its values (WireWeaver SRV-24 fix): `plug.cc` answers `Unimplemented`, and that one value made every `plug` update go out empty (`ww observe plug` showed `{}  missed 5`, also on 0.20.6), so `plug.vbus`, `vbus_mode`, `data` and `orientation` never reached a host. Now `cc` is left out and counted missed. Tested 19 Oct 2026 on B153A.
+- `dg settings set meter_window` says the range the firmware takes, 0.9 ms..=14.9 ms (one ADC DMA half buffer, FW-3), instead of 1 ms..=1 s (15 ms and up were refused with `window out of range`), and sends the window in microseconds, so `900us` or `1500us` are no longer cut to whole milliseconds (CLI-47). Tested 19 Oct 2026 on B153A.
 
 ## [0.20.7] - 2026-10-19
 
