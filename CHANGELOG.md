@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.4] - 2026-10-19
+
 ### Added
 
 - `dg settings show / set KEY VALUE / reset` (CLI-47, API-19): `show` prints every setting, `set` changes `plug_vbus_at_boot`, `button_action`, `meter_window`, `meter_deadband` or `uart_plug` (shell completion shows each `KEY`'s shape), `reset` puts everything and the label back to defaults (factory data stays) with no confirmation prompt, saying what it resets first. A `CommonError::Fault` from the settings store (flash write failed / a newer firmware's record / a record too big) now reads as a sentence instead of a raw code (`donguru_core::Error::fault_note`); the mock gained `settings_fault` to test it. No `--factory` flag: the design doc has one, the `Settings` API (API-19) doesn't.

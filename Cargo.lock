@@ -689,7 +689,7 @@ dependencies = [
 
 [[package]]
 name = "donguru-cli"
-version = "0.20.3"
+version = "0.20.4"
 dependencies = [
  "anstream",
  "anyhow",
@@ -713,7 +713,7 @@ dependencies = [
 
 [[package]]
 name = "donguru-core"
-version = "0.20.3"
+version = "0.20.4"
 dependencies = [
  "anyhow",
  "clap",
@@ -767,11 +767,11 @@ dependencies = [
 
 [[package]]
 name = "donguru_dap"
-version = "0.20.3"
+version = "0.20.4"
 
 [[package]]
 name = "donguru_hub"
-version = "0.20.3"
+version = "0.20.4"
 dependencies = [
  "donguru_api",
  "usb251xb",
@@ -779,7 +779,7 @@ dependencies = [
 
 [[package]]
 name = "donguru_power"
-version = "0.20.3"
+version = "0.20.4"
 dependencies = [
  "donguru_api",
  "ww_si",
