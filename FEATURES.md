@@ -391,8 +391,12 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   its own device time, as compressed `Series` batches of 32 rows. The ADC task writes the rows into observe cells
   (a ring of 64 in a static, `MeterSamples` in `ww/meter.rs`), only while a host samples; times are back-dated from
   the DMA half transfer by one sequence each. +3.8 KiB RAM, +44 KiB flash (the `Series` codecs of three quantities
-  of any number type; FLASH 397 of 504 KiB). Built, mock-tested, not yet run on a board: encoding cost at 1.6 kHz
-  on the M0+ unmeasured.
+  of any number type; FLASH 397 of 504 KiB). `dg power watch --samples` asks a 16 kB/s budget (the device's
+  default 2 kB/s carries about a third). Tested 19 Oct 2026 on B153A + B129A at 5.2 V: 8014 samples in 4.98 s
+  (1608/s), none missed, times increasing, the largest step 0.79 ms (back-dating jitter), current 6..26 mA. The
+  first run after another one left 18 rows from 88 s before: WireWeaver's `ObserveState::reset` kept the cells'
+  rows, fixed upstream (wire_weaver s/19oct2026-uart-config-eq, test `reset_drops_waiting_rows`), not yet rechecked
+  on the board. CPU load of the encoding not measured (no cycle counter on the M0+).
 - 📋 **API-13 Button and switch**: observable button (with a press counter) and slide switch, counted event stream.
   With FW-4. ^revB
 - 📋 **API-14 SBU owner and UART on SBU**: one function at a time on the plug SBU lines, `sbu.release`; `uart[0]` as
@@ -414,9 +418,16 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   live and at boot), `button_action` and `uart_plug` (stored only until FW-4 / API-14 use them); `reset` puts every
   field and the label back to the default. Every write answers once the record is in flash (`Fault` code 1 flash,
   2 a newer firmware's record kept until `reset`, 3 record too big); the page erase ahead runs in the server task
-  after the answer (~25 ms). Code: `fw/donguru/src/settings.rs`, handlers in `ww/device.rs`. +2.3 KiB RAM. Factory
-  key (FW-9 calibration) not used yet. Built 19 Oct 2026, not yet run on a board. CLI: `dg settings` (separate
-  item). ^revB
+  after the answer (~25 ms). Code: `fw/donguru/src/settings.rs`, handlers in `ww/device.rs`. +2.3 KiB RAM, +38 KiB
+  flash (half of it the served properties' serdes, linked now that they answer; FLASH 351 of 504 KiB). The label
+  at boot also goes into the WireWeaver interface's USB string descriptor (`ww list` LABEL column, a new label
+  shows after the next boot). Factory key (FW-9 calibration) not used yet. CLI: `dg settings` (CLI-47).
+  Tested 19 Oct 2026 on B153A + B129A (Python bindings, J-Link on omarchy-m1): a store left by an earlier bench test
+  (label "bench-1") loaded as is; every setting and the label written (3-6 ms per write, the record programmed
+  before the answer), out-of-range `meter_window` and a 0 V `plug_vbus_at_boot` refused with `InvalidArgument` and
+  their reason; after a reset everything read back, the live deadband came from the setting, and
+  `plug_vbus_at_boot` = ForceOn 6 V switched plug VBUS on at boot through the guard (5.225 V, 16 mA). Not tested:
+  `reset`, a power cut during a write, the `ww list` label (built after the board test). ^revB
 
 - 📋 **API-20 SBU UART as CDC-ACM**: the SBU USART also as `/dev/ttyACM*`; one owner at a time (ACM while the tty is
   open, else WireWeaver), the owner shown in `sbu.function`, WireWeaver gets `InUse`, `sbu.release` overrides. With

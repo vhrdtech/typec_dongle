@@ -288,6 +288,8 @@ impl Default for UsbBuffers {
 static USB_BUFFERS: StaticCell<UsbBuffers> = StaticCell::new();
 static SERVER_STATE: StaticCell<ServerState> = StaticCell::new();
 static UID: StaticCell<[u8; 12]> = StaticCell::new();
+/// `server_impl::API_ID` with the user label (API-19), as the WireWeaver interface's string descriptor.
+static API_ID_LABELED: StaticCell<[u8; 256]> = StaticCell::new();
 
 /// Builds the composite USB device (WireWeaver + CMSIS-DAP v2, `src/cmsis_dap.rs`) on `driver` and spawns the
 /// USB, WireWeaver server and CMSIS-DAP tasks. `swd_host` is handed to the CMSIS-DAP task, which is the sole
@@ -330,8 +332,13 @@ pub async fn start(
 
     let timings = UsbTimings::fs_higher_speed();
     let link_cfg = link_config();
-    // server_impl::API_ID is reported in a USB string descriptor, `ww list` shows it without opening the device.
-    // A user label (e.g. loaded from flash) can be added with wire_weaver::api_id::with_label().
+    // server_impl::API_ID is reported in a USB string descriptor, `ww list` shows it without opening the device,
+    // with the label from the settings (as it was at boot: a new label shows after the next one)
+    let api_id = wire_weaver::api_id::with_label(
+        server_impl::API_ID,
+        state.user.get().label.as_str(),
+        API_ID_LABELED.init([0; 256]),
+    );
     // Double-buffered bulk endpoints: the USB peripheral takes the next packet while the previous one is processed,
     // instead of making the host retry (through the board's hub that costs ~half the throughput, FW-24). Each one
     // uses both directions of a hardware endpoint register.
@@ -340,7 +347,7 @@ pub async fn start(
         &mut buffers.ww_state,
         timings.packet_send_timeout,
         &link_cfg.user_api_version,
-        server_impl::API_ID,
+        api_id,
         |alt| {
             (
                 alt.endpoint_bulk_out_double_buffered(
