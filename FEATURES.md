@@ -314,9 +314,11 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 🐛 **FW-40 Small-message throughput down with event-driven observe** (WireWeaver SRV-25, branch server-size):
   `ww usb-loopback` 64 B host -> device 361-366 kB/s before SRV-25 and on 0.20.6, 301-303 kB/s with it (-17%); 1 KB
   host -> device 628-642 -> 618 kB/s; round trips and device -> host unchanged (B153A, 19 Oct 2026, same host and
-  `ww`). `server_task` calls `ObserveState::next_wake` twice per wake, also with nothing observed; skipping it while
-  `budget_in_use() == 0` gave back 351-357 kB/s. Likely fix in the generated `next_wake`: return early when nothing
-  is observed, before the batched meter level's outbox and cells walk.
+  `ww`). Mostly fixed in WireWeaver: the generated `ObserveState::next_wake` returns at once while nothing is
+  observed (336-339 kB/s), and `ObserveTable::is_active` is a flag instead of a walk over the slots: 343 kB/s at
+  64 B, 621-628 kB/s at 1 KB (in the 0.20.6 range). Still ~5% short at 64 B: what is left is the event-driven loop
+  itself (`select4` with `wait_until` and `OBSERVE.wait()`, a timer and two waker registrations per wake, critical
+  sections on the M0); not looked into further.
 - 🐛 **FW-41 Hub bring-up loop after a probe-rs download and reset**: 0.20.6 flashed with `probe-rs download` and
   started with `probe-rs reset` (J-Link, B153A, 19 Oct 2026) logged `hub: lost after brown-out, redoing bring-up`
   every 0.6 s for over a minute and never enumerated; flashed and started by `cnt run` it came up at once. Seen
