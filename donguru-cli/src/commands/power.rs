@@ -13,7 +13,7 @@ use donguru_core::api::{
     DataPath, GuardTrip, MeterReading, MeterTotals, Second, VbusMode, VbusState,
 };
 use donguru_core::client::observe::{
-    BatchedOwned, ObserveEvent, PowerMeterObserve, on_change as on_change_mode, periodic, samples,
+    BatchedOwned, ObserveEvent, PowerMeterObserve, on_change as on_change_mode, periodic,
 };
 
 /// Default delay between two samples of `power watch`.
@@ -417,17 +417,19 @@ fn watch(
     let selector = super::selector(ctx)?;
     super::runtime()?.block_on(async {
         let dongle = donguru_core::Dongle::open(selector.as_ref()).await?;
-        let mode = if sampled {
-            samples(interval)
-        } else if on_change {
-            on_change_mode(interval)
+        let mut observer = if sampled {
+            dongle.meter().observe_samples(interval).await?
         } else {
-            periodic(interval)
+            let mode = if on_change {
+                on_change_mode(interval)
+            } else {
+                periodic(interval)
+            };
+            dongle
+                .meter()
+                .observe(PowerMeterObserve::default().reading(mode))
+                .await?
         };
-        let mut observer = dongle
-            .meter()
-            .observe(PowerMeterObserve::default().reading(mode))
-            .await?;
         let started = std::time::Instant::now();
         loop {
             tokio::select! {

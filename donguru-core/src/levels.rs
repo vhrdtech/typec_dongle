@@ -6,6 +6,7 @@
 //! calls Donguru's tools use here, and the generated client of the level through `raw()` for everything else.
 
 use std::fmt;
+use std::time::Duration;
 
 use donguru_api::{
     BoardVariant, ButtonAction, ButtonState, CcRole, CcState, DataPath, DebugErrorOwned, HubState,
@@ -70,6 +71,10 @@ where
 }
 
 /// Subscribes to an observed level, see [crate::client::observe].
+/// Bytes per second asked for `meter.reading` samples: ~1.6 k samples/s of about 4 bytes each, with room for a busy
+/// DUT whose current changes every sample. The firmware grants up to 20 kB/s per level.
+pub const METER_SAMPLES_BUDGET: u32 = 16_000;
+
 async fn subscribe<U: wire_weaver_client::observe::LevelUpdate>(
     item: &str,
     p: PreparedObserve<U, U>,
@@ -426,6 +431,14 @@ impl Meter<'_> {
     /// Observes `reading`, `temperature` and `totals` as `cfg` asks.
     pub async fn observe(&self, cfg: PowerMeterObserve) -> Result<Observer<PowerMeterUpdate>> {
         subscribe("PowerMeter", self.c.meter().observe(cfg)).await
+    }
+
+    /// Observes every `reading` sample (one per ADC sequence, ~1.6 kHz, API-39) in batches at most `max_age` old,
+    /// with the budget they need: the device's default level budget (2 kB/s) carries about a third of them.
+    pub async fn observe_samples(&self, max_age: Duration) -> Result<Observer<PowerMeterUpdate>> {
+        let cfg = PowerMeterObserve::default().reading(samples(max_age));
+        let p = self.c.meter().observe(cfg).budget(METER_SAMPLES_BUDGET);
+        subscribe("PowerMeter", p).await
     }
 }
 

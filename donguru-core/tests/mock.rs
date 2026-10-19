@@ -547,7 +547,7 @@ async fn meter_reading_samples() {
     mock.with(|s| s.reading.vbus_in = mv(5_200)).await;
     let mut meter = dongle
         .meter()
-        .observe(PowerMeterObserve::default().reading(samples(Duration::from_millis(20))))
+        .observe_samples(Duration::from_millis(20))
         .await
         .expect("observe meter.reading samples");
     let rows = tokio::time::timeout(Duration::from_secs(2), async {
