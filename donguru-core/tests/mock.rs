@@ -4,7 +4,9 @@
 use std::time::Duration;
 
 use donguru_core::api::*;
-use donguru_core::client::observe::{PlugObserve, PowerMeterObserve, on_change};
+use donguru_core::client::observe::{
+    BatchedOwned, PlugObserve, PowerMeterObserve, on_change, samples,
+};
 use donguru_core::levels::Side;
 use donguru_core::mock::MockDevice;
 use donguru_core::{DeviceErrorKind, Dongle, Error};
@@ -528,7 +530,7 @@ async fn observe_plug_and_meter() {
                 .value
                 .reading
                 .as_ref()
-                .is_some_and(|r| r.vbus_in == mv(5_100))
+                .is_some_and(|r| matches!(r, BatchedOwned::One(r) if r.vbus_in == mv(5_100)))
             {
                 return;
             }
@@ -536,6 +538,39 @@ async fn observe_plug_and_meter() {
     })
     .await;
     assert!(got.is_ok(), "no meter.reading update");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn meter_reading_samples() {
+    // the mock takes one sample per tick of its loop (1 ms), as the firmware takes one per ADC sequence
+    let (mock, dongle) = start("core/meter-samples").await;
+    mock.with(|s| s.reading.vbus_in = mv(5_200)).await;
+    let mut meter = dongle
+        .meter()
+        .observe(PowerMeterObserve::default().reading(samples(Duration::from_millis(20))))
+        .await
+        .expect("observe meter.reading samples");
+    let rows = tokio::time::timeout(Duration::from_secs(2), async {
+        let mut rows = vec![];
+        while rows.len() < 20 {
+            let u = meter.recv().await.expect("meter update");
+            if let Some(reading @ BatchedOwned::Samples(_)) = u.value.reading {
+                let paired = reading
+                    .into_samples(u.t, u.sample_times.as_deref())
+                    .expect("one time per sample");
+                rows.extend(paired);
+            }
+        }
+        rows
+    })
+    .await
+    .expect("no batch of samples");
+    assert!(rows.iter().all(|(r, _)| r.vbus_in == mv(5_200)));
+    let times: Vec<f64> = rows
+        .iter()
+        .map(|(_, t)| t.as_ref().expect("every sample has its time").to_f64())
+        .collect();
+    assert!(times.windows(2).all(|w| w[0] < w[1]), "{times:?}");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

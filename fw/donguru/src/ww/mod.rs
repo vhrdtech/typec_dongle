@@ -23,6 +23,8 @@ mod sbu;
 mod swd;
 mod uart;
 
+pub use meter::MeterSamples;
+
 use crate::{cmsis_dap, hub as hub_ctl, power, settings, swd as swd_host};
 use cnt::cnt;
 use defmt::{info, unwrap};
@@ -58,8 +60,24 @@ const UART_TX_CREDIT: u32 = 0;
 
 /// How often observed properties are checked while a host observes any (`poll_properties`).
 const OBSERVE_TICK: Duration = Duration::from_millis(1);
-/// Biggest `PropertyUpdate` event the link carries.
-const OBSERVE_BUF_LEN: usize = 256;
+/// Biggest `PropertyUpdate` event the link carries; a batch of samples is sealed before it outgrows one.
+const OBSERVE_BUF_LEN: usize = 512;
+/// Rows of `meter.reading` samples the ADC task can commit between two `poll_properties` (API-39): a DMA half
+/// buffer brings 24 at once, so 64 rides out a few late turns of the server task.
+const METER_SAMPLES_RING: usize = 64;
+
+/// Observe cells of `meter.reading` (API-39, `observe_cells` in `ww_codegen!`): the ADC task writes one row per
+/// sequence through [MeterSamples], `poll_properties` encodes them for hosts observing in `Samples` mode.
+static METER_SAMPLES: server_impl::RootMeterCells<METER_SAMPLES_RING> =
+    server_impl::RootMeterCells::new();
+type ObserveState = server_impl::ObserveState<&'static mut server_impl::ObserveBatches<'static>>;
+// built in place: by value they would take several times their size of stack
+static OBSERVE_BATCHES: StaticCell<server_impl::ObserveBatches<'static>> = StaticCell::new();
+static OBSERVE_STATE: StaticCell<ObserveState> = StaticCell::new();
+/// One column of a batch while it is encoded: the biggest is `meter.reading`'s.
+const OBSERVE_SCRATCH: usize =
+    ww_stream::batch::scratch_bytes::<donguru_api::MeterReading>(server_impl::OBSERVE_BATCH);
+static SCRATCH: StaticCell<ww_stream::batch::Scratch<OBSERVE_SCRATCH>> = StaticCell::new();
 /// Biggest item of a reliable stream: `device.log.frames`' `DefmtFrames` (512 B of frames and its length).
 const STREAM_BUF_LEN: usize = ww_log::MAX_FRAMES_LEN + 16;
 /// Bytes of stream items sent per turn of the server task (at least one event), so requests keep being served.
@@ -68,8 +86,9 @@ const STREAM_BUDGET: usize = 2048;
 /// Everything the API implementation needs that isn't a global of its driver module (LEDs, SWD, hub keep their
 /// state in `src/led.rs`, `src/swd.rs`, `src/hub.rs`, shared with their tasks).
 pub struct ServerState {
-    /// Observed properties (SRV-18): what hosts observe and when it is due, see [server_task].
-    observe: server_impl::ObserveState,
+    /// Observed properties (SRV-18) and batches of samples (API-39): what hosts observe and when it is due, see
+    /// [server_task].
+    observe: &'static mut ObserveState,
     /// Sessions of counted and reliable streams opened so far, see `new_stream_session`.
     stream_sessions: u32,
     /// State handed out for every counted stream not implemented yet: their open answers `Unimplemented`, so it is
@@ -106,7 +125,15 @@ impl ServerState {
         // for its own (the boot count restarts at a power-on, the log store is lost with it then)
         let stream_sessions = last_reset.view().boot_count << 16 | 1;
         ServerState {
-            observe: server_impl::ObserveState::new(ObserveLimits::DEFAULT),
+            observe: ObserveState::init(
+                OBSERVE_STATE.uninit(),
+                ObserveLimits::DEFAULT,
+                server_impl::ObserveBatches::init(
+                    OBSERVE_BATCHES.uninit(),
+                    ww_stream::batch::DEFAULT_POLICY,
+                    unwrap!(METER_SAMPLES.reader()),
+                ),
+            ),
             stream_sessions,
             unopened: Counted::new(),
             log_frames: crate::log::stream(stream_sessions).await,
@@ -137,8 +164,8 @@ impl ServerState {
     }
 
     /// Settings and send state of observed properties, for `Observe` requests and `poll_properties`.
-    fn observe_state(&mut self) -> &mut server_impl::ObserveState {
-        &mut self.observe
+    fn observe_state(&mut self) -> &mut ObserveState {
+        self.observe
     }
 }
 
@@ -152,6 +179,10 @@ mod server_impl {
         server = true, no_alloc = true, use_async = true,
         method_model = "plug_vbus_cycle=deferred, _=immediate",
         property_model = "_=get_set",
+        // rows of samples per batch: ~20 ms of meter.reading sequences
+        observe_batch = 32,
+        observe_outbox = 1024,
+        observe_cells = "root_meter",
         const_model = "BOARD|IDS|INFO|BUILD_ID|DEFMT=fn",
         omit = ["device.firmware.BUILD_RECORD"],
         introspect = "with_docs",
@@ -351,6 +382,7 @@ async fn usb_task(mut usb: UsbDevice<'static, UsbDriver>) {
 #[embassy_executor::task]
 async fn server_task(mut server: UsbServer<'static, UsbDriver>, state: &'static mut ServerState) {
     let mut buf = [0u8; OBSERVE_BUF_LEN];
+    let scratch = SCRATCH.init(ww_stream::batch::Scratch::new());
     let mut stream_buf = [0u8; STREAM_BUF_LEN];
     loop {
         let observing = state.observe.budget_in_use() > 0;
@@ -395,7 +427,7 @@ async fn server_task(mut server: UsbServer<'static, UsbDriver>, state: &'static 
             if observing {
                 state.meter_poll(now);
                 if state
-                    .poll_properties(&mut server.sink(), (), now_us, &mut buf)
+                    .poll_properties(&mut server.sink(), (), now_us, &mut buf, scratch)
                     .await
                     .is_err()
                 {

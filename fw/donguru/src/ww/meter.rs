@@ -235,8 +235,10 @@ impl ServerState {
 }
 
 fn reading_of(r: &Readings) -> MeterReading {
-    let mv = r.input_voltage_mv as i32;
-    let ma = r.input_current_ma as i32;
+    reading_from(r.input_voltage_mv as i32, r.input_current_ma as i32)
+}
+
+fn reading_from(mv: i32, ma: i32) -> MeterReading {
     MeterReading {
         vbus_in: Volt::milli(mv),
         current: Ampere::milli(ma),
@@ -257,5 +259,29 @@ fn totals_of(t: &adc::Totals) -> MeterTotals {
         energy: Joule::milli(t.energy_mj),
         peak_current: Ampere::milli(t.peak_ma as i32),
         since: Second::milli(now_ms.wrapping_sub(t.since_ms) as i32),
+    }
+}
+
+/// Feeds `meter.reading` samples (API-39) from the ADC task: one row per ADC sequence into the observe cells
+/// `poll_properties` reads (`METER_SAMPLES` in `ww/mod.rs`).
+pub struct MeterSamples(
+    super::server_impl::RootMeterWriter<'static, { super::METER_SAMPLES_RING }>,
+);
+
+impl MeterSamples {
+    /// The one writer of the cells, `None` once taken.
+    pub fn take() -> Option<Self> {
+        super::METER_SAMPLES.writer().map(MeterSamples)
+    }
+
+    /// Whether a host observes `meter.reading` in `Samples` mode: without one, rows aren't worth computing.
+    pub fn is_sampling(&self) -> bool {
+        self.0.is_sampling()
+    }
+
+    /// One sequence's VBUS_IN and current, taken at `t_us` (the device's µs clock, wrapping).
+    pub fn push(&mut self, t_us: u32, mv: i32, ma: i32) {
+        self.0.reading(reading_from(mv, ma));
+        self.0.commit(Second::micro(t_us));
     }
 }

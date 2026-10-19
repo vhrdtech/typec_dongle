@@ -328,8 +328,10 @@ pub fn set_channels(set: ChannelSet) {
 pub async fn adc_task(mut r: AdcResources, mut set: ChannelSet) {
     static DMA_BUF: StaticCell<[u16; DMA_BUF_LEN]> = StaticCell::new();
     let dma_buf = DMA_BUF.init([0; DMA_BUF_LEN]);
+    // meter.reading samples for hosts observing it in Samples mode (API-39); the task is spawned once
+    let mut meter_samples = crate::ww::MeterSamples::take();
     loop {
-        set = run(&mut r, dma_buf, set).await;
+        set = run(&mut r, dma_buf, set, meter_samples.as_mut()).await;
         // run() dropped the ring buffered ADC: ADC stopped and its clock disabled, DMA channel stopped
         LATEST.lock(|l| l.set(None));
     }
@@ -340,6 +342,7 @@ async fn run(
     r: &mut AdcResources,
     dma_buf: &mut [u16; DMA_BUF_LEN],
     set: ChannelSet,
+    mut meter_samples: Option<&mut crate::ww::MeterSamples>,
 ) -> ChannelSet {
     let adc_hz = rcc::frequency::<ADC1>().0 / presc_div(PRESC);
     let internal_ns = sample_half_cycles(SAMPLE_TIME_INTERNAL) * 500_000 / (adc_hz / 1000);
@@ -561,6 +564,23 @@ async fn run(
         };
         LATEST.lock(|l| l.set(Some(readings)));
         crate::power::on_adc();
+
+        // meter.reading samples (API-39): every sequence of the half buffer, not averaged, the newest one taken
+        // about now (the task's wake-up after the DMA half transfer)
+        if let Some(m) = meter_samples.as_mut()
+            && m.is_sampling()
+        {
+            let now_us = now.as_micros() as u32;
+            let count = (HALF_LEN / order.len()) as u32;
+            for (k, seq) in samples.chunks_exact(order.len()).enumerate() {
+                let t_us = now_us.wrapping_sub((count - 1 - k as u32) * sequence_us);
+                m.push(
+                    t_us,
+                    input_mv(seq[pa3] as u32) as i32,
+                    current_ma(seq[pb0] as u32) as i32,
+                );
+            }
+        }
 
         // totals: this update's value over the time since the last one (the first one after a (re)start has no dt)
         if let Some(last) = last_update.replace(now) {

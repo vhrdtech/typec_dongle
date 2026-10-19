@@ -435,6 +435,9 @@ impl MockDevice {
                 let mut scratch = [0u8; MAX_MESSAGE_LEN];
                 let mut event_scratch = [0u8; MAX_MESSAGE_LEN];
                 let mut observe_buf = [0u8; OBSERVE_BUF_LEN];
+                let mut observe_scratch = Box::new(ww_stream::batch::Scratch::<
+                    { ww_stream::batch::scratch_bytes::<donguru_api::MeterReading>(server::api_impl::OBSERVE_BATCH) },
+                >::new());
                 let config = ww_device::LinkConfig::new(
                     DONGURU_API_FULL_GID,
                     server::api_impl::api_hash(),
@@ -455,7 +458,8 @@ impl MockDevice {
                         _ = tick.tick() => {
                             if server.is_up() && backend.server.observe.budget_in_use() > 0 {
                                 let now_us = started.elapsed().as_micros() as u64;
-                                _ = backend.server.poll_properties(&mut server.sink(), (), now_us, &mut observe_buf).await;
+                                backend.server.sample_meter(now_us);
+                                _ = backend.server.poll_properties(&mut server.sink(), (), now_us, &mut observe_buf, &mut observe_scratch).await;
                             }
                         }
                         job = job_rx.recv() => match job {

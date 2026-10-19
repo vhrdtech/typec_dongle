@@ -13,7 +13,7 @@ use donguru_core::api::{
     DataPath, GuardTrip, MeterReading, MeterTotals, Second, VbusMode, VbusState,
 };
 use donguru_core::client::observe::{
-    ObserveEvent, PowerMeterObserve, on_change as on_change_mode, periodic,
+    BatchedOwned, ObserveEvent, PowerMeterObserve, on_change as on_change_mode, periodic, samples,
 };
 
 /// Default delay between two samples of `power watch`.
@@ -198,7 +198,8 @@ pub enum Power {
     Meter,
     /// Stream meter readings until interrupted (Ctrl-C)
     Watch {
-        /// Delay between two samples, or the on-change debounce with `--on-change`
+        /// Delay between two samples, the on-change debounce with `--on-change`, or how old a batch of samples
+        /// may get with `--samples`
         #[arg(
             short,
             long,
@@ -209,8 +210,11 @@ pub enum Power {
         )]
         interval: Duration,
         /// Send only when the reading moves beyond the meter's deadband, instead of every interval
-        #[arg(long)]
+        #[arg(long, conflicts_with = "samples")]
         on_change: bool,
+        /// Every ADC sequence (~1.6 kHz, not averaged over the meter window), each with its device time
+        #[arg(long)]
+        samples: bool,
     },
     /// Charge and energy totals since boot or the last reset
     Totals {
@@ -230,7 +234,8 @@ pub fn run(ctx: &Context, command: Power) -> anyhow::Result<ExitCode> {
         Power::Watch {
             interval,
             on_change,
-        } => watch(ctx, interval, on_change),
+            samples,
+        } => watch(ctx, interval, on_change, samples),
         Power::Totals { reset } => totals(ctx, reset),
     }
 }
@@ -399,7 +404,12 @@ fn totals(ctx: &Context, reset: bool) -> anyhow::Result<ExitCode> {
     Ok(ExitCode::Success)
 }
 
-fn watch(ctx: &Context, interval: Duration, on_change: bool) -> anyhow::Result<ExitCode> {
+fn watch(
+    ctx: &Context,
+    interval: Duration,
+    on_change: bool,
+    sampled: bool,
+) -> anyhow::Result<ExitCode> {
     if matches!(ctx.format, Format::Json) {
         anyhow::bail!("`power watch` streams data: use `--format text` or `--format jsonl`");
     }
@@ -407,7 +417,9 @@ fn watch(ctx: &Context, interval: Duration, on_change: bool) -> anyhow::Result<E
     let selector = super::selector(ctx)?;
     super::runtime()?.block_on(async {
         let dongle = donguru_core::Dongle::open(selector.as_ref()).await?;
-        let mode = if on_change {
+        let mode = if sampled {
+            samples(interval)
+        } else if on_change {
             on_change_mode(interval)
         } else {
             periodic(interval)
@@ -421,8 +433,24 @@ fn watch(ctx: &Context, interval: Duration, on_change: bool) -> anyhow::Result<E
             tokio::select! {
                 event = observer.recv_event() => match event {
                     Ok(ObserveEvent::Update(u)) => {
-                        if let Some(r) = u.value.reading {
-                            print_watch_line(text, started.elapsed(), &r);
+                        if u.missed > 0 {
+                            eprintln!("donguru: {} sample(s) missed", u.missed);
+                        }
+                        match u.value.reading {
+                            Some(BatchedOwned::Samples(series)) => {
+                                match BatchedOwned::Samples(series)
+                                    .into_samples(u.t, u.sample_times.as_deref())
+                                {
+                                    Ok(rows) => {
+                                        for (r, t) in rows {
+                                            print_sample_line(text, t.as_ref().map(Second::to_f64), &r);
+                                        }
+                                    }
+                                    Err(e) => eprintln!("donguru: malformed samples: {e}"),
+                                }
+                            }
+                            Some(BatchedOwned::One(r)) => print_watch_line(text, started.elapsed(), &r),
+                            None => {}
                         }
                     }
                     Ok(ObserveEvent::Disconnected) => eprintln!("donguru: link down, waiting..."),
@@ -442,6 +470,24 @@ fn watch(ctx: &Context, interval: Duration, on_change: bool) -> anyhow::Result<E
         Ok::<(), donguru_core::Error>(())
     })?;
     Ok(ExitCode::Success)
+}
+
+/// One sample of `--samples`: its device time (seconds since the dongle started) and the reading.
+fn print_sample_line(text: bool, t_s: Option<f64>, r: &MeterReading) {
+    if text {
+        match t_s {
+            Some(t) => println!("{t:>12.6}s  {}", reading_text(r)),
+            None => println!("{:>13}  {}", "?", reading_text(r)),
+        }
+    } else {
+        let mut line = serde_json::json!({ "device_t_s": t_s });
+        if let (serde_json::Value::Object(m), serde_json::Value::Object(r)) =
+            (&mut line, reading_json(r))
+        {
+            m.extend(r);
+        }
+        println!("{line}");
+    }
 }
 
 fn print_watch_line(text: bool, elapsed: Duration, r: &MeterReading) {

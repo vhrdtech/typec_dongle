@@ -8,6 +8,9 @@
 //! 0.2 is the whole v1 tree (API-8, design of record: tpm `prj/P2534-donguru/design/api-v1.md`): one level per part
 //! of the dongle, the stdlib traits for everything generic. Items a firmware doesn't have yet answer
 //! `Unimplemented`. Index rule for the arrays (`uart`, `i2c`, `gpio`): 0 = plug side, 1 = header.
+//!
+//! 0.3 makes `meter.reading` `+batched` (API-39: every ADC sequence as a sample), which changes its observe slot,
+//! and is built on `ww_si` 0.2 (same bytes, new API model): firmware and host move to 0.3 together.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use wire_weaver::prelude::*;
@@ -119,8 +122,10 @@ pub trait Settings {
 /// Power meter on the receptacle side: VBUS_IN and the current to the DUT, from one ADC window.
 #[ww_trait]
 pub trait PowerMeter {
-    /// The latest reading. `OnChange` means a move beyond `deadband`.
-    property!(ro+observe reading: MeterReading);
+    /// The latest reading, averaged over `window`. `OnChange` means a move beyond `deadband`. Observed in
+    /// `Samples` mode: every ADC sequence (622 µs, ~1.6 kHz; 898 µs while `adc` samples the extended set), each
+    /// 32x oversampled in hardware but not averaged over `window`, with its own time.
+    property!(ro+observe+batched reading: MeterReading);
     /// MCU die temperature.
     property!(ro+observe temperature: DegreeCelsius);
     /// Charge and energy since boot or `reset_totals`.
@@ -137,8 +142,13 @@ pub trait PowerMeter {
     property!(ro calibration: MeterCalibration);
 }
 
-/// One meter reading, all from the same ADC window.
-#[derive_shrink_wrap(borrowed, owned(feature = "std"), derive(Clone, Debug, PartialEq))]
+/// One meter reading, all from the same ADC window (or sequence, for samples).
+#[derive_shrink_wrap(
+    borrowed,
+    owned(feature = "std"),
+    series(cells),
+    derive(Clone, Debug, PartialEq)
+)]
 pub struct MeterReading {
     /// Receptacle VBUS (PA3).
     pub vbus_in: Volt,

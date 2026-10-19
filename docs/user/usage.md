@@ -32,6 +32,8 @@ dg power cycle --off 500ms --release-sbu
 dg power meter
 dg power watch --interval 100ms
 dg power watch --on-change -f jsonl >> power.log
+# every ADC sequence (~1.6 kHz, not averaged), each with the dongle's own time: a current trace of the DUT
+dg power watch --samples -f jsonl > trace.jsonl
 
 # charge and energy since boot, zeroed with --reset
 dg power totals

@@ -29,8 +29,9 @@ pub struct MockServer {
     pub uart_tx_credit: ww_client_server::credit::SinkCredit,
     /// Sessions of counted and reliable streams opened so far
     pub stream_sessions: u32,
-    /// Observed properties: what the host observes and when it is due, see `poll_properties`
-    pub observe: api_impl::ObserveState,
+    /// Observed properties: what the host observes and when it is due, see `poll_properties`; `meter.reading`
+    /// samples (API-39) taken every tick of the mock's loop, see [MockServer::sample_meter]
+    pub observe: api_impl::ObserveState<api_impl::ObserveBatches>,
     /// Backing store of borrowed replies (`debug.pins`, `debug.reg_read`, `device.uid.IDS`)
     dump: Vec<PortRegs>,
     words: Vec<u32>,
@@ -48,7 +49,10 @@ impl MockServer {
             unopened: ww_stream::tx::Counted::new(),
             uart_tx_credit: ww_client_server::credit::SinkCredit::new(0),
             stream_sessions: 0,
-            observe: api_impl::ObserveState::new(ww_stream::observe::ObserveLimits::DEFAULT),
+            observe: api_impl::ObserveState::new(
+                ww_stream::observe::ObserveLimits::DEFAULT,
+                api_impl::ObserveBatches::new(ww_stream::batch::DEFAULT_POLICY),
+            ),
             dump: vec![],
             words: vec![],
             uid: [ww_uid::UniqueId {
@@ -57,6 +61,16 @@ impl MockServer {
                 value: MaxLen::new_unchecked(RefVec::new_bytes(uid)),
             }],
         }
+    }
+
+    /// One `meter.reading` sample at `now_us` (the mock's clock): the reading the test put into the state, as the
+    /// firmware takes one per ADC sequence.
+    pub fn sample_meter(&mut self, now_us: u64) {
+        let reading = self.state.reading.clone();
+        self.observe.samplers().root_meter.sample(
+            Second::micro(now_us),
+            api_impl::PowerMeterSamples { reading },
+        );
     }
 
     /// Marks every observed property changed, after [super::MockDevice::with] changed the state from outside.
@@ -1362,7 +1376,7 @@ impl MockServer {
         self.stream_sessions
     }
 
-    fn observe_state(&mut self) -> &mut api_impl::ObserveState {
+    fn observe_state(&mut self) -> &mut api_impl::ObserveState<api_impl::ObserveBatches> {
         &mut self.observe
     }
 }

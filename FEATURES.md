@@ -386,6 +386,13 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `Busy` until the SBU level (API-14) owns PA0 / PA1; `window` is 0.9 .. 14.9 ms (one sequence up to one half DMA buffer of
   sequences), longer needs averaging across updates. A read of `io7` / `io9` / `io10` switches the ADC to the
   extended set and stays there (meter keeps working, sequence 0.62 -> 0.90 ms). With FW-3. ^revB
+  🧪 Samples (19 Oct 2026, `donguru_api` 0.3.0): `meter.reading` is `ro+observe+batched` (WireWeaver API-39);
+  observed in `Samples` mode it sends every ADC sequence (622 µs, 32x oversampled, not averaged over `window`) with
+  its own device time, as compressed `Series` batches of 32 rows. The ADC task writes the rows into observe cells
+  (a ring of 64 in a static, `MeterSamples` in `ww/meter.rs`), only while a host samples; times are back-dated from
+  the DMA half transfer by one sequence each. +3.8 KiB RAM, +44 KiB flash (the `Series` codecs of three quantities
+  of any number type; FLASH 397 of 504 KiB). Built, mock-tested, not yet run on a board: encoding cost at 1.6 kHz
+  on the M0+ unmeasured.
 - 📋 **API-13 Button and switch**: observable button (with a press counter) and slide switch, counted event stream.
   With FW-4. ^revB
 - 📋 **API-14 SBU owner and UART on SBU**: one function at a time on the plug SBU lines, `sbu.release`; `uart[0]` as
@@ -558,8 +565,10 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `status` tables plug + header + meter in one read; `on` (`--allow-voltage`, `--trip`) and `off` read back `vbus`
   after the write and fail the exit code unless it ended up where asked (`On` / `Off`), covering a trip or a latched
   fault without the host needing its own copy of the guard; `cycle --off --release-sbu`; `meter` one reading;
-  `totals [--reset]` in mAh / mWh; `watch [--interval | --on-change]` streams `meter.reading` through CLT-28 observe
-  until Ctrl-C (`--format json` is refused: use text or jsonl). `donguru_core::vbus` builds the mode, and `cycle`'s
+  `totals [--reset]` in mAh / mWh; `watch [--interval | --on-change | --samples]` streams `meter.reading` through
+  CLT-28 observe until Ctrl-C (`--format json` is refused: use text or jsonl); `--samples` (API-39, 19 Oct 2026) prints
+  every ADC sequence with its device time, `--interval` then the batch age, missed samples on stderr (mock-tested
+  in `donguru-core/tests/mock.rs` `meter_reading_samples`, not yet on a board). `donguru_core::vbus` builds the mode, and `cycle`'s
   `off` time, as integer millivolts/milliamps/milliseconds (the firmware's `ww_si` has no `f32`: a float-encoded
   value sent to it doesn't decode at all, `PropertyDesFailed` / `ArgsDesFailed` — found testing on B153A, fixed
   before anything shipped with the bug). Snapshot-tested against the mock (CORE-3) and 16 Oct 2026 on B153A rev A

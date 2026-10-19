@@ -14,7 +14,8 @@ tokio = { version = "1", features = ["rt", "time", "sync", "macros"] }
 wire_weaver = { path = "../../wire_weaver/wire_weaver", features = ["std"] }
 wire_weaver_client = { path = "../../wire_weaver/wire_weaver_client" }
 ww_device = { path = "../../wire_weaver/ww_device", optional = true }
-ww_client_server = { path = "../../wire_weaver/ww_stdlib/ww_client_server", features = ["std"], optional = true }
+# the generated client names its observe types (BatchedOwned of `+batched` properties)
+ww_client_server = { path = "../../wire_weaver/ww_stdlib/ww_client_server", features = ["std"] }
 ww_si = { path = "../../wire_weaver/ww_stdlib/ww_si", features = ["std", "time", "electrical", "mechanical", "thermal"] }
 ww_stream = { path = "../../wire_weaver/ww_stream", features = ["std"], optional = true }
 # stdlib traits of the API tree: the generated client names their types
@@ -39,7 +40,7 @@ defmt-decoder = "1.1"
 # Run the SWD memtest (CORE-5) through a debug probe
 probe-rs = ["dep:probe-rs"]
 # A DonguruApi server in the same process (`mock`): the test double for the CLI, GUI and Python (CORE-3)
-mock = ["wire_weaver_client/in_process", "dep:ww_device", "dep:ww_client_server", "dep:ww_stream"]
+mock = ["wire_weaver_client/in_process", "dep:ww_device", "dep:ww_stream"]
 
 [dev-dependencies]
 donguru-core = { path = ".", features = ["mock"] }
