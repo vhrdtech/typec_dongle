@@ -226,7 +226,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   the host workspace, so nothing catches them. Found 15 Oct 2026.
 - 🚧 **FW-24 WireWeaver USB throughput** (P2534#15oct-1747): was ~30% of USB FS bulk (`ww usb-loopback`, 1 KB
   messages: 152 round trips/s, 373 kB/s host -> device, 316 kB/s device -> host). Done: flash prefetch on
-  (`main.rs`, embassy-stm32 0.6 leaves it off on the G0); release `opt-level = 3` instead of "z" (~40% faster
+  (`main.rs`, embassy-stm32 0.6 leaves it off on the G0), off again since FW-38 (ES0548); release `opt-level = 3` instead of "z" (~40% faster
   here); WireWeaver TR-12 (U2Head byte fast path, replies flushed when no request waits); double-buffered bulk
   endpoints (`src/ww/mod.rs`, `WireWeaverClass::with_endpoints`) from embassy-rs/embassy#7275, through a git dependency on
   the romixlab/embassy `donguru-0.6-double-buffer` branch (`fw/donguru/Cargo.toml` `[patch.crates-io]`). Release
@@ -253,7 +253,18 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   no overrun idle for 2 min nor with a host reading the log for 60 s. Not checked on main's firmware with an observer
   killed the same way. Suspect: USB interrupts while the IN endpoint NAKs (double-buffered endpoints, FW-24). Seen
   again with the non-blocking RTT tee (FW-27) and no probe attached, ~2 s after the timeout: not the RTT.
-- ✅ **FW-27 RTT log never blocks**: the firmware runs the same with or without a probe: `ww_defmt_logger`'s RTT tee
+- ✅ **FW-38 HardFault from flash prefetch across the banks** (ES0548 2.2.10): with prefetch on (FW-24) the CPU
+  ran wrong instructions after a call from bank 2 into bank 1 (0x0804005c -> `BufReader::read_le32` at 0x08039d18)
+  and HardFaulted with garbage in r0-r3, within seconds under `ww usb-loopback` (19 Oct 2026, B153A, the embassy
+  main build of FW-24; the 0.6 fork build has the same bug, its layout just didn't hit a failing branch). ES0548
+  Rev 4: "In rare cases, the code prefetch may fail upon branching and function calls across flash memory banks,
+  when the device operates in dual-bank mode", 512-Kbyte devices always dual-bank, not fixed in revisions A, Z/3,
+  Y/4, workaround "None". Proof with one binary: prefetch cleared at run time through the probe ran 8 loopbacks
+  clean, set at run time on a build without it faulted in 8 s at the same instruction. Fix: prefetch stays off
+  (`main.rs`). Cost (release opt-level 3): 1 KB 311-313 round trips/s, 631 / 491 kB/s (prefetch on: 332, 655 /
+  512); 64 B 2.1-2.2k/s, 362-367 / 518 kB/s (2.3-2.4k, 441 / 536). Prefetch could come back with all code in bank 1:
+  `.text` is 358 KiB at opt-level 3, 254 KiB at "s" (ends 0x0803f7e4, 2 KiB below bank 2), 240 KiB at "z".
+: the firmware runs the same with or without a probe: `ww_defmt_logger`'s RTT tee
   writes each frame whole or skips it, with the channel forced to NoBlockSkip before every write, as probe-rs
   switches it to blocking on attach. Code: WireWeaver `ww_defmt_logger` (`tee_frame`, `rtt_skipped()`, host test
   `rtt_tee_never_blocks`), `fw/donguru/src/log.rs`; `debug.log_flood` yields between lines. Tested 16 Oct 2026 on

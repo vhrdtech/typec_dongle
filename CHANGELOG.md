@@ -6,6 +6,10 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Fixed
+
+- Firmware: flash prefetch is off again (FW-38). On the STM32G0B1 a prefetch can fail on a branch or call into the other flash bank (erratum ES0548 2.2.10, every silicon revision, no workaround but prefetch off), the CPU then runs wrong instructions; the firmware (~400 KiB) spans both 256 KiB banks, and a call from bank 2 into bank 1 HardFaulted under `ww usb-loopback`. Throughput on B153A, release opt-level 3: 1 KB 311-313 round trips/s, 631 kB/s host -> device, 491 kB/s device -> host (prefetch on: 332, 655, 512); 64 B 2.1-2.2k/s, 362-367 / 518 kB/s (2.3-2.4k, 441 / 536).
+
 ## [0.20.5] - 2026-10-19
 
 ### Changed

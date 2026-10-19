@@ -153,13 +153,9 @@ async fn main(spawner: embassy_executor::Spawner) {
     config.rcc.mux.adcsel = Adcsel::PLL1_P;
     config.rcc.mux.usbsel = Usbsel::HSI48;
     let p = embassy_stm32::init(config);
-    // Flash prefetch: embassy-stm32 0.6 sets the 2 wait states 64 MHz needs on the G0 but leaves PRFTEN off (its
-    // L-series code turns it on), so straight-line fetches stall: code runs 8-16% slower (byte loop, CRC) and
-    // WireWeaver over USB 317 -> 451 kB/s device -> host (FW-24). ICEN is on from reset, set again for clarity.
-    embassy_stm32::pac::FLASH.acr().modify(|w| {
-        w.set_prften(true);
-        w.set_icen(true);
-    });
+    // Flash prefetch stays off (embassy-stm32 0.6 leaves it off on the G0): on the G0B1 a prefetch can fail on a
+    // branch or call into the other flash bank (ES0548 2.2.10, not fixed in any revision, no workaround but prefetch
+    // off), the CPU then runs wrong instructions and faults. This image spans both 256 KiB banks (FW-38).
     init::init();
     let r = split_resources!(p);
 
