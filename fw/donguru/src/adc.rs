@@ -324,8 +324,10 @@ pub async fn adc_task(mut r: AdcResources, mut set: ChannelSet) {
     let dma_buf = DMA_BUF.init([0; DMA_BUF_LEN]);
     // meter.reading samples for hosts observing it in Samples mode (API-39); the task is spawned once
     let mut meter_samples = crate::ww::MeterSamples::take();
+    // what observers of meter.reading / temperature / totals were last told (deadband, SRV-25)
+    let mut meter_marks = crate::ww::MeterMarks::new();
     loop {
-        set = run(&mut r, dma_buf, set, meter_samples.as_mut()).await;
+        set = run(&mut r, dma_buf, set, meter_samples.as_mut(), &mut meter_marks).await;
         // run() dropped the ring buffered ADC: ADC stopped and its clock disabled, DMA channel stopped
         LATEST.lock(|l| l.set(None));
     }
@@ -337,6 +339,7 @@ async fn run(
     dma_buf: &mut [u16; DMA_BUF_LEN],
     set: ChannelSet,
     mut meter_samples: Option<&mut crate::ww::MeterSamples>,
+    meter_marks: &mut crate::ww::MeterMarks,
 ) -> ChannelSet {
     let adc_hz = rcc::frequency::<ADC1>().0 / PRESC.divisor();
     let internal_ns = sample_half_cycles(SAMPLE_TIME_INTERNAL) * 500_000 / (adc_hz / 1000);
@@ -534,6 +537,7 @@ async fn run(
         };
         LATEST.lock(|l| l.set(Some(readings)));
         crate::power::on_adc();
+        meter_marks.update(&readings, now);
 
         // meter.reading samples (API-39): every sequence of the half buffer, not averaged, the newest one taken
         // about now (the task's wake-up after the DMA half transfer)

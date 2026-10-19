@@ -248,7 +248,7 @@ impl ServerState {
         let Some((mv, ma)) = meter::deadband_of(&value) else {
             return SetError(meter::invalid(meter::DEADBAND_INVALID));
         };
-        self.meter.set_deadband(mv, ma);
+        super::meter::set_deadband(mv, ma);
         self.user.set(now_ms(), |s| s.meter_deadband = value);
         match self.persist_settings().await {
             Ok(()) => Set,
@@ -294,7 +294,7 @@ impl ServerState {
             crate::adc::set_window_us(us);
         }
         if let Some((mv, ma)) = meter::deadband_of(&defaults.meter_deadband) {
-            self.meter.set_deadband(mv, ma);
+            super::meter::set_deadband(mv, ma);
         }
         Ready(self.persist_settings().await)
     }

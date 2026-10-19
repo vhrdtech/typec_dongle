@@ -5,10 +5,11 @@ use super::ServerState;
 use crate::adc::{self, Readings};
 use donguru_api::{MeterCalibration, MeterDeadband, MeterReading, MeterTotals};
 use embassy_time::{Duration, Instant, Timer};
+use portable_atomic::{AtomicU32, Ordering};
 use wire_weaver::prelude::*;
 use wire_weaver::ww_error::CommonError;
 use ww_si::ww_numeric::NumericValue;
-use ww_si::{Ampere, Coulomb, DegreeCelsius, Joule, Prefix, Second, Volt, Watt};
+use ww_si::{Ampere, Coulomb, DegreeCelsius, Joule, Prefix, Second, Volt};
 
 /// `reading` is not marked changed more often than the ADC updates it; `totals` change all the time, so they are
 /// marked this often while observed.
@@ -18,37 +19,64 @@ const TEMPERATURE_DEADBAND_CDEG: i32 = 50;
 /// How long a read waits for the first ADC update after boot or a channel set switch.
 const FIRST_READING_WAIT: Duration = Duration::from_millis(100);
 
-/// Deadband and what was last announced to `OnChange` observers.
-pub(super) struct MeterState {
-    deadband_mv: u32,
-    deadband_ma: u32,
+/// `meter.deadband` in mV and mA: what counts as a change of `reading`, read by the ADC task ([MeterMarks]).
+static DEADBAND_MV: AtomicU32 = AtomicU32::new(0);
+static DEADBAND_MA: AtomicU32 = AtomicU32::new(0);
+
+/// Starts with `deadband` (`device.settings.meter_deadband`), the default when it isn't a valid one.
+pub(super) fn init_deadband(deadband: &MeterDeadband) {
+    let (mv, ma) = deadband_of(deadband)
+        .or_else(|| deadband_of(&crate::settings::default_deadband()))
+        .unwrap_or((0, 0));
+    set_deadband(mv, ma);
+}
+
+pub(super) fn set_deadband(mv: u32, ma: u32) {
+    DEADBAND_MV.store(mv, Ordering::Relaxed);
+    DEADBAND_MA.store(ma, Ordering::Relaxed);
+}
+
+/// What was last announced to `OnChange` observers of `meter`, kept by the ADC task: each update that moved beyond
+/// the deadband marks `reading` changed through the observe signal (SRV-25), which wakes the server task, so an idle
+/// DUT costs no wake and no link. `totals` are marked every [`TOTALS_PERIOD`].
+pub struct MeterMarks {
     marked_mv: i32,
     marked_ma: i32,
     marked_cdeg: i32,
     marked_totals_at: Instant,
 }
 
-impl MeterState {
-    /// Starts with `deadband` (`device.settings.meter_deadband`), the default when it isn't a valid one.
-    pub(super) fn new(deadband: &MeterDeadband) -> Self {
-        let (deadband_mv, deadband_ma) = deadband_of(deadband)
-            .or_else(|| deadband_of(&crate::settings::default_deadband()))
-            .unwrap_or((0, 0));
-        MeterState {
-            deadband_mv,
-            deadband_ma,
+impl MeterMarks {
+    pub const fn new() -> Self {
+        MeterMarks {
             marked_mv: 0,
             marked_ma: 0,
             marked_cdeg: 0,
             marked_totals_at: Instant::MIN,
         }
     }
-}
 
-impl MeterState {
-    pub(super) fn set_deadband(&mut self, mv: u32, ma: u32) {
-        self.deadband_mv = mv;
-        self.deadband_ma = ma;
+    /// The ADC task's new readings `r`, taken at `now`.
+    pub fn update(&mut self, r: &Readings, now: Instant) {
+        let signal = &super::OBSERVE;
+        let mv = r.input_voltage_mv as i32;
+        let ma = r.input_current_ma as i32;
+        if (mv - self.marked_mv).unsigned_abs() >= DEADBAND_MV.load(Ordering::Relaxed).max(1)
+            || (ma - self.marked_ma).unsigned_abs() >= DEADBAND_MA.load(Ordering::Relaxed).max(1)
+        {
+            self.marked_mv = mv;
+            self.marked_ma = ma;
+            signal.mark_changed_meter_reading();
+        }
+        let cdeg = r.temp_cdeg as i32;
+        if (cdeg - self.marked_cdeg).abs() >= TEMPERATURE_DEADBAND_CDEG {
+            self.marked_cdeg = cdeg;
+            signal.mark_changed_meter_temperature();
+        }
+        if now.duration_since(self.marked_totals_at) >= TOTALS_PERIOD {
+            self.marked_totals_at = now;
+            signal.mark_changed_meter_totals();
+        }
     }
 }
 
@@ -179,7 +207,7 @@ impl ServerState {
         let Some((mv, ma)) = deadband_of(&value) else {
             return SetError(invalid(DEADBAND_INVALID));
         };
-        self.meter.set_deadband(mv, ma);
+        set_deadband(mv, ma);
         Set
     }
 
@@ -188,8 +216,8 @@ impl ServerState {
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<MeterDeadband, CommonError<'_>> {
         Value(MeterDeadband {
-            voltage: Volt::milli(self.meter.deadband_mv as i32),
-            current: Ampere::milli(self.meter.deadband_ma as i32),
+            voltage: Volt::milli(DEADBAND_MV.load(Ordering::Relaxed) as i32),
+            current: Ampere::milli(DEADBAND_MA.load(Ordering::Relaxed) as i32),
         })
     }
 
@@ -205,32 +233,6 @@ impl ServerState {
             current_offset: Ampere::milli(0),
             current_gain_ppm: 0,
         })
-    }
-
-    /// Called by the server task while a host observes anything: marks `reading` changed only when it moved beyond
-    /// the deadband since it was last marked, so an idle DUT costs no link. `totals` every [`TOTALS_PERIOD`].
-    pub(super) fn meter_poll(&mut self, now: Instant) {
-        let Some(r) = adc::latest() else {
-            return;
-        };
-        let mv = r.input_voltage_mv as i32;
-        let ma = r.input_current_ma as i32;
-        if (mv - self.meter.marked_mv).unsigned_abs() >= self.meter.deadband_mv.max(1)
-            || (ma - self.meter.marked_ma).unsigned_abs() >= self.meter.deadband_ma.max(1)
-        {
-            self.meter.marked_mv = mv;
-            self.meter.marked_ma = ma;
-            self.mark_changed_meter_reading();
-        }
-        let cdeg = r.temp_cdeg as i32;
-        if (cdeg - self.meter.marked_cdeg).abs() >= TEMPERATURE_DEADBAND_CDEG {
-            self.meter.marked_cdeg = cdeg;
-            self.mark_changed_meter_temperature();
-        }
-        if now.duration_since(self.meter.marked_totals_at) >= TOTALS_PERIOD {
-            self.meter.marked_totals_at = now;
-            self.mark_changed_meter_totals();
-        }
     }
 }
 
@@ -269,7 +271,9 @@ pub struct MeterSamples(
 impl MeterSamples {
     /// The one writer of the cells, `None` once taken.
     pub fn take() -> Option<Self> {
-        super::METER_SAMPLES.writer().map(MeterSamples)
+        super::METER_SAMPLES
+            .writer()
+            .map(|w| MeterSamples(w.with_wake(super::OBSERVE.as_wake())))
     }
 
     /// Whether a host observes `meter.reading` in `Samples` mode: without one, rows aren't worth computing.

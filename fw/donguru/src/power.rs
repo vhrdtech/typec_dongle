@@ -3,9 +3,9 @@
 //!
 //! The modes, states and the guard are `donguru_power::Switch`, unit-tested on the host; this module owns the pins,
 //! feeds the guard from every ADC update ([`on_adc`], called by the ADC task, ~15 ms) and runs `plug.vbus_cycle`'s
-//! off time in [`power_task`]. Changes the server didn't make itself (a trip, a fault, the end of a cycle) are
-//! flagged for it: [`wait_event`] wakes it, [`take_changes`] says which properties to mark and [`take_cycle_done`]
-//! hands it the deferred answer of a cycle.
+//! off time in [`power_task`]. Changes the server didn't make itself (a trip, a fault, the end of a cycle) mark the
+//! observed property changed through the observe signal (`crate::ww::OBSERVE`, WireWeaver SRV-25), which also wakes
+//! the server task; the deferred answer of a cycle comes through [`wait_event`] and [`take_cycle_done`].
 //!
 //! Boot state is everything off: both switches `ForceOff`, data connected, relay open (hw_b153a.md §14), the same
 //! as the pull-downs give a halted MCU.
@@ -23,7 +23,6 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
 use embassy_sync::signal::Signal;
 use embassy_time::{Duration, Instant, Timer};
-use portable_atomic::{AtomicU8, Ordering};
 use ww_si::Second;
 
 use crate::{PwrResources, adc, swd};
@@ -35,9 +34,6 @@ pub enum Which {
     Header,
 }
 
-/// Bits of [`take_changes`]: properties that changed outside a handler.
-pub const PLUG_VBUS: u8 = 1 << 0;
-pub const HEADER_VBUS_SW: u8 = 1 << 1;
 
 struct Power {
     plug: Switch,
@@ -71,7 +67,7 @@ impl Power {
 
 static POWER: Mutex<CriticalSectionRawMutex, RefCell<Option<Power>>> =
     Mutex::new(RefCell::new(None));
-static CHANGES: AtomicU8 = AtomicU8::new(0);
+/// A cycle ended: its deferred answer is in [`CYCLE_DONE`].
 static EVENT: Signal<CriticalSectionRawMutex, ()> = Signal::new();
 /// A started cycle for [`power_task`].
 static CYCLE: Signal<CriticalSectionRawMutex, CycleRequest> = Signal::new();
@@ -117,10 +113,6 @@ fn with<R>(f: impl FnOnce(&mut Power) -> R) -> R {
     })
 }
 
-fn notify(bits: u8) {
-    CHANGES.fetch_or(bits, Ordering::Relaxed);
-    EVENT.signal(());
-}
 
 /// The guard's view of the newest ADC update: the worst voltage and current of it.
 fn sample() -> Option<Sample> {
@@ -180,11 +172,11 @@ pub fn on_adc() {
     }
     if let Some(st) = changed.0 {
         log_cut("plug VBUS cut", st, s);
-        notify(PLUG_VBUS);
+        crate::ww::OBSERVE.mark_changed_plug_vbus();
     }
     if let Some(st) = changed.1 {
         log_cut("header VBUS_SW cut", st, s);
-        notify(HEADER_VBUS_SW);
+        crate::ww::OBSERVE.mark_changed_header_vbus_sw();
     }
 }
 
@@ -257,7 +249,8 @@ fn finish(req: CycleRequest) {
     {
         cnt!(vbus_cycle_answers_dropped: u32, warn);
     }
-    notify(PLUG_VBUS);
+    crate::ww::OBSERVE.mark_changed_plug_vbus();
+    EVENT.signal(());
 }
 
 /// Waits until something changed outside a handler.
@@ -265,10 +258,6 @@ pub async fn wait_event() {
     EVENT.wait().await
 }
 
-/// Properties changed outside a handler since the last call, as the bits above.
-pub fn take_changes() -> u8 {
-    CHANGES.swap(0, Ordering::Relaxed)
-}
 
 /// A finished cycle to answer, if any.
 pub fn take_cycle_done() -> Option<CycleDone> {

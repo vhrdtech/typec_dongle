@@ -23,15 +23,15 @@ mod sbu;
 mod swd;
 mod uart;
 
-pub use meter::MeterSamples;
+pub use meter::{MeterMarks, MeterSamples};
 
 use crate::{cmsis_dap, hub as hub_ctl, power, settings, swd as swd_host};
 use cnt::cnt;
 use defmt::{info, unwrap};
 use embassy_executor::Spawner;
-use embassy_futures::select::{Either3, select3};
+use embassy_futures::select::{Either4, select4};
 use embassy_stm32::{peripherals, usb};
-use embassy_time::{Duration, Instant, Timer};
+use embassy_time::{Instant, Timer};
 use embassy_usb::driver::{Direction, EndpointAddress};
 use embassy_usb::{Builder, Config as UsbConfig, Handler};
 use static_cell::StaticCell;
@@ -58,8 +58,6 @@ const EP_CMSIS_DAP: usize = 3;
 /// Bytes `uart[]`'s TX sink accepts ahead (its credit), the TX buffer of API-14. Nothing is accepted until then.
 const UART_TX_CREDIT: u32 = 0;
 
-/// How often observed properties are checked while a host observes any (`poll_properties`).
-const OBSERVE_TICK: Duration = Duration::from_millis(1);
 /// Biggest `PropertyUpdate` event the link carries; a batch of samples is sealed before it outgrows one.
 const OBSERVE_BUF_LEN: usize = 512;
 /// Rows of `meter.reading` samples the ADC task can commit between two `poll_properties` (API-39): a DMA half
@@ -70,6 +68,9 @@ const METER_SAMPLES_RING: usize = 64;
 /// sequence through [MeterSamples], `poll_properties` encodes them for hosts observing in `Samples` mode.
 static METER_SAMPLES: server_impl::RootMeterCells<METER_SAMPLES_RING> =
     server_impl::RootMeterCells::new();
+/// Changes to observed properties made outside the server state (`src/power.rs`, the ADC task's meter readings),
+/// and the wake of the server task (WireWeaver SRV-25): `OBSERVE.mark_changed_<name>()` from any task or interrupt.
+pub(crate) static OBSERVE: server_impl::ObserveSignal = server_impl::ObserveSignal::new();
 type ObserveState = server_impl::ObserveState<&'static mut server_impl::ObserveBatches<'static>>;
 // built in place: by value they would take several times their size of stack
 static OBSERVE_BATCHES: StaticCell<server_impl::ObserveBatches<'static>> = StaticCell::new();
@@ -111,8 +112,6 @@ pub struct ServerState {
     settings_maintain: bool,
     /// `leds`: global mode, brightness and the end of a running identify.
     leds: leds::LedsState,
-    /// `meter`: deadband and what was last announced to observers.
-    meter: meter::MeterState,
 }
 
 impl ServerState {
@@ -124,16 +123,19 @@ impl ServerState {
         // the boot count in the high half: a session of this boot never takes a host's cursor of an earlier boot
         // for its own (the boot count restarts at a power-on, the log store is lost with it then)
         let stream_sessions = last_reset.view().boot_count << 16 | 1;
-        ServerState {
-            observe: ObserveState::init(
-                OBSERVE_STATE.uninit(),
-                ObserveLimits::DEFAULT,
-                server_impl::ObserveBatches::init(
-                    OBSERVE_BATCHES.uninit(),
-                    ww_stream::batch::DEFAULT_POLICY,
-                    unwrap!(METER_SAMPLES.reader()),
-                ),
+        meter::init_deadband(&user.get().meter_deadband);
+        let observe = ObserveState::init(
+            OBSERVE_STATE.uninit(),
+            ObserveLimits::DEFAULT,
+            server_impl::ObserveBatches::init(
+                OBSERVE_BATCHES.uninit(),
+                ww_stream::batch::DEFAULT_POLICY,
+                unwrap!(METER_SAMPLES.reader()),
             ),
+        );
+        observe.with_signal(&OBSERVE);
+        ServerState {
+            observe,
             stream_sessions,
             unopened: Counted::new(),
             log_frames: crate::log::stream(stream_sessions).await,
@@ -149,7 +151,6 @@ impl ServerState {
             last_reset,
             counters_page: [UVlq32(0); ww_counters::MAX_WORDS],
             leds: leds::LedsState::new(),
-            meter: meter::MeterState::new(&user.get().meter_deadband),
             user,
             store,
             settings_maintain: false,
@@ -384,24 +385,33 @@ async fn usb_task(mut usb: UsbDevice<'static, UsbDriver>) {
 }
 
 /// Serves requests; every [PUMP_PERIOD](crate::log::PUMP_PERIOD) moves the defmt log into its store
-/// (`src/log.rs`) and sends what reliable streams have; while a host observes anything, sends the observed properties
-/// that are due every [OBSERVE_TICK] (SRV-18). Observing stops when the link goes down: a host that comes back asks
-/// again; the log stays in its store for a host that resumes it. Also wakes for `src/power.rs`: properties the guard
-/// changed and the deferred answers of `plug.vbus_cycle`.
+/// (`src/log.rs`) and lets the settings store tidy up; sends what reliable streams have; sends observed properties
+/// (SRV-18) when they are due: the task sleeps until `next_wake` or until something changes outside it
+/// ([OBSERVE]: `src/power.rs`, the ADC task's meter readings and samples), no fixed tick (SRV-25). Observing stops
+/// when the link goes down: a host that comes back asks again; the log stays in its store for a host that resumes
+/// it. Also wakes for the deferred answers of `plug.vbus_cycle` (`src/power.rs`).
 #[embassy_executor::task]
 async fn server_task(mut server: UsbServer<'static, UsbDriver>, state: &'static mut ServerState) {
     let mut buf = [0u8; OBSERVE_BUF_LEN];
     let scratch = SCRATCH.init(ww_stream::batch::Scratch::new());
     let mut stream_buf = [0u8; STREAM_BUF_LEN];
+    let mut next_pump = Instant::now() + crate::log::PUMP_PERIOD;
     loop {
-        let observing = state.observe.budget_in_use() > 0;
-        let tick = if observing {
-            OBSERVE_TICK
-        } else {
-            crate::log::PUMP_PERIOD
-        };
-        match select3(server.wait(), Timer::after(tick), power::wait_event()).await {
-            Either3::First(ready) => {
+        // nothing is observed while the link is down (reset at LinkEvent::Down)
+        let observe_at = state
+            .observe
+            .next_wake(Instant::now().as_micros())
+            .map(wire_weaver_usb_embassy::ww_device::Instant::from_micros);
+        match select4(
+            server.wait_until(observe_at),
+            Timer::at(next_pump),
+            power::wait_event(),
+            OBSERVE.wait(),
+        )
+        .await
+        {
+            // a due `Ready` (observe_at came) leaves `handle` nothing to do
+            Either4::First(ready) => {
                 if let Some(event) = server.handle(ready, state).await {
                     info!("{:?}", event);
                     if matches!(event, LinkEvent::Down(_)) {
@@ -410,9 +420,11 @@ async fn server_task(mut server: UsbServer<'static, UsbDriver>, state: &'static 
                     }
                 }
             }
-            Either3::Second(()) => state.settings_idle().await,
-            Either3::Third(()) => {
-                state.power_changed();
+            Either4::Second(()) => {
+                next_pump += crate::log::PUMP_PERIOD;
+                state.settings_idle().await;
+            }
+            Either4::Third(()) => {
                 while let Some(done) = power::take_cycle_done() {
                     if done.seq != 0
                         && server.is_up()
@@ -428,20 +440,22 @@ async fn server_task(mut server: UsbServer<'static, UsbDriver>, state: &'static 
                     }
                 }
             }
+            // a change from outside the server state (taken by next_wake / poll_properties) or a batch of samples
+            Either4::Fourth(()) => {}
         }
         crate::log::pump(&mut state.log_frames).await;
         if server.is_up() {
-            let now = Instant::now();
-            let now_us = now.as_micros();
-            if observing {
-                state.meter_poll(now);
-                if state
+            let now_us = Instant::now().as_micros();
+            if state
+                .observe
+                .next_wake(now_us)
+                .is_some_and(|at| at <= now_us)
+                && state
                     .poll_properties(&mut server.sink(), (), now_us, &mut buf, scratch)
                     .await
                     .is_err()
-                {
-                    cnt!(observe_send_errors: u32);
-                }
+            {
+                cnt!(observe_send_errors: u32);
             }
             if state
                 .poll_streams(
@@ -455,19 +469,6 @@ async fn server_task(mut server: UsbServer<'static, UsbDriver>, state: &'static 
             {
                 cnt!(stream_send_errors: u32);
             }
-        }
-    }
-}
-
-impl ServerState {
-    /// Marks what `src/power.rs` changed on its own (a trip, a fault, the end of a cycle).
-    fn power_changed(&mut self) {
-        let changes = power::take_changes();
-        if changes & power::PLUG_VBUS != 0 {
-            self.mark_changed_plug_vbus();
-        }
-        if changes & power::HEADER_VBUS_SW != 0 {
-            self.mark_changed_header_vbus_sw();
         }
     }
 }
