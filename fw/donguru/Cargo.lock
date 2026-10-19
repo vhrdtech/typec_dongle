@@ -480,11 +480,13 @@ dependencies = [
  "ww_client_server",
  "ww_counters",
  "ww_defmt_logger",
+ "ww_ecc_flash",
  "ww_firmware_info",
  "ww_gpio",
  "ww_i2c",
  "ww_indication",
  "ww_log",
+ "ww_settings",
  "ww_si",
  "ww_stream",
  "ww_uart",
@@ -2071,6 +2073,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ww_ecc_flash"
+version = "0.1.0"
+dependencies = [
+ "cortex-m",
+ "cortex-m-rt",
+ "defmt 1.1.1",
+ "embedded-storage",
+ "embedded-storage-async",
+]
+
+[[package]]
 name = "ww_error"
 version = "0.1.0"
 dependencies = [
@@ -2170,6 +2183,26 @@ dependencies = [
  "shrink_wrap",
  "ww_numeric",
  "ww_version",
+]
+
+[[package]]
+name = "ww_settings"
+version = "0.5.0"
+dependencies = [
+ "crc",
+ "defmt 1.1.1",
+ "embedded-storage-async",
+ "shrink_wrap",
+ "ww_settings_derive",
+]
+
+[[package]]
+name = "ww_settings_derive"
+version = "0.5.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.6",
 ]
 
 [[package]]

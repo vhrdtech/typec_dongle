@@ -1,15 +1,24 @@
 //! `device`: the device contract (API-9, API-10) and the settings (API-19), and the values of the `const` items.
 
-use super::ServerState;
+use super::{ServerState, meter};
+use crate::power::{self, Which};
+use crate::settings::UserSettings;
 use crate::{hub, last_reset};
+use cnt::cnt;
 use core::sync::atomic::AtomicU32;
+use defmt::{info, warn};
 use donguru_api::BoardVariant;
+use donguru_power::Limits;
+use embassy_time::Instant;
 use wire_weaver::prelude::*;
+use wire_weaver::shrink_wrap::ArrayString;
+use wire_weaver::ww_error::CommonError;
 use ww_board_info::{BoardSummary, RevisionSource};
 use ww_counters::{BufferInfo, CountersInfo};
 use ww_counters::{CounterBuffer, read_words, reset_words};
 use ww_firmware_info::{BUILD_ID_MAX_LEN, FirmwareSummary};
 use ww_log::DefmtInfo;
+use ww_settings::Persisted;
 use ww_uid::UniqueId;
 use ww_user_info::{MAX_NAME_LEN, MAX_NOTES_LEN, UserInfoCaps};
 
@@ -60,8 +69,15 @@ impl ServerState {
         _cx: &mut Context<'_, impl EventOut>,
         value: wire_weaver::shrink_wrap::MaxLen<&'_ str, 32>,
     ) -> SetResult<ww_user_info::UserInfoError<'_>> {
-        self.label.name.set(&value);
-        Set
+        // the bound is checked when the request is read (MaxLen), so this never cuts
+        let name = ArrayString::try_from(*value).unwrap_or_default();
+        match {
+            self.user.set(now_ms(), |s| s.label = name);
+            self.persist_settings().await
+        } {
+            Ok(()) => Set,
+            Err(e) => SetError(e.into()),
+        }
     }
 
     pub(super) async fn get_device_label_name(
@@ -69,7 +85,7 @@ impl ServerState {
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<wire_weaver::shrink_wrap::MaxLen<&'_ str, 32>, ww_user_info::UserInfoError<'_>>
     {
-        Value(MaxLen::new_unchecked(self.label.name.get()))
+        Value(MaxLen::new_unchecked(self.user.get().label.as_str()))
     }
 
     // optional, can be left out with omit = ["device.label.notes"]
@@ -78,8 +94,14 @@ impl ServerState {
         _cx: &mut Context<'_, impl EventOut>,
         value: wire_weaver::shrink_wrap::MaxLen<&'_ str, 256>,
     ) -> SetResult<ww_user_info::UserInfoError<'_>> {
-        self.label.notes.set(&value);
-        Set
+        let notes = ArrayString::try_from(*value).unwrap_or_default();
+        match {
+            self.user.set(now_ms(), |s| s.notes = notes);
+            self.persist_settings().await
+        } {
+            Ok(()) => Set,
+            Err(e) => SetError(e.into()),
+        }
     }
 
     pub(super) async fn get_device_label_notes(
@@ -87,7 +109,7 @@ impl ServerState {
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<wire_weaver::shrink_wrap::MaxLen<&'_ str, 256>, ww_user_info::UserInfoError<'_>>
     {
-        Value(MaxLen::new_unchecked(self.label.notes.get()))
+        Value(MaxLen::new_unchecked(self.user.get().notes.as_str()))
     }
 
     // ww_counters::Counters at device.counters
@@ -159,84 +181,193 @@ impl ServerState {
     pub(super) async fn set_device_settings_plug_vbus_at_boot(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _value: donguru_api::VbusMode,
-    ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
-        Unimplemented.into()
+        value: donguru_api::VbusMode,
+    ) -> SetResult<CommonError<'_>> {
+        // what plug.vbus_mode would refuse whatever VBUS is; the voltage is checked at boot
+        if Limits::from_mode(&value).is_err() {
+            return SetError(meter::invalid("not a mode plug.vbus_mode takes"));
+        }
+        match {
+            self.user.set(now_ms(), |s| s.plug_vbus_at_boot = value);
+            self.persist_settings().await
+        } {
+            Ok(()) => Set,
+            Err(e) => SetError(e),
+        }
     }
 
     pub(super) async fn get_device_settings_plug_vbus_at_boot(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::VbusMode, wire_weaver::ww_error::CommonError<'_>> {
-        Unimplemented.into()
+    ) -> GetResult<donguru_api::VbusMode, CommonError<'_>> {
+        Value(self.user.get().plug_vbus_at_boot.clone())
     }
 
+    // stored only: the button does nothing on its own until FW-4 / API-13
     pub(super) async fn set_device_settings_button_action(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _value: donguru_api::ButtonAction,
-    ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
-        Unimplemented.into()
+        value: donguru_api::ButtonAction,
+    ) -> SetResult<CommonError<'_>> {
+        match {
+            self.user.set(now_ms(), |s| s.button_action = value);
+            self.persist_settings().await
+        } {
+            Ok(()) => Set,
+            Err(e) => SetError(e),
+        }
     }
 
     pub(super) async fn get_device_settings_button_action(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::ButtonAction, wire_weaver::ww_error::CommonError<'_>> {
-        Unimplemented.into()
+    ) -> GetResult<donguru_api::ButtonAction, CommonError<'_>> {
+        Value(self.user.get().button_action)
     }
 
     pub(super) async fn set_device_settings_meter_window(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _value: ww_si::Second,
-    ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
-        Unimplemented.into()
+        value: ww_si::Second,
+    ) -> SetResult<CommonError<'_>> {
+        let Some(us) = meter::window_us_of(&value) else {
+            return SetError(meter::invalid(meter::WINDOW_INVALID));
+        };
+        crate::adc::set_window_us(us);
+        match {
+            self.user.set(now_ms(), |s| s.meter_window = value);
+            self.persist_settings().await
+        } {
+            Ok(()) => Set,
+            Err(e) => SetError(e),
+        }
     }
 
     pub(super) async fn get_device_settings_meter_window(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<ww_si::Second, wire_weaver::ww_error::CommonError<'_>> {
-        Unimplemented.into()
+    ) -> GetResult<ww_si::Second, CommonError<'_>> {
+        Value(self.user.get().meter_window)
     }
 
     pub(super) async fn set_device_settings_meter_deadband(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _value: donguru_api::MeterDeadband,
-    ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
-        Unimplemented.into()
+        value: donguru_api::MeterDeadband,
+    ) -> SetResult<CommonError<'_>> {
+        let Some((mv, ma)) = meter::deadband_of(&value) else {
+            return SetError(meter::invalid(meter::DEADBAND_INVALID));
+        };
+        self.meter.set_deadband(mv, ma);
+        match {
+            self.user.set(now_ms(), |s| s.meter_deadband = value);
+            self.persist_settings().await
+        } {
+            Ok(()) => Set,
+            Err(e) => SetError(e),
+        }
     }
 
     pub(super) async fn get_device_settings_meter_deadband(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::MeterDeadband, wire_weaver::ww_error::CommonError<'_>> {
-        Unimplemented.into()
+    ) -> GetResult<donguru_api::MeterDeadband, CommonError<'_>> {
+        Value(self.user.get().meter_deadband.clone())
     }
 
+    // stored only: uart[0] comes with API-14
     pub(super) async fn set_device_settings_uart_plug(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _value: ww_uart::UartConfig,
-    ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
-        Unimplemented.into()
+        value: ww_uart::UartConfig,
+    ) -> SetResult<CommonError<'_>> {
+        match {
+            self.user.set(now_ms(), |s| s.uart_plug = value);
+            self.persist_settings().await
+        } {
+            Ok(()) => Set,
+            Err(e) => SetError(e),
+        }
     }
 
     pub(super) async fn get_device_settings_uart_plug(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<ww_uart::UartConfig, wire_weaver::ww_error::CommonError<'_>> {
-        Unimplemented.into()
+    ) -> GetResult<ww_uart::UartConfig, CommonError<'_>> {
+        Value(self.user.get().uart_plug.clone())
     }
 
     pub(super) async fn device_settings_reset(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> RpcResult<Result<(), wire_weaver::ww_error::CommonError<'_>>> {
-        Unimplemented.into()
+    ) -> RpcResult<Result<(), CommonError<'_>>> {
+        self.user.reset_to_defaults(now_ms());
+        // the live values a settings write sets go back with them; plug VBUS is only a boot value
+        let defaults = UserSettings::default();
+        if let Some(us) = meter::window_us_of(&defaults.meter_window) {
+            crate::adc::set_window_us(us);
+        }
+        if let Some((mv, ma)) = meter::deadband_of(&defaults.meter_deadband) {
+            self.meter.set_deadband(mv, ma);
+        }
+        Ready(self.persist_settings().await)
     }
+}
+
+impl ServerState {
+    /// Writes the record before answering, so `Ok` means the settings survive a power cut (what `ww_user_info`
+    /// promises for the label; the same for every setting). One copy for every handler: they change the settings in
+    /// RAM, then await this.
+    async fn persist_settings(&mut self) -> Result<(), CommonError<'static>> {
+        match self.user.persist(self.store).await {
+            Ok(Persisted::Written(stats)) => {
+                info!("settings written: {}", stats);
+                self.settings_maintain = true;
+                Ok(())
+            }
+            Ok(Persisted::Unchanged) => Ok(()),
+            Err(e) => {
+                cnt!(settings_write_errors: u32, warn);
+                warn!("settings not written: {}", e);
+                Err(CommonError::Fault {
+                    code: crate::settings::fault_code(&e),
+                })
+            }
+        }
+    }
+
+    /// Boot values from the settings that only apply at boot: plug VBUS, through the guard once the ADC has a
+    /// reading (a guarded mode is refused without one, or above its `max_voltage`: VBUS stays off then).
+    pub(super) async fn apply_boot_settings(&mut self) {
+        if let Some(us) = meter::window_us_of(&self.user.get().meter_window) {
+            crate::adc::set_window_us(us);
+        }
+        let mode = self.user.get().plug_vbus_at_boot.clone();
+        if mode != donguru_api::VbusMode::ForceOff {
+            let _ = meter::readings().await;
+            if power::set_mode(Which::Plug, mode).is_err() {
+                cnt::bkp_cnt!(plug_vbus_at_boot_refused: u32, warn);
+            }
+        }
+    }
+
+    /// Settings work for a quiet moment of the server task: the erase ahead after a write (so the write that starts
+    /// a new page doesn't erase), and a write that failed before, tried again once its debounce is over.
+    pub(super) async fn settings_idle(&mut self) {
+        if self.user.due_at().is_some_and(|at| at <= now_ms()) {
+            let _ = self.persist_settings().await;
+        }
+        if core::mem::take(&mut self.settings_maintain)
+            && let Err(e) = self.store.maintain().await
+        {
+            cnt!(settings_erase_errors: u32, warn);
+            warn!("settings erase ahead failed: {}", e);
+        }
+    }
+}
+
+fn now_ms() -> u64 {
+    Instant::now().as_millis()
 }
 
 /// Values of the `const` items, served without a handler and read once per connection by a host.
@@ -272,11 +403,11 @@ impl super::server_impl::DonguruApiConsts for ServerState {
         MaxLen::new_unchecked(RefVec::Slice { slice: &self.uid })
     }
 
-    // RAM only until the settings store (API-19)
+    // kept in the settings store (API-19)
     const DEVICE_LABEL_CAPABILITIES: UserInfoCaps = UserInfoCaps {
         name_max: MAX_NAME_LEN as u16,
         notes_max: MAX_NOTES_LEN as u16,
-        persistent: false,
+        persistent: true,
     };
 
     fn device_counters_info(&self) -> CountersInfo<'_> {
@@ -305,46 +436,5 @@ fn counter_buffer(buffer: CounterBuffer) -> (&'static [AtomicU32], usize) {
     match buffer {
         CounterBuffer::Ram => (cnt::counters_ram_buffer(), cnt::ram_used_words()),
         CounterBuffer::Backup => (cnt::counters_bkp_buffer(), cnt::bkp_used_words()),
-    }
-}
-
-/// `device.label`: name and notes, in RAM until the settings store (API-19).
-pub(super) struct Label {
-    pub(super) name: Text<MAX_NAME_LEN>,
-    pub(super) notes: Text<MAX_NOTES_LEN>,
-}
-
-impl Label {
-    pub(super) const fn new() -> Self {
-        Label {
-            name: Text::new(),
-            notes: Text::new(),
-        }
-    }
-}
-
-/// UTF-8 text of up to `N` bytes. The bound is checked when the request is read (`MaxLen`), so `set` never cuts.
-pub(super) struct Text<const N: usize> {
-    buf: [u8; N],
-    len: usize,
-}
-
-impl<const N: usize> Text<N> {
-    const fn new() -> Self {
-        Text {
-            buf: [0; N],
-            len: 0,
-        }
-    }
-
-    pub(super) fn set(&mut self, s: &str) {
-        let len = s.len().min(N);
-        self.buf[..len].copy_from_slice(&s.as_bytes()[..len]);
-        self.len = len;
-    }
-
-    pub(super) fn get(&self) -> &str {
-        // only ever a whole `&str` (or empty) is copied in
-        core::str::from_utf8(&self.buf[..self.len]).unwrap_or("")
     }
 }

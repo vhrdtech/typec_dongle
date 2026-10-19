@@ -23,7 +23,7 @@ mod sbu;
 mod swd;
 mod uart;
 
-use crate::{cmsis_dap, hub as hub_ctl, power, swd as swd_host};
+use crate::{cmsis_dap, hub as hub_ctl, power, settings, swd as swd_host};
 use cnt::cnt;
 use defmt::{info, unwrap};
 use embassy_executor::Spawner;
@@ -85,8 +85,11 @@ pub struct ServerState {
     last_reset: bedrock_crash::Snapshot,
     /// `device.counters.read`: one page of counter words, copied at once.
     counters_page: [UVlq32; ww_counters::MAX_WORDS],
-    /// `device.label`, in RAM until the settings store (API-19).
-    label: device::Label,
+    /// `device.settings` and `device.label`, kept in flash (API-19, `src/settings.rs`).
+    user: &'static mut settings::User,
+    store: &'static mut settings::Store,
+    /// A record was written: erase ahead in the next turn of the server task, after the answer went out.
+    settings_maintain: bool,
     /// `leds`: global mode, brightness and the end of a running identify.
     leds: leds::LedsState,
     /// `meter`: deadband and what was last announced to observers.
@@ -94,7 +97,11 @@ pub struct ServerState {
 }
 
 impl ServerState {
-    async fn new(uid: &'static [u8], last_reset: bedrock_crash::Snapshot) -> Self {
+    async fn new(
+        uid: &'static [u8],
+        last_reset: bedrock_crash::Snapshot,
+        (store, user): (&'static mut settings::Store, &'static mut settings::User),
+    ) -> Self {
         // the boot count in the high half: a session of this boot never takes a host's cursor of an earlier boot
         // for its own (the boot count restarts at a power-on, the log store is lost with it then)
         let stream_sessions = last_reset.view().boot_count << 16 | 1;
@@ -114,9 +121,11 @@ impl ServerState {
             }],
             last_reset,
             counters_page: [UVlq32(0); ww_counters::MAX_WORDS],
-            label: device::Label::new(),
             leds: leds::LedsState::new(),
-            meter: meter::MeterState::new(),
+            meter: meter::MeterState::new(&user.get().meter_deadband),
+            user,
+            store,
+            settings_maintain: false,
         }
     }
 
@@ -252,16 +261,19 @@ static UID: StaticCell<[u8; 12]> = StaticCell::new();
 /// Builds the composite USB device (WireWeaver + CMSIS-DAP v2, `src/cmsis_dap.rs`) on `driver` and spawns the
 /// USB, WireWeaver server and CMSIS-DAP tasks. `swd_host` is handed to the CMSIS-DAP task, which is the sole
 /// owner of the SWD-host pins (FW-15). `last_reset` is what `last_reset::boot` read, served as `device.last_reset`.
+/// `settings` is the open settings store (`src/settings.rs`): its boot values are applied here.
 pub async fn start(
     spawner: Spawner,
     driver: UsbDriver,
     swd_host: swd_host::SwdHost,
     last_reset: bedrock_crash::Snapshot,
+    settings: (&'static mut settings::Store, &'static mut settings::User),
 ) {
     let buffers = USB_BUFFERS.init(UsbBuffers::default());
     // in a static, not on the task's future: the observe tables and stream states are a few hundred bytes
-    let state =
-        SERVER_STATE.init(ServerState::new(UID.init(embassy_stm32::uid::uid()), last_reset).await);
+    let state = SERVER_STATE
+        .init(ServerState::new(UID.init(embassy_stm32::uid::uid()), last_reset, settings).await);
+    state.apply_boot_settings().await;
 
     let mut config = UsbConfig::new(0xc0de, 0xcafe);
     config.manufacturer = Some("donguru");
@@ -357,7 +369,7 @@ async fn server_task(mut server: UsbServer<'static, UsbDriver>, state: &'static 
                     }
                 }
             }
-            Either3::Second(()) => {}
+            Either3::Second(()) => state.settings_idle().await,
             Either3::Third(()) => {
                 state.power_changed();
                 while let Some(done) = power::take_cycle_done() {

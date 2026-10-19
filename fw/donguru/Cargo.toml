@@ -61,6 +61,11 @@ ww_uart = { path = "../../../wire_weaver/ww_stdlib/ww_uart", default-features = 
 ww_uid = { path = "../../../wire_weaver/ww_stdlib/ww_uid", default-features = false }
 ww_user_info = { path = "../../../wire_weaver/ww_stdlib/ww_user_info", default-features = false }
 wire_weaver_usb_embassy = { path = "../../../wire_weaver/mcu/wire_weaver_usb_embassy" }
+# device.settings and device.label kept in flash (API-19, src/settings.rs): the settings store, reading the flash
+# through the ECC-safe wrapper so a word cut by a power loss reads as zeros instead of an NMI on every boot
+# (nmi-handler: its NMI handler, panicking on any other NMI, so the crash record catches it)
+ww_settings = { path = "../../../wire_weaver/ww_settings/ww_settings", features = ["defmt"] }
+ww_ecc_flash = { path = "../../../wire_weaver/mcu/ww_ecc_flash", features = ["nmi-handler", "defmt"] }
 usb251xb = { version = "0.1.0", default-features = false, features = ["async", "defmt"] }
 
 [features]

@@ -10,9 +10,6 @@ use wire_weaver::ww_error::CommonError;
 use ww_si::ww_numeric::NumericValue;
 use ww_si::{Ampere, Coulomb, DegreeCelsius, Joule, Prefix, Second, Volt, Watt};
 
-/// Default deadband: 20 mV and 10 mA.
-const DEFAULT_DEADBAND_MV: u32 = 20;
-const DEFAULT_DEADBAND_MA: u32 = 10;
 /// `reading` is not marked changed more often than the ADC updates it; `totals` change all the time, so they are
 /// marked this often while observed.
 const TOTALS_PERIOD: Duration = Duration::from_secs(1);
@@ -32,15 +29,26 @@ pub(super) struct MeterState {
 }
 
 impl MeterState {
-    pub(super) fn new() -> Self {
+    /// Starts with `deadband` (`device.settings.meter_deadband`), the default when it isn't a valid one.
+    pub(super) fn new(deadband: &MeterDeadband) -> Self {
+        let (deadband_mv, deadband_ma) = deadband_of(deadband)
+            .or_else(|| deadband_of(&crate::settings::default_deadband()))
+            .unwrap_or((0, 0));
         MeterState {
-            deadband_mv: DEFAULT_DEADBAND_MV,
-            deadband_ma: DEFAULT_DEADBAND_MA,
+            deadband_mv,
+            deadband_ma,
             marked_mv: 0,
             marked_ma: 0,
             marked_cdeg: 0,
             marked_totals_at: Instant::MIN,
         }
+    }
+}
+
+impl MeterState {
+    pub(super) fn set_deadband(&mut self, mv: u32, ma: u32) {
+        self.deadband_mv = mv;
+        self.deadband_ma = ma;
     }
 }
 
@@ -72,7 +80,33 @@ fn to_prefixed(value: &NumericValue, from: Prefix, to: Prefix) -> Option<i32> {
     Some(v)
 }
 
-fn invalid(reason: &'static str) -> CommonError<'static> {
+/// A `meter.window` in µs, `None` outside of what the ADC can average (see FEATURES.md FW-3).
+pub(super) fn window_us_of(window: &Second) -> Option<u32> {
+    to_prefixed(&window.value, window.prefix, Prefix::Micro)
+        .filter(|us| *us >= adc::WINDOW_MIN_US as i32 && *us <= adc::WINDOW_MAX_US as i32)
+        .map(|us| us as u32)
+}
+
+/// A `meter.deadband` in mV and mA, `None` unless both are non-negative integers there.
+pub(super) fn deadband_of(deadband: &MeterDeadband) -> Option<(u32, u32)> {
+    let mv = to_prefixed(
+        &deadband.voltage.value,
+        deadband.voltage.prefix,
+        Prefix::Milli,
+    )?;
+    let ma = to_prefixed(
+        &deadband.current.value,
+        deadband.current.prefix,
+        Prefix::Milli,
+    )?;
+    (mv >= 0 && ma >= 0).then_some((mv as u32, ma as u32))
+}
+
+pub(super) const WINDOW_INVALID: &str = "window out of range, see FEATURES.md FW-3";
+pub(super) const DEADBAND_INVALID: &str =
+    "deadband must be a non-negative integer number of mV / mA";
+
+pub(super) fn invalid(reason: &'static str) -> CommonError<'static> {
     CommonError::InvalidArgument {
         arg: 0,
         reason: MaxLen::new_unchecked(reason),
@@ -123,11 +157,10 @@ impl ServerState {
         _cx: &mut Context<'_, impl EventOut>,
         value: Second,
     ) -> SetResult<CommonError<'_>> {
-        let us = match to_prefixed(&value.value, value.prefix, Prefix::Micro) {
-            Some(us) if us >= adc::WINDOW_MIN_US as i32 && us <= adc::WINDOW_MAX_US as i32 => us,
-            _ => return SetError(invalid("window out of range, see FEATURES.md FW-3")),
+        let Some(us) = window_us_of(&value) else {
+            return SetError(invalid(WINDOW_INVALID));
         };
-        adc::set_window_us(us as u32);
+        adc::set_window_us(us);
         Set
     }
 
@@ -143,18 +176,11 @@ impl ServerState {
         _cx: &mut Context<'_, impl EventOut>,
         value: MeterDeadband,
     ) -> SetResult<CommonError<'_>> {
-        let mv = to_prefixed(&value.voltage.value, value.voltage.prefix, Prefix::Milli);
-        let ma = to_prefixed(&value.current.value, value.current.prefix, Prefix::Milli);
-        match (mv, ma) {
-            (Some(mv), Some(ma)) if mv >= 0 && ma >= 0 => {
-                self.meter.deadband_mv = mv as u32;
-                self.meter.deadband_ma = ma as u32;
-                Set
-            }
-            _ => SetError(invalid(
-                "deadband must be a non-negative integer number of mV / mA",
-            )),
-        }
+        let Some((mv, ma)) = deadband_of(&value) else {
+            return SetError(invalid(DEADBAND_INVALID));
+        };
+        self.meter.set_deadband(mv, ma);
+        Set
     }
 
     pub(super) async fn get_meter_deadband(

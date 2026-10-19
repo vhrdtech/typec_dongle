@@ -340,7 +340,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 
 - ✅ **API-9 Device contract**: `device.firmware` (`FirmwareInfo`, build id), `device.last_reset` (`LastReset`:
   cause, crash record, boot count, clear), `device.board`, `device.uid`, `device.label` (`UserInfo`: name 32 B and
-  notes 256 B, RAM only until the settings store, API-19), `device.counters` (`ww_counters`: RAM and BKP buffers,
+  notes 256 B, in flash since API-19), `device.counters` (`ww_counters`: RAM and BKP buffers,
   used words, build id; `watch` not implemented, polling `read` covers USB), `leds` as `ww_indication` (mode:
   `OnlyEssential` keeps the power LED; brightness in five steps; `identify` blinks both LEDs, `Busy` while running;
   RAM only). Code: `fw/donguru/src/ww/device.rs`, `ww/leds.rs`, `src/led.rs`, `src/last_reset.rs`. With FW-11,
@@ -398,9 +398,19 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 📋 **API-18 Bring-up API**: MCU pins by port and number (refused list, no memory write), boot-time pin snapshot,
   hub SMBus registers, UCPD1/2 state and role, raw LEDs, peripheral register reads (P2534#14oct-1014). ^revB
 
-- 📋 **API-19 Persistent settings**: `device.settings` as `rw` properties kept in flash by the new `ww_settings` store
-  (sparse ShrinkWrap records, power-cut safe, 4 pages at the end of flash): label, plug VBUS at boot (replaces the
-  `plug-vbus-on` feature), button action, meter window / deadband, UART default; a factory key for FW-9. ^revB
+- 🧪 **API-19 Persistent settings**: `device.settings` and `device.label` kept in flash by WireWeaver's `ww_settings`
+  store (STD-32: a sparse record of the fields not at their default, power-cut safe, readable by older and newer
+  firmware) in the last 4 pages of bank 2 (`SETTINGS` in `memory.x`, 8 KiB, was the template's 2 KiB CONFIG page),
+  read through `ww_ecc_flash` (SRV-19: a word cut by a power loss reads as zeros, not an NMI on every boot). Fields:
+  label name and notes, `plug_vbus_at_boot` (applied through the guard once the ADC has a reading, refused above its
+  `max_voltage`: VBUS stays off, `plug_vbus_at_boot_refused` counted), `meter_window` / `meter_deadband` (applied
+  live and at boot), `button_action` and `uart_plug` (stored only until FW-4 / API-14 use them); `reset` puts every
+  field and the label back to the default. Every write answers once the record is in flash (`Fault` code 1 flash,
+  2 a newer firmware's record kept until `reset`, 3 record too big); the page erase ahead runs in the server task
+  after the answer (~25 ms). Code: `fw/donguru/src/settings.rs`, handlers in `ww/device.rs`. +2.3 KiB RAM. Factory
+  key (FW-9 calibration) not used yet. Built 19 Oct 2026, not yet run on a board. CLI: `dg settings` (separate
+  item). ^revB
+
 - 📋 **API-20 SBU UART as CDC-ACM**: the SBU USART also as `/dev/ttyACM*`; one owner at a time (ACM while the tty is
   open, else WireWeaver), the owner shown in `sbu.function`, WireWeaver gets `InUse`, `sbu.release` overrides. With
   FW-7. ^revB

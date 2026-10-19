@@ -8,6 +8,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ### Added
 
+- Firmware: `device.settings` and `device.label` are kept in flash (API-19) by WireWeaver's `ww_settings` store in the last 8 KiB of bank 2, power-cut safe and read through the ECC-safe flash wrapper: label and notes, `plug_vbus_at_boot` (applied through the VBUS guard at boot), `meter_window` and `meter_deadband` (applied live and at boot), `button_action` and `uart_plug` (stored for FW-4 / API-14), `reset`. A write answers once it is in flash. `device.label` capabilities now say `persistent`. Code moved out of the last 8 KiB of flash (504 KiB for the firmware). Built, not yet run on a board.
 - Lab book (PKG-5): `labs/`, 48 labs in six levels from first hour to insane, one Typst file each, built into one PDF (`just labs-book`) and web pages with a PDF per lab (`just build-labs`); each lab shows the status of the features it uses, read from FEATURES.md, and the book ends with a map of every feature the labs need.
 
 ### Changed

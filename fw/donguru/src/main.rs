@@ -10,6 +10,7 @@ mod last_reset;
 mod led;
 mod log;
 mod power;
+mod settings;
 mod swd;
 mod ww;
 
@@ -112,6 +113,10 @@ assign_resources! {
         pb6: PB6,
         spi2: SPI2,
     }
+    settings: SettingsResources {
+        /// The ww_settings store in the last 4 pages of bank 2 (`SETTINGS` in memory.x, API-19).
+        flash: FLASH,
+    }
 }
 
 bind_interrupts!(pub struct Irqs {
@@ -183,7 +188,9 @@ async fn main(spawner: embassy_executor::Spawner) {
     // Composite USB device (FS, HSI48 clock above): WireWeaver and CMSIS-DAP v2 (FW-15), see src/ww/mod.rs.
     let usb_driver = usb::Driver::new(r.usb.usb, Irqs, r.usb.pa12, r.usb.pa11);
     let swd_host = swd::SwdHost::new(r.swd);
-    ww::start(spawner, usb_driver, swd_host, last_reset).await;
+    // device.settings and the label (API-19): their boot values are applied by ww::start
+    let settings = settings::open(r.settings.flash).await;
+    ww::start(spawner, usb_driver, swd_host, last_reset, settings).await;
 
     info!("init done");
 }

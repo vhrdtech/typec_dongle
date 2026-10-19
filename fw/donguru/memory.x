@@ -6,10 +6,11 @@ MEMORY
   /* FLASH : ORIGIN = 0x08000000, LENGTH = 512K */
 
   /* FLASH (flash): Application */
-  FLASH : ORIGIN = 0x08000000, LENGTH = 510K
+  FLASH : ORIGIN = 0x08000000, LENGTH = 504K
 
-  /* CONFIG (flash): Persistent application configuration (one erase sector) */
-  CONFIG : ORIGIN = 0x0807F800, LENGTH = 2K
+  /* SETTINGS (flash): the ww_settings store of src/settings.rs (API-19), the last 4 pages (2K each) of bank 2;
+     code never links there, and probe-rs only erases the pages the image covers, so settings survive a flash */
+  SETTINGS : ORIGIN = 0x0807E000, LENGTH = 8K
 
   /* SRAM (ram): Main RAM (also exported as RAM) */
   /* SRAM : ORIGIN = 0x20000000, LENGTH = 144K */
@@ -20,9 +21,9 @@ MEMORY
 }
 
 /* Helper symbols: additional RAM banks (see init_ram.rs), flash partitions */
-/* CONFIG: offsets relative to the start of flash (ORIGIN(FLASH)), as embassy-boot / flash drivers expect */
-__config_start = ORIGIN(CONFIG) - ORIGIN(FLASH);
-__config_end = ORIGIN(CONFIG) + LENGTH(CONFIG) - ORIGIN(FLASH);
+/* SETTINGS: offsets relative to the start of flash (ORIGIN(FLASH)), as embassy's flash driver expects */
+__settings_start = ORIGIN(SETTINGS) - ORIGIN(FLASH);
+__settings_end = ORIGIN(SETTINGS) + LENGTH(SETTINGS) - ORIGIN(FLASH);
 
 /* GNU build id (--build-id=sha1 in build.rs): the firmware's identity, a host finds the ELF by it. Kept in flash;
    ww_firmware_info::build_id() reads it through the two symbols. */
