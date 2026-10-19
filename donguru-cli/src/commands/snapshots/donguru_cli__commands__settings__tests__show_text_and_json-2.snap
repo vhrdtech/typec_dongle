@@ -1,0 +1,5 @@
+---
+source: donguru-cli/src/commands/settings.rs
+expression: "String::from_utf8(json).unwrap()"
+---
+{"button_action":"off","meter_deadband":{"current_ma":10.0,"voltage_mv":20.0},"meter_window":0.01,"plug_vbus_at_boot":{"mode":"force_off"},"uart_plug":{"baud":115200,"data_bits":"8","idle_chars":2,"io_level_v":null,"mode":"async","parity":"N","prevent_back_feed":true,"stop_bits":"1"}}

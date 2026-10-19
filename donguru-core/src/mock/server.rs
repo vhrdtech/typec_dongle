@@ -264,6 +264,9 @@ impl MockServer {
         _cx: &mut Context<'_, impl EventOut>,
         value: donguru_api::VbusMode,
     ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
+        if let Some(code) = self.state.settings_fault {
+            return SetError(CommonError::Fault { code });
+        }
         if let Err(e) = check_mode(&value) {
             return SetError(e);
         }
@@ -283,6 +286,9 @@ impl MockServer {
         _cx: &mut Context<'_, impl EventOut>,
         value: donguru_api::ButtonAction,
     ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
+        if let Some(code) = self.state.settings_fault {
+            return SetError(CommonError::Fault { code });
+        }
         self.state.settings.button_action = value;
         self.state.button_action = value;
         Set
@@ -300,6 +306,9 @@ impl MockServer {
         _cx: &mut Context<'_, impl EventOut>,
         value: ww_si::Second,
     ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
+        if let Some(code) = self.state.settings_fault {
+            return SetError(CommonError::Fault { code });
+        }
         if let Err(e) = check_window(value) {
             return SetError(e);
         }
@@ -320,6 +329,9 @@ impl MockServer {
         _cx: &mut Context<'_, impl EventOut>,
         value: donguru_api::MeterDeadband,
     ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
+        if let Some(code) = self.state.settings_fault {
+            return SetError(CommonError::Fault { code });
+        }
         self.state.settings.meter_deadband = value.clone();
         self.state.meter_deadband = value;
         Set
@@ -337,6 +349,9 @@ impl MockServer {
         _cx: &mut Context<'_, impl EventOut>,
         value: ww_uart::UartConfig,
     ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
+        if let Some(code) = self.state.settings_fault {
+            return SetError(CommonError::Fault { code });
+        }
         self.state.settings.uart_plug = value;
         Set
     }
@@ -352,6 +367,9 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> RpcResult<Result<(), wire_weaver::ww_error::CommonError<'_>>> {
+        if let Some(code) = self.state.settings_fault {
+            return Ready(Err(CommonError::Fault { code }));
+        }
         self.state.settings = MockSettings::default();
         self.state.label.clear();
         Ready(Ok(()))

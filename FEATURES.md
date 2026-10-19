@@ -684,6 +684,20 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `usb-over-sbu`.
 - 💡 **CLI-46 `dg clients`**: who is connected (USB through the server, NCM), what they observe and which leases they
   hold (API-33). Lab `many-clients`.
+- 🧪 **CLI-47 `dg settings show / set KEY VALUE / reset`** (`donguru-cli/src/commands/settings.rs`, API-19):
+  `show` prints every setting (text/json/jsonl); `set` changes one: `plug_vbus_at_boot off|on [--max-voltage
+  V]|auto --trip A [--max-voltage V]` (reuses `donguru_core::vbus`, as `dg power on`), `button_action
+  off|toggle-vbus|cycle-vbus|toggle-data`, `meter_window DURATION` (1 ms..=1 s, e.g. `10ms`), `meter_deadband
+  VOLT,AMPERE` (e.g. `20mV,10mA`) or `--voltage`/`--current`, `uart_plug "BAUD BITSPARITYSTOP"` (e.g. `"115200
+  8N1"`, read-modify-write: only baud/bits/parity/stop change, the rest of `UartConfig` stays); `reset` calls
+  `settings.reset` with no confirmation, printing what it resets first (every setting and the label; factory data
+  stays). `KEY` is a `ValueEnum` (snake_case, one line of help each) for live shell completion (CLI quality rule).
+  A write's `CommonError::Fault` (the flash write failed / a newer firmware's record / a record too big) reads as
+  a sentence (`donguru_core::Error::fault_note`, CORE-1), not just "Hardware fault 0x1"; the mock's
+  `settings_fault` simulates all three for tests. The design doc's `reset --factory` isn't in the `Settings` API
+  (API-19) and so isn't a flag here. Tested against the mock (`donguru-core/tests/mock.rs`'s `settings` test,
+  `donguru-cli/src/commands/settings.rs`'s unit/insta tests); not yet on hardware (API-19's flash store is
+  built in session `ww-latest`).
 
 ## GUI (`GUI`)
 

@@ -121,6 +121,34 @@ async fn settings() {
     assert_eq!(uart.baud_rate, ww_si::Baud::new(Prefix::Unit, 115_200u32));
     settings.set_uart_plug(uart).await.unwrap();
 
+    // the settings store answers Fault on a flash failure (1), a newer firmware's record (2) or a record too big
+    // (3); CLI-47 maps these to clear messages (donguru-core/src/error.rs)
+    for (code, note) in [
+        (1u32, "the flash write failed; the value was not saved"),
+        (
+            2,
+            "a newer firmware's settings record is stored in flash; `settings reset` overwrites it",
+        ),
+        (3, "the settings record is too big for the flash store"),
+    ] {
+        mock.with(move |s| s.settings_fault = Some(code)).await;
+        let e = settings
+            .set_button_action(ButtonAction::Off)
+            .await
+            .unwrap_err();
+        assert_eq!(e.device_kind(), Some(DeviceErrorKind::Fault));
+        assert_eq!(e.fault_note(), Some(note));
+        let e = settings.reset().await.unwrap_err();
+        assert_eq!(e.fault_note(), Some(note));
+    }
+    mock.with(|s| s.settings_fault = Some(99)).await;
+    let e = settings
+        .set_button_action(ButtonAction::Off)
+        .await
+        .unwrap_err();
+    assert_eq!(e.fault_note(), None, "an unknown fault code: no note");
+    mock.with(|s| s.settings_fault = None).await;
+
     settings.reset().await.unwrap();
     assert_eq!(
         settings.plug_vbus_at_boot().await.unwrap(),

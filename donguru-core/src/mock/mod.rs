@@ -12,10 +12,11 @@
 //! ```
 //!
 //! What the mock models ([MockState]), with the rules the firmware keeps:
-//! - `device`: variant, board, UID, label with notes, settings (in RAM), last reset (cause, message, boot count,
-//!   `clear`); counters and the log report their `INFO`/`DEFMT` (zero used words, no build id, no session), their
-//!   RPCs (`read`, `reset`, `watch`, the log stream) answer `Unimplemented` until API-10/the real counter layout
-//!   land in the firmware.
+//! - `device`: variant, board, UID, label with notes, settings (in RAM; `settings_fault` makes the next write or
+//!   `reset` answer `Fault { code }`, as the real flash store does, CLI-47); last reset (cause, message, boot
+//!   count, `clear`); counters and the log report their `INFO`/`DEFMT` (zero used words, no build id, no session),
+//!   their RPCs (`read`, `reset`, `watch`, the log stream) answer `Unimplemented` until API-10/the real counter
+//!   layout land in the firmware.
 //! - `leds`: mode, brightness, identify (`Unsupported` above 60 s).
 //! - `meter`: the reading, temperature and totals the test puts into the state; window 1 ms..=1 s.
 //! - `plug` / `header`: `vbus_mode` with the guard against the meter's `vbus_in` (above the mode's `max_voltage`
@@ -142,6 +143,10 @@ pub struct MockState {
     pub ucpd_role: [CcRole; 2],
     /// `debug.led_set`, by [Led] (power, status).
     pub leds: [LedMode; 2],
+    /// A test sets this to make the next `device.settings` write (or `reset`) answer
+    /// `CommonError::Fault { code }` instead of applying, as the real settings store does on a flash failure (1),
+    /// a newer firmware's record (2) or a record too big (3).
+    pub settings_fault: Option<u32>,
 }
 
 impl Default for MockState {
@@ -213,6 +218,7 @@ impl Default for MockState {
             hub_regs: (0..=255).collect(),
             ucpd_role: [CcRole::Off, CcRole::Off],
             leds: [LedMode::Off, LedMode::Off],
+            settings_fault: None,
         }
     }
 }

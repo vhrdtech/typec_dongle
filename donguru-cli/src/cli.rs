@@ -129,6 +129,10 @@ pub enum Command {
     #[command(subcommand)]
     Swd(crate::commands::swd::Swd),
 
+    /// Device settings kept in flash: plug VBUS at boot, button action, meter window/deadband, plug UART defaults
+    #[command(subcommand, display_order = 65)]
+    Settings(crate::commands::settings::Settings),
+
     /// Manage the Linux udev rules granting access to a dongle
     #[command(subcommand, display_order = 70)]
     Udev(crate::commands::udev::Udev),

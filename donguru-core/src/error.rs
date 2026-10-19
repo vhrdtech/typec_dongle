@@ -122,6 +122,26 @@ impl Error {
         matches!(self, Error::Unimplemented { .. })
     }
 
+    /// A plain-language note for a `CommonError::Fault` from the settings store (API-19): the firmware's `code`
+    /// says why the write (or `settings.reset`) didn't stick. `None` for any other error, or a code this host
+    /// doesn't know the meaning of (still shown via the error's own `Display`, "Hardware fault {code:#x}").
+    pub fn fault_note(&self) -> Option<&'static str> {
+        let Error::Device { error, .. } = self else {
+            return None;
+        };
+        let CommonErrorOwned::Fault { code } = error.typed::<CommonErrorOwned>()? else {
+            return None;
+        };
+        Some(match *code {
+            1 => "the flash write failed; the value was not saved",
+            2 => {
+                "a newer firmware's settings record is stored in flash; `settings reset` overwrites it"
+            }
+            3 => "the settings record is too big for the flash store",
+            _ => return None,
+        })
+    }
+
     /// The device's error category, if the device answered with an error.
     pub fn device_kind(&self) -> Option<DeviceErrorKind> {
         match self {

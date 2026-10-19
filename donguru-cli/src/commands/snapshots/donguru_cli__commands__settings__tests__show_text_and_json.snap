@@ -1,0 +1,9 @@
+---
+source: donguru-cli/src/commands/settings.rs
+expression: "String::from_utf8(text).unwrap()"
+---
+plug_vbus_at_boot   off
+button_action       off
+meter_window        10ms
+meter_deadband      20 mV, 10 mA
+uart_plug           115200 8N1  (async, back-feed guard on)
