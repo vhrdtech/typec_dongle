@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.14] - 2026-10-20
+
 ### Added
 
 - Firmware: `uart[1].rx` is compressed with LZ4 for hosts that offer it (FW-42, WireWeaver API-55): 12 KiB of history, 4096-entry hash table, encoder run from RAM; hosts without the offer (CLIs before API-55) get the chunks as before. Tested 21 Oct 2026 on B153A at 5.818 Mbaud with the replay source: 482-568 kB/s of UART bytes delivered at 2.8-4.3x (top lossless at 568 kB/s), raw 505 kB/s; only with the embassy DMA ring fix (FW-42 open item), without it 16 kB/s.
