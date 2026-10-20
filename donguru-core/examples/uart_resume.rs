@@ -370,7 +370,11 @@ async fn receive(
                 let want = expected(pos, bytes.len());
                 if bytes != want || units != bytes.len() as u64 {
                     s.mismatches += 1;
-                    let at = bytes.iter().zip(&want).position(|(a, b)| a != b).unwrap_or(0);
+                    let at = bytes
+                        .iter()
+                        .zip(&want)
+                        .position(|(a, b)| a != b)
+                        .unwrap_or(0);
                     let from = at.saturating_sub(4);
                     let to = (at + 12).min(bytes.len());
                     s.first_mismatch.get_or_insert(format!(
