@@ -10,6 +10,10 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 - Firmware: the `uart[].tx` credit sinks are on WireWeaver's sink protocol (API-34): their state is a `ww_stream::sink::SinkCredit` (was `ww_client_server::credit::SinkCredit`), opened by the host with a session it names, positions in bytes of the payload, a read on the sink returns its status. Needs a host with the same WireWeaver (the old sideband `Open`, `Credit`, `CreditQuery` and `Resend` are gone). Release FLASH at opt-level 3 362.6 -> 363.8 KiB (+1.2: the open, status read and `Query` dispatch), RAM +48 B (two `SinkCredit`s with sessions).
 
+### Fixed
+
+- Builds against WireWeaver with `ww_i2c` STD-35: its `#[optional(slave)]` group (I2C slave mode) is left out of the firmware's and the mock server's API (`omit = ["i2c.slave"]`), Donguru has no slave mode; a host calling it gets `NotImplementedByDevice` locally (or `Unimplemented` from the device). `just test` was red on main against WireWeaver master since STD-35 landed.
+
 ## [0.20.8] - 2026-10-19
 
 ### Changed

@@ -41,8 +41,8 @@ use wire_weaver_usb_embassy::ww_device::LinkEvent;
 use wire_weaver_usb_embassy::{
     LinkConfig, ServerBuffers, State as WwState, UsbDevice, UsbServer, UsbTimings, WireWeaverClass,
 };
-use ww_stream::sink::SinkCredit;
 use ww_stream::observe::ObserveLimits;
+use ww_stream::sink::SinkCredit;
 use ww_stream::tx::Counted;
 use ww_uid::{UidKind, UidSource, UniqueId};
 
@@ -188,7 +188,8 @@ mod server_impl {
         observe_outbox = 1024,
         observe_cells = "root_meter",
         const_model = "BOARD|IDS|INFO|BUILD_ID|DEFMT=fn",
-        omit = ["device.firmware.BUILD_RECORD"],
+        // no I2C slave mode on Donguru (ww_i2c STD-35): the group answers Unimplemented, clients see it omitted
+        omit = ["device.firmware.BUILD_RECORD", "i2c.slave"],
         introspect = "with_docs",
     );
 }

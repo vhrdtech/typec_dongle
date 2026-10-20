@@ -815,10 +815,7 @@ impl MockServer {
         &mut self.unopened
     }
 
-    fn credit_uart_tx(
-        &mut self,
-        _index_chain: [UNib32; 1],
-    ) -> &mut ww_stream::sink::SinkCredit {
+    fn credit_uart_tx(&mut self, _index_chain: [UNib32; 1]) -> &mut ww_stream::sink::SinkCredit {
         &mut self.uart_tx_credit
     }
 
@@ -1470,6 +1467,8 @@ pub mod api_impl {
         method_model = "_=immediate",
         property_model = "_=get_set",
         const_model = "BOARD|IDS|INFO=fn",
+        // as the firmware: no I2C slave mode (ww_i2c STD-35), its group answers Unimplemented
+        omit = ["i2c.slave"],
         introspect = "with_docs",
     );
 }
