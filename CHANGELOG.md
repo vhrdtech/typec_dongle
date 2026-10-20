@@ -20,6 +20,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ### Fixed
 
+- Builds against WireWeaver with `ww_board_info` 0.3 (STD-24): its optional `BoardInfo::REWORKS` is left out in the firmware and the mock (`omit = ["device.board.REWORKS"]`); hosts asking for it get `NotImplementedByDevice`.
 - Firmware: bytes lost on `uart[1].rx` because the host was slower are reported at their position (before, a loss could be reported ahead of bytes received before it, shifting positions) (FW-42).
 
 ## [0.20.13] - 2026-10-20

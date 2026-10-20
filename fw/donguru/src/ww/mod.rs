@@ -194,8 +194,9 @@ mod server_impl {
         observe_outbox = 1024,
         observe_cells = "root_meter",
         const_model = "BOARD|IDS|INFO|BUILD_ID|DEFMT=fn",
-        // no I2C slave mode on Donguru (ww_i2c STD-35): the group answers Unimplemented, clients see it omitted
-        omit = ["device.firmware.BUILD_RECORD", "i2c.slave"],
+        // no I2C slave mode on Donguru (ww_i2c STD-35): the group answers Unimplemented, clients see it omitted;
+        // the board's reworks list (ww_board_info STD-24) isn't served yet
+        omit = ["device.board.REWORKS", "device.firmware.BUILD_RECORD", "i2c.slave"],
         introspect = "with_docs",
     );
 }

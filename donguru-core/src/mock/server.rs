@@ -1502,8 +1502,8 @@ pub mod api_impl {
         method_model = "_=immediate",
         property_model = "_=get_set",
         const_model = "BOARD|IDS|INFO=fn",
-        // as the firmware: no I2C slave mode (ww_i2c STD-35), its group answers Unimplemented
-        omit = ["i2c.slave"],
+        // as the firmware: no I2C slave mode (ww_i2c STD-35), its group answers Unimplemented; no board reworks list
+        omit = ["device.board.REWORKS", "i2c.slave"],
         introspect = "with_docs",
     );
 }
