@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.12] - 2026-10-20
+
 ### Fixed
 
 - Firmware: the hub watchdog (FW-18) no longer resets the hub when it doesn't answer on I2C (FW-41). The hub NAKs while it attaches and while the host enumerates it, which caused one or two needless hub resets 200-600 ms after every boot, and an endless reset loop every 0.6 s when the MCU's own USB was off the bus (seen after `probe-rs download` + `reset`, where probe-rs itself switches the USB clock off, see FW-41). The probe now reads the hub's VID/PID and recovers when they read all-zero twice (a hub reset by a brown-out waits for its config again); no probing for 1 s after an attach, and a USB-side request within 2 s of a recovery is taken as its echo, so one hub reset brings one recovery. Recovery logs say why (`hub: lost (ID registers read all-zero)`, `hub: lost (USB device left the configured state)`). Tested 20 Oct 2026 on B153A: no recovery after `cnt run` and three resets, one per forced hub reset (PC13 pulse through the J-Link), USB back each time.
