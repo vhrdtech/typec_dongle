@@ -4,6 +4,7 @@
 mod adc;
 mod button;
 mod cmsis_dap;
+mod cpu;
 mod hub;
 mod init;
 mod last_reset;
@@ -137,8 +138,14 @@ bind_interrupts!(pub struct Irqs {
     USB_UCPD1_2 => usb::InterruptHandler<peripherals::USB>;
 });
 
-#[embassy_executor::main]
-async fn main(spawner: embassy_executor::Spawner) {
+#[cortex_m_rt::entry]
+fn main() -> ! {
+    // embassy's thread-mode executor, run by hand to count the CPU's idle time (FW-43)
+    cpu::run(|spawner| spawner.spawn(unwrap!(boot(spawner))))
+}
+
+#[embassy_executor::task]
+async fn boot(spawner: embassy_executor::Spawner) {
     log::init_rtt(); // before the first log line, so RTT has the whole boot log (src/log.rs)
     info!("donguru starting...");
     let last_reset = last_reset::boot(); // reset cause and crash record (src/last_reset.rs), logged

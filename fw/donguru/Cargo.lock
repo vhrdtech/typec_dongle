@@ -495,6 +495,7 @@ dependencies = [
  "ww_i2c",
  "ww_indication",
  "ww_log",
+ "ww_lz4",
  "ww_settings",
  "ww_si",
  "ww_stream",
@@ -505,7 +506,7 @@ dependencies = [
 
 [[package]]
 name = "donguru_api"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "defmt 1.1.1",
  "wire_weaver",
@@ -2250,6 +2251,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "ww_lz4"
+version = "0.1.0"
+
+[[package]]
 name = "ww_numeric"
 version = "0.2.0"
 dependencies = [
@@ -2308,6 +2313,7 @@ dependencies = [
  "portable-atomic",
  "wire_weaver",
  "ww_client_server",
+ "ww_lz4",
  "ww_si",
 ]
 

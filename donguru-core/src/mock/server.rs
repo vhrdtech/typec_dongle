@@ -1379,6 +1379,17 @@ impl MockServer {
         Ready(())
     }
 
+    // the mock has no line to replay on
+    async fn debug_uart_replay(
+        &mut self,
+        _cx: &mut Context<'_, impl EventOut>,
+        _capture: donguru_api::ReplayCapture,
+    ) -> RpcResult<Result<u32, donguru_api::DebugError<'_>>> {
+        Ready(Err(donguru_api::DebugError::Common(
+            CommonError::Unsupported,
+        )))
+    }
+
     async fn debug_reg_read(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,

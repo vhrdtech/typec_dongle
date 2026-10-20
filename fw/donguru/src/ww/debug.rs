@@ -152,4 +152,32 @@ impl ServerState {
         }
         Ready(())
     }
+
+    pub(super) fn debug_uart_replay(
+        &mut self,
+        _cx: &mut Context<'_, impl EventOut>,
+        capture: donguru_api::ReplayCapture,
+    ) -> RpcResult<Result<u32, donguru_api::DebugError<'_>>> {
+        use donguru_api::DebugError;
+        if !cfg!(feature = "debug-api") {
+            return RpcResult::Unimplemented;
+        }
+        #[cfg(feature = "uart-replay")]
+        {
+            let Some(data) = crate::uart::capture(capture) else {
+                // a capture of a newer API
+                return Ready(Err(DebugError::Common(CommonError::InvalidArgument {
+                    arg: 0,
+                    reason: MaxLen::new_unchecked("unknown capture"),
+                })));
+            };
+            crate::uart::replay(data);
+            Ready(Ok(data.len() as u32))
+        }
+        #[cfg(not(feature = "uart-replay"))]
+        {
+            let _ = capture;
+            Ready(Err(DebugError::Common(CommonError::Unsupported)))
+        }
+    }
 }

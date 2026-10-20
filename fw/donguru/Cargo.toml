@@ -46,7 +46,10 @@ wire_weaver = { path = "../../../wire_weaver/wire_weaver", default-features = fa
 ww_client_server = { path = "../../../wire_weaver/ww_stdlib/ww_client_server", default-features = false }
 # observe tables and stream states of the generated server (SRV-18, counted and reliable streams)
 # persistent-ram: device.log's store in .uninit RAM, kept across a crash and reset (API-10)
-ww_stream = { path = "../../../wire_weaver/ww_stream", default-features = false, features = ["persistent-ram"] }
+# lz4: `uart[1].rx` compressed for hosts that decode it (WireWeaver API-55, FW-42)
+ww_stream = { path = "../../../wire_weaver/ww_stream", default-features = false, features = ["persistent-ram", "lz4"] }
+# the encoder of `uart[1].rx`; ram: its hot functions run from SRAM, ~30 % fewer cycles than from flash (FW-42)
+ww_lz4 = { path = "../../../wire_weaver/ww_lz4", features = ["ram"] }
 # stdlib traits the API implements (`donguru_api` depends on them too): types in the handler signatures
 ww_si = { path = "../../../wire_weaver/ww_stdlib/ww_si", default-features = false, features = ["time", "electrical", "mechanical", "thermal", "i32", "u32"] }
 ww_adc = { path = "../../../wire_weaver/ww_stdlib/ww_adc", default-features = false }
@@ -77,6 +80,9 @@ debug-api = []
 debug-adc = []
 # switch / button state changes in the debug log
 debug-button = []
+# `debug.uart_replay`: text captures in flash (`replay/`, 96 KiB) sent out of the header UART in a loop, a full-rate
+# source for `uart[1].rx` (FW-42); without it the method answers Unsupported
+uart-replay = []
 # SWD-host starts in SPI mode (FW-21, SPI2 through the SBU level shifter) instead of bit-bang; the mode can still be
 # changed at run time with `DonguruApi::swd_mode`
 swd-spi = []

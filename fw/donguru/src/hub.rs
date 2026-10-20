@@ -291,7 +291,11 @@ pub async fn watchdog_task(mut hub: Hub) {
                     info!("hub probe: {}", probe);
                     last = probe;
                 }
-                unconfigured = if probe == Probe::Unconfigured { unconfigured + 1 } else { 0 };
+                unconfigured = if probe == Probe::Unconfigured {
+                    unconfigured + 1
+                } else {
+                    0
+                };
                 if unconfigured < UNCONFIGURED_READS {
                     continue;
                 }

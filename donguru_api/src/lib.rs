@@ -553,6 +553,26 @@ pub trait Bringup {
     /// Logs `count` numbered lines at once, more than the log keeps up with: the host sees how many are lost.
     #[since = "0.2.1"]
     fn log_flood(count: u32);
+    /// Replays a text capture kept in flash out of the header UART's TX (IO7) by DMA, in a loop at the line's rate,
+    /// until `Stop`: a full-rate source for `uart[1].rx` with a jumper from IO7 to IO8. The `tx` sink's items wait
+    /// meanwhile. Answers the capture's length in bytes (0 for `Stop`); `Unsupported` in a firmware built without
+    /// the feature `uart-replay`, `InvalidArgument` for a capture it doesn't know.
+    #[since = "0.5.0"]
+    #[errors(Common(Unsupported, InvalidArgument))]
+    fn uart_replay(capture: ReplayCapture) -> Result<u32, DebugError<'i>>;
+}
+
+/// A text capture for [`Bringup::uart_replay`], 32 KiB each, as a serial console would send it (CR LF).
+#[derive_shrink_wrap(borrowed, owned(feature = "std"), derive(Copy, Clone, Debug, PartialEq, Eq), ww_repr = nib)]
+pub enum ReplayCapture {
+    /// Stop replaying.
+    Stop,
+    /// A Linux kernel boot log.
+    Boot,
+    /// `ls -laR --color` of a system directory.
+    Ls,
+    /// `top` in a 160x50 terminal: a TUI redrawing.
+    Top,
 }
 
 /// An MCU pin: port and number.

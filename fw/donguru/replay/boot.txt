@@ -1,0 +1,343 @@
+[    1.155676] archlinux kernel: Booting Linux on physical CPU 0x0000000000 [0x612f0280]
+[    1.155692] archlinux kernel: Linux version 7.1.13-3-2-ARCH (linux-asahi@archlinux) (gcc (GCC) 16.1.1 20260430, GNU ld (GNU Binutils) 2.46.0) #1 SMP PREEMPT_DYNAMIC Sat, 19 Sep 2026 16:04:41 +0000
+[    1.155699] archlinux kernel: random: crng init done
+[    1.155704] archlinux kernel: Machine model: Apple MacBook Pro (16-inch, M1 Max, 2021)
+[    1.155708] archlinux kernel: efi: EFI v2.11 by Das U-Boot
+[    1.155713] archlinux kernel: efi: RTPROP=0x107c5eee040 SMBIOS 3.0=0x107c6f92000 INITRD=0x107c5ead040 MEMRESERVE=0x107c5eac040 
+[    1.155719] archlinux kernel: OF: reserved mem: 0x0000010001d70000..0x0000010002093fff (3216 KiB) nomap non-reusable asc-firmware@10001d70000
+[    1.155723] archlinux kernel: OF: reserved mem: 0x0000010000c68000..0x00000100015e7fff (9728 KiB) nomap non-reusable asc-firmware@10000c68000
+[    1.155728] archlinux kernel: OF: reserved mem: 0x00000107cb044000..0x00000107cb047fff (16 KiB) nomap non-reusable sio-firmware-data@107cb044000
+[    1.155732] archlinux kernel: OF: reserved mem: 0x00000107cb048000..0x00000107cb04bfff (16 KiB) nomap non-reusable sio-firmware-data@107cb048000
+[    1.155737] archlinux kernel: OF: reserved mem: 0x00000107cb04c000..0x00000107cb06bfff (128 KiB) nomap non-reusable sio-firmware-data@107cb04c000
+[    1.155741] archlinux kernel: OF: reserved mem: 0x00000107cb06c000..0x00000107cb06ffff (16 KiB) nomap non-reusable sio-firmware-data@107cb06c000
+[    1.155745] archlinux kernel: OF: reserved mem: 0x0000010002094000..0x000001000218bfff (992 KiB) nomap non-reusable asc-firmware@10002094000
+[    1.155751] archlinux kernel: OF: reserved mem: 0x000001000163c000..0x0000010001657fff (112 KiB) nomap non-reusable asc-firmware@1000163c000
+[    1.155757] archlinux kernel: OF: reserved mem: 0x00000107d1acc000..0x00000107d8d8ffff (117520 KiB) nomap non-reusable framebuffer@107d1acc000
+[    1.155761] archlinux kernel: OF: reserved mem: 0x00000107d07c8000..0x00000107d17c7fff (16384 KiB) nomap non-reusable @107d07c8000
+[    1.155766] archlinux kernel: OF: reserved mem: 0x00000107d17c8000..0x00000107d1ac7fff (3072 KiB) nomap non-reusable dcpext0_data@107d17c8000
+[    1.155770] archlinux kernel: OF: reserved mem: 0x00000107d1ac8000..0x00000107d1acbfff (16 KiB) nomap non-reusable region157@107d1ac8000
+[    1.155774] archlinux kernel: OF: reserved mem: 0x00000107d8d90000..0x00000107d8e4ffff (768 KiB) nomap non-reusable region95@107d8d90000
+[    1.155778] archlinux kernel: OF: reserved mem: 0x00000107d8e50000..0x00000107d919ffff (3392 KiB) nomap non-reusable region94@107d8e50000
+[    1.155783] archlinux kernel: OF: reserved mem: 0x00000107d91a0000..0x00000107da19ffff (16384 KiB) nomap non-reusable region57@107d91a0000
+[    1.155787] archlinux kernel: OF: reserved mem: 0x00000107da1a0000..0x00000107da49ffff (3072 KiB) nomap non-reusable dcp_data@107da1a0000
+[    1.155791] archlinux kernel: OF: reserved mem: 0x00000107cb090000..0x00000107cb093fff (16 KiB) map non-reusable flash@107cb090000
+[    1.155796] archlinux kernel: OF: reserved mem: 0x0000010004340000..0x00000100043bbfff (496 KiB) map non-reusable flash@10004340000
+[    1.155800] archlinux kernel: OF: reserved mem: 0x00000107cb070000..0x00000107cb083fff (80 KiB) map non-reusable globals
+[    1.155804] archlinux kernel: OF: reserved mem: 0x00000107cb088000..0x00000107cb08ffff (32 KiB) map non-reusable hw-cal-a
+[    1.155809] archlinux kernel: OF: reserved mem: 0x00000107cb084000..0x00000107cb087fff (16 KiB) map non-reusable hw-cal-b
+[    1.155813] archlinux kernel: OF: reserved mem: 0x00000107fff70000..0x00000107fff73fff (16 KiB) map non-reusable uat-handoff
+[    1.155817] archlinux kernel: OF: reserved mem: 0x00000107fff78000..0x00000107fffb7fff (256 KiB) map non-reusable uat-pagetables
+[    1.155821] archlinux kernel: OF: reserved mem: 0x00000107fffb8000..0x00000107fffbbfff (16 KiB) map non-reusable uat-ttbs
+[    1.155826] archlinux kernel: OF: reserved mem: 0x00000107cb094000..0x00000107cb2effff (2416 KiB) nomap non-reusable isp-heap
+[    1.155830] archlinux kernel: cma: Reserved 64 MiB at 0x0000010008000000
+[    1.155834] archlinux kernel: Zone ranges:
+[    1.155838] archlinux kernel:   DMA      [mem 0x0000010000c68000-0x00000107fffbbfff]
+[    1.155843] archlinux kernel:   DMA32    empty
+[    1.155847] archlinux kernel:   Normal   empty
+[    1.155851] archlinux kernel: Movable zone start for each node
+[    1.155855] archlinux kernel: Early memory node ranges
+[    1.155859] archlinux kernel:   node   0: [mem 0x0000010000c68000-0x00000100015e7fff]
+[    1.155863] archlinux kernel:   node   0: [mem 0x000001000163c000-0x0000010001657fff]
+[    1.155869] archlinux kernel:   node   0: [mem 0x0000010001d70000-0x000001000218bfff]
+[    1.155873] archlinux kernel:   node   0: [mem 0x000001000218c000-0x0000010004413fff]
+[    1.155877] archlinux kernel:   node   0: [mem 0x0000010004414000-0x0000010004523fff]
+[    1.155881] archlinux kernel:   node   0: [mem 0x0000010004524000-0x0000010007313fff]
+[    1.155885] archlinux kernel:   node   0: [mem 0x0000010007314000-0x0000010007323fff]
+[    1.155889] archlinux kernel:   node   0: [mem 0x0000010007324000-0x0000010007327fff]
+[    1.155893] archlinux kernel:   node   0: [mem 0x0000010007328000-0x0000010007337fff]
+[    1.155898] archlinux kernel:   node   0: [mem 0x0000010007338000-0x000001000733bfff]
+[    1.155902] archlinux kernel:   node   0: [mem 0x000001000733c000-0x000001000734bfff]
+[    1.155906] archlinux kernel:   node   0: [mem 0x000001000734c000-0x000001000734ffff]
+[    1.155910] archlinux kernel:   node   0: [mem 0x0000010007350000-0x000001000735ffff]
+[    1.155914] archlinux kernel:   node   0: [mem 0x0000010007360000-0x0000010007363fff]
+[    1.155918] archlinux kernel:   node   0: [mem 0x0000010007364000-0x0000010007373fff]
+[    1.155922] archlinux kernel:   node   0: [mem 0x0000010007374000-0x0000010007377fff]
+[    1.155926] archlinux kernel:   node   0: [mem 0x0000010007378000-0x0000010007387fff]
+[    1.155930] archlinux kernel:   node   0: [mem 0x0000010007388000-0x000001000738bfff]
+[    1.155935] archlinux kernel:   node   0: [mem 0x000001000738c000-0x000001000739bfff]
+[    1.155939] archlinux kernel:   node   0: [mem 0x000001000739c000-0x000001000739ffff]
+[    1.155943] archlinux kernel:   node   0: [mem 0x00000100073a0000-0x00000100073affff]
+[    1.155947] archlinux kernel:   node   0: [mem 0x00000100073b0000-0x00000100073b3fff]
+[    1.155952] archlinux kernel:   node   0: [mem 0x00000100073b4000-0x00000100073c3fff]
+[    1.155956] archlinux kernel:   node   0: [mem 0x00000100073c4000-0x00000100073c7fff]
+[    1.155960] archlinux kernel:   node   0: [mem 0x00000100073c8000-0x00000100073f7fff]
+[    1.155964] archlinux kernel:   node   0: [mem 0x00000100073f8000-0x000001072cffffff]
+[    1.155968] archlinux kernel:   node   0: [mem 0x000001072d000000-0x000001072d003fff]
+[    1.155973] archlinux kernel:   node   0: [mem 0x000001072d004000-0x00000107c5eebfff]
+[    1.155977] archlinux kernel:   node   0: [mem 0x00000107c5eec000-0x00000107c5f13fff]
+[    1.155981] archlinux kernel:   node   0: [mem 0x00000107c5f14000-0x00000107c6f8ffff]
+[    1.155985] archlinux kernel:   node   0: [mem 0x00000107c6f90000-0x00000107c6f93fff]
+[    1.155989] archlinux kernel:   node   0: [mem 0x00000107c6f94000-0x00000107caf5ffff]
+[    1.155993] archlinux kernel:   node   0: [mem 0x00000107caf60000-0x00000107caf6ffff]
+[    1.155997] archlinux kernel:   node   0: [mem 0x00000107caf70000-0x00000107cb03ffff]
+[    1.156006] archlinux kernel:   node   0: [mem 0x00000107cb044000-0x00000107cb06ffff]
+[    1.156010] archlinux kernel:   node   0: [mem 0x00000107cb070000-0x00000107cb093fff]
+[    1.156014] archlinux kernel:   node   0: [mem 0x00000107cb094000-0x00000107cb2effff]
+[    1.156018] archlinux kernel:   node   0: [mem 0x00000107d07c8000-0x00000107da49ffff]
+[    1.156022] archlinux kernel:   node   0: [mem 0x00000107fff70000-0x00000107fff73fff]
+[    1.156026] archlinux kernel:   node   0: [mem 0x00000107fff78000-0x00000107fffbbfff]
+[    1.156030] archlinux kernel: Initmem setup node 0 [mem 0x0000010000c68000-0x00000107fffbbfff]
+[    1.156034] archlinux kernel: On node 0, zone DMA: 794 pages in unavailable ranges
+[    1.156038] archlinux kernel: On node 0, zone DMA: 21 pages in unavailable ranges
+[    1.156043] archlinux kernel: On node 0, zone DMA: 454 pages in unavailable ranges
+[    1.156047] archlinux kernel: On node 0, zone DMA: 1 pages in unavailable ranges
+[    1.156051] archlinux kernel: On node 0, zone DMA: 5430 pages in unavailable ranges
+[    1.156055] archlinux kernel: On node 0, zone DMA: 14004 pages in unavailable ranges
+[    1.156059] archlinux kernel: On node 0, zone DMA: 1 pages in unavailable ranges
+[    1.156063] archlinux kernel: On node 0, zone DMA: 17 pages in unavailable ranges
+[    1.156068] archlinux kernel: percpu: Embedded 9 pages/cpu s103640 r8192 d35624 u147456
+[    1.156072] archlinux kernel: pcpu-alloc: s103640 r8192 d35624 u147456 alloc=9*16384
+[    1.156076] archlinux kernel: pcpu-alloc: [0] 00 [0] 01 [0] 02 [0] 03 [0] 04 [0] 05 [0] 06 [0] 07 
+[    1.156081] archlinux kernel: pcpu-alloc: [0] 08 [0] 09 
+[    1.156085] archlinux kernel: Detected VIPT I-cache on CPU0
+[    1.156089] archlinux kernel: CPU features: detected: Address authentication (IMP DEF algorithm)
+[    1.156093] archlinux kernel: CPU features: detected: Virtualization Host Extensions
+[    1.156097] archlinux kernel: CPU features: detected: Spectre-v4
+[    1.156102] archlinux kernel: CPU features: detected: Spectre-BHB
+[    1.156106] archlinux kernel: CPU features: detected: Apple IMPDEF PMUv3 Traps
+[    1.156110] archlinux kernel: alternatives: applying boot alternatives
+[    1.156115] archlinux kernel: Kernel command line: root=UUID=00000000-0000-0000-0000-000000000000 rw rootflags=subvol=@,x-systemd.device-timeout=0 zswap.enabled=0 rootfstype=btrfs quiet loglevel=0 splash systemd.show_status=false rd.udev.log_level=0 vt.global_cursor_default=0 plymouth.ignore-serial-consoles
+[    1.156119] archlinux kernel: Unknown kernel command line parameters "splash", will be passed to user space.
+[    1.156124] archlinux kernel: printk: log buffer data + meta data: 262144 + 1114112 = 1376256 bytes
+[    1.156128] archlinux kernel: Dentry cache hash table entries: 4194304 (order: 11, 33554432 bytes, linear)
+[    1.156132] archlinux kernel: Inode-cache hash table entries: 2097152 (order: 10, 16777216 bytes, linear)
+[    1.156137] archlinux kernel: software IO TLB: SWIOTLB bounce buffer size adjusted to 31MB
+[    1.156141] archlinux kernel: software IO TLB: area num 16.
+[    1.156145] archlinux kernel: software IO TLB: SWIOTLB bounce buffer size roundup to 32MB
+[    1.156149] archlinux kernel: software IO TLB: mapped [mem 0x00000107c3ea8000-0x00000107c5ea8000] (32MB)
+[    1.156153] archlinux kernel: Built 1 zonelists, mobility grouping on.  Total pages: 2051854
+[    1.156158] archlinux kernel: mem auto-init: stack:off, heap alloc:on, heap free:off
+[    1.156162] archlinux kernel: SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=10, Nodes=1
+[    1.156166] archlinux kernel: ftrace: allocating 49671 entries in 49 pages
+[    1.156170] archlinux kernel: ftrace: allocated 49 pages with 3 groups
+[    1.156174] archlinux kernel: Dynamic Preempt: full
+[    1.156178] archlinux kernel: rcu: Preemptible hierarchical RCU implementation.
+[    1.156183] archlinux kernel: rcu:         RCU restricting CPUs from NR_CPUS=64 to nr_cpu_ids=10.
+[    1.156187] archlinux kernel:         Trampoline variant of Tasks RCU enabled.
+[    1.156192] archlinux kernel:         Rude variant of Tasks RCU enabled.
+[    1.156196] archlinux kernel:         Tracing variant of Tasks RCU enabled.
+[    1.156202] archlinux kernel: rcu: RCU calculated value of scheduler-enlistment delay is 100 jiffies.
+[    1.156207] archlinux kernel: rcu: Adjusting geometry for rcu_fanout_leaf=16, nr_cpu_ids=10
+[    1.156211] archlinux kernel: RCU Tasks: Setting shift to 4 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=10.
+[    1.156215] archlinux kernel: RCU Tasks Rude: Setting shift to 4 and lim to 1 rcu_task_cb_adjust=1 rcu_task_cpu_ids=10.
+[    1.156220] archlinux kernel: NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 0
+[    1.156224] archlinux kernel: Root IRQ handler: aic_handle_irq
+[    1.156228] archlinux kernel: Root FIQ handler: aic_handle_fiq
+[    1.156232] archlinux kernel: irq_apple_aic: Using Fast IPIs
+[    1.156236] archlinux kernel: irq_apple_aic: Initialized with 1806/4096 IRQs * 1/8 die(s), 7 FIQs, 32 vIPIs
+[    1.156241] archlinux kernel: rcu: srcu_init: Setting srcu_struct sizes based on contention.
+[    1.156245] archlinux kernel: clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 1911260446275000 ns
+[    1.156249] archlinux kernel: arch_timer: cp15 timer running at 24.00MHz (phys).
+[    1.156253] archlinux kernel: clocksource: arch_sys_counter: mask: 0xffffffffffffff max_cycles: 0x588fe9dc0, max_idle_ns: 440795202592 ns
+[    1.156258] archlinux kernel: sched_clock: 56 bits at 24MHz, resolution 41ns, wraps every 4398046511097ns
+[    1.156262] archlinux kernel: Console: colour dummy device 80x25
+[    1.156267] archlinux kernel: printk: legacy console [tty0] enabled
+[    1.156272] archlinux kernel: Calibrating delay loop (skipped), value calculated using timer frequency.. 48.00 BogoMIPS (lpj=24000)
+[    1.156277] archlinux kernel: pid_max: default: 32768 minimum: 301
+[    1.156282] archlinux kernel: landlock: Up and running.
+[    1.156287] archlinux kernel: Yama: becoming mindful.
+[    1.156291] archlinux kernel: AppArmor: AppArmor initialized
+[    1.156297] archlinux kernel: LSM support for eBPF active
+[    1.156301] archlinux kernel: Mount-cache hash table entries: 65536 (order: 5, 524288 bytes, linear)
+[    1.156306] archlinux kernel: Mountpoint-cache hash table entries: 65536 (order: 5, 524288 bytes, linear)
+[    1.156311] archlinux kernel: VFS: Finished mounting rootfs on nullfs
+[    1.156315] archlinux kernel: rcu: Hierarchical SRCU implementation.
+[    1.156320] archlinux kernel: rcu:         Max phase no-delay instances is 400.
+[    1.156325] archlinux kernel: Timer migration: 2 hierarchy levels; 8 children per group; 2 crossnode level
+[    1.156330] archlinux kernel: Remapping and enabling EFI services.
+[    1.156335] archlinux kernel: smp: Bringing up secondary CPUs ...
+[    1.156339] archlinux kernel: Detected VIPT I-cache on CPU1
+[    1.156344] archlinux kernel: CPU1: Booted secondary processor 0x0000000001 [0x612f0280]
+[    1.156349] archlinux kernel: Detected VIPT I-cache on CPU2
+[    1.156353] archlinux kernel: CPU2: Booted secondary processor 0x0000010100 [0x612f0290]
+[    1.156358] archlinux kernel: Detected VIPT I-cache on CPU3
+[    1.156362] archlinux kernel: CPU3: Booted secondary processor 0x0000010101 [0x612f0290]
+[    1.156367] archlinux kernel: Detected VIPT I-cache on CPU4
+[    1.156371] archlinux kernel: CPU4: Booted secondary processor 0x0000010102 [0x612f0290]
+[    1.156376] archlinux kernel: Detected VIPT I-cache on CPU5
+[    1.156380] archlinux kernel: CPU5: Booted secondary processor 0x0000010103 [0x612f0290]
+[    1.156385] archlinux kernel: Detected VIPT I-cache on CPU6
+[    1.156389] archlinux kernel: CPU6: Booted secondary processor 0x0000010200 [0x612f0290]
+[    1.156394] archlinux kernel: Detected VIPT I-cache on CPU7
+[    1.156398] archlinux kernel: CPU7: Booted secondary processor 0x0000010201 [0x612f0290]
+[    1.156403] archlinux kernel: Detected VIPT I-cache on CPU8
+[    1.156408] archlinux kernel: CPU8: Booted secondary processor 0x0000010202 [0x612f0290]
+[    1.156412] archlinux kernel: Detected VIPT I-cache on CPU9
+[    1.156417] archlinux kernel: CPU9: Booted secondary processor 0x0000010203 [0x612f0290]
+[    1.156422] archlinux kernel: smp: Brought up 1 node, 10 CPUs
+[    1.156426] archlinux kernel: SMP: Total of 10 processors activated.
+[    1.156431] archlinux kernel: CPU: All CPU(s) started at EL2
+[    1.156435] archlinux kernel: CPU features: detected: ARMv8.4 Translation Table Level
+[    1.156440] archlinux kernel: CPU features: detected: Data cache clean to the PoU not required for I/D coherence
+[    1.156445] archlinux kernel: CPU features: detected: Common not Private translations
+[    1.156449] archlinux kernel: CPU features: detected: CRC32 instructions
+[    1.156454] archlinux kernel: CPU features: detected: Data independent timing control (DIT)
+[    1.156459] archlinux kernel: CPU features: detected: E0PD
+[    1.156464] archlinux kernel: CPU features: detected: Enhanced Virtualization Traps
+[    1.156470] archlinux kernel: CPU features: detected: Generic authentication (IMP DEF algorithm)
+[    1.156475] archlinux kernel: CPU features: detected: RCpc load-acquire (LDAPR)
+[    1.156480] archlinux kernel: CPU features: detected: LSE atomic instructions
+[    1.156484] archlinux kernel: CPU features: detected: Privileged Access Never
+[    1.156489] archlinux kernel: CPU features: detected: RAS Extension Support
+[    1.156494] archlinux kernel: CPU features: detected: Speculation barrier (SB)
+[    1.156498] archlinux kernel: CPU features: detected: Stage-2 Force Write-Back
+[    1.156503] archlinux kernel: CPU features: detected: TLB range maintenance instructions
+[    1.156508] archlinux kernel: CPU features: detected: XNX
+[    1.156512] archlinux kernel: CPU features: detected: Speculative Store Bypassing Safe (SSBS)
+[    1.156517] archlinux kernel: alternatives: applying system-wide alternatives
+[    1.156522] archlinux kernel: CPU features: detected: ACTLR virtualization (IMPDEF, Apple)
+[    1.156526] archlinux kernel: CPU features: detected: ICV_DIR_EL1 trapping
+[    1.156531] archlinux kernel: CPU features: detected: TSO memory model (Apple)
+[    1.156536] archlinux kernel: Memory: 32278160K/32829664K available (17088K kernel code, 2994K rwdata, 12112K rodata, 2560K init, 671K bss, 472304K reserved, 65536K cma-reserved)
+[    1.156541] archlinux kernel: devtmpfs: initialized
+[    1.156546] archlinux kernel: posixtimers hash table entries: 8192 (order: 3, 131072 bytes, linear)
+[    1.156550] archlinux kernel: futex hash table entries: 4096 (262144 bytes on 1 NUMA nodes, total 256 KiB, linear).
+[    1.156555] archlinux kernel: 5952 pages in range for non-PLT usage
+[    1.156561] archlinux kernel: 128832 pages in range for PLT usage
+[    1.156565] archlinux kernel: DMI: SMBIOS 3.7.0 present.
+[    1.156570] archlinux kernel: DMI: Apple Inc. MacBookPro18,2/J316c, BIOS 2026.07 07/01/2026
+[    1.156575] archlinux kernel: DMI: Memory slots populated: 1/1
+[    1.156580] archlinux kernel: NET: Registered PF_NETLINK/PF_ROUTE protocol family
+[    1.156584] archlinux kernel: DMA: preallocated 4096 KiB GFP_KERNEL|GFP_DMA pool for atomic allocations
+[    1.156589] archlinux kernel: audit: initializing netlink subsys (disabled)
+[    1.156594] archlinux kernel: audit: type=2000 audit(0.011:1): state=initialized audit_enabled=0 res=1
+[    1.156599] archlinux kernel: thermal_sys: Registered thermal governor 'fair_share'
+[    1.156603] archlinux kernel: thermal_sys: Registered thermal governor 'bang_bang'
+[    1.156608] archlinux kernel: thermal_sys: Registered thermal governor 'step_wise'
+[    1.156613] archlinux kernel: thermal_sys: Registered thermal governor 'user_space'
+[    1.156617] archlinux kernel: thermal_sys: Registered thermal governor 'power_allocator'
+[    1.156622] archlinux kernel: cpuidle: using governor ladder
+[    1.156627] archlinux kernel: cpuidle: using governor menu
+[    1.156631] archlinux kernel: hw-breakpoint: found 6 breakpoint and 4 watchpoint registers.
+[    1.156637] archlinux kernel: ASID allocator initialised with 256 entries
+[    1.156641] archlinux kernel: /soc/i2c@39b040000/usb-pd@38/connector: Fixed dependency cycle(s) with /soc/phy@703000000
+[    1.156646] archlinux kernel: /soc/i2c@39b040000/usb-pd@38/connector: Fixed dependency cycle(s) with /soc/usb@702280000
+[    1.156651] archlinux kernel: /soc/i2c@39b040000/usb-pd@3f/connector: Fixed dependency cycle(s) with /soc/phy@b03000000
+[    1.156656] archlinux kernel: /soc/i2c@39b040000/usb-pd@3f/connector: Fixed dependency cycle(s) with /soc/usb@b02280000
+[    1.156660] archlinux kernel: /soc/i2c@39b040000/usb-pd@3b/connector: Fixed dependency cycle(s) with /soc/phy@f03000000
+[    1.156665] archlinux kernel: /soc/i2c@39b040000/usb-pd@3b/connector: Fixed dependency cycle(s) with /soc/usb@f02280000
+[    1.156670] archlinux kernel: /soc/pcie@590000000: Fixed dependency cycle(s) with /soc/pcie@590000000
+[    1.156674] archlinux kernel: /soc/pcie@590000000/pci@0,0: Fixed dependency cycle(s) with /soc/pcie@590000000/pci@0,0
+[    1.156679] archlinux kernel: /soc/pcie@590000000/pci@1,0: Fixed dependency cycle(s) with /soc/pcie@590000000/pci@1,0
+[    1.156684] archlinux kernel: /soc/dcp@289c00000: Fixed dependency cycle(s) with /soc/audio-controller@39b504000
+[    1.156689] archlinux kernel: /soc/dcp@289c00000: Fixed dependency cycle(s) with /soc/phy@1303000000
+[    1.156693] archlinux kernel: /soc/audio-controller@39b504000: Fixed dependency cycle(s) with /soc/dcp@289c00000
+[    1.156698] archlinux kernel: /soc/usb@702280000: Fixed dependency cycle(s) with /soc/i2c@39b040000/usb-pd@38/connector
+[    1.156703] archlinux kernel: /soc/usb@702280000: Fixed dependency cycle(s) with /soc/phy@703000000
+[    1.156708] archlinux kernel: /soc/phy@703000000: Fixed dependency cycle(s) with /soc/usb@702280000
+[    1.156712] archlinux kernel: /soc/phy@703000000: Fixed dependency cycle(s) with /soc/i2c@39b040000/usb-pd@38/connector
+[    1.156717] archlinux kernel: /soc/usb@b02280000: Fixed dependency cycle(s) with /soc/i2c@39b040000/usb-pd@3f/connector
+[    1.156722] archlinux kernel: /soc/usb@b02280000: Fixed dependency cycle(s) with /soc/phy@b03000000
+[    1.156726] archlinux kernel: /soc/phy@b03000000: Fixed dependency cycle(s) with /soc/usb@b02280000
+[    1.156731] archlinux kernel: /soc/phy@b03000000: Fixed dependency cycle(s) with /soc/i2c@39b040000/usb-pd@3f/connector
+[    1.156736] archlinux kernel: /soc/usb@f02280000: Fixed dependency cycle(s) with /soc/i2c@39b040000/usb-pd@3b/connector
+[    1.156741] archlinux kernel: /soc/usb@f02280000: Fixed dependency cycle(s) with /soc/phy@f03000000
+[    1.156745] archlinux kernel: /soc/phy@f03000000: Fixed dependency cycle(s) with /soc/usb@f02280000
+[    1.156750] archlinux kernel: /soc/phy@f03000000: Fixed dependency cycle(s) with /soc/i2c@39b040000/usb-pd@3b/connector
+[    1.156754] archlinux kernel: /soc/phy@1303000000: Fixed dependency cycle(s) with /soc/dcp@289c00000
+[    1.156759] archlinux kernel: /soc/i2c@39b040000/usb-pd@38/connector: Fixed dependency cycle(s) with /soc/phy@703000000
+[    1.156764] archlinux kernel: /soc/i2c@39b040000/usb-pd@38/connector: Fixed dependency cycle(s) with /soc/usb@702280000
+[    1.156768] archlinux kernel: /soc/i2c@39b040000/usb-pd@3f/connector: Fixed dependency cycle(s) with /soc/phy@b03000000
+[    1.156773] archlinux kernel: /soc/i2c@39b040000/usb-pd@3f/connector: Fixed dependency cycle(s) with /soc/usb@b02280000
+[    1.156778] archlinux kernel: /soc/i2c@39b040000/usb-pd@3b/connector: Fixed dependency cycle(s) with /soc/phy@f03000000
+[    1.156782] archlinux kernel: /soc/i2c@39b040000/usb-pd@3b/connector: Fixed dependency cycle(s) with /soc/usb@f02280000
+[    1.156787] archlinux kernel: /soc/pcie@590000000: Fixed dependency cycle(s) with /soc/pcie@590000000
+[    1.156791] archlinux kernel: /soc/pcie@590000000/pci@0,0: Fixed dependency cycle(s) with /soc/pcie@590000000/pci@0,0
+[    1.156796] archlinux kernel: /soc/pcie@590000000/pci@1,0: Fixed dependency cycle(s) with /soc/pcie@590000000/pci@1,0
+[    1.156801] archlinux kernel: /soc/dcp@289c00000: Fixed dependency cycle(s) with /soc/audio-controller@39b504000
+[    1.156806] archlinux kernel: /soc/dcp@289c00000: Fixed dependency cycle(s) with /soc/phy@1303000000
+[    1.156811] archlinux kernel: /soc/dcp@289c00000: Fixed dependency cycle(s) with /soc/audio-controller@39b504000
+[    1.156816] archlinux kernel: /soc/audio-controller@39b504000: Fixed dependency cycle(s) with /soc/dcp@289c00000
+[    1.156820] archlinux kernel: /soc/i2c@39b040000/usb-pd@38/connector: Fixed dependency cycle(s) with /soc/usb@702280000
+[    1.156825] archlinux kernel: /soc/usb@702280000: Fixed dependency cycle(s) with /soc/i2c@39b040000/usb-pd@38/connector
+[    1.156829] archlinux kernel: /soc/usb@702280000: Fixed dependency cycle(s) with /soc/phy@703000000
+[    1.156834] archlinux kernel: /soc/usb@702280000: Fixed dependency cycle(s) with /soc/phy@703000000
+[    1.156838] archlinux kernel: /soc/i2c@39b040000/usb-pd@38/connector: Fixed dependency cycle(s) with /soc/phy@703000000
+[    1.156843] archlinux kernel: /soc/phy@703000000: Fixed dependency cycle(s) with /soc/usb@702280000
+[    1.156847] archlinux kernel: /soc/phy@703000000: Fixed dependency cycle(s) with /soc/i2c@39b040000/usb-pd@38/connector
+[    1.156852] archlinux kernel: /soc/i2c@39b040000/usb-pd@3f/connector: Fixed dependency cycle(s) with /soc/usb@b02280000
+[    1.156857] archlinux kernel: /soc/usb@b02280000: Fixed dependency cycle(s) with /soc/i2c@39b040000/usb-pd@3f/connector
+[    1.156861] archlinux kernel: /soc/usb@b02280000: Fixed dependency cycle(s) with /soc/phy@b03000000
+[    1.156866] archlinux kernel: /soc/usb@b02280000: Fixed dependency cycle(s) with /soc/phy@b03000000
+[    1.156870] archlinux kernel: /soc/i2c@39b040000/usb-pd@3f/connector: Fixed dependency cycle(s) with /soc/phy@b03000000
+[    1.156875] archlinux kernel: /soc/phy@b03000000: Fixed dependency cycle(s) with /soc/usb@b02280000
+[    1.156879] archlinux kernel: /soc/phy@b03000000: Fixed dependency cycle(s) with /soc/i2c@39b040000/usb-pd@3f/connector
+[    1.156884] archlinux kernel: /soc/i2c@39b040000/usb-pd@3b/connector: Fixed dependency cycle(s) with /soc/usb@f02280000
+[    1.156888] archlinux kernel: /soc/usb@f02280000: Fixed dependency cycle(s) with /soc/i2c@39b040000/usb-pd@3b/connector
+[    1.156893] archlinux kernel: /soc/usb@f02280000: Fixed dependency cycle(s) with /soc/phy@f03000000
+[    1.156897] archlinux kernel: /soc/usb@f02280000: Fixed dependency cycle(s) with /soc/phy@f03000000
+[    1.156902] archlinux kernel: /soc/i2c@39b040000/usb-pd@3b/connector: Fixed dependency cycle(s) with /soc/phy@f03000000
+[    1.156906] archlinux kernel: /soc/phy@f03000000: Fixed dependency cycle(s) with /soc/usb@f02280000
+[    1.156911] archlinux kernel: /soc/phy@f03000000: Fixed dependency cycle(s) with /soc/i2c@39b040000/usb-pd@3b/connector
+[    1.156915] archlinux kernel: /soc/dcp@289c00000: Fixed dependency cycle(s) with /soc/phy@1303000000
+[    1.156920] archlinux kernel: /soc/phy@1303000000: Fixed dependency cycle(s) with /soc/dcp@289c00000
+[    1.156924] archlinux kernel: HugeTLB: registered 1.00 GiB page size, pre-allocated 0 pages
+[    1.156929] archlinux kernel: HugeTLB: 0 KiB vmemmap can be freed for a 1.00 GiB page
+[    1.156934] archlinux kernel: HugeTLB: registered 32.0 MiB page size, pre-allocated 0 pages
+[    1.156938] archlinux kernel: HugeTLB: 0 KiB vmemmap can be freed for a 32.0 MiB page
+[    1.156943] archlinux kernel: HugeTLB: registered 2.00 MiB page size, pre-allocated 0 pages
+[    1.156947] archlinux kernel: HugeTLB: 0 KiB vmemmap can be freed for a 2.00 MiB page
+[    1.156952] archlinux kernel: iommu: Default domain type: Translated
+[    1.156956] archlinux kernel: iommu: DMA domain TLB invalidation policy: strict mode
+[    1.156961] archlinux kernel: SCSI subsystem initialized
+[    1.156966] archlinux kernel: usbcore: registered new interface driver usbfs
+[    1.156971] archlinux kernel: usbcore: registered new interface driver hub
+[    1.156975] archlinux kernel: usbcore: registered new device driver usb
+[    1.156980] archlinux kernel: pps_core: LinuxPPS API ver. 1 registered
+[    1.156985] archlinux kernel: pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <giometti@linux.it>
+[    1.156989] archlinux kernel: efivars: Registered efivars operations
+[    1.156994] archlinux kernel: Advanced Linux Sound Architecture Driver Initialized.
+[    1.156999] archlinux kernel: NetLabel: Initializing
+[    1.157008] archlinux kernel: NetLabel:  domain hash size = 128
+[    1.157013] archlinux kernel: NetLabel:  protocols = UNLABELED CIPSOv4 CALIPSO
+[    1.157017] archlinux kernel: NetLabel:  unlabeled traffic allowed by default
+[    1.157022] archlinux kernel: vgaarb: loaded
+[    1.157027] archlinux kernel: clocksource: Switched to clocksource arch_sys_counter
+[    1.157031] archlinux kernel: VFS: Disk quotas dquot_6.6.0
+[    1.157035] archlinux kernel: VFS: Dquot-cache hash table entries: 2048 (order 0, 16384 bytes)
+[    1.157039] archlinux kernel: AppArmor: AppArmor Filesystem Enabled
+[    1.157044] archlinux kernel: NET: Registered PF_INET protocol family
+[    1.157048] archlinux kernel: IP idents hash table entries: 262144 (order: 7, 2097152 bytes, linear)
+[    1.157052] archlinux kernel: tcp_listen_portaddr_hash hash table entries: 16384 (order: 4, 262144 bytes, linear)
+[    1.157056] archlinux kernel: Table-perturb hash table entries: 65536 (order: 4, 262144 bytes, linear)
+[    1.157061] archlinux kernel: TCP established hash table entries: 262144 (order: 7, 2097152 bytes, linear)
+[    1.157065] archlinux kernel: TCP bind hash table entries: 65536 (order: 7, 2097152 bytes, linear)
+[    1.157069] archlinux kernel: TCP: Hash tables configured (established 262144 bind 65536)
+[    1.157074] archlinux kernel: MPTCP token hash table entries: 32768 (order: 6, 786432 bytes, linear)
+[    1.157078] archlinux kernel: UDP hash table entries: 16384 (order: 6, 1048576 bytes, linear)
+[    1.157082] archlinux kernel: NET: Registered PF_UNIX/PF_LOCAL protocol family
+[    1.157086] archlinux kernel: RPC: Registered named UNIX socket transport module.
+[    1.157090] archlinux kernel: RPC: Registered udp transport module.
+[    1.157095] archlinux kernel: RPC: Registered tcp transport module.
+[    1.157098] archlinux kernel: RPC: Registered tcp-with-tls transport module.
+[    1.157103] archlinux kernel: RPC: Registered tcp NFSv4.1 backchannel transport module.
+[    1.157107] archlinux kernel: PCI: CLS 0 bytes, default 64
+[    1.157111] archlinux kernel: Trying to unpack rootfs image as initramfs...
+[    1.157115] archlinux kernel: kvm [1]: nv: 570 coarse grained trap handlers
+[    1.157119] archlinux kernel: kvm [1]: nv: 710 fine grained trap handlers
+[    1.157123] archlinux kernel: kvm [1]: IPA Size Limit: 42 bits
+[    1.157127] archlinux kernel: kvm [1]: Non-architectural vgic, tainting kernel
+[    1.157132] archlinux kernel: kvm [1]: GICv3: no GICV resource entry
+[    1.157136] archlinux kernel: kvm [1]: disabling GICv2 emulation
+[    1.157140] archlinux kernel: kvm [1]: GICv3 with broken locally generated SEI
+[    1.157144] archlinux kernel: kvm [1]: GICv3 sysreg trapping enabled ([G0G1D], reduced performance)
+[    1.157148] archlinux kernel: kvm [1]: GIC system register CPU interface enabled
+[    1.157152] archlinux kernel: kvm [1]: vgic interrupt IRQ33
+[    1.157156] archlinux kernel: kvm [1]: VHE mode initialized successfully
+[    1.157161] archlinux kernel: Initialise system trusted keyrings
+[    1.157166] archlinux kernel: workingset: timestamp_bits=46 (anon: 42) max_order=21 bucket_order=0 (anon: 0)
+[    1.157170] archlinux kernel: NFS: Registering the id_resolver key type
+[    1.157174] archlinux kernel: Key type id_resolver registered
+[    1.157178] archlinux kernel: Key type id_legacy registered
+[    1.157182] archlinux kernel: nfs4filelayout_init: NFSv4 File Layout Driver Registering...
+[    1.157187] archlinux kernel: nfs4flexfilelayout_init: NFSv4 Flexfile Layout Driver Registering...
+[    1.157191] archlinux kernel: cryptd: max_cpu_qlen set to 1000
+[    1.157195] archlinux kernel: NET: Registered PF_ALG protocol family
+[    1.157199] archlinux kernel: Key type asymmetric registered
+[    1.157203] archlinux kernel: Asymmetric key parser 'x509' registered
+[    1.157207] archlinux kernel: Asymmetric key parser 'pkcs8' registered
+[    1.157212] archlinux kernel: Block layer SCSI generic (bsg) driver version 0.4 loaded (major 248)
+[    1.157216] archlinux kernel: io scheduler mq-deadline registered
+[    1.157220] archlinux kernel: io scheduler kyber registered
+[    1.157224] archlinux kernel: io scheduler bfq registered
+[    1.157228] archlinux kernel: ledtrig-cpu: reg

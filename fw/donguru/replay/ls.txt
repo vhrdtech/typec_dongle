@@ -1,0 +1,348 @@
+/usr/lib:
+total 2616680
+drwxr-xr-x 1 root root    237064 Oct 19 20:37 [0m[01;34m.[0m
+drwxr-xr-x 1 root root        60 Oct 19 20:37 [01;34m..[0m
+drwxr-xr-x 1 root root       128 Sep 28 12:34 [01;34malsa-lib[0m
+drwxr-xr-x 1 root root        52 Sep 13 14:18 [01;34malsa-topology[0m
+-rwxr-xr-x 1 root root     67816 Sep 29 13:13 [01;32mappstreamcli-compose[0m
+drwxr-xr-x 1 root root        54 Sep 28 12:35 [01;34masahi-boot[0m
+drwxr-xr-x 1 root root        30 Oct  7 20:37 [01;34mascompose[0m
+-rwxr-xr-x 1 root root    136920 Oct 11 03:50 [01;32mat-spi2-registryd[0m
+-rwxr-xr-x 1 root root     67800 Oct 11 03:50 [01;32mat-spi-bus-launcher[0m
+drwxr-xr-x 1 root root        28 Sep 13 14:17 [01;34maudit[0m
+drwxr-xr-x 1 root root        32 Oct 18 22:51 [01;34mavahi[0m
+drwxr-xr-x 1 root root        20 Sep 13 14:17 [01;34mawk[0m
+drwxr-xr-x 1 root root       496 Sep 28 12:34 [01;34mbash[0m
+drwxr-xr-x 1 root root        72 Oct 18 22:51 [01;34mbfd-plugins[0m
+drwxr-xr-x 1 root root      1592 Sep 28 12:35 [01;34mbinfmt.d[0m
+drwxr-xr-x 1 root root        20 Sep 13 14:18 [01;34mbluetooth[0m
+-rwxr-xr-x 1 root root    396256 Aug 13 15:24 [01;32mboltd[0m
+drwxr-xr-x 1 root root        64 Sep 28 12:34 [01;34mcairo[0m
+drwxr-xr-x 1 root root        14 Sep 13 14:18 [01;34mcairomm-1.16[0m
+drwxr-xr-x 1 root root        36 Oct 18 22:51 [01;34mcatalyst[0m
+drwxr-xr-x 1 root root       528 Sep 15 10:53 [01;34mchromium[0m
+drwxr-xr-x 1 root root        20 Oct 18 22:51 [01;34mcifs-utils[0m
+drwxr-xr-x 1 root root         4 Sep 13 14:18 [01;34mckport[0m
+drwxr-xr-x 1 root root       144 Oct 18 22:51 [01;34mclang[0m
+drwxr-xr-x 1 root root        70 Sep 13 14:18 [01;34mCLucene[0m
+drwxr-xr-x 1 root root     14840 Oct 19 20:37 [01;34mcmake[0m
+drwxr-xr-x 1 root root        24 Oct  7 20:37 [01;34mcoreutils[0m
+drwxr-xr-x 1 root root        42 Sep 13 14:19 [01;34mcrda[0m
+drwxr-xr-x 1 root root         0 Jul 24 19:51 [01;34mcredstore[0m
+-rw-r--r-- 1 root root      2456 May  3 13:59 crt1.o
+-rw-r--r-- 1 root root      1448 May  3 13:59 crti.o
+-rw-r--r-- 1 root root      1024 May  3 13:59 crtn.o
+drwxr-xr-x 1 root root       216 Oct 18 22:51 [01;34mcryptsetup[0m
+drwxr-xr-x 1 root root       108 Sep 13 14:18 [01;34mcups[0m
+-rwxr-xr-x 1 root root    198680 Jul  1  2024 [01;32mcups-pk-helper-mechanism[0m
+drwxr-xr-x 1 root root        64 Sep 13 14:17 [01;34mdb5.3[0m
+drwxr-xr-x 1 root root        14 Sep 13 14:17 [01;34mdbus-1.0[0m
+---s--x--- 1 root dbus    152400 Mar  3  2025 [37;41mdbus-daemon-launch-helper[0m
+-rwxr-xr-x 1 root root    133448 Oct  7 22:26 [01;32mdconf-service[0m
+drwxr-xr-x 1 root root        22 Sep 13 14:17 [01;34mdepmod.d[0m
+drwxr-xr-x 1 root root        22 Sep 13 14:18 [01;34mdocker[0m
+drwxr-xr-x 1 root root      1838 Oct 18 22:51 [01;34mdri[0m
+drwxr-xr-x 1 root root        24 Sep 13 14:17 [01;34me2fsprogs[0m
+-rwxr-xr-x 1 root root     67656 Mar 12  2026 [01;32me2initrd_helper[0m
+drwxr-xr-x 1 root root       176 Sep 13 14:18 [01;34menchant-2[0m
+drwxr-xr-x 1 root root        64 Oct  7 20:37 [01;34mengines-3[0m
+drwxr-xr-x 1 root root        80 Oct 18 22:51 [01;34menvironment.d[0m
+drwxr-xr-x 1 root root         2 Sep 13 14:18 [01;34mevince[0m
+-rwxr-xr-x 1 root root     67800 Oct  8 16:47 [01;32mevinced[0m
+drwxr-xr-x 1 root root        36 Sep 13 14:18 [01;34mexfatprogs[0m
+drwxr-xr-x 1 root root       676 Sep 28 12:34 [01;34mfcitx5[0m
+-rwxr-xr-x 1 root root     67888 Oct  7 22:33 [01;32mfcitx5-qt5-gui-wrapper[0m
+-rwxr-xr-x 1 root root     68544 Oct  7 22:33 [01;32mfcitx5-qt6-gui-wrapper[0m
+-rwxr-xr-x 1 root root     68016 Sep 25 02:23 [01;32mfcitx5-wayland-launcher[0m
+drwxr-xr-x 1 root root       610 Oct 18 22:51 [01;34mfirefox[0m
+drwxr-xr-x 1 root root        10 Sep 13 14:18 [01;34mfirewalld[0m
+drwxr-xr-x 1 root root     25862 Sep 28 12:35 [01;34mfirmware[0m
+drwxr-xr-x 1 root root        38 Sep 15 21:16 [01;34mfreecad[0m
+drwxr-xr-x 1 root root      4346 Sep 28 12:34 [01;34mfrei0r-1[0m
+drwxr-xr-x 1 root root        10 Sep 28 12:34 [01;34mfwupd[0m
+drwxr-xr-x 1 root root       156 Sep 28 12:34 [01;34mfwupd-2.1.8[0m
+drwxr-xr-x 1 root root       238 Sep 13 14:17 [01;34mgawk[0m
+drwxr-xr-x 1 root root        20 Oct 18 22:51 [01;34mgbm[0m
+drwxr-xr-x 1 root root        50 Sep 13 14:17 [01;34mgcc[0m
+drwxr-xr-x 1 root root      5396 Sep 13 14:17 [01;34mgconv[0m
+-rwxr-xr-x 1 root root     67776 Sep 13 21:17 [01;32mgcr4-ssh-askpass[0m
+-rwxr-xr-x 1 root root     67536 Jun 13  2024 [01;32mgcr-prompter[0m
+-rwxr-xr-x 1 root root    133488 Sep 13 21:17 [01;32mgcr-ssh-agent[0m
+-rwxr-xr-x 1 root root     67592 Jun 13  2024 [01;32mgcr-ssh-askpass[0m
+-rw-r--r-- 1 root root      3952 May  3 13:59 gcrt1.o
+drwxr-xr-x 1 root root        12 Sep 13 14:19 [01;34mgdk-pixbuf-2.0[0m
+drwxr-xr-x 1 root root       106 Sep 13 14:17 [01;34mgetconf[0m
+drwxr-xr-x 1 root root        92 Sep 13 14:17 [01;34mgettext[0m
+drwxr-xr-x 1 root root        14 Sep 13 14:17 [01;34mgio[0m
+-rwxr-xr-x 1 root root     67720 Oct  7 22:01 [01;32mgio-launch-desktop[0m
+drwxr-xr-x 1 root root        14 Sep 13 14:18 [01;34mgiomm-2.68[0m
+drwxr-xr-x 1 root root      6238 Oct 19 20:35 [01;34mgirepository-1.0[0m
+drwxr-xr-x 1 root root      4870 Oct  7 20:37 [01;34mgit-core[0m
+drwxr-xr-x 1 root root        32 Sep 13 14:19 [01;34mgjs[0m
+drwxr-xr-x 1 root root        14 Sep 13 14:18 [01;34mglade[0m
+drwxr-xr-x 1 root root        14 Sep 13 14:17 [01;34mglib-2.0[0m
+drwxr-xr-x 1 root root        22 Sep 13 14:18 [01;34mglibmm-2.68[0m
+-rwxr-xr-x 1 root root     67800 Oct  7 22:47 [01;32mglib-pacrunner[0m
+drwxr-xr-x 1 root root         4 Sep 13 14:18 [01;34mglycin-loaders[0m
+drwxr-xr-x 1 root root        10 Sep 13 14:18 [01;34mgnome-keyring[0m
+drwxr-xr-x 1 root root        22 Sep 13 14:18 [01;34mgnome-settings-daemon-3.0[0m
+drwxr-xr-x 1 root root       252 Sep 13 14:17 [01;34mgnupg[0m
+drwxr-xr-x 1 root root       202 Sep 13 14:17 [01;34mgprofng[0m
+drwxr-xr-x 1 root root        14 Sep 13 14:17 [01;34mgraphene-1.0[0m
+drwxr-xr-x 1 root root        34 Oct 18 22:52 [01;34mGraphicsMagick-1.3.49[0m
+drwxr-xr-x 1 root root      1582 Oct 18 22:52 [01;34mgraphviz[0m
+-rw-r--r-- 1 root root      3048 May  3 13:59 grcrt1.o
+drwxr-xr-x 1 root root        18 Sep 13 14:17 [01;34mgrub[0m
+-rwxr-xr-x 1 root root     67720 Jul 30 12:58 [01;32mgsd-disk-utility-notify[0m
+drwxr-xr-x 1 root root      6808 Oct 18 22:56 [01;34mgstreamer-1.0[0m
+drwxr-xr-x 1 root root        24 Sep 13 14:18 [01;34mgtk-3.0[0m
+drwxr-xr-x 1 root root        10 Sep 13 14:18 [01;34mgtk-4.0[0m
+drwxr-xr-x 1 root root        22 Sep 13 14:18 [01;34mgtkmm-4.0[0m
+drwxr-xr-x 1 root root         6 Sep 13 14:17 [01;34mguile[0m
+drwxr-xr-x 1 root root        30 Sep 13 14:19 [01;34mgupnp-dlna[0m
+drwxr-xr-x 1 root root        64 Oct 18 22:51 [01;34mgvfs[0m
+-rwxr-xr-x 1 root root     67720 Oct  8 05:08 [01;32mgvfsd[0m
+-rwxr-xr-x 1 root root     67864 Oct  8 05:08 [01;32mgvfsd-admin[0m
+-rwxr-xr-x 1 root root     67720 Oct  8 05:08 [01;32mgvfsd-cdda[0m
+-rwxr-xr-x 1 root root     67920 Oct  8 05:08 [01;32mgvfsd-computer[0m
+-rwxr-xr-x 1 root root    133568 Oct  8 05:08 [01;32mgvfsd-ftp[0m
+-rwxr-xr-x 1 root root     68064 Oct  8 05:08 [01;32mgvfsd-fuse[0m
+-rwxr-xr-x 1 root root     67720 Oct  8 05:08 [01;32mgvfsd-http[0m
+-rwxr-xr-x 1 root root     67720 Oct  8 05:08 [01;32mgvfsd-localtest[0m
+-rwxr-xr-x 1 root root    133336 Oct  8 05:08 [01;32mgvfsd-metadata[0m
+-rwxr-xr-x 1 root root    133352 Oct  8 05:08 [01;32mgvfsd-mtp[0m
+-rwxr-xr-x 1 root root     67872 Oct  8 05:08 [01;32mgvfsd-network[0m
+-rwxr-xr-x 1 root root     67864 Oct  8 05:08 [01;32mgvfsd-nfs[0m
+-rwxr-xr-x 1 root root     67720 Oct  8 05:08 [01;32mgvfsd-recent[0m
+-rwxr-xr-x 1 root root    133256 Oct  8 05:08 [01;32mgvfsd-sftp[0m
+-rwxr-xr-x 1 root root     67816 Oct  8 05:08 [01;32mgvfsd-smb[0m
+-rwxr-xr-x 1 root root     67816 Oct  8 05:08 [01;32mgvfsd-smb-browse[0m
+-rwxr-xr-x 1 root root     67816 Oct  8 05:08 [01;32mgvfsd-trash[0m
+-rwxr-xr-x 1 root root    133336 Oct  8 05:08 [01;32mgvfs-mtp-volume-monitor[0m
+-rwxr-xr-x 1 root root    265088 Oct  8 05:08 [01;32mgvfs-udisks2-volume-monitor[0m
+drwxr-xr-x 1 root root        62 Oct 18 22:51 [01;34mhwloc[0m
+drwxr-xr-x 1 root root        68 Sep 13 14:17 [01;34micu[0m
+drwxr-xr-x 1 root root        58 Sep 13 14:18 [01;34mImageMagick-7.1.2[0m
+drwxr-xr-x 1 root root        28 Sep 13 14:18 [01;34mimlib2[0m
+drwxr-xr-x 1 root root       124 Oct  7 20:37 [01;34minitcpio[0m
+drwxr-xr-x 1 root root        18 Sep 13 14:19 [01;34minstalled-tests[0m
+drwxr-xr-x 1 root root       192 Sep 15 21:15 [01;34mitcl4.3.2[0m
+drwxr-xr-x 1 root root        12 Sep 28 12:34 [01;34miwd[0m
+-rw-r--r-- 1 root root     86200 Aug  9 12:30 jarhdf5-2.2.0.jar
+drwxr-xr-x 1 root root        56 Sep 15 21:05 [01;34mkeepassxc[0m
+drwxr-xr-x 1 root root        58 Oct 18 22:51 [01;34mkernel[0m
+drwxr-xr-x 1 root root       180 Oct 18 22:51 [01;34mkf6[0m
+drwxr-xr-x 1 root root        14 Sep 15 21:16 [01;34mkicad[0m
+drwxr-xr-x 1 root root        14 Sep 13 14:17 [01;34mkrb5[0m
+-rwxr-xr-x 1 root root    201832 May  3 13:59 [01;32mld-linux-aarch64.so.1[0m
+drwxr-xr-x 1 root root     12462 Sep 13 14:17 [01;34mldscripts[0m
+drwxr-xr-x 1 root root        26 Sep 13 14:17 [01;34mld.so.conf.d[0m
+drwxr-xr-x 1 root root       144 Oct  7 20:37 [01;34mleancrypto[0m
+-rwxr-xr-x 1 root root     67744 Sep 20 15:12 [01;32mlessecho[0m
+-rwxr-xr-x 1 root root      1067 Sep 20 15:12 [01;32mless-osc8-open[0m
+lrwxrwxrwx 1 root root        15 Mar 20  2026 [01;36mliba52.so[0m -> liba52.so.0.0.0
+lrwxrwxrwx 1 root root        15 Mar 20  2026 [01;36mliba52.so.0[0m -> liba52.so.0.0.0
+-rwxr-xr-x 1 root root     68424 Mar 20  2026 [01;32mliba52.so.0.0.0[0m
+lrwxrwxrwx 1 root root        14 Aug  4  2025 [01;36mlibaa.so[0m -> libaa.so.1.0.4
+lrwxrwxrwx 1 root root        14 Aug  4  2025 [01;36mlibaa.so.1[0m -> libaa.so.1.0.4
+-rwxr-xr-x 1 root root    135080 Aug  4  2025 [01;32mlibaa.so.1.0.4[0m
+lrwxrwxrwx 1 root root        43 Sep  1 06:03 [01;36mlibabsl_atomic_hook_test_helper.so[0m -> libabsl_atomic_hook_test_helper.so.2608.0.0
+-rwxr-xr-x 1 root root     67440 Sep  1 06:03 [01;32mlibabsl_atomic_hook_test_helper.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        35 Sep  1 06:03 [01;36mlibabsl_base_cpu_detect.so[0m -> libabsl_base_cpu_detect.so.2608.0.0
+-rwxr-xr-x 1 root root     67424 Sep  1 06:03 [01;32mlibabsl_base_cpu_detect.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        24 Sep  1 06:03 [01;36mlibabsl_base.so[0m -> libabsl_base.so.2608.0.0
+-rwxr-xr-x 1 root root     67680 Sep  1 06:03 [01;32mlibabsl_base.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        24 Sep  1 06:03 [01;36mlibabsl_city.so[0m -> libabsl_city.so.2608.0.0
+-rwxr-xr-x 1 root root     67264 Sep  1 06:03 [01;32mlibabsl_city.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        30 Sep  1 06:03 [01;36mlibabsl_civil_time.so[0m -> libabsl_civil_time.so.2608.0.0
+-rwxr-xr-x 1 root root     67584 Sep  1 06:03 [01;32mlibabsl_civil_time.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        35 Sep  1 06:03 [01;36mlibabsl_clock_interface.so[0m -> libabsl_clock_interface.so.2608.0.0
+-rwxr-xr-x 1 root root     67656 Sep  1 06:03 [01;32mlibabsl_clock_interface.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        33 Sep  1 06:03 [01;36mlibabsl_cord_internal.so[0m -> libabsl_cord_internal.so.2608.0.0
+-rwxr-xr-x 1 root root     67584 Sep  1 06:03 [01;32mlibabsl_cord_internal.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        24 Sep  1 06:03 [01;36mlibabsl_cord.so[0m -> libabsl_cord.so.2608.0.0
+-rwxr-xr-x 1 root root    133120 Sep  1 06:03 [01;32mlibabsl_cord.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        35 Sep  1 06:03 [01;36mlibabsl_cordz_functions.so[0m -> libabsl_cordz_functions.so.2608.0.0
+-rwxr-xr-x 1 root root     67480 Sep  1 06:03 [01;32mlibabsl_cordz_functions.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        32 Sep  1 06:03 [01;36mlibabsl_cordz_handle.so[0m -> libabsl_cordz_handle.so.2608.0.0
+-rwxr-xr-x 1 root root     67656 Sep  1 06:03 [01;32mlibabsl_cordz_handle.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        30 Sep  1 06:03 [01;36mlibabsl_cordz_info.so[0m -> libabsl_cordz_info.so.2608.0.0
+-rwxr-xr-x 1 root root     67656 Sep  1 06:03 [01;32mlibabsl_cordz_info.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        38 Sep  1 06:03 [01;36mlibabsl_cordz_sample_token.so[0m -> libabsl_cordz_sample_token.so.2608.0.0
+-rwxr-xr-x 1 root root     67264 Sep  1 06:03 [01;32mlibabsl_cordz_sample_token.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        26 Sep  1 06:03 [01;36mlibabsl_crc32c.so[0m -> libabsl_crc32c.so.2608.0.0
+-rwxr-xr-x 1 root root     67656 Sep  1 06:03 [01;32mlibabsl_crc32c.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        34 Sep  1 06:03 [01;36mlibabsl_crc_cord_state.so[0m -> libabsl_crc_cord_state.so.2608.0.0
+-rwxr-xr-x 1 root root     67584 Sep  1 06:03 [01;32mlibabsl_crc_cord_state.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        32 Sep  1 06:03 [01;36mlibabsl_crc_internal.so[0m -> libabsl_crc_internal.so.2608.0.0
+-rwxr-xr-x 1 root root     67656 Sep  1 06:03 [01;32mlibabsl_crc_internal.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        38 Sep  1 06:03 [01;36mlibabsl_debugging_internal.so[0m -> libabsl_debugging_internal.so.2608.0.0
+-rwxr-xr-x 1 root root     67600 Sep  1 06:03 [01;32mlibabsl_debugging_internal.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        40 Sep  1 06:03 [01;36mlibabsl_decode_rust_punycode.so[0m -> libabsl_decode_rust_punycode.so.2608.0.0
+-rwxr-xr-x 1 root root     67424 Sep  1 06:03 [01;32mlibabsl_decode_rust_punycode.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        37 Sep  1 06:03 [01;36mlibabsl_demangle_internal.so[0m -> libabsl_demangle_internal.so.2608.0.0
+-rwxr-xr-x 1 root root     67656 Sep  1 06:03 [01;32mlibabsl_demangle_internal.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        33 Sep  1 06:03 [01;36mlibabsl_demangle_rust.so[0m -> libabsl_demangle_rust.so.2608.0.0
+-rwxr-xr-x 1 root root     67496 Sep  1 06:03 [01;32mlibabsl_demangle_rust.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        31 Sep  1 06:03 [01;36mlibabsl_die_if_null.so[0m -> libabsl_die_if_null.so.2608.0.0
+-rwxr-xr-x 1 root root     67584 Sep  1 06:03 [01;32mlibabsl_die_if_null.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        33 Sep  1 06:03 [01;36mlibabsl_examine_stack.so[0m -> libabsl_examine_stack.so.2608.0.0
+-rwxr-xr-x 1 root root     67496 Sep  1 06:03 [01;32mlibabsl_examine_stack.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        44 Sep  1 06:03 [01;36mlibabsl_exception_safety_testing.so[0m -> libabsl_exception_safety_testing.so.2608.0.0
+-rwxr-xr-x 1 root root     67664 Sep  1 06:03 [01;32mlibabsl_exception_safety_testing.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        38 Sep  1 06:03 [01;36mlibabsl_exponential_biased.so[0m -> libabsl_exponential_biased.so.2608.0.0
+-rwxr-xr-x 1 root root     67496 Sep  1 06:03 [01;32mlibabsl_exponential_biased.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        42 Sep  1 06:03 [01;36mlibabsl_failure_signal_handler.so[0m -> libabsl_failure_signal_handler.so.2608.0.0
+-rwxr-xr-x 1 root root     68784 Sep  1 06:03 [01;32mlibabsl_failure_signal_handler.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        50 Sep  1 06:03 [01;36mlibabsl_flags_commandlineflag_internal.so[0m -> libabsl_flags_commandlineflag_internal.so.2608.0.0
+-rwxr-xr-x 1 root root     67568 Sep  1 06:03 [01;32mlibabsl_flags_commandlineflag_internal.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        41 Sep  1 06:03 [01;36mlibabsl_flags_commandlineflag.so[0m -> libabsl_flags_commandlineflag.so.2608.0.0
+-rwxr-xr-x 1 root root     67568 Sep  1 06:03 [01;32mlibabsl_flags_commandlineflag.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        32 Sep  1 06:03 [01;36mlibabsl_flags_config.so[0m -> libabsl_flags_config.so.2608.0.0
+-rwxr-xr-x 1 root root     67656 Sep  1 06:03 [01;32mlibabsl_flags_config.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        34 Sep  1 06:03 [01;36mlibabsl_flags_internal.so[0m -> libabsl_flags_internal.so.2608.0.0
+-rwxr-xr-x 1 root root     67656 Sep  1 06:03 [01;32mlibabsl_flags_internal.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        37 Sep  1 06:03 [01;36mlibabsl_flags_marshalling.so[0m -> libabsl_flags_marshalling.so.2608.0.0
+-rwxr-xr-x 1 root root     67584 Sep  1 06:03 [01;32mlibabsl_flags_marshalling.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        31 Sep  1 06:03 [01;36mlibabsl_flags_parse.so[0m -> libabsl_flags_parse.so.2608.0.0
+-rwxr-xr-x 1 root root     68216 Sep  1 06:03 [01;32mlibabsl_flags_parse.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        49 Sep  1 06:03 [01;36mlibabsl_flags_private_handle_accessor.so[0m -> libabsl_flags_private_handle_accessor.so.2608.0.0
+-rwxr-xr-x 1 root root     67424 Sep  1 06:03 [01;32mlibabsl_flags_private_handle_accessor.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        38 Sep  1 06:03 [01;36mlibabsl_flags_program_name.so[0m -> libabsl_flags_program_name.so.2608.0.0
+-rwxr-xr-x 1 root root     67584 Sep  1 06:03 [01;32mlibabsl_flags_program_name.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        36 Sep  1 06:03 [01;36mlibabsl_flags_reflection.so[0m -> libabsl_flags_reflection.so.2608.0.0
+-rwxr-xr-x 1 root root     67656 Sep  1 06:03 [01;32mlibabsl_flags_reflection.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        40 Sep  1 06:03 [01;36mlibabsl_flags_usage_internal.so[0m -> libabsl_flags_usage_internal.so.2608.0.0
+-rwxr-xr-x 1 root root     67656 Sep  1 06:03 [01;32mlibabsl_flags_usage_internal.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        31 Sep  1 06:03 [01;36mlibabsl_flags_usage.so[0m -> libabsl_flags_usage.so.2608.0.0
+-rwxr-xr-x 1 root root     67584 Sep  1 06:03 [01;32mlibabsl_flags_usage.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        44 Sep  1 06:03 [01;36mlibabsl_generic_printer_internal.so[0m -> libabsl_generic_printer_internal.so.2608.0.0
+-rwxr-xr-x 1 root root     67584 Sep  1 06:03 [01;32mlibabsl_generic_printer_internal.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        40 Sep  1 06:03 [01;36mlibabsl_graphcycles_internal.so[0m -> libabsl_graphcycles_internal.so.2608.0.0
+-rwxr-xr-x 1 root root     67584 Sep  1 06:03 [01;32mlibabsl_graphcycles_internal.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        29 Sep  1 06:03 [01;36mlibabsl_hardening.so[0m -> libabsl_hardening.so.2608.0.0
+-rwxr-xr-x 1 root root     67264 Sep  1 06:03 [01;32mlibabsl_hardening.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        42 Sep  1 06:03 [01;36mlibabsl_hash_generator_testing.so[0m -> libabsl_hash_generator_testing.so.2608.0.0
+-rwxr-xr-x 1 root root     67584 Sep  1 06:03 [01;32mlibabsl_hash_generator_testing.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        24 Sep  1 06:03 [01;36mlibabsl_hash.so[0m -> libabsl_hash.so.2608.0.0
+-rwxr-xr-x 1 root root     67416 Sep  1 06:03 [01;32mlibabsl_hash.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        38 Sep  1 06:03 [01;36mlibabsl_hashtable_profiler.so[0m -> libabsl_hashtable_profiler.so.2608.0.0
+-rwxr-xr-x 1 root root     67656 Sep  1 06:03 [01;32mlibabsl_hashtable_profiler.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        38 Sep  1 06:03 [01;36mlibabsl_hashtablez_sampler.so[0m -> libabsl_hashtablez_sampler.so.2608.0.0
+-rwxr-xr-x 1 root root     67600 Sep  1 06:03 [01;32mlibabsl_hashtablez_sampler.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        26 Sep  1 06:03 [01;36mlibabsl_int128.so[0m -> libabsl_int128.so.2608.0.0
+-rwxr-xr-x 1 root root     67584 Sep  1 06:03 [01;32mlibabsl_int128.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        43 Sep  1 06:03 [01;36mlibabsl_kernel_timeout_internal.so[0m -> libabsl_kernel_timeout_internal.so.2608.0.0
+-rwxr-xr-x 1 root root     67496 Sep  1 06:03 [01;32mlibabsl_kernel_timeout_internal.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        30 Sep  1 06:03 [01;36mlibabsl_leak_check.so[0m -> libabsl_leak_check.so.2608.0.0
+-rwxr-xr-x 1 root root     67264 Sep  1 06:03 [01;32mlibabsl_leak_check.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        29 Sep  1 06:03 [01;36mlibabsl_log_entry.so[0m -> libabsl_log_entry.so.2608.0.0
+-rwxr-xr-x 1 root root     67584 Sep  1 06:03 [01;32mlibabsl_log_entry.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        29 Sep  1 06:03 [01;36mlibabsl_log_flags.so[0m -> libabsl_log_flags.so.2608.0.0
+-rwxr-xr-x 1 root root     68376 Sep  1 06:03 [01;32mlibabsl_log_flags.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        31 Sep  1 06:03 [01;36mlibabsl_log_globals.so[0m -> libabsl_log_globals.so.2608.0.0
+-rwxr-xr-x 1 root root     67624 Sep  1 06:03 [01;32mlibabsl_log_globals.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        34 Sep  1 06:03 [01;36mlibabsl_log_initialize.so[0m -> libabsl_log_initialize.so.2608.0.0
+-rwxr-xr-x 1 root root     67264 Sep  1 06:03 [01;32mlibabsl_log_initialize.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        41 Sep  1 06:03 [01;36mlibabsl_log_internal_check_op.so[0m -> libabsl_log_internal_check_op.so.2608.0.0
+-rwxr-xr-x 1 root root     67584 Sep  1 06:03 [01;32mlibabsl_log_internal_check_op.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        43 Sep  1 06:03 [01;36mlibabsl_log_internal_conditions.so[0m -> libabsl_log_internal_conditions.so.2608.0.0
+-rwxr-xr-x 1 root root     67424 Sep  1 06:03 [01;32mlibabsl_log_internal_conditions.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        40 Sep  1 06:03 [01;36mlibabsl_log_internal_fnmatch.so[0m -> libabsl_log_internal_fnmatch.so.2608.0.0
+-rwxr-xr-x 1 root root     67496 Sep  1 06:03 [01;32mlibabsl_log_internal_fnmatch.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        39 Sep  1 06:03 [01;36mlibabsl_log_internal_format.so[0m -> libabsl_log_internal_format.so.2608.0.0
+-rwxr-xr-x 1 root root     67496 Sep  1 06:03 [01;32mlibabsl_log_internal_format.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        40 Sep  1 06:03 [01;36mlibabsl_log_internal_globals.so[0m -> libabsl_log_internal_globals.so.2608.0.0
+-rwxr-xr-x 1 root root     67512 Sep  1 06:03 [01;32mlibabsl_log_internal_globals.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        45 Sep  1 06:03 [01;36mlibabsl_log_internal_log_sink_set.so[0m -> libabsl_log_internal_log_sink_set.so.2608.0.0
+-rwxr-xr-x 1 root root     67728 Sep  1 06:03 [01;32mlibabsl_log_internal_log_sink_set.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        40 Sep  1 06:03 [01;36mlibabsl_log_internal_message.so[0m -> libabsl_log_internal_message.so.2608.0.0
+-rwxr-xr-x 1 root root     67656 Sep  1 06:03 [01;32mlibabsl_log_internal_message.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        42 Sep  1 06:03 [01;36mlibabsl_log_internal_nullguard.so[0m -> libabsl_log_internal_nullguard.so.2608.0.0
+-rwxr-xr-x 1 root root     67336 Sep  1 06:03 [01;32mlibabsl_log_internal_nullguard.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        38 Sep  1 06:03 [01;36mlibabsl_log_internal_proto.so[0m -> libabsl_log_internal_proto.so.2608.0.0
+-rwxr-xr-x 1 root root     67424 Sep  1 06:03 [01;32mlibabsl_log_internal_proto.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        49 Sep  1 06:03 [01;36mlibabsl_log_internal_structured_proto.so[0m -> libabsl_log_internal_structured_proto.so.2608.0.0
+-rwxr-xr-x 1 root root     67264 Sep  1 06:03 [01;32mlibabsl_log_internal_structured_proto.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        45 Sep  1 06:03 [01;36mlibabsl_log_internal_test_actions.so[0m -> libabsl_log_internal_test_actions.so.2608.0.0
+-rwxr-xr-x 1 root root     67584 Sep  1 06:03 [01;32mlibabsl_log_internal_test_actions.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        45 Sep  1 06:03 [01;36mlibabsl_log_internal_test_helpers.so[0m -> libabsl_log_internal_test_helpers.so.2608.0.0
+-rwxr-xr-x 1 root root     67568 Sep  1 06:03 [01;32mlibabsl_log_internal_test_helpers.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        46 Sep  1 06:03 [01;36mlibabsl_log_internal_test_matchers.so[0m -> libabsl_log_internal_test_matchers.so.2608.0.0
+-rwxr-xr-x 1 root root    264264 Sep  1 06:03 [01;32mlibabsl_log_internal_test_matchers.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        32 Sep  1 06:03 [01;36mlibabsl_log_severity.so[0m -> libabsl_log_severity.so.2608.0.0
+-rwxr-xr-x 1 root root     67496 Sep  1 06:03 [01;32mlibabsl_log_severity.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        28 Sep  1 06:03 [01;36mlibabsl_log_sink.so[0m -> libabsl_log_sink.so.2608.0.0
+-rwxr-xr-x 1 root root     67568 Sep  1 06:03 [01;32mlibabsl_log_sink.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        35 Sep  1 06:03 [01;36mlibabsl_malloc_internal.so[0m -> libabsl_malloc_internal.so.2608.0.0
+-rwxr-xr-x 1 root root     67656 Sep  1 06:03 [01;32mlibabsl_malloc_internal.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        36 Sep  1 06:03 [01;36mlibabsl_periodic_sampler.so[0m -> libabsl_periodic_sampler.so.2608.0.0
+-rwxr-xr-x 1 root root     67656 Sep  1 06:03 [01;32mlibabsl_periodic_sampler.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        46 Sep  1 06:03 [01;36mlibabsl_per_thread_sem_test_common.so[0m -> libabsl_per_thread_sem_test_common.so.2608.0.0
+-rwxr-xr-x 1 root root     67656 Sep  1 06:03 [01;32mlibabsl_per_thread_sem_test_common.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        26 Sep  1 06:03 [01;36mlibabsl_poison.so[0m -> libabsl_poison.so.2608.0.0
+-rwxr-xr-x 1 root root     67424 Sep  1 06:03 [01;32mlibabsl_poison.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        32 Sep  1 06:03 [01;36mlibabsl_pow10_helper.so[0m -> libabsl_pow10_helper.so.2608.0.0
+-rwxr-xr-x 1 root root     67336 Sep  1 06:03 [01;32mlibabsl_pow10_helper.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        35 Sep  1 06:03 [01;36mlibabsl_profile_builder.so[0m -> libabsl_profile_builder.so.2608.0.0
+-rwxr-xr-x 1 root root     67656 Sep  1 06:03 [01;32mlibabsl_profile_builder.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        40 Sep  1 06:03 [01;36mlibabsl_random_distributions.so[0m -> libabsl_random_distributions.so.2608.0.0
+-rwxr-xr-x 1 root root     67584 Sep  1 06:03 [01;32mlibabsl_random_distributions.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        58 Sep  1 06:03 [01;36mlibabsl_random_internal_distribution_test_util.so[0m -> libabsl_random_internal_distribution_test_util.so.2608.0.0
+-rwxr-xr-x 1 root root     67584 Sep  1 06:03 [01;32mlibabsl_random_internal_distribution_test_util.so.2608.0.0[0m[K
+lrwxrwxrwx 1 root root        48 Sep  1 06:03 [01;36mlibabsl_random_internal_entropy_pool.so[0m -> libabsl_random_internal_entropy_pool.so.2608.0.0
+-rwxr-xr-x 1 root root     67656 Sep  1 06:03 [01;32mlibabsl_random_internal_entropy_pool.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        44 Sep  1 06:03 [01;36mlibabsl_random_internal_platform.so[0m -> libabsl_random_internal_platform.so.2608.0.0
+-rwxr-xr-x 1 root root     67336 Sep  1 06:03 [01;32mlibabsl_random_internal_platform.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        53 Sep  1 06:03 [01;36mlibabsl_random_internal_randen_hwaes_impl.so[0m -> libabsl_random_internal_randen_hwaes_impl.so.2608.0.0
+-rwxr-xr-x 1 root root     67496 Sep  1 06:03 [01;32mlibabsl_random_internal_randen_hwaes_impl.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        48 Sep  1 06:03 [01;36mlibabsl_random_internal_randen_hwaes.so[0m -> libabsl_random_internal_randen_hwaes.so.2608.0.0
+-rwxr-xr-x 1 root root     67424 Sep  1 06:03 [01;32mlibabsl_random_internal_randen_hwaes.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        47 Sep  1 06:03 [01;36mlibabsl_random_internal_randen_slow.so[0m -> libabsl_random_internal_randen_slow.so.2608.0.0
+-rwxr-xr-x 1 root root     67336 Sep  1 06:03 [01;32mlibabsl_random_internal_randen_slow.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        42 Sep  1 06:03 [01;36mlibabsl_random_internal_randen.so[0m -> libabsl_random_internal_randen.so.2608.0.0
+-rwxr-xr-x 1 root root     67512 Sep  1 06:03 [01;32mlibabsl_random_internal_randen.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        49 Sep  1 06:03 [01;36mlibabsl_random_internal_seed_material.so[0m -> libabsl_random_internal_seed_material.so.2608.0.0
+-rwxr-xr-x 1 root root     67584 Sep  1 06:03 [01;32mlibabsl_random_internal_seed_material.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        45 Sep  1 06:03 [01;36mlibabsl_random_seed_gen_exception.so[0m -> libabsl_random_seed_gen_exception.so.2608.0.0
+-rwxr-xr-x 1 root root     67568 Sep  1 06:03 [01;32mlibabsl_random_seed_gen_exception.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        41 Sep  1 06:03 [01;36mlibabsl_random_seed_sequences.so[0m -> libabsl_random_seed_sequences.so.2608.0.0
+-rwxr-xr-x 1 root root     67584 Sep  1 06:03 [01;32mlibabsl_random_seed_sequences.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        32 Sep  1 06:03 [01;36mlibabsl_raw_hash_set.so[0m -> libabsl_raw_hash_set.so.2608.0.0
+-rwxr-xr-x 1 root root     67560 Sep  1 06:03 [01;32mlibabsl_raw_hash_set.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        40 Sep  1 06:03 [01;36mlibabsl_raw_logging_internal.so[0m -> libabsl_raw_logging_internal.so.2608.0.0
+-rwxr-xr-x 1 root root     67544 Sep  1 06:03 [01;32mlibabsl_raw_logging_internal.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        35 Sep  1 06:03 [01;36mlibabsl_scoped_mock_log.so[0m -> libabsl_scoped_mock_log.so.2608.0.0
+-rwxr-xr-x 1 root root    198728 Sep  1 06:03 [01;32mlibabsl_scoped_mock_log.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        34 Sep  1 06:03 [01;36mlibabsl_scoped_set_env.so[0m -> libabsl_scoped_set_env.so.2608.0.0
+-rwxr-xr-x 1 root root     67584 Sep  1 06:03 [01;32mlibabsl_scoped_set_env.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        35 Sep  1 06:03 [01;36mlibabsl_simulated_clock.so[0m -> libabsl_simulated_clock.so.2608.0.0
+-rwxr-xr-x 1 root root     67656 Sep  1 06:03 [01;32mlibabsl_simulated_clock.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        35 Sep  1 06:03 [01;36mlibabsl_source_location.so[0m -> libabsl_source_location.so.2608.0.0
+-rwxr-xr-x 1 root root     67264 Sep  1 06:03 [01;32mlibabsl_source_location.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        40 Sep  1 06:03 [01;36mlibabsl_spinlock_test_common.so[0m -> libabsl_spinlock_test_common.so.2608.0.0
+-rwxr-xr-x 1 root root    133200 Sep  1 06:03 [01;32mlibabsl_spinlock_test_common.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        33 Sep  1 06:03 [01;36mlibabsl_spinlock_wait.so[0m -> libabsl_spinlock_wait.so.2608.0.0
+-rwxr-xr-x 1 root root     67424 Sep  1 06:03 [01;32mlibabsl_spinlock_wait.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        37 Sep  1 06:03 [01;36mlibabsl_stack_consumption.so[0m -> libabsl_stack_consumption.so.2608.0.0
+-rwxr-xr-x 1 root root     67496 Sep  1 06:03 [01;32mlibabsl_stack_consumption.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        30 Sep  1 06:03 [01;36mlibabsl_stacktrace.so[0m -> libabsl_stacktrace.so.2608.0.0
+-rwxr-xr-x 1 root root     67504 Sep  1 06:03 [01;32mlibabsl_stacktrace.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        34 Sep  1 06:03 [01;36mlibabsl_status_builder.so[0m -> libabsl_status_builder.so.2608.0.0
+-rwxr-xr-x 1 root root     67656 Sep  1 06:03 [01;32mlibabsl_status_builder.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        35 Sep  1 06:03 [01;36mlibabsl_status_matchers.so[0m -> libabsl_status_matchers.so.2608.0.0
+-rwxr-xr-x 1 root root     67656 Sep  1 06:03 [01;32mlibabsl_status_matchers.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        28 Sep  1 06:03 [01;36mlibabsl_statusor.so[0m -> libabsl_statusor.so.2608.0.0
+-rwxr-xr-x 1 root root     67656 Sep  1 06:03 [01;32mlibabsl_statusor.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        26 Sep  1 06:03 [01;36mlibabsl_status.so[0m -> libabsl_status.so.2608.0.0
+-rwxr-xr-x 1 root root     67600 Sep  1 06:03 [01;32mlibabsl_status.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        28 Sep  1 06:03 [01;36mlibabsl_strerror.so[0m -> libabsl_strerror.so.2608.0.0
+-rwxr-xr-x 1 root root     67584 Sep  1 06:03 [01;32mlibabsl_strerror.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        39 Sep  1 06:03 [01;36mlibabsl_str_format_internal.so[0m -> libabsl_str_format_internal.so.2608.0.0
+-rwxr-xr-x 1 root root    133120 Sep  1 06:03 [01;32mlibabsl_str_format_internal.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        36 Sep  1 06:03 [01;36mlibabsl_strings_internal.so[0m -> libabsl_strings_internal.so.2608.0.0
+-rwxr-xr-x 1 root root     67656 Sep  1 06:03 [01;32mlibabsl_strings_internal.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        27 Sep  1 06:03 [01;36mlibabsl_strings.so[0m -> libabsl_strings.so.2608.0.0
+-rwxr-xr-x 1 root root    198656 Sep  1 06:03 [01;32mlibabsl_strings.so.2608.0.0[0m
+lrwxrwxrwx 1 root root        29 Sep  1 06:03 [01;36mlibabsl_symbolize.so[0m -> libabsl_symbolize.so.2608.0.0
+-rwxr-xr-x 1 root root     67584 Sep  1 06:03 [01;32mlibabsl_symbolize.so.2

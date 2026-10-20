@@ -96,8 +96,9 @@ pub struct ServerState {
     log_frames: crate::log::Stream,
     /// `uart[].tx` credit, per index (API-14).
     uart_tx_credit: [SinkCredit; uart::COUNT],
-    /// `uart[1].rx`, the header UART's counted receive stream (`uart[0]` has none yet: `unopened`).
-    uart_rx: Counted,
+    /// `uart[].rx`, the counted receive streams: `uart[1]`'s compresses for hosts that decode LZ4 (FW-42),
+    /// `uart[0]` has none yet.
+    uart_rx: [uart::RxState; uart::COUNT],
     /// `device.uid.IDS`: the STM32 96-bit UID.
     uid: [UniqueId<'static>; 1],
     /// `device.last_reset`: reset cause and crash record read at boot (`src/last_reset.rs`).
@@ -147,7 +148,7 @@ impl ServerState {
                     Some(ww_uart::UART_TX_MAX as u32),
                 ),
             ],
-            uart_rx: Counted::new(),
+            uart_rx: uart::RxState::new(),
             uid: [UniqueId {
                 kind: UidKind::ChipUnique,
                 source: UidSource::InternalIc,
@@ -424,7 +425,9 @@ async fn server_task(mut server: UsbServer<'static, UsbDriver>, state: &'static 
                     if matches!(event, LinkEvent::Down(_)) {
                         state.observe.reset();
                         state.log_frames.detach();
-                        state.uart_rx.detach();
+                        for rx in &mut state.uart_rx {
+                            ww_stream::codec::CountedState::detach(rx);
+                        }
                     }
                 }
             }

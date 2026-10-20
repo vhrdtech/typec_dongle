@@ -6,13 +6,16 @@
 //! the bytes left the pipe and went out on the line. `rx_task` reads the receiver's DMA ring into [RX]; what does not
 //! fit is counted in [take_rx_dropped] and the host is told how many bytes it missed.
 //!
+//! With the feature `uart-replay`, `tx_task` can instead send a text capture from flash in a loop ([replay]), a
+//! source at the full line rate for the receive path with a jumper from IO7 to IO8 (FW-42).
+//!
 //! A new line setting ([configure]) waits until `tx_task` has sent what it took out of [TX] (bytes the host sent
 //! before `configure` go out at the old rate); then `rx_task` stops the receiver, sets the USART up and starts it again.
 
 use core::sync::atomic::Ordering;
 use defmt::{unwrap, warn};
 use embassy_executor::Spawner;
-use embassy_futures::select::{Either, select};
+use embassy_futures::select::{Either, Either3, select, select3};
 use embassy_stm32::mode::Async;
 use embassy_stm32::usart::{Config, Uart, UartRx, UartTx};
 
@@ -58,6 +61,27 @@ static APPLY: Signal<CriticalSectionRawMutex, Config> = Signal::new();
 /// `rx_task` has set the USART up, `tx_task` goes on.
 static APPLIED: Signal<CriticalSectionRawMutex, ()> = Signal::new();
 static RX_RING_BUF: StaticCell<[u8; RX_RING]> = StaticCell::new();
+/// What `tx_task` replays from now on, empty for nothing ([replay]).
+static REPLAY: Signal<CriticalSectionRawMutex, &'static [u8]> = Signal::new();
+
+/// The text captures [replay] sends (`None` for one this firmware doesn't know), 32 KiB each (`replay/`, CR LF line ends as from a serial console).
+#[cfg(feature = "uart-replay")]
+pub fn capture(which: donguru_api::ReplayCapture) -> Option<&'static [u8]> {
+    use donguru_api::ReplayCapture;
+    Some(match which {
+        ReplayCapture::Stop => &[],
+        ReplayCapture::Boot => include_bytes!("../replay/boot.txt"),
+        ReplayCapture::Ls => include_bytes!("../replay/ls.txt"),
+        ReplayCapture::Top => include_bytes!("../replay/top.txt"),
+        ReplayCapture::Unknown(_) => return None,
+    })
+}
+
+/// Sends `data` on the line in a loop, by DMA straight from flash, until the next call; empty stops. Bytes of the
+/// `tx` sink wait in [TX] meanwhile.
+pub fn replay(data: &'static [u8]) {
+    REPLAY.signal(data);
+}
 
 pub fn init(spawner: Spawner, r: crate::UartResources) {
     let mut config = Config::default();
@@ -161,18 +185,29 @@ pub async fn wait_event() {
 #[embassy_executor::task]
 async fn tx_task(mut tx: UartTx<'static, Async>) {
     let mut buf = [0u8; ww_uart::UART_TX_MAX];
+    let mut replaying: &'static [u8] = &[];
     loop {
+        if !replaying.is_empty() {
+            // the write in flight is dropped (its DMA stopped) for a new setting or capture
+            match select3(CONFIGURE.wait(), REPLAY.wait(), tx.write(replaying)).await {
+                Either3::First(config) => set_line(&mut tx, config).await,
+                Either3::Second(data) => replaying = data,
+                Either3::Third(Ok(())) => {}
+                Either3::Third(Err(e)) => warn!("uart[1] replay: {:?}", e),
+            }
+            continue;
+        }
         // a new setting first: what the host sent after `configure` is for the new line
-        let n = match select(CONFIGURE.wait(), TX.read(&mut buf)).await {
-            Either::First(config) => {
-                if let Err(e) = tx.flush().await {
-                    warn!("uart[1] flush: {:?}", e);
-                }
-                APPLY.signal(config);
-                APPLIED.wait().await;
+        let n = match select3(CONFIGURE.wait(), REPLAY.wait(), TX.read(&mut buf)).await {
+            Either3::First(config) => {
+                set_line(&mut tx, config).await;
                 continue;
             }
-            Either::Second(n) => n,
+            Either3::Second(data) => {
+                replaying = data;
+                continue;
+            }
+            Either3::Third(n) => n,
         };
         if let Err(e) = tx.write(&buf[..n]).await {
             warn!("uart[1] tx: {:?}", e);
@@ -180,6 +215,15 @@ async fn tx_task(mut tx: UartTx<'static, Async>) {
         TX_DONE.fetch_add(n as u32, Ordering::Relaxed);
         EVENT.signal(());
     }
+}
+
+/// Waits until the last byte is out, then has `rx_task` set the line up with `config`.
+async fn set_line(tx: &mut UartTx<'static, Async>, config: Config) {
+    if let Err(e) = tx.flush().await {
+        warn!("uart[1] flush: {:?}", e);
+    }
+    APPLY.signal(config);
+    APPLIED.wait().await;
 }
 
 #[embassy_executor::task]
@@ -198,7 +242,11 @@ async fn rx_task(rx: UartRx<'static, Async>, ring: &'static mut [u8; RX_RING]) {
                 }
                 let rate = line_rate();
                 if Some(rate) != rate_for(config.baudrate) {
-                    warn!("uart[1] runs at {} Bd, {} Bd answered", rate, rate_for(config.baudrate));
+                    warn!(
+                        "uart[1] runs at {} Bd, {} Bd answered",
+                        rate,
+                        rate_for(config.baudrate)
+                    );
                     cnt::cnt!(uart_rate_mismatches: u32, warn);
                 }
                 defmt::info!("uart[1] at {} Bd (asked {})", rate, config.baudrate);
