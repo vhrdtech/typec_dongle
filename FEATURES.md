@@ -433,7 +433,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   With FW-4. ^revB
 - 📋 **API-14 SBU owner and UART on SBU**: one function at a time on the plug SBU lines, `sbu.release`; `uart[0]` as
   `ww_uart::Uart` with the TX/RX flip from `plug.orientation` and a two-line monitor. With FW-7. ^revB
-  🧪 Header UART `uart[1]` (0.20.10, USART5 on IO7 TX / IO8 RX, `fw/donguru/src/uart.rs`, `ww/uart.rs`): `tx` credit
+  ✅ Header UART `uart[1]` (0.20.10, USART5 on IO7 TX / IO8 RX, `fw/donguru/src/uart.rs`, `ww/uart.rs`): `tx` credit
   sink, counted `rx`, `capabilities`, and `configure` (8N1 at 921 600 Bd from boot): 4 Bd ..= 8 Mbaud, 7 or 8 data bits,
   none / even / odd parity, 1 or 2 stop bits, `Asynchronous` only, 3.3 V; anything else `Unsupported`. Answers the rate
   the divider gives (embassy-stm32's choice, read back from BRR / PRESC / OVER8 after setting, `uart_rate_mismatches`
@@ -441,7 +441,16 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   lowest bit, RM0444); 6 Mbaud gives 5.818 Mbaud (-3.0 %, at the edge of what a crystal-clocked DUT tolerates; exact
   6 Mbaud needs a 60 or 48 MHz PCLK). `idle_chars` answers 1 (the IDLE flag), chunks to the host are not cut on idle.
   A new line waits for the TX DMA write in flight; bytes in the RX ring are dropped. RX ring 4 KiB, RX pipe 16 KiB.
-  `uart[1].set_pin_level`, `send_break`, `tx_pending` still `Unimplemented`.
+  `uart[1].set_pin_level`, `send_break`, `tx_pending` still `Unimplemented`. Tested 20 Oct 2026 on B153A (jumper IO7-IO8):
+  `dg uart configure` answers 927 536 / 3 047 619 / 5 818 182 / 8 000 000 Bd for 921 600 / 3M / 6M / 8M, 115 108 7E2,
+  `Unsupported` (exit 4) for 9M and 9N1; `uart_resume --mode plain --baud` loops 2 MB back exactly, in order, none
+  lost, at all three rates: 70 kB/s at 921 600, 111 kB/s at 3M, 114 kB/s at 6M (host -> device limit, API-56); counters
+  `uart_rx_errors`, `uart_rate_mismatches`, `uart_config_errors`, `uart_tx_overruns` 0. RX saw back-to-back bursts of up
+  to 2 KiB at 5.8 Mbaud; a sustained 580 kB/s on RX is not tested (needs a source on the line, FW-42).
+- 📋 **API-56 UART host -> device rate**: the header UART's `tx` carries ~120 kB/s at any baud rate (B153A, 20 Oct 2026,
+  2 or 8 KiB credit alike): one `tx` item of at most 256 B (`ww_uart::UART_TX_MAX`) per message, ~470 messages/s over
+  USB. Several items per USB transfer (WireWeaver) or bigger items would lift it towards the ~620 kB/s USB carries.
+  Enough for typed commands; a fast DUT input path needs it.
 - 📋 **API-15 GPIO banks**: plug (SBU1, SBU2, A2, B2) and header (IO7..IO10) as `ww_gpio::Bank` with pin events.
   With FW-10. ^v1.0
 - 📋 **API-16 I2C buses**: plug SBU (I2C1) and header (I2C3) as `ww_i2c::I2c`. With FW-10. ^v1.0
