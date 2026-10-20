@@ -1048,38 +1048,6 @@ impl MockServer {
         ValidIndices::range_u32(0..4)
     }
 
-    async fn gpio_read_inputs(
-        &mut self,
-        _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
-        _pins: wire_weaver::shrink_wrap::MaxLen<
-            wire_weaver::shrink_wrap::RefVec<'_, wire_weaver::shrink_wrap::UNib32>,
-            64,
-        >,
-    ) -> RpcResult<
-        Result<
-            wire_weaver::shrink_wrap::MaxLen<
-                wire_weaver::shrink_wrap::RefVec<'_, ww_gpio::Level>,
-                64,
-            >,
-            ww_gpio::GpioError<'_>,
-        >,
-    > {
-        Unimplemented.into()
-    }
-
-    async fn gpio_write_outputs(
-        &mut self,
-        _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
-        _levels: wire_weaver::shrink_wrap::MaxLen<
-            wire_weaver::shrink_wrap::RefVec<'_, ww_gpio::PinLevel>,
-            64,
-        >,
-    ) -> RpcResult<Result<(), ww_gpio::GpioError<'_>>> {
-        Unimplemented.into()
-    }
-
     async fn gpio_capabilities(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
