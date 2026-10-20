@@ -35,7 +35,7 @@ use embassy_stm32::pac;
 use embassy_stm32::peripherals::PA10;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::signal::Signal;
-use embassy_time::Timer;
+use embassy_time::{Duration, Instant, Timer};
 use usb251xb::Usb251xb;
 use usb251xb::register::{REG_CONFIG_BYTE_1, REG_VENDOR_ID_LSB};
 
@@ -121,8 +121,7 @@ pub fn request_recovery() {
 /// Owns the hub's reset pin and I2C bus for the life of the firmware, so [`watchdog_task`] can redo the
 /// bring-up without re-touching PA4 (the SDA pull-up supply, driven high for good by [`bring_up`]). The bus
 /// itself stays a plain [`I2c`]: [`dev`](Hub::dev) wraps `&mut` it in a fresh [`Usb251xb`] per call instead of
-/// the driver owning it outright, so [`probe_lost`](Hub::probe_lost) can still reach the bus directly for its
-/// bare zero-length write (next field doc).
+/// the driver owning it outright.
 pub struct Hub {
     nrst: Output<'static>,
     i2c: I2c<'static, Blocking, Master>,
@@ -199,8 +198,8 @@ impl Hub {
 
     /// The bring-up sequence again: reset pulse, config, attach. The board variant does not need re-reading
     /// (module doc): `self.variant` carries over from [`bring_up`].
-    async fn recover(&mut self) {
-        warn!("hub: lost after brown-out, redoing bring-up");
+    async fn recover(&mut self, why: &str) {
+        warn!("hub: lost ({=str}), redoing bring-up", why);
         self.nrst.set_low();
         Timer::after_millis(1).await;
         self.nrst.set_high();
@@ -208,20 +207,44 @@ impl Hub {
         self.configure();
     }
 
-    /// Zero-length write: a cheap presence probe (address byte + ACK/NAK only, no data phase, no register
-    /// touched). Deliberately does not go through [`dev`](Hub::dev) and read anything back: tried on a B153A
-    /// (14 Oct 2026, this crate's own first bring-up), a register read here false-triggered a recovery about
-    /// 200 ms after a clean boot — the hub was fully attached and enumerated fine, so this is not the brown-out
-    /// NAK/timeout the probe is meant to catch, just the hub's own microcontroller being briefly unable to
-    /// service a register read so soon after `ATTACH` (consistent with the B153A bring-up notes that found
-    /// the hub's register read-back unreliable, `hw/b153_typec_serial/report/assy_b153a.md`). ACK/NAK on the
-    /// address is all the detection needs — a hub mid brown-out NAKs or times out here regardless.
-    fn probe_lost(&mut self) -> bool {
-        self.i2c
-            .blocking_write(usb251xb::register::DEVICE_ADDR, &[])
-            .is_err()
+    /// Reads VID/PID back to tell a hub that lost its config from one that is just busy (FW-41). A hub that
+    /// browned out comes back waiting for its config over SMBus, like out of reset: it answers, and its ID
+    /// registers read all-zero ([`read_power_on_defaults`](Hub::read_power_on_defaults)). A configured hub answers
+    /// with the IDs written by [`configure`](Hub::configure). While the hub's own microcontroller is busy with the
+    /// host (attach, enumeration) it NAKs its address for a while: that is no loss. Counting a NAK as one (the
+    /// zero-length write used before) reset the hub once or twice after every boot, and every 0.6 s for good while
+    /// the MCU's own device was off the bus (B153A, 19-20 Oct 2026).
+    fn probe(&mut self) -> Probe {
+        let mut buf = [0u8; 1 + 4];
+        match self.dev().read_register(REG_VENDOR_ID_LSB, &mut buf) {
+            Ok(_) if buf[1..] == [0; 4] => Probe::Unconfigured,
+            Ok(_) => Probe::Configured,
+            Err(_) => Probe::Busy,
+        }
     }
 }
+
+/// What [`Hub::probe`] found.
+#[derive(Clone, Copy, PartialEq, Eq, defmt::Format)]
+enum Probe {
+    Configured,
+    /// ID registers all-zero: the hub reset and waits for its config.
+    Unconfigured,
+    /// No answer on I2C: the hub is busy with the host, or gone with its supply.
+    Busy,
+}
+
+/// After an attach the hub reads its ID registers as all-zero for up to ~0.4 s, as if it had lost its config, and
+/// NAKs while the host enumerates it (B153A, 20 Oct 2026): [`watchdog_task`] doesn't probe it in this time.
+const ATTACH_GRACE: Duration = Duration::from_secs(1);
+
+/// A recovery resets the hub, which drops the MCU's own device out of the configured state some 0.6 s later: a
+/// request in this window after an attach is that echo, not a new loss.
+const OWN_RESET_ECHO: Duration = Duration::from_secs(2);
+
+/// Consecutive [`Probe::Unconfigured`] reads before [`watchdog_task`] redoes the bring-up: one stray read does not
+/// reset a hub the host is using.
+const UNCONFIGURED_READS: u8 = 2;
 
 /// Reads the board-variant strap, releases the hub from reset, writes its config and attaches it upstream.
 pub async fn bring_up(r: HubResources) -> Hub {
@@ -251,19 +274,35 @@ pub async fn bring_up(r: HubResources) -> Hub {
 /// here contends for a shared executor task while waiting on the bus, so there is nothing async buys.
 #[embassy_executor::task]
 pub async fn watchdog_task(mut hub: Hub) {
+    let mut last = Probe::Configured;
+    let mut unconfigured = 0u8;
+    let mut attached_at = Instant::now(); // bring_up has just attached it
     loop {
-        match select(
+        let why = match select(
             Timer::after_millis(POLL_INTERVAL_MS),
             RECOVERY_REQUEST.wait(),
         )
         .await
         {
+            Either::First(()) if attached_at.elapsed() < ATTACH_GRACE => continue,
             Either::First(()) => {
-                if hub.probe_lost() {
-                    hub.recover().await;
+                let probe = hub.probe();
+                if probe != last {
+                    info!("hub probe: {}", probe);
+                    last = probe;
                 }
+                unconfigured = if probe == Probe::Unconfigured { unconfigured + 1 } else { 0 };
+                if unconfigured < UNCONFIGURED_READS {
+                    continue;
+                }
+                "ID registers read all-zero"
             }
-            Either::Second(()) => hub.recover().await,
-        }
+            // our own hub reset bounced the MCU's port as well
+            Either::Second(()) if attached_at.elapsed() < OWN_RESET_ECHO => continue,
+            Either::Second(()) => "USB device left the configured state",
+        };
+        hub.recover(why).await;
+        unconfigured = 0;
+        attached_at = Instant::now();
     }
 }

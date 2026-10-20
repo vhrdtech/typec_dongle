@@ -102,7 +102,9 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   to reset the hub without resetting the MCU, which loses the hub's SMBus config and attach state for good
   (P2534#12oct-1819, seen on the P2625 power-cut bench). `src/hub.rs`'s `watchdog_task` notices the loss — the
   composite USB device (carried on hub port 1) dropping out of the configured state it had reached, or a periodic
-  I2C presence probe — and redoes the reset + config + attach bring-up.
+  I2C probe that reads the hub's VID/PID back all-zero twice (a reset hub waits for its config again; a NAK only
+  means busy, FW-41) — and redoes the reset + config + attach bring-up. No probing for 1 s after an attach, and a
+  USB-side request within 2 s of one is the echo of our own hub reset, not a new loss.
   Tested 12 Oct 2026 on B153A (P2625 bench, omarchy-m1): the bench's VBUS_SW line now has a 10R series resistor
   (power-cut-bench session) that stops the original inrush from browning out the hub, so this was verified by a
   debugger-forced hub reset instead (same electrical event as the brown-out, from the hub's point of view): a
@@ -112,12 +114,10 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   target in the tpm task was a rough estimate; ~2 s here is mostly host-side USB re-enumeration overhead, not the
   firmware's own recovery time. Not yet exercised against a real brown-out (needs the 10R resistor bypassed, which
   the user declined for now since the bench is in use for cut measurements).
-  🐛 Known quirk (B153A, 14 Oct 2026, FW-6 hardware check): `watchdog_task`'s periodic I2C probe fires one or two
-  spurious recoveries about 200-400 ms after a cold boot, before the hub has finished its own internal attach and
-  well before USB enumeration — harmless (self-heals before the host notices) but not a real brown-out. Confirmed
-  present on the unmodified 0.6.0 firmware too, so not from the FW-6 crate change. The obvious fix is a short
-  grace period after [`bring_up`](../fw/donguru/src/hub.rs) before `watchdog_task` starts probing; not done in
-  this branch.
+  Fixed 20 Oct 2026 (FW-41): the I2C probe was a zero-length write that took a NAK for a loss, so it reset the
+  hub one or two times 200-600 ms after every boot (the hub NAKs while it attaches and while the host enumerates
+  it), and for good while the MCU's own device stayed off the bus. Rechecked on B153A: no recovery at boot
+  (`cnt run`, 3 resets), one per PC13 pulse, USB back each time.
 - ✅ **FW-19 512-byte CMSIS-DAP packets**: `DAP_Info` reports `MaxPacketSize` 512 (`dap_rs` feature `usb-hs`, which
   changes nothing else) instead of 64, so `DAP_TransferBlock` carries 126 words per USB round trip instead of 15.
   The endpoints stay Full-Speed 64-byte bulk: `src/cmsis_dap.rs` puts a request together from several OUT packets
@@ -319,10 +319,17 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   64 B, 621-628 kB/s at 1 KB (in the 0.20.6 range). Still ~5% short at 64 B: what is left is the event-driven loop
   itself (`select4` with `wait_until` and `OBSERVE.wait()`, a timer and two waker registrations per wake, critical
   sections on the M0); not looked into further.
-- 🐛 **FW-41 Hub bring-up loop after a probe-rs download and reset**: 0.20.6 flashed with `probe-rs download` and
-  started with `probe-rs reset` (J-Link, B153A, 19 Oct 2026) logged `hub: lost after brown-out, redoing bring-up`
-  every 0.6 s for over a minute and never enumerated; flashed and started by `cnt run` it came up at once. Seen
-  once, not chased: maybe FW-18's watchdog fighting a hub left in an odd state by the debugger reset.
+- ✅ **FW-41 Hub bring-up loop after a probe-rs download and reset**: after `probe-rs download` + `probe-rs reset`
+  (J-Link, B153A, 19-20 Oct 2026) the hub was reset every 0.6 s and Donguru never enumerated; `cnt run` came up
+  at once. Two causes. (1) Not the firmware: probe-rs 0.32's STM32 ARMv6 `debug_device_unlock` sets DBGEN with a
+  read-modify-write of RCC_APBENR1 over SWD while the core already runs, and puts back the value it read: when the
+  firmware enables USB and SPI2 in between, both clocks go off again (APBENR1 `0x18410504` instead of
+  `0x18416504`, USB registers all zero, no D+ pull-up). Hit about one boot in three after a probe-rs reset;
+  `cnt run` halts the core first, a power-up without a debugger never runs it. Upstream notes: tpm
+  `prj/P2534-donguru/design/upstream-probe-rs-g0-dbgen.md`. (2) Ours: FW-18's I2C probe counted the hub's NAK
+  as a loss, and a hub with nothing on port 1 NAKs once the host talks to it, so it reset the hub forever. Now the
+  probe reads VID/PID and only all-zero counts (FW-18); a boot hit by (1) stays off USB until the next reset
+  instead of looping.
 
 ## API (`API`)
 
