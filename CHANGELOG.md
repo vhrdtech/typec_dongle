@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.11] - 2026-10-20
+
 ### Removed
 
 - Firmware and mock: `gpio[].read_inputs` / `gpio[].write_outputs` (both answered `Unimplemented`), gone from `ww_gpio` (WireWeaver STD-30 dropped: one pin per call, many pins in one round trip as a multi request, same-instant multi-pin access through the logic analyzer / signal generator).
