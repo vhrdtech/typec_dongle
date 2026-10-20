@@ -525,11 +525,11 @@ dependencies = [
 
 [[package]]
 name = "donguru_dap"
-version = "0.20.9"
+version = "0.20.10"
 
 [[package]]
 name = "donguru_hub"
-version = "0.20.9"
+version = "0.20.10"
 dependencies = [
  "donguru_api",
  "usb251xb",
@@ -537,7 +537,7 @@ dependencies = [
 
 [[package]]
 name = "donguru_power"
-version = "0.20.9"
+version = "0.20.10"
 dependencies = [
  "donguru_api",
  "ww_si",
