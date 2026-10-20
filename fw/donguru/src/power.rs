@@ -34,7 +34,6 @@ pub enum Which {
     Header,
 }
 
-
 struct Power {
     plug: Switch,
     header: Switch,
@@ -112,7 +111,6 @@ fn with<R>(f: impl FnOnce(&mut Power) -> R) -> R {
         f(p)
     })
 }
-
 
 /// The guard's view of the newest ADC update: the worst voltage and current of it.
 fn sample() -> Option<Sample> {
@@ -257,7 +255,6 @@ fn finish(req: CycleRequest) {
 pub async fn wait_event() {
     EVENT.wait().await
 }
-
 
 /// A finished cycle to answer, if any.
 pub fn take_cycle_done() -> Option<CycleDone> {

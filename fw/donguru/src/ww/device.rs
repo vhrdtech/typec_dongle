@@ -146,11 +146,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) fn close_device_counters_watch(
-        &mut self,
-        _cx: &mut Context<'_, impl EventOut>,
-    ) {
-    }
+    pub(super) fn close_device_counters_watch(&mut self, _cx: &mut Context<'_, impl EventOut>) {}
 
     pub(super) fn stream_device_counters_watch(&mut self) -> &mut ww_stream::tx::Counted {
         &mut self.unopened

@@ -20,10 +20,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) fn inputs_events(
-        &mut self,
-        _cx: &mut Context<'_, impl EventOut>,
-    ) -> RpcResult<()> {
+    pub(super) fn inputs_events(&mut self, _cx: &mut Context<'_, impl EventOut>) -> RpcResult<()> {
         RpcResult::Unimplemented
     }
 

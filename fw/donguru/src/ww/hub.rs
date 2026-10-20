@@ -13,10 +13,7 @@ impl ServerState {
         Unimplemented.into()
     }
 
-    pub(super) fn hub_recover(
-        &mut self,
-        _cx: &mut Context<'_, impl EventOut>,
-    ) -> RpcResult<()> {
+    pub(super) fn hub_recover(&mut self, _cx: &mut Context<'_, impl EventOut>) -> RpcResult<()> {
         Unimplemented.into()
     }
 }

@@ -327,7 +327,14 @@ pub async fn adc_task(mut r: AdcResources, mut set: ChannelSet) {
     // what observers of meter.reading / temperature / totals were last told (deadband, SRV-25)
     let mut meter_marks = crate::ww::MeterMarks::new();
     loop {
-        set = run(&mut r, dma_buf, set, meter_samples.as_mut(), &mut meter_marks).await;
+        set = run(
+            &mut r,
+            dma_buf,
+            set,
+            meter_samples.as_mut(),
+            &mut meter_marks,
+        )
+        .await;
         // run() dropped the ring buffered ADC: ADC stopped and its clock disabled, DMA channel stopped
         LATEST.lock(|l| l.set(None));
     }
