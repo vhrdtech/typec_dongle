@@ -330,6 +330,30 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   as a loss, and a hub with nothing on port 1 NAKs once the host talks to it, so it reset the hub forever. Now the
   probe reads VID/PID and only all-zero counts (FW-18); a boot hit by (1) stays off USB until the next reset
   instead of looping.
+- 🚧 **FW-42 UART RX compression**: `uart[1].rx` is a WireWeaver compressed counted stream (API-55,
+  `ww_stream::codec::Compressed` around `ww_lz4::Encoder<4096, 12288>`, h12 with 12 KiB history and 4 KiB kept,
+  set up in place, encoder in RAM through ww_lz4's `ram`; `fw/donguru/src/ww/uart.rs` `RxState`): hosts that offer
+  LZ4 get LZ4 blocks, older hosts (no offer) the chunks as before. The receive path behind it: `rx_task` reads the
+  DMA ring (8 KiB) straight into a queue of 32 chunk slots (`src/uart.rs` `RxSlots`, replaces the 16 KiB pipe),
+  each slot carrying the bytes lost before it so losses reach the host at the right position; after a read that
+  didn't fill a chunk it waits 1 ms (`RX_GATHER`), else a busy line gave 1-byte reads and events; the server task
+  sends at most 2 chunks per turn. Bench source: `debug.uart_replay` (feature `uart-replay`, 96 KiB of captures in
+  `replay/`) loops a boot log, `ls --color` or `top` out of IO7 by DMA; `donguru-core` example `uart_rx_bench`
+  checks every byte against the capture and reports kB/s, USB kB/s, ratio, CPU (FW-43) and losses. Tested 21 Oct
+  2026 on B153A (jumper IO7-IO8), 5 s per run, every byte delivered correct: at 5.818 Mbaud (581.8 kB/s) raw
+  505 kB/s (the rest lost, counted), LZ4 boot 482 kB/s at 2.8x, ls 551 kB/s at 3.9x, top 568 kB/s at 4.3x with
+  none lost; 2 Mbaud all delivered, CPU 69 % raw / 68-74 % LZ4 (receive path alone 23 %). Needs two fixes not in
+  this repo yet: WireWeaver's `RefVec<u8>` slice write (wire_weaver branch s/20oct2026-uart-rx-lz4, `perf(shrink_wrap)`)
+  and embassy's DMA ring copy without a division per byte (tpm `prj/P2534-donguru/design/upstream-embassy-dma-ringbuffer-copy.md`,
+  not merged upstream): with upstream embassy the receive path alone takes the whole CPU at 5.8 Mbaud and 16 kB/s
+  get through. Open: point `[patch.crates-io]` embassy-stm32 at a fork with the fix until upstream has it (the
+  person's call); bytes lost in the DMA ring itself (`uart_rx_errors`, a ring overrun) are not counted into the
+  stream (none seen with the slot queue). Design notes: tpm `prj/P2534-donguru/design/uart-compression/notes.md`.
+- ✅ **FW-43 CPU idle counter**: the thread-mode executor runs by hand (`src/cpu.rs`, `main` is a `cortex_m_rt::entry`
+  spawning the `boot` task) and counts the time in WFE with interrupts masked (SEVONPEND wakes it) in the counter
+  `idle_us`; `executor_polls` counts the wake-ups. CPU load over a span = 1 - Δ`idle_us` / span, from
+  `device.counters` read twice (`uart_rx_bench` does it). Interrupt handlers count as busy. Tested 20-21 Oct 2026
+  on B153A: ~95 % idle at rest, ~2 500 polls/s under UART load.
 
 ## API (`API`)
 
@@ -440,13 +464,14 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   counts a difference): PCLK 64 MHz / k, so above 4 Mbaud only 8, 7.11, 6.4, 5.82, 5.33 Mbaud (OVER8 drops USARTDIV's
   lowest bit, RM0444); 6 Mbaud gives 5.818 Mbaud (-3.0 %, at the edge of what a crystal-clocked DUT tolerates; exact
   6 Mbaud needs a 60 or 48 MHz PCLK). `idle_chars` answers 1 (the IDLE flag), chunks to the host are not cut on idle.
-  A new line waits for the TX DMA write in flight; bytes in the RX ring are dropped. RX ring 4 KiB, RX pipe 16 KiB.
+  A new line waits for the TX DMA write in flight; bytes in the RX ring are dropped. RX ring 8 KiB, 32 RX chunk
+  slots (16 KiB), `rx` compressed for hosts that offer LZ4 (FW-42).
   `uart[1].set_pin_level`, `send_break`, `tx_pending` still `Unimplemented`. Tested 20 Oct 2026 on B153A (jumper IO7-IO8):
   `dg uart configure` answers 927 536 / 3 047 619 / 5 818 182 / 8 000 000 Bd for 921 600 / 3M / 6M / 8M, 115 108 7E2,
   `Unsupported` (exit 4) for 9M and 9N1; `uart_resume --mode plain --baud` loops 2 MB back exactly, in order, none
   lost, at all three rates: 70 kB/s at 921 600, 111 kB/s at 3M, 114 kB/s at 6M (host -> device limit, API-56); counters
   `uart_rx_errors`, `uart_rate_mismatches`, `uart_config_errors`, `uart_tx_overruns` 0. RX saw back-to-back bursts of up
-  to 2 KiB at 5.8 Mbaud; a sustained 580 kB/s on RX is not tested (needs a source on the line, FW-42).
+  to 2 KiB at 5.8 Mbaud. Sustained 580 kB/s on RX: FW-42.
 - 📋 **API-56 UART host -> device rate**: the header UART's `tx` carries ~120 kB/s at any baud rate (B153A, 20 Oct 2026,
   2 or 8 KiB credit alike): one `tx` item of at most 256 B (`ww_uart::UART_TX_MAX`) per message, ~470 messages/s over
   USB. Several items per USB transfer (WireWeaver) or bigger items would lift it towards the ~620 kB/s USB carries.

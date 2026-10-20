@@ -6,6 +6,21 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- Firmware: `uart[1].rx` is compressed with LZ4 for hosts that offer it (FW-42, WireWeaver API-55): 12 KiB of history, 4096-entry hash table, encoder run from RAM; hosts without the offer (CLIs before API-55) get the chunks as before. Tested 21 Oct 2026 on B153A at 5.818 Mbaud with the replay source: 482-568 kB/s of UART bytes delivered at 2.8-4.3x (top lossless at 568 kB/s), raw 505 kB/s; only with the embassy DMA ring fix (FW-42 open item), without it 16 kB/s.
+- Firmware: `debug.uart_replay(capture)` (`donguru_api` 0.4.1, a patch bump, so old and new CLIs and firmware keep connecting: the new CLI checked against 0.20.13 firmware on B153A): with the cargo feature `uart-replay` the firmware loops a boot log, `ls --color` or `top` capture (32 KiB each, in flash) out of the header UART's TX by DMA, a full-rate source for the RX path through a jumper IO7-IO8; without the feature `Unsupported` (FW-42).
+- Firmware: CPU idle counter `idle_us` and wake-up counter `executor_polls` in `device.counters` (FW-43): load = 1 - Δidle / Δtime.
+- `donguru-core` example `uart_rx_bench`: replays each capture at a baud rate, receives `uart[1].rx` raw and with LZ4, checks every byte and prints UART kB/s, USB kB/s, ratio, CPU % and losses (`--closed`: the receive path alone).
+
+### Changed
+
+- Firmware: the header UART's receive path reads the DMA ring (now 8 KiB) into 32 chunk slots instead of a 16 KiB pipe, and waits 1 ms after a read that didn't fill a chunk: on a busy line it no longer spins on 1-byte reads and the host gets full 512-byte chunks (FW-42). The server task sends at most 2 chunks per turn, so requests and the other tasks keep their turn when the line is faster than USB (before, `uart[1]` at 5.8 Mbaud made every request time out). FLASH 379.7 -> 386.4 KiB, RAM 63.2 -> 88.9 KiB (encoder 20.5 KiB, ring +4 KiB); `uart-replay` adds 96 KiB of flash.
+
+### Fixed
+
+- Firmware: bytes lost on `uart[1].rx` because the host was slower are reported at their position (before, a loss could be reported ahead of bytes received before it, shifting positions) (FW-42).
+
 ## [0.20.13] - 2026-10-20
 
 ### Added

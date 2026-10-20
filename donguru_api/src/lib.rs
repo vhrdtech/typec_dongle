@@ -557,7 +557,7 @@ pub trait Bringup {
     /// until `Stop`: a full-rate source for `uart[1].rx` with a jumper from IO7 to IO8. The `tx` sink's items wait
     /// meanwhile. Answers the capture's length in bytes (0 for `Stop`); `Unsupported` in a firmware built without
     /// the feature `uart-replay`, `InvalidArgument` for a capture it doesn't know.
-    #[since = "0.5.0"]
+    #[since = "0.4.1"]
     #[errors(Common(Unsupported, InvalidArgument))]
     fn uart_replay(capture: ReplayCapture) -> Result<u32, DebugError<'i>>;
 }

@@ -82,6 +82,12 @@ fn capture_bytes(c: ReplayCapture) -> &'static [u8] {
     }
 }
 
+/// Counters named with their values, of the firmware.
+type Counters = Vec<(String, u64)>;
+
+/// Start of the measured window: when, the firmware's counters and the stream's stats then.
+type Window = (Instant, Option<Counters>, wire_weaver_client::StreamStats);
+
 /// What one run saw.
 #[derive(Default)]
 struct Run {
@@ -308,11 +314,7 @@ async fn bench(dongle: &Dongle, args: &Args, capture: ReplayCapture, lz4: bool) 
     // where the replay was when the stream started: found from the first item
     let mut offset: Option<usize> = None;
     let warm_up = Instant::now() + Duration::from_millis(500);
-    let mut window: Option<(
-        Instant,
-        Option<Vec<(String, u64)>>,
-        wire_weaver_client::StreamStats,
-    )> = None;
+    let mut window: Option<Window> = None;
     let mut window_bytes = 0u64;
     let mut last_gap = None;
     loop {
