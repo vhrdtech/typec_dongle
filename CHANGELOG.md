@@ -15,6 +15,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ### Changed
 
+- Firmware: embassy from romixlab/embassy `donguru-ring-copy` (upstream 262fdba plus the DMA ring buffer copy fix: up to two runs instead of a software division per byte; the header UART got 16 kB/s at 5.8 Mbaud without it, FW-42). Back to embassy-rs once the fix is merged upstream.
 - Firmware: the header UART's receive path reads the DMA ring (now 8 KiB) into 32 chunk slots instead of a 16 KiB pipe, and waits 1 ms after a read that didn't fill a chunk: on a busy line it no longer spins on 1-byte reads and the host gets full 512-byte chunks (FW-42). The server task sends at most 2 chunks per turn, so requests and the other tasks keep their turn when the line is faster than USB (before, `uart[1]` at 5.8 Mbaud made every request time out). FLASH 379.7 -> 386.4 KiB, RAM 63.2 -> 88.9 KiB (encoder 20.5 KiB, ring +4 KiB); `uart-replay` adds 96 KiB of flash.
 
 ### Fixed
