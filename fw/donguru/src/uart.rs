@@ -49,9 +49,21 @@ pub fn init(spawner: Spawner, r: crate::UartResources) {
     spawner.spawn(unwrap!(rx_task(rx, RX_RING_BUF.init([0; RX_RING]))));
 }
 
+/// Writes all of `data` into `pipe` that has room, returns how many bytes fit. A pipe takes only the contiguous
+/// space at the end of its ring per call, so a write that wraps needs two.
+fn write_all<const N: usize>(pipe: &Pipe<CriticalSectionRawMutex, N>, mut data: &[u8]) -> usize {
+    let mut written = 0;
+    while !data.is_empty() {
+        let Ok(n) = pipe.try_write(data) else { break };
+        written += n;
+        data = &data[n..];
+    }
+    written
+}
+
 /// Queues `data` for sending, returns how many bytes fit (all of them while the host keeps to its credit).
 pub fn tx_write(data: &[u8]) -> usize {
-    TX.try_write(data).unwrap_or(0)
+    write_all(&TX, data)
 }
 
 /// Bytes sent on the line since the last call, to be given back to the host as credit.
@@ -94,7 +106,7 @@ async fn rx_task(rx: UartRx<'static, Async>, ring: &'static mut [u8; RX_RING]) {
     loop {
         match rx.read(&mut buf).await {
             Ok(n) => {
-                let fit = RX.try_write(&buf[..n]).unwrap_or(0);
+                let fit = write_all(&RX, &buf[..n]);
                 if fit < n {
                     RX_DROPPED.fetch_add((n - fit) as u32, Ordering::Relaxed);
                 }

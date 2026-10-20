@@ -367,9 +367,18 @@ async fn receive(
                     let why = format!("item at {pos}, expected {}", s.end);
                     s.first_mismatch.get_or_insert(why);
                 }
-                if bytes != expected(pos, bytes.len()) || units != bytes.len() as u64 {
+                let want = expected(pos, bytes.len());
+                if bytes != want || units != bytes.len() as u64 {
                     s.mismatches += 1;
-                    s.first_mismatch.get_or_insert(format!("bytes at {pos}"));
+                    let at = bytes.iter().zip(&want).position(|(a, b)| a != b).unwrap_or(0);
+                    let from = at.saturating_sub(4);
+                    let to = (at + 12).min(bytes.len());
+                    s.first_mismatch.get_or_insert(format!(
+                        "item at {pos} ({} bytes, {units} units), first difference at +{at}: got {:?} want {:?}",
+                        bytes.len(),
+                        String::from_utf8_lossy(&bytes[from..to]),
+                        String::from_utf8_lossy(&want[from..to.min(want.len())])
+                    ));
                 }
                 s.received += bytes.len() as u64;
                 s.end = pos + units;
