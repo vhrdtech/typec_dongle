@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.13] - 2026-10-20
+
 ### Added
 
 - Firmware: `uart[1].configure` for the header UART (API-14): 4 Bd ..= 8 Mbaud, 7/8 data bits, N/E/O parity, 1/2 stop bits; answers the rate actually set (64 MHz / k: 6 Mbaud gives 5 818 182 Bd, -3.0 %), `Unsupported` for the rest. `capabilities` says 4 Bd ..= 8 Mbaud (was 921 600 only). Boots at 921 600 8N1 as before. RX DMA ring 1 -> 4 KiB and RX pipe 4 -> 16 KiB for the higher rates (`capabilities.rx_buffer` 16384). No `donguru_api` change. Tested 20 Oct 2026 on B153A with the IO7-IO8 jumper: 2 MB looped back exactly and in order, none lost, at 921 600 (927 536) Bd, 3M (3 047 619) and 6M (5 818 182): 70, 111 and 114 kB/s, the host -> device side caps it at ~120 kB/s (API-56); UART counters all 0.
