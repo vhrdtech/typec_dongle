@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.9] - 2026-10-20
+
 ### Changed
 
 - Firmware: the `uart[].tx` credit sinks are on WireWeaver's sink protocol (API-34): their state is a `ww_stream::sink::SinkCredit` (was `ww_client_server::credit::SinkCredit`), opened by the host with a session it names, positions in bytes of the payload, a read on the sink returns its status. Needs a host with the same WireWeaver (the old sideband `Open`, `Credit`, `CreditQuery` and `Resend` are gone). Release FLASH at opt-level 3 362.6 -> 363.8 KiB (+1.2: the open, status read and `Query` dispatch), RAM +48 B (two `SinkCredit`s with sessions).
