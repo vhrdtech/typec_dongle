@@ -2668,6 +2668,7 @@ dependencies = [
  "ww_client_server",
  "ww_device",
  "ww_framer",
+ "ww_global",
  "ww_link",
  "ww_lz4",
  "ww_numeric",
@@ -2697,6 +2698,7 @@ dependencies = [
  "shrink_wrap",
  "syn 3.0.5",
  "wire_weaver_snapshots",
+ "ww_global",
  "ww_numeric",
  "ww_self",
  "ww_version",
@@ -2714,6 +2716,7 @@ dependencies = [
  "subprocess",
  "syn 3.0.5",
  "wire_weaver_core",
+ "ww_global",
 ]
 
 [[package]]
@@ -2736,7 +2739,7 @@ dependencies = [
 
 [[package]]
 name = "ww_board_info"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "wire_weaver",
  "ww_date_time",
