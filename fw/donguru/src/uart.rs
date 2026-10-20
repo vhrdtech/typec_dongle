@@ -1,10 +1,11 @@
 //! The header UART, `uart[1]` (API-14): USART5 on PB3 (IO7, TX) and PB4 (IO8, RX), 8N1 at [BAUD] from boot until
 //! the host sets another line with [configure], for `src/ww/uart.rs`.
 //!
-//! DMA does the moving; two tasks decouple it from the server task through pipes. `tx_task` writes what the `tx`
-//! sink put into [TX] and counts it in [take_tx_done], which the server task gives back to the host as credit once
-//! the bytes left the pipe and went out on the line. `rx_task` reads the receiver's DMA ring into [RX]; what does not
-//! fit is counted in [take_rx_dropped] and the host is told how many bytes it missed.
+//! DMA does the moving; two tasks decouple it from the server task. `tx_task` writes what the `tx` sink put into the
+//! pipe [TX] and counts it in [take_tx_done], which the server task gives back to the host as credit once the bytes
+//! left the pipe and went out on the line. `rx_task` reads the receiver's DMA ring straight into the slots of [RX],
+//! one chunk each, which the server task sends from ([rx_chunk]); a read that finds no free slot is lost, counted in
+//! the next slot filled, so the host is told how many bytes it missed at the right place.
 //!
 //! With the feature `uart-replay`, `tx_task` can instead send a text capture from flash in a loop ([replay]), a
 //! source at the full line rate for the receive path with a jumper from IO7 to IO8 (FW-42).
@@ -12,6 +13,7 @@
 //! A new line setting ([configure]) waits until `tx_task` has sent what it took out of [TX] (bytes the host sent
 //! before `configure` go out at the old rate); then `rx_task` stops the receiver, sets the USART up and starts it again.
 
+use core::cell::UnsafeCell;
 use core::sync::atomic::Ordering;
 use defmt::{unwrap, warn};
 use embassy_executor::Spawner;
@@ -24,6 +26,7 @@ pub type LineConfig = Config;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::pipe::Pipe;
 use embassy_sync::signal::Signal;
+use embassy_time::{Duration, Timer};
 use portable_atomic::AtomicU32; // the M0+ has no atomic read-modify-write
 use static_cell::StaticCell;
 
@@ -41,18 +44,21 @@ pub const MAX_BAUD: u32 = PCLK / 8;
 
 /// Bytes the `tx` sink accepts ahead, its credit: the pipe [TX] holds all of them.
 pub const TX_BUF: usize = 2048;
-/// Received bytes held for the server task, which sends them as chunks: 28 ms at 5.8 Mbaud, for bursts above what
-/// USB carries (~520 kB/s).
-pub const RX_BUF: usize = 16384;
-/// The receiver's DMA ring: 7 ms at 5.8 Mbaud (44 ms at [BAUD]); `rx_task` empties it at every half and idle line.
-const RX_RING: usize = 4096;
+/// Received chunks held for the server task: 32 of up to 512 bytes, 28 ms at 5.8 Mbaud, for bursts above what USB
+/// carries (~520 kB/s).
+const RX_SLOTS: usize = 32;
+/// Received bytes held for the server task, at most.
+pub const RX_BUF: usize = RX_SLOTS * ww_uart::UART_CHUNK_MAX;
+/// How long `rx_task` lets received bytes gather after a read that didn't fill its buffer: the latency it adds.
+const RX_GATHER: Duration = Duration::from_millis(1);
+/// The receiver's DMA ring: 14 ms at 5.8 Mbaud (89 ms at [BAUD]); `rx_task` empties it at every half and idle line,
+/// and after [RX_GATHER] while bytes come in.
+const RX_RING: usize = 8192;
 
 static TX: Pipe<CriticalSectionRawMutex, TX_BUF> = Pipe::new();
-static RX: Pipe<CriticalSectionRawMutex, RX_BUF> = Pipe::new();
 /// Bytes of [TX] written out on the line since the server task looked.
 static TX_DONE: AtomicU32 = AtomicU32::new(0);
-/// Received bytes that did not fit in [RX] since the server task looked.
-static RX_DROPPED: AtomicU32 = AtomicU32::new(0);
+static RX: RxSlots = RxSlots::new();
 /// The server task has something to do: credit to give back, or received bytes to send.
 static EVENT: Signal<CriticalSectionRawMutex, ()> = Signal::new();
 /// A line setting for `tx_task`, which hands it on to `rx_task` through [APPLY] once its last write is out.
@@ -167,17 +173,102 @@ pub fn take_tx_done() -> u32 {
     TX_DONE.swap(0, Ordering::Relaxed)
 }
 
-/// Received bytes lost since the last call.
-pub fn take_rx_dropped() -> u32 {
-    RX_DROPPED.swap(0, Ordering::Relaxed)
+/// The oldest received chunk, `None` when there is none; [rx_release] frees it once sent.
+pub fn rx_chunk() -> Option<&'static RxSlot> {
+    RX.oldest()
 }
 
-/// Moves received bytes into `buf`, returns how many.
-pub fn read_rx(buf: &mut [u8]) -> usize {
-    RX.try_read(buf).unwrap_or(0)
+/// Frees the chunk [rx_chunk] gave.
+pub fn rx_release() {
+    RX.release();
 }
 
-/// Completes when [take_tx_done], [take_rx_dropped] or [read_rx] have something.
+/// Received bytes, up to one chunk, and how many were lost on the way just before them.
+pub struct RxSlot {
+    /// Bytes lost before these: received while every slot was full.
+    pub lost: u32,
+    len: u16,
+    data: [u8; ww_uart::UART_CHUNK_MAX],
+}
+
+impl RxSlot {
+    pub fn bytes(&self) -> &[u8] {
+        &self.data[..self.len as usize]
+    }
+}
+
+/// A ring of [RX_SLOTS] slots with one producer (`rx_task`) and one consumer (the server task): `rx_task` fills
+/// the slot at `head` and moves `head` on, the server task sends the slot at `tail` and moves `tail` on. Each index
+/// is written by one side only, and a slot belongs to one side at a time, so plain loads and stores do.
+struct RxSlots {
+    slots: UnsafeCell<[RxSlot; RX_SLOTS]>,
+    /// Slots filled so far, wrapping.
+    head: AtomicU32,
+    /// Slots freed so far, wrapping.
+    tail: AtomicU32,
+}
+
+// Safety: see the type; the slots between `tail` and `head` belong to the consumer, the others to the producer.
+unsafe impl Sync for RxSlots {}
+
+impl RxSlots {
+    const fn new() -> Self {
+        const EMPTY: RxSlot = RxSlot {
+            lost: 0,
+            len: 0,
+            data: [0; ww_uart::UART_CHUNK_MAX],
+        };
+        RxSlots {
+            slots: UnsafeCell::new([EMPTY; RX_SLOTS]),
+            head: AtomicU32::new(0),
+            tail: AtomicU32::new(0),
+        }
+    }
+
+    fn slot(&self, i: u32) -> *mut RxSlot {
+        // RX_SLOTS is a power of two: no division
+        unsafe { (self.slots.get() as *mut RxSlot).add(i as usize % RX_SLOTS) }
+    }
+
+    /// The producer's next slot to fill, `None` while all are full. Only `rx_task` calls it.
+    #[allow(clippy::mut_from_ref)]
+    fn free(&self) -> Option<&mut RxSlot> {
+        let head = self.head.load(Ordering::Relaxed);
+        if head.wrapping_sub(self.tail.load(Ordering::Acquire)) as usize >= RX_SLOTS {
+            return None;
+        }
+        // Safety: the slot at `head` is the producer's until `fill` hands it over
+        Some(unsafe { &mut *self.slot(head) })
+    }
+
+    /// Hands the slot [RxSlots::free] gave to the consumer.
+    fn fill(&self) {
+        let head = self.head.load(Ordering::Relaxed);
+        self.head.store(head.wrapping_add(1), Ordering::Release);
+    }
+
+    /// The consumer's oldest slot. Only the server task calls it.
+    fn oldest(&self) -> Option<&RxSlot> {
+        let tail = self.tail.load(Ordering::Relaxed);
+        if tail == self.head.load(Ordering::Acquire) {
+            return None;
+        }
+        // Safety: the slot at `tail` is the consumer's until `release`
+        Some(unsafe { &*self.slot(tail) })
+    }
+
+    fn release(&self) {
+        let tail = self.tail.load(Ordering::Relaxed);
+        self.tail.store(tail.wrapping_add(1), Ordering::Release);
+    }
+}
+
+/// Makes [wait_event] complete again: the server task left received bytes for its next turn.
+pub fn wake() {
+    EVENT.signal(());
+}
+
+/// Completes when [take_tx_done] or [rx_chunk] have something.
 pub async fn wait_event() {
     EVENT.wait().await
 }
@@ -192,7 +283,9 @@ async fn tx_task(mut tx: UartTx<'static, Async>) {
             match select3(CONFIGURE.wait(), REPLAY.wait(), tx.write(replaying)).await {
                 Either3::First(config) => set_line(&mut tx, config).await,
                 Either3::Second(data) => replaying = data,
-                Either3::Third(Ok(())) => {}
+                Either3::Third(Ok(())) => {
+                    cnt::cnt!(uart_replay_loops: u32);
+                }
                 Either3::Third(Err(e)) => warn!("uart[1] replay: {:?}", e),
             }
             continue;
@@ -229,9 +322,17 @@ async fn set_line(tx: &mut UartTx<'static, Async>, config: Config) {
 #[embassy_executor::task]
 async fn rx_task(rx: UartRx<'static, Async>, ring: &'static mut [u8; RX_RING]) {
     let mut rx = rx.into_ring_buffered(ring);
-    let mut buf = [0u8; 512];
+    // a read with no free slot goes here and is lost
+    let mut spill = [0u8; ww_uart::UART_CHUNK_MAX];
+    // bytes lost since the last slot filled
+    let mut lost = 0u32;
     loop {
-        let read = match select(APPLY.wait(), rx.read(&mut buf)).await {
+        let mut slot = RX.free();
+        let buf: &mut [u8] = match slot.as_deref_mut() {
+            Some(s) => &mut s.data,
+            None => &mut spill,
+        };
+        let read = match select(APPLY.wait(), rx.read(buf)).await {
             Either::First(config) => {
                 // what is still in the DMA ring goes: it was received on the old line
                 rx.stop();
@@ -257,11 +358,22 @@ async fn rx_task(rx: UartRx<'static, Async>, ring: &'static mut [u8; RX_RING]) {
         };
         match read {
             Ok(n) => {
-                let fit = write_all(&RX, &buf[..n]);
-                if fit < n {
-                    RX_DROPPED.fetch_add((n - fit) as u32, Ordering::Relaxed);
+                cnt::cnt!(uart_rx_reads: u32);
+                match slot {
+                    Some(s) => {
+                        s.lost = core::mem::take(&mut lost);
+                        s.len = n as u16;
+                        RX.fill();
+                        EVENT.signal(());
+                    }
+                    None => lost = lost.saturating_add(n as u32),
                 }
-                EVENT.signal(());
+                if n < ww_uart::UART_CHUNK_MAX {
+                    // A read gives what is in the ring at once: on a busy line the next one would find a byte or two,
+                    // the task would spin and the host get tiny chunks (FW-42). So let the ring fill for a while; it
+                    // holds 7 ms at 5.8 Mbaud, and a line going idle still ends the wait of the read after it.
+                    Timer::after(RX_GATHER).await;
+                }
             }
             Err(e) => {
                 // bytes were lost in the ring (or the line broke): the next read starts the receiver again

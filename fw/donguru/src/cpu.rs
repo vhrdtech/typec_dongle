@@ -23,6 +23,8 @@ pub fn run(init: impl FnOnce(Spawner)) -> ! {
     loop {
         // Safety: polled from this one context only
         unsafe { executor.poll() };
+        // wake-ups of the executor: many per second with little idle time means a task that keeps waking itself
+        cnt!(executor_polls: u32);
         cortex_m::interrupt::disable();
         let sleep = Instant::now();
         cortex_m::asm::wfe();

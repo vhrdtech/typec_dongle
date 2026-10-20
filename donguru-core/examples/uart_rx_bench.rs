@@ -64,6 +64,9 @@ struct Args {
     /// Seconds measured per capture and mode, after a warm-up of half a second
     #[arg(long, default_value_t = 5.0)]
     secs: f64,
+    /// Also measure the replay with `uart[1].rx` closed: what the line and the receive path cost on their own
+    #[arg(long)]
+    closed: bool,
     /// The firmware's ELF, to decode its counters (else found by build id, `cnt elf add`)
     #[arg(long)]
     elf: Option<PathBuf>,
@@ -138,6 +141,25 @@ async fn main() -> Result<()> {
     );
     let mut failed = false;
     for &capture in captures {
+        if args.closed {
+            let (idle, counters) = closed(&dongle, &args, capture).await?;
+            println!(
+                "{:<5} {:<4} {:>9} {:>9} {:>6} {:>6.0} {:>9} {:>6}  {}",
+                format!("{capture:?}").to_lowercase(),
+                "off",
+                "-",
+                "-",
+                "-",
+                (1.0 - idle.unwrap_or(f64::NAN)) * 100.0,
+                "-",
+                "-",
+                counters
+                    .iter()
+                    .map(|(n, v)| format!("{n} +{v}"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
+        }
         for &lz4 in modes {
             let run = bench(&dongle, &args, capture, lz4).await?;
             let lost = run.lost_device + run.lost_link + run.lost_codec + run.lost_host;
@@ -196,7 +218,11 @@ async fn counters(dongle: &Dongle, elf: Option<&std::path::Path>) -> Option<Vec<
             report
                 .counters
                 .into_iter()
-                .filter(|c| c.name.contains("idle_us") || c.name.contains("uart"))
+                .filter(|c| {
+                    c.name.contains("idle_us")
+                        || c.name.contains("uart")
+                        || c.name.contains("executor")
+                })
                 .map(|c| (c.name, c.value))
                 .collect(),
         ),
@@ -207,8 +233,54 @@ async fn counters(dongle: &Dongle, elf: Option<&std::path::Path>) -> Option<Vec<
     }
 }
 
+/// The replay with no stream open, for `args.secs`: the idle share and the counters that grew.
+async fn closed(
+    dongle: &Dongle,
+    args: &Args,
+    capture: ReplayCapture,
+) -> Result<(Option<f64>, Vec<(String, u64)>)> {
+    let mut debug = dongle.client().debug();
+    debug.uart_replay(capture).call().await?;
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    let start = Instant::now();
+    let before = counters(dongle, args.elf.as_deref()).await;
+    tokio::time::sleep(Duration::from_secs_f64(args.secs)).await;
+    let after = counters(dongle, args.elf.as_deref()).await;
+    let secs = start.elapsed().as_secs_f64();
+    debug.uart_replay(ReplayCapture::Stop).call().await?;
+    Ok(deltas(before, after, secs))
+}
+
+/// The idle share over `secs` from `idle_us`, and the other counters that grew.
+fn deltas(
+    before: Option<Vec<(String, u64)>>,
+    after: Option<Vec<(String, u64)>>,
+    secs: f64,
+) -> (Option<f64>, Vec<(String, u64)>) {
+    let (mut idle, mut grew) = (None, vec![]);
+    if let (Some(before), Some(after)) = (before, after) {
+        for (name, v) in &after {
+            let was = before
+                .iter()
+                .find(|(n, _)| n == name)
+                .map(|(_, v)| *v)
+                .unwrap_or(0);
+            let d = v.saturating_sub(was);
+            if name.contains("idle_us") {
+                idle = Some(d as f64 / 1e6 / secs);
+            } else if d > 0 {
+                grew.push((name.clone(), d));
+            }
+        }
+    }
+    (idle, grew)
+}
+
 async fn bench(dongle: &Dongle, args: &Args, capture: ReplayCapture, lz4: bool) -> Result<Run> {
     let data = capture_bytes(capture);
+    // chunks of an earlier replay still queued in the dongle go first (as lost, no stream open): the stream then
+    // starts with this replay's first byte
+    tokio::time::sleep(Duration::from_millis(300)).await;
     let uart = dongle.client().uart(HEADER);
     let mut rx = uart
         .rx()
@@ -242,6 +314,7 @@ async fn bench(dongle: &Dongle, args: &Args, capture: ReplayCapture, lz4: bool) 
         wire_weaver_client::StreamStats,
     )> = None;
     let mut window_bytes = 0u64;
+    let mut last_gap = None;
     loop {
         let now = Instant::now();
         if window.is_none() && now >= warm_up {
@@ -258,18 +331,46 @@ async fn bench(dongle: &Dongle, args: &Args, capture: ReplayCapture, lz4: bool) 
             .await
             .context("no event from uart[1].rx for 2 s")??;
         match event {
-            StreamEvent::Item { pos, value, .. } => {
+            StreamEvent::Item {
+                pos, value, ext, ..
+            } => {
                 let bytes = value.bytes.into_inner();
                 let off = *offset.get_or_insert_with(|| find(data, &bytes, pos));
-                for (i, b) in bytes.iter().enumerate() {
-                    let at = pos + i as u64;
-                    if data[(off + at as usize) % data.len()] != *b {
-                        run.mismatches += 1;
-                        run.first_mismatch.get_or_insert(at);
-                    }
+                let bad = bytes
+                    .iter()
+                    .enumerate()
+                    .filter(|(i, b)| data[(off + pos as usize + i) % data.len()] != **b)
+                    .count();
+                if bad > 0 && run.first_mismatch.is_none() {
+                    run.first_mismatch = Some(pos);
+                    // a shift (bytes lost or doubled without being counted) or bytes that are not the capture
+                    let found = find(data, &bytes, pos);
+                    let shift = (found + data.len() - off) % data.len();
+                    let want: Vec<u8> = (0..bytes.len().min(96))
+                        .map(|i| data[(off + pos as usize + i) % data.len()])
+                        .collect();
+                    eprintln!(
+                        "      got  {:?}\n      want {:?}",
+                        String::from_utf8_lossy(&bytes[..bytes.len().min(96)]),
+                        String::from_utf8_lossy(&want)
+                    );
+                    eprintln!(
+                        "      first bad item at {pos}, {} bytes ({bad} bad), codec restart {:?}, last gap {last_gap:?}, {}",
+                        bytes.len(),
+                        ext.map(|e| e.codec_restart),
+                        if found == 0 && shift != 0 {
+                            "not found in the capture".to_string()
+                        } else {
+                            format!("found shifted by {shift}")
+                        }
+                    );
                 }
+                run.mismatches += bad as u64;
                 window_bytes += bytes.len() as u64;
             }
+            StreamEvent::Gap {
+                at, units, cause, ..
+            } => last_gap = Some((at, units, cause)),
             StreamEvent::Closed | StreamEvent::Disconnected => bail!("uart[1].rx ended"),
             _ => {}
         }
@@ -294,22 +395,7 @@ async fn bench(dongle: &Dongle, args: &Args, capture: ReplayCapture, lz4: bool) 
     run.lost_link = stats.lost_link - stats0.lost_link;
     run.lost_codec = stats.lost_codec - stats0.lost_codec;
     run.lost_host = stats.lost_host - stats0.lost_host;
-    if let (Some(before), Some(after)) = (before, after) {
-        let value = |list: &[(String, u64)], name: &str| {
-            list.iter()
-                .find(|(n, _)| n == name)
-                .map(|(_, v)| *v)
-                .unwrap_or(0)
-        };
-        for (name, v) in &after {
-            let d = v - value(&before, name).min(*v);
-            if name.contains("idle_us") {
-                run.idle = Some(d as f64 / 1e6 / run.secs);
-            } else if d > 0 {
-                run.counters.push((name.clone(), d));
-            }
-        }
-    }
+    (run.idle, run.counters) = deltas(before, after, run.secs);
     Ok(run)
 }
 

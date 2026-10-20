@@ -23,6 +23,10 @@ const IO_LEVEL: ww_si::Volt = ww_si::Volt::from_parts(
     ww_si::ww_numeric::NumericValue::U32(3300),
 );
 
+/// Received bytes sent per turn of the server task: with the line faster than USB the receive slots never run empty,
+/// and requests and the other tasks (`rx_task` first) still get their turn (FW-42).
+const RX_BUDGET: usize = 2 * UART_CHUNK_MAX;
+
 /// Indices of `uart[]`: 0 = plug SBU, 1 = header.
 pub(super) const COUNT: usize = 2;
 
@@ -305,17 +309,20 @@ impl ServerState {
                 }
             }
         }
-        let dropped = uart::take_rx_dropped();
-        if dropped > 0 {
-            self.uart_rx[HEADER].counted().lost(dropped as u64);
-        }
-        let mut buf = [0u8; UART_CHUNK_MAX];
-        loop {
-            let n = uart::read_rx(&mut buf);
-            if n == 0 {
+        let mut budget = RX_BUDGET;
+        while let Some(slot) = uart::rx_chunk() {
+            if budget == 0 {
+                // more may be waiting: come back after the requests and the other tasks had their turn
+                uart::wake();
+                embassy_futures::yield_now().await;
                 break;
             }
-            let bytes = &buf[..n];
+            let bytes = slot.bytes();
+            budget = budget.saturating_sub(bytes.len());
+            if slot.lost > 0 {
+                self.uart_rx[HEADER].counted().lost(slot.lost as u64);
+            }
+            let n = bytes.len();
             // no host (or the link is down): rx_send counts the bytes as lost, the host sees how many it missed
             let chunk = RxChunk {
                 // the DMA ring is read in turns, not when the last byte arrived: no time of its own
@@ -338,6 +345,7 @@ impl ServerState {
             if r.is_err() {
                 cnt::cnt!(uart_rx_send_errors: u32);
             }
+            uart::rx_release();
         }
     }
 }
