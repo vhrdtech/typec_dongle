@@ -1,16 +1,23 @@
-//! The header UART, `uart[1]` (API-14): USART5 on PB3 (IO7, TX) and PB4 (IO8, RX), 8N1 at [BAUD], for
-//! `src/ww/uart.rs`.
+//! The header UART, `uart[1]` (API-14): USART5 on PB3 (IO7, TX) and PB4 (IO8, RX), 8N1 at [BAUD] from boot until
+//! the host sets another line with [configure], for `src/ww/uart.rs`.
 //!
 //! DMA does the moving; two tasks decouple it from the server task through pipes. `tx_task` writes what the `tx`
 //! sink put into [TX] and counts it in [take_tx_done], which the server task gives back to the host as credit once
 //! the bytes left the pipe and went out on the line. `rx_task` reads the receiver's DMA ring into [RX]; what does not
 //! fit is counted in [take_rx_dropped] and the host is told how many bytes it missed.
+//!
+//! A new line setting ([configure]) waits until `tx_task` has sent what it took out of [TX] (bytes the host sent
+//! before `configure` go out at the old rate); then `rx_task` stops the receiver, sets the USART up and starts it again.
 
 use core::sync::atomic::Ordering;
 use defmt::{unwrap, warn};
 use embassy_executor::Spawner;
+use embassy_futures::select::{Either, select};
 use embassy_stm32::mode::Async;
 use embassy_stm32::usart::{Config, Uart, UartRx, UartTx};
+
+/// What embassy-stm32 sets the USART up with.
+pub type LineConfig = Config;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::pipe::Pipe;
 use embassy_sync::signal::Signal;
@@ -19,14 +26,23 @@ use static_cell::StaticCell;
 
 use crate::Irqs;
 
-/// Line rate, 8N1. Fixed until `uart[].configure` is implemented.
+/// Line rate at boot, 8N1.
 pub const BAUD: u32 = 921_600;
+/// USART5's clock: PCLK, 64 MHz (`main.rs`). USART5 has no kernel clock mux on the G0B1.
+const PCLK: u32 = 64_000_000;
+/// Slowest rate: PCLK / 256 (the largest PRESC) / 0xFFFF (the largest BRR).
+pub const MIN_BAUD: u32 = 4;
+/// Fastest rate: PCLK / 8 with OVER8. Above 4 Mbaud (PCLK / 16) only PCLK / k is possible, OVER8 drops the
+/// lowest bit of USARTDIV (RM0444 34.5.7): 8, 7.11, 6.4, 5.82, 5.33 Mbaud.
+pub const MAX_BAUD: u32 = PCLK / 8;
+
 /// Bytes the `tx` sink accepts ahead, its credit: the pipe [TX] holds all of them.
 pub const TX_BUF: usize = 2048;
-/// Received bytes held for the server task, which sends them as chunks.
-pub const RX_BUF: usize = 4096;
-/// The receiver's DMA ring: at [BAUD] it takes ~11 ms to fill, `rx_task` empties it far more often.
-const RX_RING: usize = 1024;
+/// Received bytes held for the server task, which sends them as chunks: 28 ms at 5.8 Mbaud, for bursts above what
+/// USB carries (~520 kB/s).
+pub const RX_BUF: usize = 16384;
+/// The receiver's DMA ring: 7 ms at 5.8 Mbaud (44 ms at [BAUD]); `rx_task` empties it at every half and idle line.
+const RX_RING: usize = 4096;
 
 static TX: Pipe<CriticalSectionRawMutex, TX_BUF> = Pipe::new();
 static RX: Pipe<CriticalSectionRawMutex, RX_BUF> = Pipe::new();
@@ -36,6 +52,11 @@ static TX_DONE: AtomicU32 = AtomicU32::new(0);
 static RX_DROPPED: AtomicU32 = AtomicU32::new(0);
 /// The server task has something to do: credit to give back, or received bytes to send.
 static EVENT: Signal<CriticalSectionRawMutex, ()> = Signal::new();
+/// A line setting for `tx_task`, which hands it on to `rx_task` through [APPLY] once its last write is out.
+static CONFIGURE: Signal<CriticalSectionRawMutex, Config> = Signal::new();
+static APPLY: Signal<CriticalSectionRawMutex, Config> = Signal::new();
+/// `rx_task` has set the USART up, `tx_task` goes on.
+static APPLIED: Signal<CriticalSectionRawMutex, ()> = Signal::new();
 static RX_RING_BUF: StaticCell<[u8; RX_RING]> = StaticCell::new();
 
 pub fn init(spawner: Spawner, r: crate::UartResources) {
@@ -47,6 +68,57 @@ pub fn init(spawner: Spawner, r: crate::UartResources) {
     let (tx, rx) = uart.split();
     spawner.spawn(unwrap!(tx_task(tx)));
     spawner.spawn(unwrap!(rx_task(rx, RX_RING_BUF.init([0; RX_RING]))));
+}
+
+/// The rate the USART runs at when asked for `baud`, `None` outside [MIN_BAUD]..=[MAX_BAUD]. The same choice as
+/// embassy-stm32's `find_and_set_brr`: the smallest prescaler whose divider fits, the divider rounded to the nearest,
+/// OVER8 when it is below 16; [line_rate] reads back what was set.
+pub fn rate_for(baud: u32) -> Option<u32> {
+    if baud == 0 {
+        return None;
+    }
+    for presc in PRESC {
+        let clock = PCLK / presc;
+        let div = clock / baud + ((clock % baud) + baud / 2) / baud;
+        if div < 16 {
+            // only with presc 1: the dividers shrink with it
+            return (div >= 8).then(|| rounded_div(clock, div));
+        }
+        if div < 0x1_0000 {
+            return Some(rounded_div(clock, div));
+        }
+    }
+    None
+}
+
+/// The dividers of PRESC, by its code.
+const PRESC: [u32; 12] = [1, 2, 4, 6, 8, 10, 12, 16, 32, 64, 128, 256];
+
+fn rounded_div(a: u32, b: u32) -> u32 {
+    (a + b / 2) / b
+}
+
+/// The rate the USART runs at now, from BRR, PRESC and OVER8.
+fn line_rate() -> u32 {
+    let r = embassy_stm32::pac::USART5;
+    let brr = r.brr().read().0 & 0xFFFF;
+    let div = if r.cr1().read().over8() == embassy_stm32::pac::usart::vals::Over8::Oversampling8 {
+        // USARTDIV = BRR[15:4] << 4 | BRR[2:0] << 1, the rate 2 * PCLK / USARTDIV
+        (brr >> 4) << 3 | (brr & 0x7)
+    } else {
+        brr
+    };
+    // codes from 11 up divide by 256 too
+    let presc = PRESC[(r.presc().read().prescaler().to_bits() as usize).min(PRESC.len() - 1)];
+    if div == 0 {
+        return 0;
+    }
+    rounded_div(PCLK / presc, div)
+}
+
+/// Sets up the line with `config` once the bytes already taken for sending are out; [rate_for] says the rate.
+pub fn configure(config: Config) {
+    CONFIGURE.signal(config);
 }
 
 /// Writes all of `data` into `pipe` that has room, returns how many bytes fit. A pipe takes only the contiguous
@@ -90,7 +162,18 @@ pub async fn wait_event() {
 async fn tx_task(mut tx: UartTx<'static, Async>) {
     let mut buf = [0u8; ww_uart::UART_TX_MAX];
     loop {
-        let n = TX.read(&mut buf).await;
+        // a new setting first: what the host sent after `configure` is for the new line
+        let n = match select(CONFIGURE.wait(), TX.read(&mut buf)).await {
+            Either::First(config) => {
+                if let Err(e) = tx.flush().await {
+                    warn!("uart[1] flush: {:?}", e);
+                }
+                APPLY.signal(config);
+                APPLIED.wait().await;
+                continue;
+            }
+            Either::Second(n) => n,
+        };
         if let Err(e) = tx.write(&buf[..n]).await {
             warn!("uart[1] tx: {:?}", e);
         }
@@ -102,9 +185,29 @@ async fn tx_task(mut tx: UartTx<'static, Async>) {
 #[embassy_executor::task]
 async fn rx_task(rx: UartRx<'static, Async>, ring: &'static mut [u8; RX_RING]) {
     let mut rx = rx.into_ring_buffered(ring);
-    let mut buf = [0u8; 256];
+    let mut buf = [0u8; 512];
     loop {
-        match rx.read(&mut buf).await {
+        let read = match select(APPLY.wait(), rx.read(&mut buf)).await {
+            Either::First(config) => {
+                // what is still in the DMA ring goes: it was received on the old line
+                rx.stop();
+                if let Err(e) = rx.set_config(&config) {
+                    // the handler checked it with `rate_for` and the frame match in `ww/uart.rs`
+                    warn!("uart[1] config: {:?}", e);
+                    cnt::cnt!(uart_config_errors: u32, warn);
+                }
+                let rate = line_rate();
+                if Some(rate) != rate_for(config.baudrate) {
+                    warn!("uart[1] runs at {} Bd, {} Bd answered", rate, rate_for(config.baudrate));
+                    cnt::cnt!(uart_rate_mismatches: u32, warn);
+                }
+                defmt::info!("uart[1] at {} Bd (asked {})", rate, config.baudrate);
+                APPLIED.signal(());
+                continue;
+            }
+            Either::Second(read) => read,
+        };
+        match read {
             Ok(n) => {
                 let fit = write_all(&RX, &buf[..n]);
                 if fit < n {

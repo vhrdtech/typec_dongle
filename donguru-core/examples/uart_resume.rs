@@ -10,11 +10,13 @@
 //!
 //! ```sh
 //! cargo run -p donguru-core --example uart_resume --release -- --mode plain
+//! cargo run -p donguru-core --example uart_resume --release -- --mode plain --baud 6000000
 //! cargo run -p donguru-core --example uart_resume --release -- --mode reconnect --drops 3
 //! cargo run -p donguru-core --example uart_resume --release -- --mode restart
 //! ```
 //!
-//! * `plain`: no drop, the baseline rate.
+//! * `plain`: no drop, the baseline rate. With `--baud` the line is set to that rate (8N1) first: what comes back
+//!   at higher rates, as long as the host sends (~620 kB/s over USB) and the device sends on (~520 kB/s) keep up.
 //! * `reconnect`: `--drops` times, `disconnect().keep_streams()` right after a send (bytes unacknowledged), wait
 //!   `--down-ms`, `Commander::reconnect()`; the same sink goes on.
 //! * `restart`: sends up to half, saves the sink's cursor and the receiver's state into `--state` and exits without
@@ -71,6 +73,9 @@ struct Args {
     /// Run against the in-process mock instead of a dongle (`plain` and `reconnect`): a dry run of this program
     #[arg(long)]
     mock: bool,
+    /// Set the header UART to this baud rate (8N1) first; the dongle keeps it until it resets
+    #[arg(long)]
+    baud: Option<u32>,
     /// How long to wait for the line to deliver the last bytes
     #[arg(long, default_value_t = 5)]
     drain_secs: u64,
@@ -206,6 +211,23 @@ async fn run(args: &Args) -> Result<()> {
         Some(mock) => mock.open().await?,
         None => Dongle::open(args.device.as_ref()).await?,
     };
+    if let (Some(baud), false) = (args.baud, args.resume) {
+        let got = dongle
+            .uart(donguru_core::levels::Side::Header)
+            .configure(ww_uart::UartConfig {
+                baud_rate: ww_si::Baud::base(baud),
+                data_bits: ww_uart::DataBits::Eight,
+                parity: ww_uart::Parity::None,
+                stop_bits: ww_uart::StopBits::Stop1,
+                mode: ww_uart::Mode::Asynchronous,
+                prevent_back_feed: false,
+                io_level: None,
+                idle_chars: ww_uart::IDLE_CHARS_DEFAULT,
+            })
+            .await
+            .context("configuring uart[1]")?;
+        println!("uart[1] at {} Bd (asked {baud})", got.baud_rate.to_f64());
+    }
     let uart = dongle.client().uart(HEADER);
     let rx_stats = Arc::new(Mutex::new(RxStats::default()));
 
@@ -286,10 +308,17 @@ async fn run(args: &Args) -> Result<()> {
         }
         tokio::time::sleep(Duration::from_millis(20)).await;
     }
+    let done_in = started.elapsed();
     rx_task.abort();
 
     let stats = rx_stats.lock().unwrap().clone();
     let rate = total as f64 / sent_in.as_secs_f64();
+    println!(
+        "back on rx: {} bytes in {:.2} s: {:.0} B/s",
+        stats.received,
+        done_in.as_secs_f64(),
+        stats.received as f64 / done_in.as_secs_f64()
+    );
     println!(
         "sent {total} bytes (up to offset {at}) in {:.2} s: {:.0} B/s ({:.0} baud-equivalent)",
         sent_in.as_secs_f64(),

@@ -11,6 +11,10 @@ use ww_uart::{RxChunk, UART_CHUNK_MAX};
 /// `uart[]` index of the header UART, the only one with hardware behind it so far.
 const HEADER: usize = 1;
 
+/// The header IO level, fixed: the MCU's 3.3 V.
+const IO_LEVEL: ww_si::Volt =
+    ww_si::Volt::from_parts(ww_si::Prefix::Milli, ww_si::ww_numeric::NumericValue::U32(3300));
+
 /// Indices of `uart[]`: 0 = plug SBU, 1 = header.
 pub(super) const COUNT: usize = 2;
 
@@ -92,17 +96,11 @@ impl ServerState {
         if index_chain[0].0 as usize != HEADER {
             return Unimplemented.into();
         }
-        // one fixed rate until `configure` is implemented
         Ready(ww_uart::Capabilities {
-            min_baud_rate: ww_uart::Baud::base(uart::BAUD),
-            max_baud_rate: ww_uart::Baud::base(uart::BAUD),
+            min_baud_rate: ww_uart::Baud::base(uart::MIN_BAUD),
+            max_baud_rate: ww_uart::Baud::base(uart::MAX_BAUD),
             io_levels: MaxLen::new_unchecked(RefVec::Slice {
-                slice: &const {
-                    [ww_si::Volt::from_parts(
-                        ww_si::Prefix::Milli,
-                        ww_si::ww_numeric::NumericValue::U32(3300),
-                    )]
-                },
+                slice: &const { [IO_LEVEL] },
             }),
             io_level_min: None,
             io_level_max: None,
@@ -119,10 +117,24 @@ impl ServerState {
     pub(super) fn uart_configure(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
-        _config: ww_uart::UartConfig,
+        index_chain: [UNib32; 1],
+        config: ww_uart::UartConfig,
     ) -> RpcResult<Result<ww_uart::UartConfig, ww_uart::UartError<'_>>> {
-        Unimplemented.into()
+        if index_chain[0].0 as usize != HEADER {
+            return Unimplemented.into();
+        }
+        let unsupported = Ready(Err(ww_uart::UartError::Common(CommonError::Unsupported)));
+        let Some((line, rate)) = line_config(&config) else {
+            return unsupported;
+        };
+        uart::configure(line);
+        Ready(Ok(ww_uart::UartConfig {
+            baud_rate: ww_uart::Baud::base(rate),
+            io_level: Some(IO_LEVEL),
+            // the receiver's IDLE flag: one character time
+            idle_chars: 1,
+            ..config
+        }))
     }
 
     pub(super) fn uart_set_pin_level(
@@ -226,4 +238,40 @@ impl ServerState {
             }
         }
     }
+}
+
+/// The USART5 setting for `config` and the rate it runs at, `None` for what the header UART can't do: a rate outside
+/// `MIN_BAUD..=MAX_BAUD`, 9 data bits (the pipes carry bytes) or fewer than 7, flow control, high-Z, test mode, the
+/// back-feed detector, an IO level other than 3.3 V.
+fn line_config(config: &ww_uart::UartConfig) -> Option<(uart::LineConfig, u32)> {
+    use embassy_stm32::usart;
+    use ww_uart::{DataBits, Mode, Parity, StopBits};
+    let baud = config.baud_rate.to_u32_in(ww_si::Prefix::Unit)?;
+    let rate = uart::rate_for(baud)?;
+    if config.mode != Mode::Asynchronous || config.prevent_back_feed {
+        return None;
+    }
+    if let Some(level) = &config.io_level
+        && level.to_u32_in(ww_si::Prefix::Milli) != Some(3300)
+    {
+        return None;
+    }
+    let mut line = usart::Config::default();
+    line.baudrate = baud;
+    line.data_bits = match config.data_bits {
+        DataBits::Eight => usart::DataBits::DataBits8,
+        DataBits::Seven => usart::DataBits::DataBits7,
+        _ => return None,
+    };
+    line.parity = match config.parity {
+        Parity::None => usart::Parity::ParityNone,
+        Parity::Even => usart::Parity::ParityEven,
+        Parity::Odd => usart::Parity::ParityOdd,
+        _ => return None,
+    };
+    line.stop_bits = match config.stop_bits {
+        StopBits::Stop1 => usart::StopBits::STOP1,
+        StopBits::Stop2 => usart::StopBits::STOP2,
+    };
+    Some((line, rate))
 }

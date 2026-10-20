@@ -417,7 +417,7 @@ fn fmt_mode(m: UartMode) -> &'static str {
     }
 }
 
-fn fmt_framing(cfg: &UartConfig) -> String {
+pub(super) fn fmt_framing(cfg: &UartConfig) -> String {
     format!(
         "{} {}{}{}",
         cfg.baud_rate.to_f64() as u64,
@@ -441,7 +441,7 @@ fn fmt_uart_plug(cfg: &UartConfig) -> String {
     s
 }
 
-fn uart_plug_json(cfg: &UartConfig) -> serde_json::Value {
+pub(super) fn uart_plug_json(cfg: &UartConfig) -> serde_json::Value {
     serde_json::json!({
         "baud": cfg.baud_rate.to_f64() as u64,
         "data_bits": data_bits_digit(cfg.data_bits).to_string(),
@@ -455,7 +455,7 @@ fn uart_plug_json(cfg: &UartConfig) -> serde_json::Value {
 }
 
 /// `"115200 8N1"` -> baud, data bits, parity, stop bits.
-fn parse_uart_value(value: &str) -> Result<(u32, DataBits, Parity, StopBits), String> {
+pub(super) fn parse_uart_value(value: &str) -> Result<(u32, DataBits, Parity, StopBits), String> {
     let mut parts = value.split_whitespace();
     let usage = || format!("{value}: expected \"BAUD BITSPARITYSTOP\", e.g. \"115200 8N1\"");
     let baud_s = parts.next().ok_or_else(usage)?;

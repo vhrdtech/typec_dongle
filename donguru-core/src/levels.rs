@@ -704,6 +704,11 @@ impl<'a> Uart<'a> {
         call_plain("Uart::capabilities", self.raw().capabilities()).await
     }
 
+    /// Sets the line up, answers what was set: the baud rate the divider settled on, the idle time, the IO level.
+    pub async fn configure(&self, config: ww_uart::UartConfig) -> Result<ww_uart::UartConfig> {
+        call::<_, ww_uart::UartErrorOwned>("Uart::configure", self.raw().configure(config)).await
+    }
+
     /// The generated client of this UART: configure, tx sink, rx and monitor streams, break.
     pub fn raw(&self) -> generated::ww_uart_uart::WwUartUartClient<'a> {
         self.c.uart(self.side.index())

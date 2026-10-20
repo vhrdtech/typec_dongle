@@ -6,6 +6,13 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- Firmware: `uart[1].configure` for the header UART (API-14): 4 Bd ..= 8 Mbaud, 7/8 data bits, N/E/O parity, 1/2 stop bits; answers the rate actually set (64 MHz / k: 6 Mbaud gives 5 818 182 Bd, -3.0 %), `Unsupported` for the rest. `capabilities` says 4 Bd ..= 8 Mbaud (was 921 600 only). Boots at 921 600 8N1 as before. RX DMA ring 1 -> 4 KiB and RX pipe 4 -> 16 KiB for the higher rates (`capabilities.rx_buffer` 16384). No `donguru_api` change.
+- CLI: `dg uart configure BAUD [FRAMING] [--port header|plug]` (CLI-20) prints the line the dongle set and how far its rate is from the one asked for.
+- `donguru-core`: `Uart::configure`; the mock answers it with the firmware's divider. Example `uart_resume --baud` sets the rate first and prints the rate back on rx.
+- `just lint`: format check and clippy, what `just verify` runs before the tests.
+
 ## [0.20.12] - 2026-10-20
 
 ### Fixed

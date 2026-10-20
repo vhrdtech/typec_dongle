@@ -87,9 +87,13 @@ check:
 test:
     cargo test --workspace --all-features --locked
 
+# Format check and clippy, the static part of verify
+[group: 'rust']
+lint: format-check clippy
+
 # Format check, lint and test
 [group: 'rust']
-verify: format-check clippy test
+verify: lint test
 
 # Install the git hooks (pre-commit and pre-push)
 [group: 'hooks']

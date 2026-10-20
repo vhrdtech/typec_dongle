@@ -883,10 +883,31 @@ impl MockServer {
     async fn uart_configure(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
-        _config: ww_uart::UartConfig,
+        index_chain: [UNib32; 1],
+        config: ww_uart::UartConfig,
     ) -> RpcResult<Result<ww_uart::UartConfig, ww_uart::UartError<'_>>> {
-        Unimplemented.into()
+        if index_chain[0].0 != 1 {
+            return Unimplemented.into();
+        }
+        // the firmware's divider on 64 MHz, 8 Mbaud at most, 8N1-style framings only
+        let Some(baud) = config.baud_rate.to_u32_in(ww_si::Prefix::Unit) else {
+            return Ready(Err(ww_uart::UartError::Common(CommonError::Unsupported)));
+        };
+        let div = (64_000_000 + baud / 2) / baud.max(1);
+        let supported = (8..0x1_0000).contains(&div)
+            && matches!(
+                config.data_bits,
+                ww_uart::DataBits::Eight | ww_uart::DataBits::Seven
+            )
+            && config.mode == ww_uart::Mode::Asynchronous;
+        if !supported {
+            return Ready(Err(ww_uart::UartError::Common(CommonError::Unsupported)));
+        }
+        Ready(Ok(ww_uart::UartConfig {
+            baud_rate: ww_si::Baud::base((64_000_000 + div / 2) / div),
+            idle_chars: 1,
+            ..config
+        }))
     }
 
     async fn uart_set_pin_level(

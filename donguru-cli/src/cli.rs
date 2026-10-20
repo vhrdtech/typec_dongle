@@ -129,6 +129,10 @@ pub enum Command {
     #[command(subcommand)]
     Swd(crate::commands::swd::Swd),
 
+    /// Serial ports: set the header UART's baud rate and framing
+    #[command(subcommand)]
+    Uart(crate::commands::uart::Uart),
+
     /// Device settings kept in flash: plug VBUS at boot, button action, meter window/deadband, plug UART defaults
     #[command(subcommand, display_order = 65)]
     Settings(crate::commands::settings::Settings),

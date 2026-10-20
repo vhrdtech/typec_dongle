@@ -433,6 +433,15 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   With FW-4. ^revB
 - 📋 **API-14 SBU owner and UART on SBU**: one function at a time on the plug SBU lines, `sbu.release`; `uart[0]` as
   `ww_uart::Uart` with the TX/RX flip from `plug.orientation` and a two-line monitor. With FW-7. ^revB
+  🧪 Header UART `uart[1]` (0.20.10, USART5 on IO7 TX / IO8 RX, `fw/donguru/src/uart.rs`, `ww/uart.rs`): `tx` credit
+  sink, counted `rx`, `capabilities`, and `configure` (8N1 at 921 600 Bd from boot): 4 Bd ..= 8 Mbaud, 7 or 8 data bits,
+  none / even / odd parity, 1 or 2 stop bits, `Asynchronous` only, 3.3 V; anything else `Unsupported`. Answers the rate
+  the divider gives (embassy-stm32's choice, read back from BRR / PRESC / OVER8 after setting, `uart_rate_mismatches`
+  counts a difference): PCLK 64 MHz / k, so above 4 Mbaud only 8, 7.11, 6.4, 5.82, 5.33 Mbaud (OVER8 drops USARTDIV's
+  lowest bit, RM0444); 6 Mbaud gives 5.818 Mbaud (-3.0 %, at the edge of what a crystal-clocked DUT tolerates; exact
+  6 Mbaud needs a 60 or 48 MHz PCLK). `idle_chars` answers 1 (the IDLE flag), chunks to the host are not cut on idle.
+  A new line waits for the TX DMA write in flight; bytes in the RX ring are dropped. RX ring 4 KiB, RX pipe 16 KiB.
+  `uart[1].set_pin_level`, `send_break`, `tx_pending` still `Unimplemented`.
 - 📋 **API-15 GPIO banks**: plug (SBU1, SBU2, A2, B2) and header (IO7..IO10) as `ww_gpio::Bank` with pin events.
   With FW-10. ^v1.0
 - 📋 **API-16 I2C buses**: plug SBU (I2C1) and header (I2C3) as `ww_i2c::I2c`. With FW-10. ^v1.0
@@ -658,7 +667,9 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   with that build id in the cache or target/" message since no firmware ELF was cached — the happy decode path
   (ELF present) is still untested, needs a firmware build whose ELF is kept around (`cnt elf add` or `target/`) at
   test time. ^revB
-- 📋 **CLI-20 `sbu` and `uart`**: `sbu status / release / orientation`, `uart open / monitor / pty / break` (API-14). ^revB
+- 🚧 **CLI-20 `sbu` and `uart`**: `sbu status / release / orientation`, `uart open / monitor / pty / break` (API-14). ^revB
+  Done: `uart configure BAUD [8N1] [--port header|plug]` prints the line set and its error from the asked rate
+  (`donguru-cli/src/commands/uart.rs`); the setting lasts until the dongle resets.
 - 📋 **CLI-21 `led mode / brightness / identify`** (API-9).
 - 📋 **CLI-22 `adc`, `input`, `hub`**: `adc read`, `input status / watch`, `hub status / recover` (API-12, API-13,
   API-17).
