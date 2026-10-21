@@ -686,7 +686,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - ✅ **CLI-1 Command tree and global flags**: `info`, `device`, `usb`, `gpio`, `udev`, `config`, `completions`;
   `--device`, `--format text|json|jsonl`, `--color`, `-v` / `-q` (`donguru-cli/src/cli.rs`).
 - ✅ **CLI-2 Colour theme** adapted to terminal capabilities (`src/theme.rs`, `examples/theme_preview.rs`).
-- ✅ **CLI-3 Shell completions** (`donguru completions <shell>`).
+- ✅ **CLI-3 Shell completions** (`donguru completions <shell>`): since CLI-49 the scripts are dynamic.
 - ⬜ **CLI-4 External subcommands**: clap captures unknown subcommands, but `src/commands/external.rs` only prints
   "not implemented": resolve `donguru-<name>` on `PATH` (with a near-match hint), export the resolved device and
   format (the doc comment says `DONGURU_CTX_*`, the design doc `DONGURU_DEVICE` / `DONGURU_OUTPUT`: pick one), exec
@@ -744,7 +744,9 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 📋 **CLI-12 `i2c scan / read / write` and `uart`**: in the design doc, not in the command tree yet.
 - 🐛 **CLI-13 Exit codes differ from the notes**: `src/exit.rs` has device error = 4, timeout = 5 and no transport
   code; `developer-notes.md` has transport = 4, device = 5, timeout = 6. Decide before anything ships.
-- 📋 **CLI-14 `--version` with git SHA and build time** (`build.rs`), per the version rule in AGENTS.md.
+- ✅ **CLI-14 `--version` with git SHA and build time** (`donguru-cli/build.rs`, no extra crates): `donguru 0.20.20
+  (554cf91-dirty, built 21 Oct 2026 18:53 UTC)`; `SOURCE_DATE_EPOCH` honoured, `unknown` without git. Shows `donguru`
+  also when run as `dg`.
 - 📋 **CLI-15 Output renderer**: commands return typed values, one renderer for text / json / jsonl
   (`developer-notes.md`).
 - ⬜ **CLI-17 `swd orientation / release`**: arguments parsed, prints "not implemented" (`src/commands/swd.rs`),
@@ -849,7 +851,27 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `donguru-cli/src/commands/settings.rs`'s unit/insta tests); not yet on hardware (API-19's flash store is
   built in session `ww-latest`).
  Tested 19 Oct 2026 on B153A: show, set of every key (a too-long `meter_window` refused with the device's message), reset (label and settings to defaults).
-- 🐛 **CLI-48 `Broken pipe` when stdout closes early**: `dg power status | head -2` prints `donguru: error: Broken pipe (os error 32)` on stderr; a closed stdout should end the command quietly (exit 0 or the usual SIGPIPE status), as other CLIs do.
+- ✅ **CLI-48 `Broken pipe` when stdout closes early** (fixed 21 Oct 2026, `exit::is_broken_pipe`: ends quietly with exit 0; checked on B153A with `dg power status | head -1`). Was: `dg power status | head -2` prints `donguru: error: Broken pipe (os error 32)` on stderr; a closed stdout should end the command quietly (exit 0 or the usual SIGPIPE status), as other CLIs do.
+- ✅ **CLI-49 Live shell completion** (`donguru-cli/src/completion.rs`, clap_complete `unstable-dynamic`): bash, zsh
+  and fish (and elvish, powershell) call back into the binary. `--device` and `device select` offer the connected
+  dongles (serial and USB path, label as help, 2 s limit), `fw update` / `--elf` ELF files, `uart configure` baud rates
+  and framings, the rest comes from clap with the doc comments as help (commands, flags, setting names, enum values).
+  `dg completions --install [SHELL]` writes `donguru` and `dg` into the per-user directories, `just install` calls it.
+  Not done: `settings set KEY VALUE` values by key, `swd memtest --chip` (probe-rs chip names) and `--probe`, gpio pin
+  names once CLI-5 is real. Checked in fish and by hand on omarchy-m1; bash and zsh scripts generated, not run.
+- ✅ **CLI-50 `just install` / `just deploy`** (`justfile`): `cargo install --path donguru-cli --locked`, `dg` as a link
+  to the same executable in the cargo bin directory (not a second `[[bin]]`), completions; `deploy` refuses on local
+  changes, pulls `--ff-only`, `deps-pull`, installs and checks `--version` against HEAD.
+- ⬜ **CLI-51 Colour in text output**: only `swd memtest` colours its stdout (`Paint`); `device list`, `power status`,
+  `settings show`, `fw version` print plain text. Give every text renderer the theme and `theme::colour_enabled`
+  (`--color`, `NO_COLOR`, TTY), keep json / jsonl plain. Colour in help, `--color` for clap's own output and the `fw
+  update` bar already follow it.
+- ⬜ **CLI-52 Errors under `--format json`**: errors are one text line on stderr whatever the format; a script that
+  asked for json has no machine-readable error or exit-code name. Decide the shape with CLI-13 (exit codes).
+- ⬜ **CLI-53 Progress for the other slow commands**: `fw update` has a bar, `swd memtest` a spinner; `power cycle
+  --off` with a long off time, `device log --follow` and `device counters --watch` show nothing while they wait.
+  Checked: nothing else takes more than a few seconds today.
+
 ## GUI (`GUI`)
 
 - 💡 **GUI-1 `dg ui`**: native egui app over USB (the same donguru-core): a dongle list with labels and identify, a

@@ -29,7 +29,7 @@ pub fn dispatch(ctx: &Context, command: Command) -> anyhow::Result<ExitCode> {
         Command::Swd(cmd) => swd::run(ctx, cmd),
         Command::Uart(cmd) => uart::run(ctx, cmd),
         Command::Settings(cmd) => settings::run(ctx, cmd),
-        Command::Completions { shell } => completions::run(ctx, shell),
+        Command::Completions(args) => completions::run(ctx, args),
         Command::Fw(cmd) => fw::run(ctx, cmd),
         Command::Udev(cmd) => udev::run(ctx, cmd),
         Command::Config(cmd) => config::run(ctx, cmd),

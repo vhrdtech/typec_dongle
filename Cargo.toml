@@ -15,7 +15,7 @@ donguru_api = { path = "donguru_api", features = ["std"] }
 anyhow = "1"
 thiserror = "2"
 clap = { version = "4", features = ["derive", "env", "wrap_help"] }
-clap_complete = "4"
+clap_complete = { version = "4", features = ["unstable-dynamic"] }
 humantime = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

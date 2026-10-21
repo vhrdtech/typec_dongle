@@ -2,12 +2,14 @@
 //! (`uart[1]`, IO7 TX / IO8 RX) until the dongle resets; the plug UART on SBU follows with API-14.
 
 use clap::{Args, Subcommand, ValueEnum};
+use clap_complete::engine::ArgValueCandidates;
 use donguru_core::levels::Side;
 use ww_si::{Baud, Prefix};
 use ww_uart::{Mode, UartConfig};
 
 use super::settings::{fmt_framing, parse_uart_value, uart_plug_json};
 use crate::cli::Format;
+use crate::completion;
 use crate::context::Context;
 use crate::exit::ExitCode;
 
@@ -31,10 +33,10 @@ impl From<Port> for Side {
 #[derive(Debug, Args)]
 pub struct Configure {
     /// Baud rate; the dongle sets the nearest its divider can do and says which
-    #[arg(value_name = "BAUD")]
+    #[arg(value_name = "BAUD", add = ArgValueCandidates::new(completion::bauds))]
     baud: u32,
     /// Data bits, parity, stop bits, e.g. `8N1` or `7E2`
-    #[arg(value_name = "FRAMING", default_value = "8N1")]
+    #[arg(value_name = "FRAMING", default_value = "8N1", add = ArgValueCandidates::new(completion::framings))]
     framing: String,
     /// Which UART
     #[arg(long, value_enum, default_value = "header")]

@@ -24,6 +24,19 @@ Set the hooks up once after cloning:
 just hooks-install
 ```
 
+## Installing the CLI on this PC
+
+```bash
+just install    # donguru, dg (a link to the same executable) and the shell completions
+just deploy     # pull main, update the sibling checkouts, install, check the version
+donguru --version   # donguru 0.20.20 (a1b2c3d, built 21 Oct 2026 18:20 UTC)
+```
+
+`-dirty` after the commit means the build had uncommitted changes. Completions are live: Tab after `--device` lists
+the dongles plugged in right now (serial or USB path, label as the help text), `fw update` and `--elf` offer ELF
+files. `dg completions --install` writes the scripts for bash, zsh and fish into the per-user directories
+(zsh needs `~/.local/share/zsh/site-functions` in `$fpath`); `dg completions SHELL` prints one for other places.
+
 ## Just Tasks
 Generally you find automations or entry points for automated tasks in the `justfile`.
 This should and shall be the single source of truth for triggering tasks and actions.

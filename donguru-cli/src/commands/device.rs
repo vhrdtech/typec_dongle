@@ -4,10 +4,12 @@ use std::io::Write;
 use std::path::Path;
 
 use crate::cli::Format;
+use crate::completion;
 use crate::context::Context;
 use crate::exit::ExitCode;
 use crate::project_config;
 use clap::Subcommand;
+use clap_complete::engine::ArgValueCandidates;
 use donguru_core::levels::DeviceSummary;
 use donguru_core::{DeviceEntry, Dongle, Selector};
 
@@ -34,6 +36,7 @@ pub enum Device {
     /// `./donguru.toml`, so later commands in this directory (and below it) pick it without `--device`.
     Select {
         /// Device selector (serial number, index or USB path)
+        #[arg(add = ArgValueCandidates::new(completion::devices))]
         selector: String,
     },
     /// Show or set the user label (`UserInfo`): a name and free-text notes

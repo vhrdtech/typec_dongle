@@ -3,6 +3,8 @@
 //! Donguru uses a 24-bit colour theme/style and a 16-colour fallback theme style
 //! for terminals without truecolor support.
 
+use crate::cli::ColorMode;
+use clap::ColorChoice;
 use clap::builder::styling::{AnsiColor, Color, Effects, RgbColor, Style, Styles};
 
 /// A palette of colours for the elements clap can style.
@@ -132,11 +134,79 @@ fn truecolor() -> bool {
     })
 }
 
+/// Whether to emit colour: `--color always|never` decide, `auto` colours a terminal unless `NO_COLOR` is set (to
+/// anything non-empty, see no-color.org) or `TERM=dumb`.
+pub fn colour_enabled(mode: ColorMode, is_terminal: bool) -> bool {
+    match mode {
+        ColorMode::Always => true,
+        ColorMode::Never => false,
+        ColorMode::Auto => {
+            is_terminal
+                && std::env::var_os("NO_COLOR").is_none_or(|v| v.is_empty())
+                && std::env::var_os("TERM").is_none_or(|t| t != "dumb")
+        }
+    }
+}
+
+/// `--color WHEN` / `--color=WHEN` from the raw arguments, for clap's own output (help, usage errors), which is
+/// rendered before the global flag is parsed. Without it clap decides itself (terminal, `NO_COLOR`).
+pub fn choice_from_args(args: impl IntoIterator<Item = String>) -> ColorChoice {
+    let mut args = args.into_iter().skip(1);
+    let mut value = None;
+    while let Some(arg) = args.next() {
+        if arg == "--" {
+            break;
+        }
+        if arg == "--color" {
+            value = args.next();
+        } else if let Some(v) = arg.strip_prefix("--color=") {
+            value = Some(v.to_string());
+        }
+    }
+    match value.as_deref() {
+        Some("always") => ColorChoice::Always,
+        Some("never") => ColorChoice::Never,
+        _ => ColorChoice::Auto,
+    }
+}
+
 /// Pick the richest palette the current terminal can render.
 pub fn select_style() -> Styles {
     if truecolor() {
         donguru_style()
     } else {
         fallback_style()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn args(a: &[&str]) -> Vec<String> {
+        a.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn color_flag_is_found_anywhere() {
+        assert_eq!(
+            choice_from_args(args(&["dg", "--color", "never", "info"])),
+            ColorChoice::Never
+        );
+        assert_eq!(
+            choice_from_args(args(&["dg", "info", "--color=always"])),
+            ColorChoice::Always
+        );
+        assert_eq!(choice_from_args(args(&["dg", "info"])), ColorChoice::Auto);
+        assert_eq!(
+            choice_from_args(args(&["dg", "--", "--color=never"])),
+            ColorChoice::Auto
+        );
+    }
+
+    #[test]
+    fn forced_modes_ignore_the_terminal() {
+        assert!(colour_enabled(ColorMode::Always, false));
+        assert!(!colour_enabled(ColorMode::Never, true));
     }
 }

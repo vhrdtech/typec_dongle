@@ -4,13 +4,16 @@ use std::io::{IsTerminal, Read, Write};
 use std::path::PathBuf;
 use std::time::Duration;
 
-use clap::{Args, Subcommand, ValueHint};
+use clap::{Args, Subcommand};
+use clap_complete::engine::ArgValueCompleter;
 use donguru_core::update::{FirmwareImage, FirmwareVersion, UpdateReport, UpdateStep};
 use indicatif::{ProgressBar, ProgressStyle};
 
-use crate::cli::{ColorMode, Format};
+use crate::cli::Format;
+use crate::completion;
 use crate::context::Context;
 use crate::exit::ExitCode;
+use crate::theme;
 
 /// Where `cargo build --release` in a checkout of this repository puts the firmware.
 const DEFAULT_ELF: &str = "fw/donguru/target/thumbv6m-none-eabi/release/donguru";
@@ -30,7 +33,7 @@ pub enum Fw {
 #[derive(Debug, Args)]
 pub struct Update {
     /// Firmware ELF, `-` for stdin [default: fw/donguru/target/thumbv6m-none-eabi/release/donguru]
-    #[arg(value_hint = ValueHint::FilePath)]
+    #[arg(value_name = "ELF", add = ArgValueCompleter::new(completion::elf_files))]
     elf: Option<PathBuf>,
 }
 
@@ -134,11 +137,7 @@ struct Bar {
 
 impl Bar {
     fn new(ctx: &Context) -> Self {
-        let colour = match ctx.color {
-            ColorMode::Always => true,
-            ColorMode::Never => false,
-            ColorMode::Auto => std::env::var_os("NO_COLOR").is_none(),
-        };
+        let colour = theme::colour_enabled(ctx.color, std::io::stderr().is_terminal());
         if ctx.quiet || !std::io::stderr().is_terminal() {
             return Bar {
                 bar: ProgressBar::hidden(),

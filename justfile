@@ -156,6 +156,26 @@ fw-size:
     cnt list "$elf"
     cnt elf add "$elf"
 
+# Where `cargo install` puts the binaries
+cargo-bin := env("CARGO_HOME", env("HOME") / ".cargo") / "bin"
+
+# Build and install `donguru` on this PC, `dg` as a link to the same executable, and the shell completions
+[group: 'install']
+install:
+    cargo install --path donguru-cli --locked
+    ln -sf donguru {{ cargo-bin }}/dg
+    {{ cargo-bin }}/donguru completions --install
+
+# Bring this PC up to main: pull, update the sibling checkouts, install, check the installed version is this commit
+[group: 'install']
+deploy:
+    test -z "$(git status --porcelain)" || { echo "local changes, commit or move them first:" >&2; git status --short >&2; exit 1; }
+    git pull --ff-only
+    just deps-pull
+    just install
+    {{ cargo-bin }}/dg --version | grep -qF "($(git rev-parse --short HEAD),"
+    {{ cargo-bin }}/dg --version
+
 # Fast-forward the sibling checkouts this repo builds against by path (wire_weaver, embedded_bedrock)
 [group: 'rust']
 deps-pull:

@@ -55,3 +55,23 @@ impl From<&anyhow::Error> for ExitCode {
         }
     }
 }
+
+/// The error is a write to a closed pipe, `dg ... | head`.
+pub fn is_broken_pipe(err: &anyhow::Error) -> bool {
+    err.chain()
+        .filter_map(|e| e.downcast_ref::<std::io::Error>())
+        .any(|e| e.kind() == std::io::ErrorKind::BrokenPipe)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn broken_pipe_is_found_under_context() {
+        let io = std::io::Error::from(std::io::ErrorKind::BrokenPipe);
+        let err = anyhow::Error::new(io).context("writing the table");
+        assert!(is_broken_pipe(&err));
+        assert!(!is_broken_pipe(&anyhow::anyhow!("other")));
+    }
+}

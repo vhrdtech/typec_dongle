@@ -6,7 +6,7 @@
 use crate::cli::{ColorMode, Format};
 use crate::context::Context;
 use crate::exit::ExitCode;
-use crate::theme::DEFAULT_PALETTE;
+use crate::theme::{self, DEFAULT_PALETTE};
 use clap::builder::styling::Style;
 use clap::{Args, Subcommand, ValueEnum};
 use donguru_core::swd_memtest::probe::{DONGURU_PROBE, Target};
@@ -311,13 +311,7 @@ struct Paint(bool);
 
 impl Paint {
     fn new(mode: ColorMode) -> Self {
-        Paint(match mode {
-            ColorMode::Always => true,
-            ColorMode::Never => false,
-            ColorMode::Auto => {
-                std::io::stdout().is_terminal() && std::env::var_os("NO_COLOR").is_none()
-            }
-        })
+        Paint(theme::colour_enabled(mode, std::io::stdout().is_terminal()))
     }
 
     fn with(&self, style: Style, s: &str) -> String {

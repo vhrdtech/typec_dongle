@@ -5,7 +5,9 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::time::Duration;
 
+use crate::completion;
 use clap::Args;
+use clap_complete::engine::ArgValueCompleter;
 use donguru_core::counters::CountersReport;
 
 use crate::cli::Format;
@@ -15,7 +17,7 @@ use crate::exit::ExitCode;
 #[derive(Debug, Args)]
 pub struct Counters {
     /// Firmware ELF to decode with, instead of the one found by the device's build id
-    #[arg(long)]
+    #[arg(long, value_name = "FILE", add = ArgValueCompleter::new(completion::elf_files))]
     elf: Option<PathBuf>,
 
     /// Use the ELF although its build id differs from the device's

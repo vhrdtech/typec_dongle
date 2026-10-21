@@ -5,15 +5,27 @@
 
 use std::ffi::OsString;
 
+use crate::completion;
 use crate::theme;
 use clap::{Args, CommandFactory, FromArgMatches, Parser, Subcommand, ValueEnum};
+use clap_complete::engine::ArgValueCandidates;
+
+/// `--version`: `0.20.20 (a1b2c3d-dirty, built 21 Oct 2026 18:20 UTC)`, stamped by `build.rs`.
+pub const VERSION: &str = concat!(
+    env!("CARGO_PKG_VERSION"),
+    " (",
+    env!("DONGURU_GIT"),
+    ", built ",
+    env!("DONGURU_BUILT"),
+    ")"
+);
 
 /// Command-line interface for the Donguru USB-C dongle.
 #[derive(Debug, Parser)]
 #[command(
     name = "donguru",
     bin_name = "donguru",
-    version,
+    version = VERSION,
     about = "Interact with a Donguru USB-dongle",
     subcommand_required = true,
     arg_required_else_help = true,
@@ -34,7 +46,10 @@ impl Cli {
     /// we manually apply the style rather than using `#[command(styles = ...)]` which
     /// requires a `const` and is applied "statically".
     pub fn parse_styled() -> Self {
-        let matches = Self::command().styles(theme::select_style()).get_matches();
+        let matches = Self::command()
+            .styles(theme::select_style())
+            .color(theme::choice_from_args(std::env::args()))
+            .get_matches();
         match Self::from_arg_matches(&matches) {
             Ok(cli) => cli,
             Err(err) => err.exit(),
@@ -51,7 +66,8 @@ pub struct GlobalSettings {
         long,
         global = true,
         env = "DONGURU_DEVICE",
-        value_name = "SELECTOR"
+        value_name = "SELECTOR",
+        add = ArgValueCandidates::new(completion::devices)
     )]
     pub device: Option<String>,
 
@@ -149,13 +165,9 @@ pub enum Command {
     #[command(subcommand, display_order = 80)]
     Config(crate::commands::config::Config),
 
-    /// Generate shell completions
+    /// Shell completions with live values (device serials, ELF files): print the script or `--install` it
     #[command(display_order = 90)]
-    Completions {
-        /// Shell to generate completions for
-        #[arg(value_enum)]
-        shell: clap_complete::Shell,
-    },
+    Completions(crate::commands::completions::Completions),
 
     /// External plugin: `donguru my-command ...` runs `donguru-my-command ...` from PATH
     #[command(external_subcommand)]

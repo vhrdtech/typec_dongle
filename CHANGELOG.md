@@ -6,6 +6,28 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- `donguru --version` / `dg --version` print the git commit (`-dirty` with uncommitted changes) and the build time:
+  `donguru 0.20.20 (554cf91, built 21 Oct 2026 18:53 UTC)` (CLI-14). Scripts that parsed the old `donguru 0.20.19`
+  line should match the first two words.
+- Shell completion with live values for bash, zsh and fish (CLI-49): Tab after `--device` / `device select` lists the
+  dongles plugged in (serial or USB path, label as help), `fw update` / `--elf` offer ELF files, `uart configure` offers
+  baud rates and framings. `dg completions SHELL` now prints the dynamic registration script (same command, new
+  script; `--bin dg` for the short name), `dg completions --install [SHELL]` writes `donguru` and `dg` into the
+  per-user directories.
+- `just install` (donguru, `dg` as a link to the same executable, completions) and `just deploy` (pull main, sibling
+  checkouts, install, version check) (CLI-50).
+
+### Changed
+
+- `--color always|never` now also applies to `--help` and usage errors; `NO_COLOR` and `TERM=dumb` are honoured
+  everywhere colour is chosen (the `fw update` bar and `swd memtest` output included).
+
+### Fixed
+
+- `dg power status | head -1` no longer prints `error: Broken pipe` and exits 0 when the reader closes the pipe (CLI-48).
+
 ## [0.20.20] - 2026-10-21
 
 ### Added
