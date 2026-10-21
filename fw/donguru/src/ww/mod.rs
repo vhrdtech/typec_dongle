@@ -9,6 +9,7 @@
 //! not implemented yet answer `Unimplemented`. See https://github.com/vhrdtech/wire_weaver (`docs/`).
 
 mod adc;
+mod clock;
 mod debug;
 mod device;
 mod gpio;
@@ -112,6 +113,9 @@ pub struct ServerState {
     settings_maintain: bool,
     /// `leds`: global mode, brightness and the end of a running identify.
     leds: leds::LedsState,
+    /// `clock`: the sync line's configuration (always `Off`, no line) and whether `time_map` is subscribed
+    /// (API-57, FW-44). The shared clock itself is `crate::sync::SYNC`, read by the LED task too.
+    clock: clock::ClockState,
 }
 
 impl ServerState {
@@ -157,6 +161,7 @@ impl ServerState {
             last_reset,
             counters_page: [UVlq32(0); ww_counters::MAX_WORDS],
             leds: leds::LedsState::new(),
+            clock: clock::ClockState::new(),
             user,
             store,
             settings_maintain: false,
@@ -184,9 +189,10 @@ mod server_impl {
     wire_weaver::ww_codegen!(
         donguru_api :: DonguruApi for super::ServerState,
         server = true, no_alloc = true, use_async = true,
-        // handlers that await (flash writes, ADC readings, the VBUS cycle, the log flood) are async, all others
-        // plain `fn`s (SRV-21): an `async fn` that never awaits still costs flash as a state of the dispatcher
-        handler_model = "debug.log_flood|device.label.*|device.settings.*|sbu.release|adc.read|plug.vbus_cycle|meter.reading|meter.temperature=async, _=sync",
+        // handlers that await (flash writes, ADC readings, the VBUS cycle, the log flood, clock.steer's time_map
+        // push) are async, all others plain `fn`s (SRV-21): an `async fn` that never awaits still costs flash as a
+        // state of the dispatcher
+        handler_model = "debug.log_flood|device.label.*|device.settings.*|sbu.release|adc.read|plug.vbus_cycle|meter.reading|meter.temperature|clock.steer=async, _=sync",
         method_model = "plug_vbus_cycle=deferred, _=immediate",
         property_model = "_=get_set",
         // rows of samples per batch: ~20 ms of meter.reading sequences

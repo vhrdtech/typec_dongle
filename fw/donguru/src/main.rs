@@ -13,6 +13,7 @@ mod log;
 mod power;
 mod settings;
 mod swd;
+mod sync;
 mod uart;
 mod ww;
 

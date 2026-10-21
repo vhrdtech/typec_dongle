@@ -2,14 +2,16 @@
 //! global indication (API-9, `leds` in the API): which LEDs are [visible](set_visible), one [peak](set_peak)
 //! brightness for both, and [`identify`], which blinks both for a while and then returns to the animations. The
 //! animation, its math and the driver loop are embedded_bedrock's `bedrock_led` (DEV-12, host-tested there); this
-//! module sets up the timers.
+//! module sets up the timers. While `crate::sync::SYNC` has shared time (host-steered, FW-44), breath and blink
+//! align to it (`run_with`), so Donguru's LEDs breathe in phase with other boards on the same host; free-running
+//! otherwise, as before.
 //!
 //! NOTE: The 64-bit multiply and divide routines have one caller left, embassy's calculate_psc_arr. That function runs once, when
 //! the PWM drivers are created, to work out the timer settings from 1 kHz. Removing it would mean setting up TIM14
 //! and TIM15 directly through the register-level API instead of SimplePwm and ComplementaryPwm. bedrock_led keeps to
 //! 32-bit math.
 
-use bedrock_led::{Channel, Indication, Pwm};
+use bedrock_led::{Channel, Indication, Pwm, SharedTime};
 pub use bedrock_led::{DEFAULT_PEAK, Mode};
 use embassy_stm32::gpio::OutputType;
 use embassy_stm32::peripherals::TIM15;
@@ -105,9 +107,18 @@ pub async fn led_task(r: LedResources) {
     pwm1.enable(embassy_stm32::timer::Channel::Ch1);
     let mut status = StatusLed { pwm: pwm1, max };
 
-    LEDS.run([Mode::Off; 2], |leds| {
-        power.set_level(leds.level(Led::Power as usize));
-        status.set_level(leds.level(Led::Status as usize));
-    })
+    LEDS.run_with(
+        [Mode::Off; 2],
+        || {
+            crate::sync::SYNC.shared_now().map(|s| SharedTime {
+                us: s.us,
+                generation: s.generation,
+            })
+        },
+        |leds| {
+            power.set_level(leds.level(Led::Power as usize));
+            status.set_level(leds.level(Led::Status as usize));
+        },
+    )
     .await
 }

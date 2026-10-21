@@ -6,6 +6,21 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- Firmware: `clock` serves `ww_timebase::Clock` with host sync (`donguru_api` 0.5.0, API-57, FW-44): `now()` and
+  `info()` from the embassy-time driver (TIM4, 1 µs resolution, no sync line); `steer`, `shared_now`,
+  `sync_status`, `time_map`, `set_sources` / `sources` through embedded_bedrock's `bedrock_sync` (DEV-13), a static
+  `SYNC` disciplined onto UTC by a host polling about once a second. `configure_sync` always `Unsupported` and
+  `set_time_of_day` always `WrongState` (no sync line); no oscillator backend (Donguru's HSI16 trim is too coarse
+  to steer without wobbling UART / PWM, decided 21 Oct 2026, P2528 design/clock-sync.md). The status LEDs
+  (`src/led.rs`) align their breath / blink to `SYNC`'s shared time while it has one (`bedrock_led::Indication::
+  run_with`), free-running otherwise as before, so Donguru's LEDs breathe in phase with other boards synced by the
+  same host (`ww sync`). Release FLASH 391.59 → 407.04 KiB of 504 KiB (+15.45 KiB), RAM 89.11 → 89.27 KiB of
+  144 KiB (+0.16 KiB). Flashed and run on B153A (omarchy-m1): boots clean, 227 s with no panic; `ww sync` end to
+  end not yet exercised, blocked this session by the board's USB hub stuck from concurrent unrelated use of the
+  same board (FW-44).
+
 ## [0.20.16] - 2026-10-21
 
 ### Changed

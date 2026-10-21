@@ -388,6 +388,109 @@ impl MockServer {
         Ready(Ok(()))
     }
 
+    // ---- ww_timebase::Clock at clock ---- not modelled: no test steers the mock, so every handler answers
+    // Unimplemented, as a firmware without this API item yet (API-57, FW-44)
+
+    async fn clock_now(
+        &mut self,
+        _cx: &mut Context<'_, impl EventOut>,
+    ) -> RpcResult<ww_si::Second> {
+        Unimplemented.into()
+    }
+
+    async fn clock_info(
+        &mut self,
+        _cx: &mut Context<'_, impl EventOut>,
+    ) -> RpcResult<ww_timebase::ClockInfo<'_>> {
+        Unimplemented.into()
+    }
+
+    async fn clock_time_map(&mut self, _cx: &mut Context<'_, impl EventOut>) -> RpcResult<()> {
+        Unimplemented.into()
+    }
+
+    async fn close_clock_time_map(&mut self, _cx: &mut Context<'_, impl EventOut>) {}
+
+    async fn sideband_clock_time_map(
+        &mut self,
+        _cx: &mut Context<'_, impl EventOut>,
+        _sideband: ww_client_server::StreamSideband,
+    ) -> Option<ww_client_server::StreamSideband> {
+        None
+    }
+
+    async fn clock_configure_sync(
+        &mut self,
+        _cx: &mut Context<'_, impl EventOut>,
+        _config: ww_timebase::SyncConfig,
+    ) -> RpcResult<Result<(), ww_timebase::ClockError<'_>>> {
+        Unimplemented.into()
+    }
+
+    async fn clock_sync_config(
+        &mut self,
+        _cx: &mut Context<'_, impl EventOut>,
+    ) -> RpcResult<ww_timebase::SyncConfig> {
+        Unimplemented.into()
+    }
+
+    async fn clock_sync_status(
+        &mut self,
+        _cx: &mut Context<'_, impl EventOut>,
+    ) -> RpcResult<ww_timebase::SyncStatus> {
+        Unimplemented.into()
+    }
+
+    async fn clock_set_time_of_day(
+        &mut self,
+        _cx: &mut Context<'_, impl EventOut>,
+        _t: ww_timebase::DateTime,
+    ) -> RpcResult<Result<(), ww_timebase::ClockError<'_>>> {
+        Unimplemented.into()
+    }
+
+    async fn clock_steer(
+        &mut self,
+        _cx: &mut Context<'_, impl EventOut>,
+        _point: ww_timebase::SteerPoint,
+    ) -> RpcResult<Result<Option<ww_timebase::SyncSource>, ww_timebase::ClockError<'_>>> {
+        Unimplemented.into()
+    }
+
+    async fn clock_shared_now(
+        &mut self,
+        _cx: &mut Context<'_, impl EventOut>,
+    ) -> RpcResult<Option<u64>> {
+        Unimplemented.into()
+    }
+
+    async fn clock_set_sources(
+        &mut self,
+        _cx: &mut Context<'_, impl EventOut>,
+        _sources: Option<
+            wire_weaver::shrink_wrap::MaxLen<
+                wire_weaver::shrink_wrap::RefVec<'_, ww_timebase::SyncSource>,
+                8,
+            >,
+        >,
+    ) -> RpcResult<Result<(), ww_timebase::ClockError<'_>>> {
+        Unimplemented.into()
+    }
+
+    async fn clock_sources(
+        &mut self,
+        _cx: &mut Context<'_, impl EventOut>,
+    ) -> RpcResult<
+        Option<
+            wire_weaver::shrink_wrap::MaxLen<
+                wire_weaver::shrink_wrap::RefVec<'_, ww_timebase::SyncSource>,
+                8,
+            >,
+        >,
+    > {
+        Unimplemented.into()
+    }
+
     // ---- ww_indication::Indication at leds ----
 
     async fn set_leds_mode(

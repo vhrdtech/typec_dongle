@@ -356,6 +356,19 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `idle_us`; `executor_polls` counts the wake-ups. CPU load over a span = 1 - Δ`idle_us` / span, from
   `device.counters` read twice (`uart_rx_bench` does it). Interrupt handlers count as busy. Tested 20-21 Oct 2026
   on B153A: ~95 % idle at rest, ~2 500 polls/s under UART load.
+- 🧪 **FW-44 Status LEDs on shared time**: the LED task (`src/led.rs`) aligns breath / blink to
+  `crate::sync::SYNC`'s shared time (`bedrock_led::Indication::run_with`, DEV-14) while a host has steered it
+  through `clock` (API-57); free-running otherwise, as before. `crate::sync::SYNC` is a `bedrock_sync::Sync`
+  (DEV-13), the shared clock itself, disciplined by `clock.steer` (`src/ww/clock.rs`, `ClockState`). Part of
+  P2528's LED-clock-sync design (design/clock-sync.md): Donguru, rePort and B135 breathing in phase on one host.
+  No sync line and no oscillator backend here (HSI16 trim too coarse, decided 21 Oct 2026). Flashed and run on
+  B153A (omarchy-m1, J-Link, 21 Oct 2026): boots clean, 227 s with no panic once another session's concurrent
+  probe-rs/gdb use of the same board (PC13/RTC_CR pokes, P2534 bootloader test) stopped. `ww sync` end to end
+  (host-synced `Locked`, the residual, LEDs in phase with rePort) not yet exercised: that same interference left
+  the hub's USB enumeration wedged on the host side (`dmesg`: "unable to enumerate" on hub port 1 since 17:51),
+  so `donguru_api` never answered over USB during this session; needs a replug or a host-side USB port reset on
+  omarchy-m1 to retest, nothing pointing at this firmware's own code (no panic in 227 s of clean running, and the
+  same reset/enumeration failures the board showed before the two LED/clock pieces landed on it today).
 
 ## API (`API`)
 
@@ -505,6 +518,14 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   their reason; after a reset everything read back, the live deadband came from the setting, and
   `plug_vbus_at_boot` = ForceOn 6 V switched plug VBUS on at boot through the guard (5.225 V, 16 mA). Not tested:
   `reset`, a power cut during a write, the `ww list` label (built after the board test). ^revB
+
+- 🧪 **API-57 `clock`, `ww_timebase::Clock`** (`donguru_api` 0.5.0): `now()` / `info()` from the embassy-time driver
+  (TIM4, 1 µs resolution); the whole `host_sync` group served (`steer`, `shared_now`, `set_sources`, `sources`)
+  through embedded_bedrock's `bedrock_sync` (DEV-13, FW-44), so a host (`ww sync`) steers Donguru's shared clock
+  onto UTC and the status LEDs align to it. No sync line on this board: `configure_sync` always `Unsupported`,
+  `set_time_of_day` always `WrongState`, `info().sync_formats` empty. Code: `fw/donguru/src/ww/clock.rs`
+  (`ClockState`), `fw/donguru/src/sync.rs` (the static `SYNC`). Tested against the mock and `just test`/`just
+  lint`; flashed and run on B153A 21 Oct 2026 (FW-44 has the board test and what blocked `ww sync` there).
 
 - 📋 **API-20 SBU UART as CDC-ACM**: the SBU USART also as `/dev/ttyACM*`; one owner at a time (ACM while the tty is
   open, else WireWeaver), the owner shown in `sbu.function`, WireWeaver gets `InUse`, `sbu.release` overrides. With

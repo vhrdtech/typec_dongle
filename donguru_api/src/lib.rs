@@ -11,6 +11,10 @@
 //!
 //! 0.3 makes `meter.reading` `+batched` (API-39: every ADC sequence as a sample), which changes its observe slot,
 //! and is built on `ww_si` 0.2 (same bytes, new API model): firmware and host move to 0.3 together.
+//!
+//! 0.5 adds `clock` (API-57, `ww_timebase::Clock`, host sync and the status LEDs on shared time, FW-44): the whole
+//! `host_sync` group (`steer`, `shared_now`) is implemented, so the omit list grows with `clock.*` only if a future
+//! firmware drops it.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use wire_weaver::prelude::*;
@@ -23,6 +27,8 @@ pub use ww_uart::UartConfig;
 pub trait DonguruApi {
     /// Device contract: firmware, last reset, board, ids, label, counters, log, settings (API-9, API-10, API-19).
     ww_impl!(device: Device);
+    /// Device clock: local time, host sync onto UTC, the status LEDs' shared time (API-57, FW-44). No sync line.
+    ww_impl!(clock: ww_timebase::Clock);
     /// The power and status LEDs as one indication: mode, brightness, identify (API-9).
     ww_impl!(leds: ww_indication::Indication);
     /// Power meter on the receptacle VBUS, in SI units (API-12).

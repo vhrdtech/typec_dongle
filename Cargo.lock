@@ -748,6 +748,7 @@ dependencies = [
  "ww_board_info",
  "ww_client_server",
  "ww_counters",
+ "ww_date_time",
  "ww_device",
  "ww_firmware_info",
  "ww_gpio",
@@ -756,6 +757,7 @@ dependencies = [
  "ww_log",
  "ww_si",
  "ww_stream",
+ "ww_timebase",
  "ww_uart",
  "ww_uid",
  "ww_user_info",
@@ -763,7 +765,7 @@ dependencies = [
 
 [[package]]
 name = "donguru_api"
-version = "0.4.1"
+version = "0.5.0"
 dependencies = [
  "defmt",
  "wire_weaver",
@@ -776,6 +778,7 @@ dependencies = [
  "ww_indication",
  "ww_log",
  "ww_si",
+ "ww_timebase",
  "ww_uart",
  "ww_uid",
  "ww_user_info",
@@ -2778,6 +2781,7 @@ dependencies = [
 name = "ww_date_time"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "shrink_wrap",
 ]
 
@@ -2937,6 +2941,15 @@ dependencies = [
  "crc",
  "shrink_wrap",
  "ww_version",
+]
+
+[[package]]
+name = "ww_timebase"
+version = "0.1.0"
+dependencies = [
+ "wire_weaver",
+ "ww_date_time",
+ "ww_si",
 ]
 
 [[package]]

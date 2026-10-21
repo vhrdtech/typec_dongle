@@ -87,6 +87,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "bedrock_sync"
+version = "0.1.0"
+dependencies = [
+ "defmt 1.1.1",
+ "embassy-sync",
+ "embassy-time",
+ "wire_weaver",
+ "ww_si",
+ "ww_timebase",
+]
+
+[[package]]
 name = "bit_field"
 version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -473,6 +485,7 @@ dependencies = [
  "assign-resources",
  "bedrock_crash",
  "bedrock_led",
+ "bedrock_sync",
  "cnt",
  "cortex-m",
  "cortex-m-rt",
@@ -500,6 +513,7 @@ dependencies = [
  "ww_board_info",
  "ww_client_server",
  "ww_counters",
+ "ww_date_time",
  "ww_defmt_logger",
  "ww_ecc_flash",
  "ww_firmware_info",
@@ -511,6 +525,7 @@ dependencies = [
  "ww_settings",
  "ww_si",
  "ww_stream",
+ "ww_timebase",
  "ww_uart",
  "ww_uid",
  "ww_user_info",
@@ -518,7 +533,7 @@ dependencies = [
 
 [[package]]
 name = "donguru_api"
-version = "0.4.1"
+version = "0.5.0"
 dependencies = [
  "defmt 1.1.1",
  "wire_weaver",
@@ -531,6 +546,7 @@ dependencies = [
  "ww_indication",
  "ww_log",
  "ww_si",
+ "ww_timebase",
  "ww_uart",
  "ww_uid",
  "ww_user_info",
@@ -538,11 +554,11 @@ dependencies = [
 
 [[package]]
 name = "donguru_dap"
-version = "0.20.15"
+version = "0.20.16"
 
 [[package]]
 name = "donguru_hub"
-version = "0.20.15"
+version = "0.20.16"
 dependencies = [
  "donguru_api",
  "usb251xb",
@@ -550,7 +566,7 @@ dependencies = [
 
 [[package]]
 name = "donguru_power"
-version = "0.20.15"
+version = "0.20.16"
 dependencies = [
  "donguru_api",
  "ww_si",
@@ -2347,6 +2363,16 @@ name = "ww_tap"
 version = "0.1.0"
 dependencies = [
  "wire_weaver",
+]
+
+[[package]]
+name = "ww_timebase"
+version = "0.1.0"
+dependencies = [
+ "defmt 1.1.1",
+ "wire_weaver",
+ "ww_date_time",
+ "ww_si",
 ]
 
 [[package]]

@@ -29,6 +29,10 @@ bedrock_crash = { git = "https://github.com/romixlab/embedded_bedrock", features
 # the LED animation and driver (src/led.rs) and the `leds` indication bookkeeping (src/ww/leds.rs), DEV-12; from the
 # embedded_bedrock checkout next to this repo, as its ww-indication feature takes WireWeaver from the checkout next to it
 bedrock_led = { path = "../../../embedded_bedrock/bedrock_led", features = ["embassy", "ww-indication", "defmt"] }
+# the shared clock (DEV-13, FW-44): host steer points onto UTC, LEDs run on it (bedrock_led's `align`). No oscillator
+# backend here (HSI trim too coarse for Donguru, decided 21 Oct 2026) and no sync line, so `ww-timebase` is the only
+# feature besides `embassy`.
+bedrock_sync = { path = "../../../embedded_bedrock/bedrock_sync", features = ["embassy", "ww-timebase", "defmt"] }
 # CMSIS-DAP command processing (SWD/JTAG state machine), transport written ourselves against embassy-usb: its own
 # `usb` module targets the separate `usb-device` crate, incompatible with the embassy-usb stack used here.
 # Its own "defmt" feature pulls defmt 0.3, a different major version than ours (1.1): left off, nothing here needs
@@ -63,6 +67,8 @@ ww_gpio = { path = "../../../wire_weaver/ww_stdlib/ww_gpio", default-features = 
 ww_i2c = { path = "../../../wire_weaver/ww_stdlib/ww_i2c", default-features = false }
 ww_indication = { path = "../../../wire_weaver/ww_stdlib/ww_indication", default-features = false }
 ww_log = { path = "../../../wire_weaver/ww_stdlib/ww_log", default-features = false }
+ww_timebase = { path = "../../../wire_weaver/ww_stdlib/ww_timebase", default-features = false }
+ww_date_time = { path = "../../../wire_weaver/ww_stdlib/ww_date_time", default-features = false }
 ww_uart = { path = "../../../wire_weaver/ww_stdlib/ww_uart", default-features = false }
 ww_uid = { path = "../../../wire_weaver/ww_stdlib/ww_uid", default-features = false }
 ww_user_info = { path = "../../../wire_weaver/ww_stdlib/ww_user_info", default-features = false }
