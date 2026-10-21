@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.21] - 2026-10-21
+
 ### Added
 
 - `donguru --version` / `dg --version` print the git commit (`-dirty` with uncommitted changes) and the build time:
