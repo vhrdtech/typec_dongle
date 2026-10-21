@@ -12,7 +12,7 @@ donguru_api.workspace = true
 tokio = { version = "1", features = ["rt", "time", "sync", "macros"] }
 # local checkout next to this repo (~/git/wire_weaver), like donguru_api
 wire_weaver = { path = "../../wire_weaver/wire_weaver", features = ["std"] }
-wire_weaver_client = { path = "../../wire_weaver/wire_weaver_client" }
+wire_weaver_client = { path = "../../wire_weaver/wire_weaver_client", features = ["stm32_dfu"] }
 ww_device = { path = "../../wire_weaver/ww_device", optional = true }
 # the generated client names its observe types (BatchedOwned of `+batched` properties)
 ww_client_server = { path = "../../wire_weaver/ww_stdlib/ww_client_server", features = ["std"] }
@@ -46,6 +46,8 @@ probe-rs = ["dep:probe-rs"]
 mock = ["wire_weaver_client/in_process", "dep:ww_device", "dep:ww_stream"]
 
 [dev-dependencies]
+semver = "1"
+ww_stm32_dfu = { package = "stm32_dfu_host", path = "../../wire_weaver/stm32_dfu_host", features = ["sim"] }
 donguru-core = { path = ".", features = ["mock"] }
 tokio = { version = "1", features = ["rt-multi-thread", "process"] }
 # examples/uart_resume.rs: the state its two processes hand over

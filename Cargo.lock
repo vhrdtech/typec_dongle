@@ -738,8 +738,10 @@ dependencies = [
  "donguru_api",
  "object 0.36.7",
  "probe-rs",
+ "semver",
  "serde",
  "serde_json",
+ "stm32_dfu_host",
  "thiserror",
  "tokio",
  "wire_weaver",
@@ -2009,6 +2011,8 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 name = "stm32_dfu_host"
 version = "0.1.0"
 dependencies = [
+ "nusb",
+ "object 0.40.0",
  "thiserror",
  "tokio",
 ]

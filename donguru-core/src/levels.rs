@@ -236,6 +236,23 @@ impl<'a> Device<'a> {
         crate::log::follow(self.c.device(), elf, force, on_line, on_warning).await
     }
 
+    /// Resets the dongle into `target`: `Updater` is the STM32 ROM bootloader (FW-12, API-58), `App` a plain restart.
+    pub async fn reboot(&self, target: ww_dfu::BootTarget) -> Result<()> {
+        match self.c.device().boot().reboot(target).call().await {
+            Ok(()) => Ok(()),
+            Err(CallError::Device(ww_dfu::Error::Unsupported)) => Err(Error::Unimplemented {
+                item: "BootControl::reboot".into(),
+            }),
+            Err(CallError::Device(e)) => {
+                Err(Error::Link(format!("BootControl::reboot refused: {e:?}")))
+            }
+            Err(CallError::Unimplemented { .. }) => Err(Error::Unimplemented {
+                item: "BootControl::reboot".into(),
+            }),
+            Err(CallError::Client(e)) => Err(Error::client("BootControl::reboot", e)),
+        }
+    }
+
     /// Everything of the contract at once; parts the firmware doesn't implement yet are `None`.
     pub async fn summary(&self) -> Result<DeviceSummary> {
         Ok(DeviceSummary {

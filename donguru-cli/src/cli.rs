@@ -137,6 +137,10 @@ pub enum Command {
     #[command(subcommand, display_order = 65)]
     Settings(crate::commands::settings::Settings),
 
+    /// Firmware version, and update over USB without a debug probe
+    #[command(subcommand, display_order = 66)]
+    Fw(crate::commands::fw::Fw),
+
     /// Manage the Linux udev rules granting access to a dongle
     #[command(subcommand, display_order = 70)]
     Udev(crate::commands::udev::Udev),
