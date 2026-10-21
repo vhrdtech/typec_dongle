@@ -78,7 +78,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   clock, NVIC, VTOR; on B153A the ROM left SWS on HSISYS, VTOR 0x1FFF0000 and one IRQ gave it away) and resets
   once. The hub stays up through all of it on rev A because RTC_OUT1 drives its RESET_N on PC13 (`src/hub.rs`
   `ResetPin`, RTC_CR OSEL alarm A + POL; feature `rev_a`, FW-47): the backup domain keeps the level through a system
-  reset. The bring-up still pulses and reconfigures the hub at every start (through RTC_CR POL), as before. The USB
+  reset. Since FW-46 the bring-up keeps a hub that held through the reset instead of pulsing it. The USB
   serial is the ROM's form for this chip (`donguru_board::boot::rom_serial`), so `ww` follows the board into the
   ROM and back. Pure logic in `donguru_board::boot` (host tests). `just update SERIAL`, user page
   `docs/user/firmware-update.md`. Tested on B153A (omarchy-m1, 21 Oct 2026): reboot -> 0483:df11 behind the hub in
@@ -134,6 +134,10 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   hub one or two times 200-600 ms after every boot (the hub NAKs while it attaches and while the host enumerates
   it), and for good while the MCU's own device stayed off the bus. Rechecked on B153A: no recovery at boot
   (`cnt run`, 3 resets), one per PC13 pulse, USB back each time.
+  Rechecked 21 Oct 2026 with the FW-46 build: since FW-12 RTC_OUT1 drives PC13 on rev A, so the pulse now goes
+  through RTC_CR (J-Link: RTC_WPR 0xCA, 0x53, RTC_CR 0x0020_0000 then 0x0030_0000, RTC_WPR 0xFF; GPIOC BSRR no
+  longer reaches the pin). 3 pulses, each found by the I2C probe (all-zero) and recovered about 0.2 s later, hub and
+  Donguru back on the host within 1 s.
 - ✅ **FW-19 512-byte CMSIS-DAP packets**: `DAP_Info` reports `MaxPacketSize` 512 (`dap_rs` feature `usb-hs`, which
   changes nothing else) instead of 64, so `DAP_TransferBlock` carries 126 words per USB round trip instead of 15.
   The endpoints stay Full-Speed 64-byte bulk: `src/cmsis_dap.rs` puts a request together from several OUT packets
@@ -396,9 +400,23 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   the good image back with `ww stm32dfu flash --follow`, `ww dfu status` last update `Recovery` -> `just update`
   clears it to `Nothing`; 5 `reboot --into app` in a row stay in the firmware. Not tested: the rescue after a power
   cycle (hub not yet held, the rescue's own bring-up), the 10 s mark without a USB host. tpm P2534#21oct-1844. ^v1.0
-- 📋 **FW-46 Hub kept across MCU resets**: the hub stays attached and configured through a firmware update, crash or
-  reset (the FW-12 RTC_OUT1 hold on rev A, the RESET_N pull-up on rev B), so the DUT's USB link survives them; the
-  boot checks the hub's config over I2C and pulses its reset only when it differs. tpm P2534#21oct-1844b.
+- 🚧 **FW-46 Hub kept across MCU resets**: the hub stays attached and configured through a firmware update, crash or
+  reset (the FW-12 RTC_OUT1 hold on rev A, the RESET_N pull-up on rev B), so a DUT's USB link on a downstream port
+  survives them; only the MCU's own device on port 1 re-enumerates. At boot, after anything but a power-on or
+  brown-out reset and with the reset line still high (rev A: RTC_CR, `donguru_board::boot::rtc_runs_hub`), the
+  firmware reads back every register block it writes plus the attach bit (`donguru_board::hub::check`, host tests)
+  and keeps the hub when all match; another firmware's config or a lost one gets the reset pulse and the config as
+  after a power cycle. All-zero IDs are asked again for 1 s (HUB-5). A hub that does not answer at all is one the
+  host suspended (Linux suspends a hub at once when no device below it is active, the MCU's own one gone with the
+  reset; seen after a probe flash): kept, and `watchdog_task` reads it back once the MCU's USB has woken it, resets
+  it if it is not this config or still silent after 5 s. Counters `hub_kept`, `hub_kept_reconfigured`. Code:
+  `fw/donguru/src/hub.rs` (`Hub::keep`, `bring_up`), the rescue boot (FW-45) goes through the same `bring_up`.
+  Tested on B153A (omarchy-m1, 21 Oct 2026): the hub stayed the same host device (no disconnect in `journalctl -k`)
+  through a probe flash (hub suspended, verified 1 s after boot), 3 `ww dfu reboot --into app` and a ROM update
+  (`just update`, kept in 7 ms); a firmware with another hub config (power-on time 100 -> 50 ms) written by ROM update
+  found `Differs { register: 0x10 }` and reconfigured, so did the way back. FW-18 still recovers (RTC_CR POL pulsed
+  through the J-Link, 3 times). Open: the Done test with a DUT on the plug (B129A on the plug does not enumerate
+  yet, P2534#21oct-1844b); a bus-powered DUT loses power at every MCU reset anyway (FW-49). tpm P2534#21oct-1844b.
 - 🧪 **FW-47 Rev A workarounds behind the feature `rev_a`**: on by default while B153A is the only board; a rev B
   release firmware is built without it, the first boards keep it for testing and jigs (Roman, 21 Oct 2026). Gated:
   PA4 `HUB_I2C_EN` driven high for the hub's SDA pull-up (`src/hub.rs`; rev B: R301 to 3.3 V, PA4 free), the plug
@@ -407,6 +425,17 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   PC13 (rev B's schematic has it there too), the hub port swap (FW-6), the variant strap (FW-22). Source:
   `hw/b153_typec_serial/doc/hw_b153a.md` §0, `change/change_b153b.md`. Both builds checked; the default one is
   the firmware as before.
+- 🐛 **FW-48 Panic in `DefaultHandler` during probe-rs attaches**: once in 5 RTC_CR pokes over the J-Link (each a
+  separate `probe-rs write`, the core stalled long enough for ADC DMA overruns), 130 ms after a FW-18 recovery an
+  unhandled interrupt ran `DefaultHandler`, whose `cnt!` / `error!` panicked in defmt (`default_panic`, nested
+  logging), and the firmware reset (B153A, 21 Oct 2026, FW-46 build). Which IRQ is unknown: the backup counter
+  `unhandled_exceptions_total` never got written. Not seen without a debugger. To do: log the IRQ number without
+  defmt in the handler (a backup register), find the unbound interrupt.
+- 📋 **FW-49 Plug VBUS kept across MCU resets**: PWR_EN (PA6, U601) has the R601 pull-down, so plug VBUS goes off at
+  every MCU reset and stays off through the ~43 s ROM update; `plug_vbus_at_boot` only turns it on again once the
+  ADC reads. A bus-powered DUT on the plug therefore loses its link even though the hub keeps it (FW-46). Needs a
+  hold that survives the reset (no backup-domain output on PA6; rev B schematic) and a decision on safety: VBUS left
+  on into a ROM session nobody supervises (no guard running). tpm P2534#21oct-1844b.
 
 ## API (`API`)
 

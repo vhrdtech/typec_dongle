@@ -14,12 +14,16 @@
 //! written back come from the `usb251xb::Variant` passed to its builder, and the D+/D- port swap mask
 //! (hw_b153a.md §6/§9) only sets the bits for ports that exist on that variant.
 //!
+//! [check] tells whether a hub that stayed up through an MCU reset (FW-46) still holds what [hub_config] would
+//! write and is attached: the boot then keeps it, so a DUT behind it keeps its USB link, and resets and
+//! reconfigures it otherwise.
+//!
 //! No embassy and no GPIO/I2C in here — just the mapping and the `usb251xb` crate's pure config builder — so
 //! this is unit-tested on the host (`fw/donguru/src/hub.rs` only reads the strap and calls through here), the
 //! same way `donguru_dap` keeps the CMSIS-DAP framing apart from the firmware's USB plumbing.
 
 use donguru_api::BoardVariant;
-use usb251xb::register::ConfigByte3;
+use usb251xb::register::{ConfigByte3, REG_STATUS_COMMAND, StatusCommand};
 use usb251xb::{Config, CurrentSensing, Milliamps, Port, PowerSwitching, Variant};
 
 /// Maps the PA10 board-variant strap read (hw_b153a.md §9/§11) to the board variant it identifies: R902 (10K
@@ -88,9 +92,142 @@ pub fn hub_config(variant: BoardVariant) -> Config {
     config
 }
 
+/// What [check] found in a hub that may have stayed up through an MCU reset (FW-46).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub enum Check {
+    /// Every register this firmware writes reads back as written and the hub is attached: keep it.
+    Kept,
+    /// Register `register` reads `read` instead of `expected` (another firmware's config, for one): reset and
+    /// reconfigure.
+    Differs {
+        register: u8,
+        expected: u8,
+        read: u8,
+    },
+    /// The ID registers read all-zero: a hub out of reset waiting for its config, or one that attached less than
+    /// ~0.4 s ago (HUB-5): ask again a bit later before resetting it.
+    Unconfigured,
+    /// Configured as this firmware would, but not attached upstream.
+    NotAttached,
+    /// No answer on I2C: busy with the host, or not powered.
+    NoAnswer,
+}
+
+/// Reads back what `config` ([hub_config]) writes, one SMBus block per register chunk of
+/// `usb251xb::Config::to_register_chunks`, and the attach bit of the status register. `read(register, data)` fills
+/// `data` with the bytes from `register` on (the SMBus count byte left out).
+pub fn check<E>(config: &Config, mut read: impl FnMut(u8, &mut [u8]) -> Result<(), E>) -> Check {
+    let mut buf = [0u8; 32];
+    for (first, (register, expected, len)) in config.to_register_chunks().into_iter().enumerate() {
+        let data = &mut buf[..len as usize];
+        if data.is_empty() {
+            continue;
+        }
+        if read(register, data).is_err() {
+            return Check::NoAnswer;
+        }
+        // chunk 0 starts with VID/PID, all-zero only before a config
+        if first == 0 && data[..4] == [0; 4] {
+            return Check::Unconfigured;
+        }
+        let differs = expected.iter().zip(data.iter()).position(|(e, r)| e != r);
+        if let Some(i) = differs {
+            return Check::Differs {
+                register: register.wrapping_add(i as u8),
+                expected: expected[i],
+                read: data[i],
+            };
+        }
+    }
+    let mut status = [0u8; 1];
+    if read(REG_STATUS_COMMAND, &mut status).is_err() {
+        return Check::NoAnswer;
+    }
+    if StatusCommand::from_bytes(status).usb_attach() {
+        Check::Kept
+    } else {
+        Check::NotAttached
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A hub's register file holding `config` and the status byte `status`.
+    fn registers(config: &Config, status: u8) -> [u8; 256] {
+        let mut regs = [0u8; 256];
+        for (register, data, len) in config.to_register_chunks() {
+            let start = register as usize;
+            regs[start..start + len as usize].copy_from_slice(&data[..len as usize]);
+        }
+        regs[REG_STATUS_COMMAND as usize] = status;
+        regs
+    }
+
+    fn read_from(regs: &[u8; 256]) -> impl FnMut(u8, &mut [u8]) -> Result<(), ()> + '_ {
+        |register, data| {
+            let start = register as usize;
+            data.copy_from_slice(&regs[start..start + data.len()]);
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn configured_and_attached_hub_is_kept() {
+        let config = hub_config(BoardVariant::Main);
+        let regs = registers(&config, 0x01);
+        assert_eq!(check(&config, read_from(&regs)), Check::Kept);
+    }
+
+    #[test]
+    fn hub_not_attached() {
+        let config = hub_config(BoardVariant::Main);
+        let regs = registers(&config, 0x00);
+        assert_eq!(check(&config, read_from(&regs)), Check::NotAttached);
+    }
+
+    #[test]
+    fn all_zero_hub_is_unconfigured() {
+        let config = hub_config(BoardVariant::Main);
+        assert_eq!(check(&config, read_from(&[0; 256])), Check::Unconfigured);
+    }
+
+    #[test]
+    fn another_variants_config_differs() {
+        let main = hub_config(BoardVariant::Main);
+        let regs = registers(&hub_config(BoardVariant::Plus), 0x01);
+        assert_eq!(
+            check(&main, read_from(&regs)),
+            Check::Differs {
+                register: 0x02,
+                expected: 0x12,
+                read: 0x14
+            }
+        );
+    }
+
+    #[test]
+    fn a_changed_register_past_the_ids_differs() {
+        let config = hub_config(BoardVariant::Main);
+        let mut regs = registers(&config, 0x01);
+        regs[0xFA] ^= 0x04; // port swap
+        assert_eq!(
+            check(&config, read_from(&regs)),
+            Check::Differs {
+                register: 0xFA,
+                expected: regs[0xFA] ^ 0x04,
+                read: regs[0xFA]
+            }
+        );
+    }
+
+    #[test]
+    fn no_answer() {
+        let config = hub_config(BoardVariant::Main);
+        assert_eq!(check(&config, |_, _| Err(())), Check::NoAnswer);
+    }
 
     #[test]
     fn strap_high_is_main() {

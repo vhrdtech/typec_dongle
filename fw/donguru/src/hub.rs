@@ -20,13 +20,20 @@
 //! 1) drops out of the configured state after having reached it once — the hub's own reset bounces that port
 //! along with the rest of the chip, so this fires within a USB frame or two of the brown-out — and a periodic
 //! I2C probe backstops it for a brown-out that, for some reason, does not bounce the MCU's own port.
+//!
+//! An MCU reset leaves the hub alone where the reset line lets it (FW-46): RTC_OUT1 holds it on rev A, a pull-up on
+//! rev B. [`bring_up`] then reads the hub's config back ([`donguru_board::hub::check`]) and keeps the hub when it
+//! holds what this firmware writes and is attached, so a DUT on a downstream port keeps its USB link through a
+//! firmware update, a crash or a reboot; only the MCU's own device on port 1 re-enumerates. Anything else (another
+//! firmware's config, a hub that lost its config) gets the reset pulse and the config as after a power cycle.
 
 use core::sync::atomic::{AtomicU8, Ordering};
 
 use crate::HubResources;
-use defmt::{info, warn};
+use cnt::cnt;
+use defmt::{debug, info, warn};
 use donguru_api::BoardVariant;
-use donguru_board::hub::{board_variant_from_strap, hub_config};
+use donguru_board::hub::{Check, board_variant_from_strap, check, hub_config};
 use embassy_futures::select::{Either, select};
 use embassy_stm32::Peri;
 use embassy_stm32::gpio::{Flex, Level, Output, Pull, Speed};
@@ -126,26 +133,33 @@ pub fn request_recovery() {
 /// backup domain) keeps the level through a system reset, the hub stays attached through the reset into the ROM and
 /// the reset after the ROM's leave (`donguru_board::boot::rtc_cr_hub`, values tested on B153A 21 Oct 2026). A power
 /// cycle resets the backup domain: PC13 back to the pull-down, as before. Rev B: a pull-up instead of R304
-/// (change_b153b.md), the GPIO drives it.
+/// (change_b153b.md), which holds the hub running through a reset; the GPIO drives it.
 struct ResetPin {
     #[cfg(not(feature = "rev_a"))]
     pin: Output<'static>,
 }
 
 impl ResetPin {
-    /// Holds the hub in reset.
-    fn new(pc13: Peri<'static, PC13>) -> Self {
+    /// Takes the reset line as the last reset left it and says whether the hub kept running through it (FW-46);
+    /// holds it in reset otherwise. `warm`: the last reset was not a power-on or brown-out.
+    fn new(pc13: Peri<'static, PC13>, warm: bool) -> (Self, bool) {
         #[cfg(feature = "rev_a")]
         {
             // RTC_OUT1 overrides the GPIO while RTC_CR.OSEL selects it: the pin stays in its reset state
             let _ = pc13;
             let mut pin = ResetPin {};
-            pin.set(false);
-            pin
+            let running = warm && donguru_board::boot::rtc_runs_hub(pac::RTC.cr().read().0);
+            if !running {
+                pin.set(false);
+            }
+            (pin, running)
         }
         #[cfg(not(feature = "rev_a"))]
-        ResetPin {
-            pin: Output::new(pc13, Level::Low, Speed::Low),
+        {
+            // the pull-up kept it high through the reset, a power-on reset started the hub unconfigured
+            let level = if warm { Level::High } else { Level::Low };
+            let pin = Output::new(pc13, level, Speed::Low);
+            (ResetPin { pin }, warm)
         }
     }
 
@@ -178,6 +192,8 @@ pub struct Hub {
     /// Read once from the PA10 strap in [`bring_up`], reused by every [`configure`](Hub::configure) /
     /// [`recover`](Hub::recover): the fitted hub does not change at runtime, so there is nothing to re-read.
     variant: BoardVariant,
+    /// Kept through the reset without a readback yet ([`Keep::Unverified`]).
+    unverified: bool,
 }
 
 impl Hub {
@@ -246,15 +262,66 @@ impl Hub {
         }
     }
 
-    /// The bring-up sequence again: reset pulse, config, attach. The board variant does not need re-reading
-    /// (module doc): `self.variant` carries over from [`bring_up`].
-    async fn recover(&mut self, why: &str) {
-        warn!("hub: lost ({=str}), redoing bring-up", why);
+    /// Reset pulse, config, attach.
+    async fn reset_and_configure(&mut self) {
         self.nrst.set(false);
         Timer::after_millis(1).await;
         self.nrst.set(true);
         Timer::after_millis(HUB_RESET_RELEASE_SETTLE_MS).await;
         self.configure();
+    }
+
+    /// The bring-up sequence again: reset pulse, config, attach. The board variant does not need re-reading
+    /// (module doc): `self.variant` carries over from [`bring_up`].
+    async fn recover(&mut self, why: &str) {
+        warn!("hub: lost ({=str}), redoing bring-up", why);
+        self.reset_and_configure().await;
+    }
+
+    /// Reads back what [`configure`](Hub::configure) writes and the attach bit ([`check`]).
+    fn check(&mut self) -> Check {
+        let config = hub_config(self.variant);
+        let mut buf = [0u8; 1 + 32];
+        check(&config, |register, data| {
+            let buf = &mut buf[..1 + data.len()];
+            if let Err(e) = self.dev().read_register(register, buf) {
+                debug!("hub read {=u8:x}: {}", register, e);
+                return Err(e);
+            }
+            data.copy_from_slice(&buf[1..]);
+            Ok::<_, usb251xb::Error<_>>(())
+        })
+    }
+
+    /// A hub that kept running through the MCU reset (FW-46): [`Keep::Kept`] when it holds this firmware's config
+    /// and is attached. An all-zero read may be a hub that attached just before the reset (HUB-5): asked again for
+    /// up to [`ATTACH_GRACE`]. No answer is a hub the host suspended (Linux does as soon as no device below it is
+    /// active, B153A 21 Oct 2026, the MCU's own one gone with the reset) or one busy with the host (FW-41): it
+    /// has attached, so some firmware configured it; [`Keep::Unverified`] until it answers.
+    async fn keep(&mut self) -> Keep {
+        let start = Instant::now();
+        loop {
+            let found = self.check();
+            match found {
+                Check::Kept => {
+                    kept();
+                    return Keep::Kept;
+                }
+                Check::NoAnswer => {
+                    info!("hub: no answer (suspended or busy), kept until it does");
+                    return Keep::Unverified;
+                }
+                Check::Unconfigured if start.elapsed() < ATTACH_GRACE => {
+                    debug!("hub check: {}, again", found);
+                    Timer::after_millis(KEEP_RETRY_MS).await;
+                }
+                _ => {
+                    cnt!(hub_kept_reconfigured: u32);
+                    warn!("hub check: {}, reset and configure", found);
+                    return Keep::Reconfigure;
+                }
+            }
+        }
     }
 
     /// Reads VID/PID back to tell a hub that lost its config from one that is just busy (FW-41). A hub that
@@ -274,6 +341,26 @@ impl Hub {
     }
 }
 
+/// A kept hub holds this firmware's config and is attached.
+fn kept() {
+    cnt!(hub_kept: u32);
+    info!("hub: kept through the reset, config as written, attached");
+}
+
+/// What [`Hub::keep`] decided.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Keep {
+    Kept,
+    /// Kept, not read back yet: [`watchdog_task`] checks it once it answers.
+    Unverified,
+    Reconfigure,
+}
+
+/// How long [`watchdog_task`] waits for a [`Keep::Unverified`] hub to answer with this firmware's config before it
+/// resets and configures it. The MCU's own device connecting on port 1 wakes a suspended hub (hub remote wakeup),
+/// which takes well under a second once USB is up.
+const UNVERIFIED_LIMIT: Duration = Duration::from_secs(5);
+
 /// What [`Hub::probe`] found.
 #[derive(Clone, Copy, PartialEq, Eq, defmt::Format)]
 enum Probe {
@@ -292,28 +379,39 @@ const ATTACH_GRACE: Duration = Duration::from_secs(1);
 /// request in this window after an attach is that echo, not a new loss.
 const OWN_RESET_ECHO: Duration = Duration::from_secs(2);
 
+/// How often [`Hub::keep`] asks again.
+const KEEP_RETRY_MS: u64 = 50;
+
 /// Consecutive [`Probe::Unconfigured`] reads before [`watchdog_task`] redoes the bring-up: one stray read does not
 /// reset a hub the host is using.
 const UNCONFIGURED_READS: u8 = 2;
 
-/// Reads the board-variant strap, releases the hub from reset, writes its config and attaches it upstream.
-pub async fn bring_up(r: HubResources) -> Hub {
+/// Reads the board-variant strap and keeps the hub when it ran through the last reset with this firmware's config
+/// (FW-46, [`Hub::keep`]); else releases it from reset, writes its config and attaches it upstream. `warm`: the last
+/// reset was not a power-on or brown-out.
+pub async fn bring_up(r: HubResources, warm: bool) -> Hub {
     let variant = read_board_variant_strap(r.pa10).await;
     set_board_variant(variant);
 
-    let mut nrst = ResetPin::new(r.pc13);
+    let (nrst, running) = ResetPin::new(r.pc13, warm);
     // SDA pull-up R301 goes to PA4 on B153A, not to 3.3 V; rev B has it on 3.3 V and PA4 free
     #[cfg(feature = "rev_a")]
     let i2c_en = Output::new(r.pa4, Level::High, Speed::Low);
     #[cfg(not(feature = "rev_a"))]
     let _ = r.pa4;
-    Timer::after_millis(1).await;
-    nrst.set(true);
-    Timer::after_millis(HUB_RESET_RELEASE_SETTLE_MS).await;
 
     let i2c = I2c::new_blocking(r.i2c2, r.pb10, r.pb14, Default::default());
-    let mut hub = Hub { nrst, i2c, variant };
-    hub.configure();
+    let mut hub = Hub {
+        nrst,
+        i2c,
+        variant,
+        unverified: false,
+    };
+    match if running { hub.keep().await } else { Keep::Reconfigure } {
+        Keep::Kept => {}
+        Keep::Unverified => hub.unverified = true,
+        Keep::Reconfigure => hub.reset_and_configure().await,
+    }
     // Kept for the life of the firmware: dropping it would put PA4 back to analog (hub's SDA pull-up gone)
     #[cfg(feature = "rev_a")]
     core::mem::forget(i2c_en);
@@ -330,7 +428,7 @@ pub async fn bring_up(r: HubResources) -> Hub {
 pub async fn watchdog_task(mut hub: Hub) {
     let mut last = Probe::Configured;
     let mut unconfigured = 0u8;
-    let mut attached_at = Instant::now(); // bring_up has just attached it
+    let mut attached_at = Instant::now(); // bring_up has just attached it, or kept it
     loop {
         let why = match select(
             Timer::after_millis(POLL_INTERVAL_MS),
@@ -339,6 +437,22 @@ pub async fn watchdog_task(mut hub: Hub) {
         .await
         {
             Either::First(()) if attached_at.elapsed() < ATTACH_GRACE => continue,
+            // kept through the reset, not read back yet (FW-46)
+            Either::First(()) if hub.unverified => match hub.check() {
+                Check::Kept => {
+                    hub.unverified = false;
+                    kept();
+                    continue;
+                }
+                Check::NoAnswer | Check::Unconfigured if attached_at.elapsed() < UNVERIFIED_LIMIT => {
+                    continue;
+                }
+                found => {
+                    cnt!(hub_kept_reconfigured: u32);
+                    warn!("hub check: {}", found);
+                    "kept through the reset, not this firmware's config"
+                }
+            },
             Either::First(()) => {
                 let probe = hub.probe();
                 if probe != last {
@@ -360,6 +474,7 @@ pub async fn watchdog_task(mut hub: Hub) {
             Either::Second(()) => "USB device left the configured state",
         };
         hub.recover(why).await;
+        hub.unverified = false;
         unconfigured = 0;
         attached_at = Instant::now();
     }

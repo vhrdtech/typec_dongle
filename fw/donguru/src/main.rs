@@ -154,6 +154,11 @@ fn main() -> ! {
 async fn boot(spawner: embassy_executor::Spawner, start: boot::Start) {
     info!("donguru starting...");
     let last_reset = last_reset::boot(); // reset cause and crash record (src/last_reset.rs), logged
+    // the hub may have run through anything but a power cycle (FW-46)
+    let warm = !matches!(
+        last_reset.view().cause,
+        bedrock_crash::Cause::PowerOn | bedrock_crash::Cause::Brownout
+    );
     let mut config = embassy_stm32::Config::default();
     // SYSCLK 64 MHz (max): HSI16 / 1 * 8 = 128 MHz VCO, / 2. AHB and APB undivided, also 64 MHz.
     config.rcc.hsi = Some(Hsi {
@@ -195,7 +200,7 @@ async fn boot(spawner: embassy_executor::Spawner, start: boot::Start) {
     // A boot loop (FW-45): the hub is all the ROM bootloader needs to be seen on USB, and the code that crashes may
     // come after it. Hub up, then reset into the ROM.
     if start == boot::Start::Rescue {
-        hub::bring_up(r.hub).await;
+        hub::bring_up(r.hub, warm).await;
         boot::rescue();
     }
     // The FW-45 test image: crashes at every start before USB is up
@@ -217,9 +222,10 @@ async fn boot(spawner: embassy_executor::Spawner, start: boot::Start) {
     spawner.spawn(unwrap!(button::button_task()));
     spawner.spawn(unwrap!(boot::reboot_task()));
 
-    // The MCU's USB is on hub port 1: nothing enumerates until the hub is configured and attached. The watchdog
+    // The MCU's USB is on hub port 1: nothing enumerates until the hub is configured and attached; a hub that ran
+    // through the reset with this config stays as it is, with the DUT on its other ports (FW-46). The watchdog
     // (FW-18) redoes this after a brown-out resets the hub without resetting the MCU (P2534#12oct-1819).
-    let hub = hub::bring_up(r.hub).await;
+    let hub = hub::bring_up(r.hub, warm).await;
     spawner.spawn(unwrap!(hub::watchdog_task(hub)));
 
     // Composite USB device (FS, HSI48 clock above): WireWeaver and CMSIS-DAP v2 (FW-15), see src/ww/mod.rs.

@@ -53,7 +53,7 @@ pub const HEALTHY_AFTER_S: u64 = 10;
 /// | 31:16 | `0xB007`, the tag             | every write                              | a backup domain reset            |
 /// | 15    | [rom_request](Self::rom_request) | `reboot(Updater)`, the rescue boot     | the early boot, before the jump  |
 /// | 14    | [fell_back](Self::fell_back)  | the rescue boot                          | `reboot(Updater)`, a power cycle |
-/// | 13:4  | free (FW-46 may take some)    |                                          |                                  |
+/// | 13:4  | free                          |                                          |                                  |
 /// | 3:0   | [unhealthy_boots](Self::unhealthy_boots) | each boot's [count_boot](Self::count_boot) | the [healthy](Self::healthy) mark |
 ///
 /// A word written by an older firmware (FW-12: tag and bit 15 only) reads the same, with no count.
@@ -213,6 +213,12 @@ pub fn rtc_cr_hub(cr: u32, run: bool) -> u32 {
 /// RTC_CR drives the hub's RESET_N from RTC_OUT1 ([rtc_cr_hub]), high or low.
 pub fn rtc_holds_hub(cr: u32) -> bool {
     cr & (0b11 << 21 | 1 << 31) == OSEL_ALARM_A
+}
+
+/// RTC_CR holds the hub's RESET_N high ([rtc_cr_hub] with `run`): the hub kept running through the last reset
+/// (FW-46). False after a power cycle, which clears RTC_CR.
+pub fn rtc_runs_hub(cr: u32) -> bool {
+    rtc_holds_hub(cr) && cr & POL != 0
 }
 
 /// Length of [rom_serial] in ASCII.
@@ -441,6 +447,8 @@ mod tests {
         );
         assert!(rtc_holds_hub(rtc_cr_hub(0, true)) && rtc_holds_hub(rtc_cr_hub(0, false)));
         assert!(!rtc_holds_hub(0) && !rtc_holds_hub(0x0030_0000 | 1 << 31));
+        assert!(rtc_runs_hub(rtc_cr_hub(1 << 10, true)));
+        assert!(!rtc_runs_hub(rtc_cr_hub(0, false)) && !rtc_runs_hub(0) && !rtc_runs_hub(POL));
     }
 
     #[test]
