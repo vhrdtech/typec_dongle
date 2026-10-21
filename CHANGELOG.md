@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.23] - 2026-10-21
+
 ### Changed
 
 - Firmware: the hub stays attached and configured through a firmware update, a crash or a reboot (FW-46), so a device on the plug keeps its USB link through a reboot or a crash; only Donguru's own USB device re-enumerates. At boot the firmware reads the hub's config back over I2C and keeps the hub when it holds what this firmware writes and is attached; a firmware with another hub config, or a hub that lost its config, gets the reset pulse and the config as before. A power cycle still starts the hub from reset. New counters `hub_kept` and `hub_kept_reconfigured`. No API change (`donguru_api` stays 0.5.1). Tested on B153A (omarchy-m1, 21 Oct 2026): the hub stayed the same host device through a probe flash, 3 `ww dfu reboot --into app` and a ROM update (`just update`); a firmware with a changed hub config reconfigured it, both ways; brown-out recovery (FW-18) still works; with a self-powered USB serial DUT on the plug (B129A) its open tty kept echoing through 5 reboots in a row, none lost. Not kept on rev A: the DUT's link through a ROM update, because the ROM bootloader drives the plug data switch off (PA9 is its USART1_TX, FW-50), and a bus-powered DUT, because plug VBUS goes off at every MCU reset (FW-49).
