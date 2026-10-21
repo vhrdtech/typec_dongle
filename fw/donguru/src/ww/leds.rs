@@ -1,10 +1,12 @@
 //! `leds`: the power and status LEDs as one `ww_indication::Indication` (API-9), shown through `src/led.rs`.
-//! RAM only: mode and brightness are back to `Normal` after a reset until the settings store (API-19).
+//! RAM only: mode and brightness are back to `Normal` after a reset until the settings store (API-19). The peaks and
+//! the identify bookkeeping are `bedrock_led::indication`, shared with the other bedrock boards.
 
 use super::ServerState;
 use crate::led::{self, DEFAULT_PEAK, Led};
+use bedrock_led::indication::{Identify, PEAKS, Peaks};
 use cnt::cnt;
-use embassy_time::{Duration, Instant};
+use embassy_time::Instant;
 use wire_weaver::prelude::*;
 use wire_weaver::ww_error::CommonError;
 use ww_indication::{Brightness, Mode};
@@ -16,15 +18,15 @@ pub(super) const NAMES: RefVec<'static, &'static str> = RefVec::Slice {
     slice: &["power", "status"],
 };
 
-/// Longest identify, longer requests are cut to it.
-const IDENTIFY_MAX_MS: u32 = 10 * 60 * 1000;
+/// Perceptual peak per brightness (see led.rs): the bedrock defaults with a dimmer `Low`.
+const LED_PEAKS: Peaks = Peaks { low: 40, ..PEAKS };
 
 /// What the API last set, `led.rs` only takes it.
 pub(super) struct LedsState {
     mode: Mode,
     brightness: Brightness,
-    /// End of the running identify, for `Busy`.
-    identify_until: Instant,
+    /// The running identify, for `Busy`.
+    identify: Identify<Instant>,
 }
 
 impl LedsState {
@@ -32,7 +34,7 @@ impl LedsState {
         LedsState {
             mode: Mode::Normal,
             brightness: Brightness::Normal,
-            identify_until: Instant::from_ticks(0),
+            identify: Identify::new(),
         }
     }
 }
@@ -74,18 +76,10 @@ impl ServerState {
         _cx: &mut Context<'_, impl EventOut>,
         value: ww_indication::Brightness,
     ) -> SetResult<()> {
-        // perceptual peak, see led.rs
-        let peak = match value {
-            Brightness::Lowest => 8,
-            Brightness::Low => 40,
-            Brightness::Normal => DEFAULT_PEAK,
-            Brightness::High => 200,
-            Brightness::Highest => 255,
-            _ => {
-                cnt!(leds_brightness_unknown: u32);
-                DEFAULT_PEAK
-            }
-        };
+        let peak = LED_PEAKS.peak(value).unwrap_or_else(|| {
+            cnt!(leds_brightness_unknown: u32);
+            DEFAULT_PEAK
+        });
         led::set_peak(peak);
         self.leds.brightness = value;
         Set
@@ -105,7 +99,7 @@ impl ServerState {
         duration: ww_si::Second,
     ) -> RpcResult<Result<(), wire_weaver::ww_error::CommonError<'_>>> {
         let now = Instant::now();
-        if now < self.leds.identify_until {
+        if self.leds.identify.busy(now) {
             return Ready(Err(CommonError::Busy));
         }
         let Some(ms) = to_ms(&duration) else {
@@ -114,9 +108,7 @@ impl ServerState {
                 reason: MaxLen::new_unchecked("not an integer number of s, ms or us"),
             }));
         };
-        let ms = ms.min(IDENTIFY_MAX_MS);
-        led::identify(ms);
-        self.leds.identify_until = now + Duration::from_millis(ms as u64);
+        led::identify(self.leds.identify.start(now, ms));
         Ready(Ok(()))
     }
 }

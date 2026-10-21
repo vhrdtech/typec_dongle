@@ -76,6 +76,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "bedrock_led"
+version = "0.1.0"
+dependencies = [
+ "defmt 1.1.1",
+ "embassy-sync",
+ "embassy-time",
+ "embedded-hal 1.0.0",
+ "ww_indication",
+]
+
+[[package]]
 name = "bit_field"
 version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -461,6 +472,7 @@ version = "0.1.1"
 dependencies = [
  "assign-resources",
  "bedrock_crash",
+ "bedrock_led",
  "cnt",
  "cortex-m",
  "cortex-m-rt",
@@ -2229,6 +2241,7 @@ dependencies = [
 name = "ww_indication"
 version = "0.1.0"
 dependencies = [
+ "defmt 1.1.1",
  "wire_weaver",
  "ww_si",
 ]

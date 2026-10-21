@@ -26,6 +26,9 @@ assign-resources = "0.5.0"
 cnt = "0.5" # 0.5: used words and format version, served as device.counters (ww_counters)
 # crash capture: HardFault / panic record kept across reset, reset cause (src/last_reset.rs); the panic handler
 bedrock_crash = { git = "https://github.com/romixlab/embedded_bedrock", features = ["cortex-m", "defmt"] }
+# the LED animation and driver (src/led.rs) and the `leds` indication bookkeeping (src/ww/leds.rs), DEV-12; from the
+# embedded_bedrock checkout next to this repo, as its ww-indication feature takes WireWeaver from the checkout next to it
+bedrock_led = { path = "../../../embedded_bedrock/bedrock_led", features = ["embassy", "ww-indication", "defmt"] }
 # CMSIS-DAP command processing (SWD/JTAG state machine), transport written ourselves against embassy-usb: its own
 # `usb` module targets the separate `usb-device` crate, incompatible with the embassy-usb stack used here.
 # Its own "defmt" feature pulls defmt 0.3, a different major version than ours (1.1): left off, nothing here needs
