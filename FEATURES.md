@@ -369,6 +369,14 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   so `donguru_api` never answered over USB during this session; needs a replug or a host-side USB port reset on
   omarchy-m1 to retest, nothing pointing at this firmware's own code (no panic in 227 s of clean running, and the
   same reset/enumeration failures the board showed before the two LED/clock pieces landed on it today).
+- 🧪 **FW-47 Rev A workarounds behind the feature `rev_a`**: on by default while B153A is the only board; a rev B
+  release firmware is built without it, the first boards keep it for testing and jigs (Roman, 21 Oct 2026). Gated:
+  PA4 `HUB_I2C_EN` driven high for the hub's SDA pull-up (`src/hub.rs`; rev B: R301 to 3.3 V, PA4 free), the plug
+  CC drive on PD0/PD2 (FW-17, `src/swd.rs`; rev B: `TODO(FW-17)`, the debug-accessory Rp moves to the plug CC, its
+  level not decided) and `device.board` revision "A" (else "B"). Not gated, the same on rev B: the hub reset on
+  PC13 (rev B's schematic has it there too), the hub port swap (FW-6), the variant strap (FW-22). Source:
+  `hw/b153_typec_serial/doc/hw_b153a.md` §0, `change/change_b153b.md`. Both builds checked; the default one is
+  the firmware as before.
 
 ## API (`API`)
 

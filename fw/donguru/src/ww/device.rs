@@ -363,7 +363,8 @@ impl super::server_impl::DonguruApiConsts for ServerState {
         MaxLen::new_unchecked(RefVec::new_bytes(ww_firmware_info::build_id()))
     }
 
-    // revision: the firmware is built for rev A; the variant comes from the PA10 strap (FW-22)
+    // revision: rev A with the feature `rev_a` (its workarounds, FW-47), else rev B; the variant comes from the PA10
+    // strap (FW-22)
     fn device_board_board(&self) -> BoardSummary<'_> {
         let variant = match hub::board_variant() {
             BoardVariant::Main => "Main",
@@ -372,7 +373,7 @@ impl super::server_impl::DonguruApiConsts for ServerState {
         };
         BoardSummary {
             name: MaxLen::new_unchecked("Donguru B153"),
-            revision: MaxLen::new_unchecked("A"),
+            revision: MaxLen::new_unchecked(if cfg!(feature = "rev_a") { "A" } else { "B" }),
             revision_source: RevisionSource::Assumed,
             variant: MaxLen::new_unchecked(variant),
             bom_variant: MaxLen::new_unchecked(""),

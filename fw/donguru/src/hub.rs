@@ -252,8 +252,11 @@ pub async fn bring_up(r: HubResources) -> Hub {
     set_board_variant(variant);
 
     let mut nrst = Output::new(r.pc13, Level::Low, Speed::Low);
-    // SDA pull-up R301 goes to PA4 on B153A, not to 3.3 V
+    // SDA pull-up R301 goes to PA4 on B153A, not to 3.3 V; rev B has it on 3.3 V and PA4 free
+    #[cfg(feature = "rev_a")]
     let i2c_en = Output::new(r.pa4, Level::High, Speed::Low);
+    #[cfg(not(feature = "rev_a"))]
+    let _ = r.pa4;
     Timer::after_millis(1).await;
     nrst.set_high();
     Timer::after_millis(HUB_RESET_RELEASE_SETTLE_MS).await;
@@ -262,6 +265,7 @@ pub async fn bring_up(r: HubResources) -> Hub {
     let mut hub = Hub { nrst, i2c, variant };
     hub.configure();
     // Kept for the life of the firmware: dropping it would put PA4 back to analog (hub's SDA pull-up gone)
+    #[cfg(feature = "rev_a")]
     core::mem::forget(i2c_en);
     hub
 }

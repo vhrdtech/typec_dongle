@@ -1108,7 +1108,13 @@ impl SwdHost {
 
     /// Drive both plug CC lines push-pull high: stopgap, see the module doc. Called from `src/cmsis_dap.rs` on a
     /// successful `DAP_Connect`.
+    /// Rev A only (feature `rev_a`): it reaches the plug CC only because B153A has no DPO2036.
+    // TODO(FW-17): rev B moves the debug-accessory Rp (Q201-Q203, R204/R205) to the plug CC (change_b153b.md), its
+    // level not decided yet; without `rev_a` the CC lines stay Hi-Z until then.
     pub fn drive_cc(&mut self) {
+        if cfg!(not(feature = "rev_a")) {
+            return;
+        }
         self.cc1.set_as_output(Speed::Low);
         self.cc1.set_high();
         self.cc2.set_as_output(Speed::Low);

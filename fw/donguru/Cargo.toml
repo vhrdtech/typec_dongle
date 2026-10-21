@@ -81,7 +81,11 @@ ww_ecc_flash = { path = "../../../wire_weaver/mcu/ww_ecc_flash", features = ["nm
 usb251xb = { version = "0.1.0", default-features = false, features = ["async", "defmt"] }
 
 [features]
-default = ["debug-button", "debug-api"]
+default = ["rev_a", "debug-button", "debug-api"]
+# B153A, the boards built so far: the workarounds for its known bugs (hw/b153_typec_serial/doc/hw_b153a.md §0,
+# change/change_b153b.md), FW-47. A release firmware for rev B is built without it; the first boards keep it for
+# testing and jigs. Without it the firmware follows rev B's schematic where it is known, `TODO(ID)` where not.
+rev_a = []
 # the `debug` level of the API (bring-up and production test, API-18); without it the level answers Unimplemented,
 # the API stays the same (decision D2). Can be cut if flash gets scarce.
 debug-api = []

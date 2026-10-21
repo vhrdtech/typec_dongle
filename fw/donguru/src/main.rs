@@ -62,7 +62,7 @@ assign_resources! {
     hub: HubResources {
         /// Hub RESET_N (B153A rework, hw_b153a.md §6), high releases the hub
         pc13: PC13,
-        /// HUB_I2C_EN: SDA pull-up R301 on B153A, high for I2C to work
+        /// HUB_I2C_EN: SDA pull-up R301 on B153A, high for I2C to work (feature `rev_a`); free on rev B, R301 to 3.3 V
         pa4: PA4,
         i2c2: I2C2,
         /// I2C2_SCL

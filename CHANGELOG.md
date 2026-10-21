@@ -6,6 +6,14 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Changed
+
+- Firmware: the rev A workarounds are behind the cargo feature `rev_a`, on by default, so nothing changes for
+  B153A (FW-47): PA4 driven high for the hub's SDA pull-up, the plug CC drive for SWD-host (FW-17) and
+  `device.board` revision "A". Built without it the firmware follows rev B where its schematic is known (PA4 left
+  alone, revision "B") and leaves the plug CC Hi-Z until rev B's debug-accessory Rp is decided. Both builds
+  checked, not run on a board (no rev B yet).
+
 ## [0.20.17] - 2026-10-21
 
 ### Added
