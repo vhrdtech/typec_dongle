@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.22] - 2026-10-21
+
 ### Changed
 
 - Firmware: the LEDs show the common bedrock look (embedded_bedrock `bedrock_led::look`, DEV-15): power `OK` (the same
