@@ -143,3 +143,9 @@ fw-size:
     printf "\nCounters:\n"
     cnt list "$elf"
     cnt elf add "$elf"
+
+# Fast-forward the sibling checkouts this repo builds against by path (wire_weaver, embedded_bedrock)
+[group: 'rust']
+deps-pull:
+    git -C ../wire_weaver pull --ff-only
+    git -C ../embedded_bedrock pull --ff-only
