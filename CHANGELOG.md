@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.17] - 2026-10-21
+
 ### Added
 
 - Firmware: `clock` serves `ww_timebase::Clock` with host sync (`donguru_api` 0.5.0, API-57, FW-44): `now()` and
