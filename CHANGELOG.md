@@ -6,6 +6,10 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Changed
+
+- Firmware and CLI built against WireWeaver master with TR-15 (link setup token, per-medium framing, 2bd3cc95): a wire break of the link, not of `donguru_api` (still 0.4.1). A dongle on older firmware no longer talks to this CLI and older CLIs don't talk to this firmware: flash the firmware and install the CLI together. Builds and `just test` pass; not yet tested on a board.
+
 ## [0.20.15] - 2026-10-21
 
 ### Changed
