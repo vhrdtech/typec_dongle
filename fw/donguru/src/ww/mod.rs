@@ -265,6 +265,7 @@ impl Handler for HubWatchHandler {
     fn configured(&mut self, configured: bool) {
         if configured {
             self.was_configured = true;
+            crate::boot::usb_configured();
         } else {
             self.lost();
         }

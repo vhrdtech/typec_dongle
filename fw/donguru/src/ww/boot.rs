@@ -65,8 +65,13 @@ impl ServerState {
             version_floor: 0,
             manifest_digest: None,
             boot_state: BootState::Confirmed,
+            // the ROM bootloader took over after a boot loop (FW-45); requested updates are not tracked
             last_result: LastResult {
-                outcome: Outcome::Nothing,
+                outcome: if crate::boot::fell_back() {
+                    Outcome::Recovery
+                } else {
+                    Outcome::Nothing
+                },
                 version: 0,
             },
             offers: Offers {

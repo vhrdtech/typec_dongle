@@ -143,14 +143,15 @@ bind_interrupts!(pub struct Irqs {
 #[cortex_m_rt::entry]
 fn main() -> ! {
     log::init_rtt(); // before the first log line, so RTT has the whole boot log (src/log.rs)
-    // a ROM bootloader request or the ROM's leave: before clocks and embassy, from the reset state (FW-12)
-    boot::early();
+    // a ROM bootloader request or the ROM's leave: before clocks and embassy, from the reset state (FW-12); the
+    // boot-loop count (FW-45)
+    let start = boot::early();
     // embassy's thread-mode executor, run by hand to count the CPU's idle time (FW-43)
-    cpu::run(|spawner| spawner.spawn(unwrap!(boot(spawner))))
+    cpu::run(|spawner| spawner.spawn(unwrap!(boot(spawner, start))))
 }
 
 #[embassy_executor::task]
-async fn boot(spawner: embassy_executor::Spawner) {
+async fn boot(spawner: embassy_executor::Spawner, start: boot::Start) {
     info!("donguru starting...");
     let last_reset = last_reset::boot(); // reset cause and crash record (src/last_reset.rs), logged
     let mut config = embassy_stm32::Config::default();
@@ -190,6 +191,18 @@ async fn boot(spawner: embassy_executor::Spawner) {
         .modify(|w| w.set_prften(false));
     init::init();
     let r = split_resources!(p);
+
+    // A boot loop (FW-45): the hub is all the ROM bootloader needs to be seen on USB, and the code that crashes may
+    // come after it. Hub up, then reset into the ROM.
+    if start == boot::Start::Rescue {
+        hub::bring_up(r.hub).await;
+        boot::rescue();
+    }
+    // The FW-45 test image: crashes at every start before USB is up
+    if cfg!(feature = "crash-loop-test") {
+        panic!("crash-loop-test image (FW-45)");
+    }
+    spawner.spawn(unwrap!(boot::healthy_task()));
 
     spawner.spawn(unwrap!(led::led_task(r.leds)));
     led::set(led::Led::Power, led::Mode::Breath { period_ms: 3000 });

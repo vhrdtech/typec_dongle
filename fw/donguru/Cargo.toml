@@ -99,6 +99,9 @@ uart-replay = []
 # SWD-host starts in SPI mode (FW-21, SPI2 through the SBU level shifter) instead of bit-bang; the mode can still be
 # changed at run time with `DonguruApi::swd_mode`
 swd-spi = []
+# a test image that panics at every start before USB is up, to check the boot-loop fallback into the ROM bootloader
+# (FW-45); never for a release
+crash-loop-test = []
 
 [build-dependencies]
 ww_firmware_info = { path = "../../../wire_weaver/ww_stdlib/ww_firmware_info", features = ["build"] } # FirmwareInfo facts (build.rs)

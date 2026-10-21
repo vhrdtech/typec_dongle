@@ -8,6 +8,11 @@
 //! own clocks, USB and vector table set up; [Entered::from_reset] tells that start apart, and the firmware resets
 //! once to start clean (as B135 BOOT-10).
 //!
+//! A firmware that crashes as it starts is caught by a count in the same word (FW-45, as B135 BOOT-5): every boot
+//! counts ([BootWord::count_boot]), a healthy one (USB configured, or [HEALTHY_AFTER_S] up) clears it, and after
+//! [BOOT_LOOP_LIMIT] boots without that mark the next one is a [Start::Rescue]: it brings the hub up and resets into
+//! the ROM bootloader, so the board can still be updated over USB.
+//!
 //! The MCU's USB sits behind hub U301. On rev A its RESET_N (PC13 after the rework) has a 10K pull-down, so every
 //! MCU reset would hold the hub in reset and the ROM would sit on a dead USB path: the firmware drives RESET_N from
 //! RTC_OUT1 instead ([rtc_cr_hub]), which the backup domain keeps through a system reset. Rev B gets a pull-up there
@@ -26,14 +31,53 @@ pub const ROM_BOOTLOADER: u32 = 0x1FFF_0000;
 const TAG: u32 = 0xB007_0000;
 /// Bit of the ROM bootloader request.
 const ROM_REQUEST: u32 = 1 << 15;
+/// Bit of [BootWord::fell_back].
+const FELL_BACK: u32 = 1 << 14;
+/// Bits of [BootWord::unhealthy_boots].
+const UNHEALTHY_BOOTS: u32 = 0xF;
+
+/// Boots in a row without a healthy mark after which the next boot goes to the ROM bootloader (FW-45): three
+/// failed starts, the fourth is the rescue.
+pub const BOOT_LOOP_LIMIT: u8 = 3;
+
+/// Seconds up after which a boot is healthy even without a USB host (FW-45): a dongle that only charges never
+/// configures its USB, and runs far longer than this. A firmware that crashes later than this, or after its USB was
+/// configured, is not caught (the host can still reach `device.boot` then).
+pub const HEALTHY_AFTER_S: u64 = 10;
 
 /// What the firmware keeps for its next boot in [TAMP_BKP_BOOT]. Survives a system reset, not a power cycle (no
-/// VBAT on B153), which clears it: no request.
+/// VBAT on B153), which clears it: no request, no count.
+///
+/// | bits  | field                         | set by                                   | cleared by                       |
+/// |-------|-------------------------------|------------------------------------------|----------------------------------|
+/// | 31:16 | `0xB007`, the tag             | every write                              | a backup domain reset            |
+/// | 15    | [rom_request](Self::rom_request) | `reboot(Updater)`, the rescue boot     | the early boot, before the jump  |
+/// | 14    | [fell_back](Self::fell_back)  | the rescue boot                          | `reboot(Updater)`, a power cycle |
+/// | 13:4  | free (FW-46 may take some)    |                                          |                                  |
+/// | 3:0   | [unhealthy_boots](Self::unhealthy_boots) | each boot's [count_boot](Self::count_boot) | the [healthy](Self::healthy) mark |
+///
+/// A word written by an older firmware (FW-12: tag and bit 15 only) reads the same, with no count.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct BootWord {
     /// Go to the ROM bootloader at the next boot.
     pub rom_request: bool,
+    /// The ROM bootloader took over after a boot loop (FW-45): `device.dfu.node` reports the last update as
+    /// `Outcome::Recovery` until the next requested update or a power cycle.
+    pub fell_back: bool,
+    /// Boots since the last healthy mark, this one included once counted (up to 15).
+    pub unhealthy_boots: u8,
+}
+
+/// How the firmware starts, [BootWord::count_boot]'s decision.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub enum Start {
+    /// The firmware as usual.
+    App,
+    /// [BOOT_LOOP_LIMIT] boots in a row without a healthy mark: bring the hub up, then reset into the ROM
+    /// bootloader with [BootWord::rescue].
+    Rescue,
 }
 
 impl BootWord {
@@ -44,12 +88,75 @@ impl BootWord {
         }
         Self {
             rom_request: word & ROM_REQUEST != 0,
+            fell_back: word & FELL_BACK != 0,
+            unhealthy_boots: (word & UNHEALTHY_BOOTS) as u8,
         }
     }
 
     /// The word to write to the register.
     pub fn word(self) -> u32 {
         TAG | if self.rom_request { ROM_REQUEST } else { 0 }
+            | if self.fell_back { FELL_BACK } else { 0 }
+            | (self.unhealthy_boots as u32).min(UNHEALTHY_BOOTS)
+    }
+
+    /// Counts a boot without a ROM request: the word to write back and how to start. After [BOOT_LOOP_LIMIT] boots
+    /// without a [healthy](Self::healthy) mark this one is the rescue, and the count starts over: a rescue that
+    /// itself crashes gives the firmware that many tries again before the next one.
+    pub fn count_boot(self) -> (Self, Start) {
+        if self.unhealthy_boots >= BOOT_LOOP_LIMIT {
+            (
+                Self {
+                    unhealthy_boots: 0,
+                    ..self
+                },
+                Start::Rescue,
+            )
+        } else {
+            (
+                Self {
+                    unhealthy_boots: self.unhealthy_boots + 1,
+                    ..self
+                },
+                Start::App,
+            )
+        }
+    }
+
+    /// This boot is healthy (USB configured, or [HEALTHY_AFTER_S] up): the count starts over.
+    pub fn healthy(self) -> Self {
+        Self {
+            unhealthy_boots: 0,
+            ..self
+        }
+    }
+
+    /// What the rescue boot writes before its reset: into the ROM bootloader, remembering why.
+    pub fn rescue() -> Self {
+        Self {
+            rom_request: true,
+            fell_back: true,
+            unhealthy_boots: 0,
+        }
+    }
+
+    /// What `device.boot.reboot` writes: into the ROM bootloader (`rom`) or the firmware. A requested update ends
+    /// the story of an earlier fallback; a reboot into the firmware keeps it and the count.
+    pub fn reboot(self, rom: bool) -> Self {
+        Self {
+            rom_request: rom,
+            fell_back: self.fell_back && !rom,
+            ..self
+        }
+    }
+
+    /// What the early boot writes before it jumps to the requested ROM bootloader: one request, one ROM session,
+    /// the rest stays.
+    pub fn take_request(self) -> Self {
+        Self {
+            rom_request: false,
+            ..self
+        }
     }
 }
 
@@ -131,9 +238,123 @@ mod tests {
     #[test]
     fn boot_word_round_trip() {
         for rom_request in [false, true] {
-            let w = BootWord { rom_request };
-            assert_eq!(BootWord::from_word(w.word()), w);
+            for fell_back in [false, true] {
+                for unhealthy_boots in 0..=15 {
+                    let w = BootWord {
+                        rom_request,
+                        fell_back,
+                        unhealthy_boots,
+                    };
+                    assert_eq!(BootWord::from_word(w.word()), w);
+                }
+            }
         }
+    }
+
+    #[test]
+    fn boot_word_fields() {
+        let w = BootWord {
+            rom_request: true,
+            fell_back: true,
+            unhealthy_boots: 3,
+        };
+        assert_eq!(w.word(), 0xB007_C003);
+        assert_eq!(BootWord::from_word(0xB007_C003), w);
+        // the FW-12 request word reads the same
+        assert_eq!(
+            BootWord::from_word(0xB007_8000),
+            BootWord {
+                rom_request: true,
+                ..BootWord::default()
+            }
+        );
+        // the free bits are ignored, the count saturates at its field
+        assert_eq!(
+            BootWord::from_word(0xB007_3FF2),
+            BootWord {
+                unhealthy_boots: 2,
+                ..BootWord::default()
+            }
+        );
+        let full = BootWord {
+            unhealthy_boots: 200,
+            ..BootWord::default()
+        };
+        assert_eq!(full.word(), 0xB007_000F);
+    }
+
+    /// Boots `n` times without a healthy mark from `w`, returning the word and each start.
+    fn crash_loop(mut w: BootWord, n: usize) -> (BootWord, [Start; 8]) {
+        let mut starts = [Start::App; 8];
+        for start in starts.iter_mut().take(n) {
+            let (next, s) = BootWord::from_word(w.word()).count_boot();
+            w = next;
+            *start = s;
+        }
+        (w, starts)
+    }
+
+    #[test]
+    fn crash_loop_ends_in_the_rom() {
+        use Start::*;
+        // after a power cycle: three failed starts, the fourth is the rescue
+        let (w, starts) = crash_loop(BootWord::default(), 4);
+        assert_eq!(starts[..4], [App, App, App, Rescue]);
+        assert_eq!(w.unhealthy_boots, 0);
+        // the rescue resets into the ROM; the early boot takes the request and keeps why
+        let rescue = BootWord::from_word(BootWord::rescue().word());
+        assert!(rescue.rom_request && rescue.fell_back);
+        let after = rescue.take_request();
+        assert_eq!(
+            after,
+            BootWord {
+                fell_back: true,
+                ..BootWord::default()
+            }
+        );
+        // the image written in the ROM starts and is healthy: the fallback stays to be reported
+        let (w, start) = after.count_boot();
+        assert_eq!(start, App);
+        assert!(w.healthy().fell_back && w.healthy().unhealthy_boots == 0);
+        // the same crashing image left in the ROM loops into it again
+        let (_, starts) = crash_loop(after, 4);
+        assert_eq!(starts[..4], [App, App, App, Rescue]);
+    }
+
+    #[test]
+    fn healthy_boots_never_fall_back() {
+        // a dongle on a charger: every boot reaches the healthy mark, however many resets
+        let mut w = BootWord::default();
+        for _ in 0..100 {
+            let (next, start) = w.count_boot();
+            assert_eq!(start, Start::App);
+            w = next.healthy();
+        }
+        // two crashes, then a healthy boot: the count starts over
+        let (w, _) = crash_loop(BootWord::default(), 2);
+        let (w, _) = w.count_boot();
+        let (_, starts) = crash_loop(w.healthy(), 4);
+        assert_eq!(starts[3], Start::Rescue);
+        assert!(starts[..3].iter().all(|s| *s == Start::App));
+    }
+
+    #[test]
+    fn reboot_requests() {
+        let fell_back = BootWord {
+            fell_back: true,
+            unhealthy_boots: 1,
+            ..BootWord::default()
+        };
+        // a requested update ends the fallback's story, a reboot into the firmware keeps it
+        assert_eq!(
+            fell_back.reboot(true),
+            BootWord {
+                rom_request: true,
+                unhealthy_boots: 1,
+                ..BootWord::default()
+            }
+        );
+        assert_eq!(fell_back.reboot(false), fell_back);
     }
 
     #[test]

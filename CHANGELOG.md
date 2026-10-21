@@ -6,6 +6,10 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- Firmware: a boot loop ends in the STM32 ROM bootloader on its own (FW-45), so a firmware that crashes as it starts can still be updated over USB without a probe. Every boot counts in the boot word (TAMP_BKP4R); a boot is healthy once USB is configured or after 10 s up (a dongle on a charger never trips it). After 3 boots in a row without that, the fourth brings the hub up, resets into the ROM's USB DFU (0483:df11, the same serial) and `ww stm32dfu -s SERIAL flash ELF` writes a good image. The next firmware logs it and reports `device.dfu.node` `last_result` as `Recovery` until the next requested update or a power cycle (was always `Nothing`; no API change, `donguru_api` stays 0.5.1). Cargo feature `crash-loop-test` builds an image that panics at every start, to check it.
+
 ## [0.20.19] - 2026-10-21
 
 ### Added
