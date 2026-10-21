@@ -4,10 +4,10 @@
 //! animation, its math and the driver loop are embedded_bedrock's `bedrock_led` (DEV-12, host-tested there); this
 //! module sets up the timers.
 //!
-//! NOTE: The 64-bit divide routines have one caller left, embassy's calculate_psc_arr. That function runs once, when
+//! NOTE: The 64-bit multiply and divide routines have one caller left, embassy's calculate_psc_arr. That function runs once, when
 //! the PWM drivers are created, to work out the timer settings from 1 kHz. Removing it would mean setting up TIM14
-//! and TIM15 directly through the register-level API instead of SimplePwm and ComplementaryPwm. The 64-bit multiply
-//! has a second caller, bedrock_led's ease (once per LED and tick).
+//! and TIM15 directly through the register-level API instead of SimplePwm and ComplementaryPwm. bedrock_led keeps to
+//! 32-bit math.
 
 use bedrock_led::{Channel, Indication, Pwm};
 pub use bedrock_led::{DEFAULT_PEAK, Mode};
