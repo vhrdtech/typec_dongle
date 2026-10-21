@@ -6,6 +6,15 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Changed
+
+- Firmware: the LEDs show the common bedrock look (embedded_bedrock `bedrock_led::look`, DEV-15): power `OK` (the same
+  3 s breath as before), status `HEARTBEAT` (the same 300 ms flash every 1.5 s as before), so Donguru looks like
+  rePort and B135 for the same meaning. Visible change: brightness `Low` is the common peak 48 (was 40, no reason
+  kept for it). The shared clock reports `acquiring` until it is within 2 ms of the host and slews 250 ms out in
+  about 5 s instead of 25 s (bedrock_sync, DEV-13); `clock.sync_status` carries the slew left (`slew_us`) (FW-2,
+  FW-44).
+
 ## [0.20.21] - 2026-10-21
 
 ### Added

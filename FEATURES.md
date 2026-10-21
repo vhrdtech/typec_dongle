@@ -40,7 +40,8 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - ✅ **FW-2 LEDs**: power and status LEDs on PF0 / PF1 with on / off / blink / breath animations and perceptual
   brightness (`src/led.rs`). B153A. Animation, math and driver loop from embedded_bedrock's `bedrock_led` (DEV-12,
   shared with rePort); `src/led.rs` sets up TIM14 / TIM15, `ww/leds.rs` takes the identify bookkeeping and the
-  brightness peaks from `bedrock_led::indication`.
+  brightness peaks from `bedrock_led::indication`. What they show is the common bedrock look (`bedrock_led::look`,
+  DEV-15): power `OK`, status `HEARTBEAT`.
 - ✅ **FW-3 ADC sampling**: continuous ADC1 into a DMA ring buffer with hardware oversampling and calibration;
   VDDA, die temperature, input voltage, input current, button / switch input, optionally P0 / P2 / P3
   (`src/adc.rs`, `adc::latest()`). B153A. Current sign: positive = charging the DUT (computer to DUT), negative =

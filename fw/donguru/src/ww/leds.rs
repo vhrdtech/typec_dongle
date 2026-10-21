@@ -18,8 +18,8 @@ pub(super) const NAMES: RefVec<'static, &'static str> = RefVec::Slice {
     slice: &["power", "status"],
 };
 
-/// Perceptual peak per brightness (see led.rs): the bedrock defaults with a dimmer `Low`.
-const LED_PEAKS: Peaks = Peaks { low: 40, ..PEAKS };
+/// Perceptual peak per brightness (see led.rs): the bedrock ones.
+const LED_PEAKS: Peaks = PEAKS;
 
 /// What the API last set, `led.rs` only takes it.
 pub(super) struct LedsState {

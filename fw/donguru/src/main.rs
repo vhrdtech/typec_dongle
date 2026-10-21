@@ -205,14 +205,9 @@ async fn boot(spawner: embassy_executor::Spawner, start: boot::Start) {
     spawner.spawn(unwrap!(boot::healthy_task()));
 
     spawner.spawn(unwrap!(led::led_task(r.leds)));
-    led::set(led::Led::Power, led::Mode::Breath { period_ms: 3000 });
-    led::set(
-        led::Led::Status,
-        led::Mode::Blink {
-            on_ms: 300,
-            off_ms: 1200,
-        },
-    );
+    // the bedrock looks: running, all good, and alive
+    led::set(led::Led::Power, bedrock_led::look::OK.mode);
+    led::set(led::Led::Status, bedrock_led::look::HEARTBEAT.mode);
 
     // Before the ADC task, which feeds its guard: plug and header VBUS off, data connected, relay open (API-11)
     power::init(r.pwr);
