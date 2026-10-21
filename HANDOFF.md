@@ -1,7 +1,0 @@
-# Handoff: FW-46 hub kept across MCU resets (session donguru-hub-keep)
-
-Done (committed): boot keeps the hub when RTC_CR still runs it and the full readback (`donguru_board::hub::check`) matches this firmware's config and the attach bit; otherwise reset pulse + config. A hub that NAKs at boot (host-suspended, Linux autosuspend delay 0 on hubs) is kept unverified and read back by `watchdog_task` once USB wakes it (5 s limit). Tested on B153A: probe flash, 3 ww reboots, ROM update keep the hub (same host device number); changed hub config (power-on time) reconfigures both ways; FW-18 recovery via RTC_CR POL pulse over J-Link, 3x.
-
-Next: the Done test with a DUT on the plug. B129A (self-powered, ext 5 V) is plugged in but does not enumerate on hub port 2 and SWD to it times out; asked parent (21 Oct 21:10). With a DUT: check its tty survives `ww dfu reboot --into app` and `just update 204B319B5431`. Then FW-46 -> ✅ in FEATURES, CHANGELOG line "Not yet run with a DUT" updated.
-
-Gotchas: probe-rs attaches stall the core (ADC DMA overruns) and once ended in a DefaultHandler panic (FW-48). RTC_CR reads fine over the J-Link while running, and the pulse sequence is WPR 0xCA, 0x53, CR 0x00200000, CR 0x00300000, WPR 0xFF. `ww counters`/`ww report` need `--elf target/thumbv6m-none-eabi/release/donguru` for a build not in the ELF cache. The board was lent to session sync-converge (~20 min, 21:13); flash this branch back after (`just update 204B319B5431`).

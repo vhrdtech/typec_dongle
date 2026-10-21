@@ -58,6 +58,8 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   Tested 14 Oct 2026 on B153A (J-Link via omarchy-m1, P2534#14oct-1402): HUB-1 (config/attach) and HUB-5
   (VID/PID readback, now `0424/2512` instead of 0) confirmed, `hw/b153_typec_serial/test/verify_b153a.md`.
   HUB-7 (the port swap itself, needs a device on the plug) not yet done — landing as is, HUB-7 later.
+  21 Oct 2026 (FW-46): B129A on the plug enumerated at full speed behind the port 2 swap, so the swap is right on
+  B153A (unswapped it comes up low-speed).
 - 📋 **FW-7 USART on SBU with automatic TX/RX flip**: bridge to the host (CDC-ACM or over WireWeaver), flip by
   cable orientation. ^revB
 - 🚧 **FW-8 Power switch and USB data switches** per downstream port, with safe defaults at boot: plug VBUS (U601),
@@ -400,7 +402,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   the good image back with `ww stm32dfu flash --follow`, `ww dfu status` last update `Recovery` -> `just update`
   clears it to `Nothing`; 5 `reboot --into app` in a row stay in the firmware. Not tested: the rescue after a power
   cycle (hub not yet held, the rescue's own bring-up), the 10 s mark without a USB host. tpm P2534#21oct-1844. ^v1.0
-- 🚧 **FW-46 Hub kept across MCU resets**: the hub stays attached and configured through a firmware update, crash or
+- ✅ **FW-46 Hub kept across MCU resets**: the hub stays attached and configured through a firmware update, crash or
   reset (the FW-12 RTC_OUT1 hold on rev A, the RESET_N pull-up on rev B), so a DUT's USB link on a downstream port
   survives them; only the MCU's own device on port 1 re-enumerates. At boot, after anything but a power-on or
   brown-out reset and with the reset line still high (rev A: RTC_CR, `donguru_board::boot::rtc_runs_hub`), the
@@ -415,8 +417,12 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   through a probe flash (hub suspended, verified 1 s after boot), 3 `ww dfu reboot --into app` and a ROM update
   (`just update`, kept in 7 ms); a firmware with another hub config (power-on time 100 -> 50 ms) written by ROM update
   found `Differs { register: 0x10 }` and reconfigured, so did the way back. FW-18 still recovers (RTC_CR POL pulsed
-  through the J-Link, 3 times). Open: the Done test with a DUT on the plug (B129A on the plug does not enumerate
-  yet, P2534#21oct-1844b); a bus-powered DUT loses power at every MCU reset anyway (FW-49). tpm P2534#21oct-1844b.
+  through the J-Link, 3 times). With a DUT on the plug (B129A, self-powered, embassy `usb_serial` echo flashed
+  over Donguru's own SWD-host): 5 `ww dfu reboot --into app` in a row, its tty open and echoing every 100 ms the
+  whole time, 446 of 446 echoes back, the DUT the same host device throughout. Seen once: in the first run, right
+  after B129A had been flashed and enumerated, it dropped and re-enumerated 1 s after the first reboot; not again.
+  A ROM update keeps the hub but not the DUT's link: the ROM drives the plug data switch off (FW-50). A bus-powered
+  DUT loses power at every MCU reset (FW-49). tpm P2534#21oct-1844b.
 - 🧪 **FW-47 Rev A workarounds behind the feature `rev_a`**: on by default while B153A is the only board; a rev B
   release firmware is built without it, the first boards keep it for testing and jigs (Roman, 21 Oct 2026). Gated:
   PA4 `HUB_I2C_EN` driven high for the hub's SDA pull-up (`src/hub.rs`; rev B: R301 to 3.3 V, PA4 free), the plug
@@ -436,6 +442,13 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   ADC reads. A bus-powered DUT on the plug therefore loses its link even though the hub keeps it (FW-46). Needs a
   hold that survives the reset (no backup-domain output on PA6; rev B schematic) and a decision on safety: VBUS left
   on into a ROM session nobody supervises (no guard running). tpm P2534#21oct-1844b.
+- 🐛 **FW-50 The ROM bootloader cuts the DUT's USB data (rev A)**: DATA_CUT (PA9, U701 S) is also USART1_TX of
+  the STM32 ROM bootloader, which opens all its interfaces at once: in the ROM DFU (FW-12) PA9 is AF1 and idles high
+  (B153A, 21 Oct 2026, J-Link: GPIOA MODER 0xe82baaaf, AFRH 0x110, IDR bit 9 set), so U701 switches the plug data to
+  the test points and a DUT drops off the hub ~1 s after the ROM starts, for the whole ~43 s update, and enumerates
+  again once the firmware runs (the hub itself stays, FW-46). PA10 (SBU_TO_USB, U901 S) is USART1_RX there, in
+  the same way. Nothing the firmware can do; for rev B: DATA_CUT (and SBU_TO_USB) on pins the ROM leaves alone
+  (AN2606, STM32G0B1 bootloader pins), `hw/b153_typec_serial/change/change_b153b.md`.
 
 ## API (`API`)
 
