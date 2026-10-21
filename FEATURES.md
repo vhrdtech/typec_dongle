@@ -382,7 +382,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   so `donguru_api` never answered over USB during this session; needs a replug or a host-side USB port reset on
   omarchy-m1 to retest, nothing pointing at this firmware's own code (no panic in 227 s of clean running, and the
   same reset/enumeration failures the board showed before the two LED/clock pieces landed on it today).
-- 🧪 **FW-45 Boot loop into the ROM bootloader**: after 3 boots in a row without a healthy mark the fourth goes to
+- ✅ **FW-45 Boot loop into the ROM bootloader**: after 3 boots in a row without a healthy mark the fourth goes to
   the ROM DFU on its own (as B135 BOOT-5), so a firmware that crashes early can still be updated over USB. Every
   boot counts in the FW-12 boot word (`donguru_board::boot::BootWord`, its doc has the bit layout; host tests);
   healthy is USB configured or 10 s up (`HEALTHY_AFTER_S`), so a dongle that only charges never trips it
@@ -390,7 +390,11 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   request (`main.rs`, `boot::rescue`): after a power cycle no firmware has configured the hub yet. The next firmware
   logs it and reports `device.dfu.node` `last_result` `Recovery` until a requested update or a power cycle. Not
   caught: a crash after USB is configured or after 10 s, a crash in the hub bring-up itself. Test image: feature
-  `crash-loop-test`. tpm P2534#21oct-1844. ^v1.0
+  `crash-loop-test`. Tested on B153A (omarchy-m1, 21 Oct 2026), all over USB, no probe: the test image written
+  with `ww stm32dfu flash` -> 0483:df11 behind the hub (same serial) about 1 s after the ROM's jump, stays there ->
+  the good image back with `ww stm32dfu flash --follow`, `ww dfu status` last update `Recovery` -> `just update`
+  clears it to `Nothing`; 5 `reboot --into app` in a row stay in the firmware. Not tested: the rescue after a power
+  cycle (hub not yet held, the rescue's own bring-up), the 10 s mark without a USB host. tpm P2534#21oct-1844. ^v1.0
 - 📋 **FW-46 Hub kept across MCU resets**: the hub stays attached and configured through a firmware update, crash or
   reset (the FW-12 RTC_OUT1 hold on rev A, the RESET_N pull-up on rev B), so the DUT's USB link survives them; the
   boot checks the hub's config over I2C and pulses its reset only when it differs. tpm P2534#21oct-1844b.
