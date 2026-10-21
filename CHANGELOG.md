@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.19] - 2026-10-21
+
 ### Added
 
 - `dg fw version` shows the running firmware (name, version, git commit, profile, API version) and `dg fw update
