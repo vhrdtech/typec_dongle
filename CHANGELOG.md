@@ -6,8 +6,6 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
-## [0.20.18] - 2026-10-21
-
 ### Added
 
 - Firmware update over USB without a probe, through the STM32 ROM bootloader (FW-12, API-58): `device.boot`
@@ -27,6 +25,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
   full 96-bit UID stays in `device.uid` and `device.board`.
 - Firmware: the backup-register counters (`bkp_cnt!`) get four of the five TAMP registers; the fifth is the boot
   word (FW-12).
+
 - Firmware: the rev A workarounds are behind the cargo feature `rev_a`, on by default, so nothing changes for
   B153A (FW-47): PA4 driven high for the hub's SDA pull-up, the plug CC drive for SWD-host (FW-17) and
   `device.board` revision "A". Built without it the firmware follows rev B where its schematic is known (PA4 left
