@@ -8,7 +8,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ### Changed
 
-- Firmware and CLI built against WireWeaver master with TR-15 (link setup token, per-medium framing, 2bd3cc95): a wire break of the link, not of `donguru_api` (still 0.4.1). A dongle on older firmware no longer talks to this CLI and older CLIs don't talk to this firmware: flash the firmware and install the CLI together. Builds and `just test` pass; not yet tested on a board.
+- Firmware and CLI built against WireWeaver master with TR-15 (link setup token, per-medium framing, 2bd3cc95): a wire break of the link, not of `donguru_api` (still 0.4.1). A dongle on older firmware no longer talks to this CLI and older CLIs don't talk to this firmware: flash the firmware and install the CLI together. Tested 21 Oct 2026 on B153A (omarchy-m1, flashed by J-Link): the new CLI against the 0.20.14 firmware stops with "The device speaks link 0.5.0 (without setup token) ... update the older side" (exit 1); after the flash `dg info`, `device list`, `device reset-cause`, `device counters --elf`, `power status`, `power meter`, `power watch` and `settings show` work, 30 reconnects in a row all connect, counters all 0.
 
 ## [0.20.15] - 2026-10-21
 
