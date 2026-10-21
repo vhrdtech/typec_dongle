@@ -6,8 +6,6 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
-## [0.20.15] - 2026-10-21
-
 ### Changed
 
 - Firmware: the LED animation, its math and the task loop come from embedded_bedrock's `bedrock_led` (DEV-12, shared with rePort); `src/led.rs` only sets up TIM14 / TIM15, `ww/leds.rs` takes the brightness peaks (`Low` stays 40) and the identify busy / cap from `bedrock_led::indication` (FW-2, API-9). Same timings, defaults and API; the one change is the smoothstep, now rePort's exact one, still in 32-bit multiplies only: it rises monotonically (the old one stepped back by a count in 7932 places) and moves a compare value by at most 6 of 64000 (0.01 %), checked against the old loop over 2 million random ticks, otherwise identical. Release FLASH +32 B (400372 → 400404 B): the eight LED signals became one zero-initialised block in `.bss` behind one critical section per tick (was eight), `max_duty_cycle` is read once instead of every tick. LED task 192 → 248 B of RAM, its poll frame 112 → 128 B of stack (plus 16 B in `Leds::level` as before in `State::level`, 32 B in `Leds::set` on a mode change); the ease about 20 cycles per LED and tick (was about 16). Not run on a B153A yet.
