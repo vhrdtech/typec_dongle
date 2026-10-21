@@ -22,6 +22,7 @@ ww_stream = { path = "../../wire_weaver/ww_stream", features = ["std"], optional
 ww_adc = { path = "../../wire_weaver/ww_stdlib/ww_adc", features = ["std"] }
 ww_board_info = { path = "../../wire_weaver/ww_stdlib/ww_board_info", features = ["std"] }
 ww_counters = { path = "../../wire_weaver/ww_stdlib/ww_counters", features = ["std", "host"] }
+ww_dfu = { path = "../../wire_weaver/ww_stdlib/ww_dfu", features = ["std"] }
 ww_date_time = { path = "../../wire_weaver/ww_stdlib/ww_date_time", features = ["std"] }
 ww_firmware_info = { path = "../../wire_weaver/ww_stdlib/ww_firmware_info", features = ["std"] }
 ww_gpio = { path = "../../wire_weaver/ww_stdlib/ww_gpio", features = ["std"] }

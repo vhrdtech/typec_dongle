@@ -9,6 +9,7 @@
 //! not implemented yet answer `Unimplemented`. See https://github.com/vhrdtech/wire_weaver (`docs/`).
 
 mod adc;
+mod boot;
 mod clock;
 mod debug;
 mod device;
@@ -328,7 +329,7 @@ pub async fn start(
     let mut config = UsbConfig::new(0xc0de, 0xcafe);
     config.manufacturer = Some("donguru");
     config.product = Some("donguru");
-    config.serial_number = Some(embassy_stm32::uid::uid_hex());
+    config.serial_number = Some(crate::boot::usb_serial());
     // Required for Windows compatibility with more than one function, see wire_weaver_usb_embassy::usb_init.
     config.device_class = 0xEF;
     config.device_sub_class = 0x02;

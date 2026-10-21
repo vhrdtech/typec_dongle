@@ -45,7 +45,7 @@ dap-rs = { version = "0.2", default-features = false, features = ["usb-hs"] }
 donguru_dap = { path = "../../donguru_dap" }
 # board logic, no_std, unit-tested on the host: hub (U301) variant detection and per-variant config, VBUS modes and
 # the guard
-donguru_board = { path = "../../donguru_board" }
+donguru_board = { path = "../../donguru_board", features = ["defmt"] }
 # WireWeaver: API crate in the repo root, served by src/ww.rs. wire_weaver from the local checkout next to this repo
 donguru_api = { path = "../../donguru_api", features = ["defmt"] }
 wire_weaver = { path = "../../../wire_weaver/wire_weaver", default-features = false, features = ["defmt"] }
@@ -61,6 +61,7 @@ ww_si = { path = "../../../wire_weaver/ww_stdlib/ww_si", default-features = fals
 ww_adc = { path = "../../../wire_weaver/ww_stdlib/ww_adc", default-features = false }
 ww_board_info = { path = "../../../wire_weaver/ww_stdlib/ww_board_info", default-features = false }
 ww_counters = { path = "../../../wire_weaver/ww_stdlib/ww_counters", default-features = false }
+ww_dfu = { path = "../../../wire_weaver/ww_stdlib/ww_dfu", default-features = false, features = ["defmt"] }
 ww_firmware_info = { path = "../../../wire_weaver/ww_stdlib/ww_firmware_info", default-features = false, features = ["build-id", "cortex-m", "defmt"] }
 ww_gpio = { path = "../../../wire_weaver/ww_stdlib/ww_gpio", default-features = false }
 ww_i2c = { path = "../../../wire_weaver/ww_stdlib/ww_i2c", default-features = false }

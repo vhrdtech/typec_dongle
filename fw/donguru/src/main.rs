@@ -2,6 +2,7 @@
 #![no_main]
 
 mod adc;
+mod boot;
 mod button;
 mod cmsis_dap;
 mod cpu;
@@ -25,7 +26,7 @@ use cortex_m_rt::exception;
 use embassy_stm32::{
     Peri, bind_interrupts, dma, peripherals,
     rcc::{
-        AHBPrescaler, APBPrescaler, Hsi, Hsi48Config, HsiSysDiv, Pll, PllMul, PllPDiv, PllPreDiv,
+        AHBPrescaler, APBPrescaler, LsConfig, Hsi, Hsi48Config, HsiSysDiv, Pll, PllMul, PllPDiv, PllPreDiv,
         PllRDiv, PllSource, Sysclk,
         mux::{Adcsel, Usbsel},
     },
@@ -141,13 +142,15 @@ bind_interrupts!(pub struct Irqs {
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
+    log::init_rtt(); // before the first log line, so RTT has the whole boot log (src/log.rs)
+    // a ROM bootloader request or the ROM's leave: before clocks and embassy, from the reset state (FW-12)
+    boot::early();
     // embassy's thread-mode executor, run by hand to count the CPU's idle time (FW-43)
     cpu::run(|spawner| spawner.spawn(unwrap!(boot(spawner))))
 }
 
 #[embassy_executor::task]
 async fn boot(spawner: embassy_executor::Spawner) {
-    log::init_rtt(); // before the first log line, so RTT has the whole boot log (src/log.rs)
     info!("donguru starting...");
     let last_reset = last_reset::boot(); // reset cause and crash record (src/last_reset.rs), logged
     let mut config = embassy_stm32::Config::default();
@@ -173,6 +176,10 @@ async fn boot(spawner: embassy_executor::Spawner) {
     });
     config.rcc.mux.adcsel = Adcsel::Pll1P;
     config.rcc.mux.usbsel = Usbsel::Hsi48;
+    // RTC from LSI, embassy's default, said here: the backup domain (TAMP registers: the boot word, bkp_cnt!; RTC_CR:
+    // the rev A hub hold, FW-12) survives a system reset only while this matches what BDCR holds, else embassy resets
+    // the domain to change it
+    config.rcc.ls = LsConfig::default_lsi();
     let p = embassy_stm32::init(config);
     // Flash prefetch off again: embassy-stm32 main turns it on with the 2 wait states 64 MHz needs (embassy#7276), but
     // on the G0B1 a prefetch can fail on a branch or call into the other flash bank (ES0548 2.2.10, every silicon
@@ -200,6 +207,7 @@ async fn boot(spawner: embassy_executor::Spawner) {
 
     spawner.spawn(unwrap!(adc::adc_task(r.adc, adc::ChannelSet::Base)));
     spawner.spawn(unwrap!(button::button_task()));
+    spawner.spawn(unwrap!(boot::reboot_task()));
 
     // The MCU's USB is on hub port 1: nothing enumerates until the hub is configured and attached. The watchdog
     // (FW-18) redoes this after a brown-out resets the hub without resetting the MCU (P2534#12oct-1819).

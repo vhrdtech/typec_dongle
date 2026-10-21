@@ -11,7 +11,7 @@ target = "thumbv6m-none-eabi"
 DEFMT_LOG = "debug,donguru=debug"
 # DEFMT_RTT_BUFFER_SIZE = "4096" # larger buffer avoids losing output in bursts (init)
 CNT_RAM_BUFFER_SIZE_WORDS = "64"
-CNT_BKP_BUFFER_SIZE_WORDS = "5" # must fit into BKPSRAM in memory.x
+CNT_BKP_BUFFER_SIZE_WORDS = "4" # must fit into BKPSRAM in memory.x (the fifth register is the boot word, FW-12)
 
 # [unstable]
 # build-std = ["core"]                              # smaller binaries (nightly + rust-src)

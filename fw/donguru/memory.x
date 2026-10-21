@@ -16,8 +16,9 @@ MEMORY
   /* SRAM : ORIGIN = 0x20000000, LENGTH = 144K */
   RAM : ORIGIN = 0x20000000, LENGTH = 144K
 
-  /* BKPSRAM (reg): TAMP backup registers, retained across resets (not power loss without VBAT); cnt.x places the BKP counters here */
-  BKPSRAM : ORIGIN = 0x4000B100, LENGTH = 0x14
+  /* BKPSRAM (reg): TAMP_BKP0R..3R, retained across resets (not power loss without VBAT); cnt.x places the BKP counters
+     here. TAMP_BKP4R (0x4000B110) is the boot word (FW-12, donguru_board::boot::TAMP_BKP_BOOT), not cnt's */
+  BKPSRAM : ORIGIN = 0x4000B100, LENGTH = 0x10
 }
 
 /* Helper symbols: additional RAM banks (see init_ram.rs), flash partitions */

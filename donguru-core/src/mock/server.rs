@@ -170,6 +170,66 @@ impl MockServer {
         Ready(())
     }
 
+    // ---- ww_dfu::BootControl at device.boot, donguru_api::Dfu at device.dfu (API-58) ----
+
+    async fn device_boot_boot_state(
+        &mut self,
+        _cx: &mut Context<'_, impl EventOut>,
+    ) -> RpcResult<ww_dfu::BootState> {
+        Ready(ww_dfu::BootState::Confirmed)
+    }
+
+    async fn device_boot_confirm(
+        &mut self,
+        _cx: &mut Context<'_, impl EventOut>,
+    ) -> RpcResult<Result<(), ww_dfu::Error>> {
+        Ready(Ok(()))
+    }
+
+    async fn device_boot_revert(
+        &mut self,
+        _cx: &mut Context<'_, impl EventOut>,
+    ) -> RpcResult<Result<(), ww_dfu::Error>> {
+        Ready(Err(ww_dfu::Error::Unsupported))
+    }
+
+    async fn device_boot_reboot(
+        &mut self,
+        _cx: &mut Context<'_, impl EventOut>,
+        into: ww_dfu::BootTarget,
+    ) -> RpcResult<Result<(), ww_dfu::Error>> {
+        self.state.reboots.push(into);
+        Ready(Ok(()))
+    }
+
+    async fn device_dfu_node_node(
+        &mut self,
+        _cx: &mut Context<'_, impl EventOut>,
+    ) -> RpcResult<ww_dfu::NodeInfo<'_>> {
+        Ready(ww_dfu::NodeInfo {
+            role: ww_dfu::Role::App,
+            profile: ww_dfu::Profile::InPlace,
+            product: MaxLen::new_unchecked("Donguru B153"),
+            geometry_id: 0,
+            product_id: 0,
+            seal: ww_dfu::Seal::Unsigned,
+            app_version: None,
+            version_floor: 0,
+            manifest_digest: None,
+            boot_state: ww_dfu::BootState::Confirmed,
+            last_result: ww_dfu::LastResult {
+                outcome: ww_dfu::Outcome::Nothing,
+                version: 0,
+            },
+            offers: ww_dfu::Offers {
+                boot_control: true,
+                inventory: false,
+                stage: false,
+                stage_bulk: false,
+            },
+        })
+    }
+
     // ---- ww_board_info::BoardInfo at device.board ----
 
     // ---- ww_uid::Uid at device.uid ----

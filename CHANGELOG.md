@@ -6,7 +6,25 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- Firmware update over USB without a probe, through the STM32 ROM bootloader (FW-12, API-58): `device.boot`
+  (`ww_dfu::BootControl`) and `device.dfu.node` in `donguru_api` 0.5.1, a wire-compatible addition (older CLIs keep
+  working with this firmware, this CLI with older firmware). `ww dfu -s SERIAL reboot` puts the dongle into the ROM's
+  USB DFU behind its hub, `ww stm32dfu -s SERIAL flash ELF --wait 10 --follow` writes it and waits for the firmware
+  to come back; `just update SERIAL` does both, `docs/user/firmware-update.md` explains it. Needs a `ww` from
+  wire_weaver master (`ww stm32dfu`). On rev A the hub's RESET_N is driven from RTC_OUT1 so the hub stays up through
+  the resets. Tested on B153A (omarchy-m1, 21 Oct 2026): ROM DFU up in under 0.5 s, 415 KB written and verified in
+  42.5-42.9 s, firmware back right after, 5 times in a row without a power cycle (44 s per update end to end).
+
 ### Changed
+
+- The firmware's USB serial number is now the 12-hex form the STM32 ROM bootloader reports for the chip
+  (`204B319B5431` instead of `530016000A50315448313520` on the B153A), so `ww` follows the dongle into the ROM and
+  back (FW-12). `--device` / `-d`, `ww list` and `ww -s` show and match the new serial; labels are unaffected. The
+  full 96-bit UID stays in `device.uid` and `device.board`.
+- Firmware: the backup-register counters (`bkp_cnt!`) get four of the five TAMP registers; the fifth is the boot
+  word (FW-12).
 
 - Firmware: the rev A workarounds are behind the cargo feature `rev_a`, on by default, so nothing changes for
   B153A (FW-47): PA4 driven high for the hub's SDA pull-up, the plug CC drive for SWD-host (FW-17) and

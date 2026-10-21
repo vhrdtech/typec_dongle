@@ -69,8 +69,21 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `memory.x`) and `device.board` (`ww_board_info`: "Donguru B153" rev A assumed, variant from the PA10 strap, UID as
   serial), `fw/donguru/src/ww/device.rs` (API-9). Template upgrade to embedded_bedrock `ec04ab4`. Tested 15 Oct 2026 on B153A
   (`ww info`). ^revB
-- 📋 **FW-12 Firmware update without a probe**: STM32 system bootloader via the boot switch first, then a custom
-  bootloader; the CLI side is CLI-10. ^v1.0
+- ✅ **FW-12 Firmware update without a probe**: through the STM32 ROM bootloader (USB DFU), decided by Roman 21 Oct
+  2026 as B135 did (BOOT-9, BOOT-10). `device.boot.reboot(Updater)` (API-58) writes a request into the boot word
+  (TAMP_BKP4R, the fifth backup register; `bkp_cnt!` keeps the four below) and resets; first thing in `main`
+  (`fw/donguru/src/boot.rs`) the next boot clears it and jumps to the ROM at 0x1FFF0000 from the reset state. The
+  ROM's leave jumps back with its VTOR and an interrupt enabled: the boot sees it (`Entered::from_reset`: SWS, USB
+  clock, NVIC, VTOR; on B153A the ROM left SWS on HSISYS, VTOR 0x1FFF0000 and one IRQ gave it away) and resets
+  once. The hub stays up through all of it on rev A because RTC_OUT1 drives its RESET_N on PC13 (`src/hub.rs`
+  `ResetPin`, RTC_CR OSEL alarm A + POL; feature `rev_a`, FW-47): the backup domain keeps the level through a system
+  reset. The bring-up still pulses and reconfigures the hub at every start (through RTC_CR POL), as before. The USB
+  serial is the ROM's form for this chip (`donguru_board::boot::rom_serial`), so `ww` follows the board into the
+  ROM and back. Pure logic in `donguru_board::boot` (host tests). `just update SERIAL`, user page
+  `docs/user/firmware-update.md`. Tested on B153A (omarchy-m1, 21 Oct 2026): reboot -> 0483:df11 behind the hub in
+  under 0.5 s -> `ww stm32dfu flash --wait 10 --follow` 415 KB written and verified in 42.5-42.9 s -> firmware back,
+  5 times in a row, no power cycle; `reboot --into app` too. Not covered: a firmware that does not start (FW-45),
+  BOOT0 (nBOOT_SEL = 1 on B153A, change_b153b.md). ^v1.0
 - ✅ **FW-13 HardFault handling for production**: `HardFault` and the panic handler save a `bedrock_crash` record
   (cause, registers, 32 stack words, message, uptime, build id) in `.uninit` RAM and reset instead of looping
   (`fw/donguru/src/main.rs`, `src/last_reset.rs`); the next boot logs it and serves it as `device.last_reset`
@@ -369,6 +382,13 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   so `donguru_api` never answered over USB during this session; needs a replug or a host-side USB port reset on
   omarchy-m1 to retest, nothing pointing at this firmware's own code (no panic in 227 s of clean running, and the
   same reset/enumeration failures the board showed before the two LED/clock pieces landed on it today).
+- 📋 **FW-45 Boot loop into the ROM bootloader**: after a few boots in a row without a healthy mark the early boot
+  goes to the ROM DFU on its own (as B135 BOOT-5), so a firmware that crashes early can still be updated over USB.
+  The count goes into the FW-12 boot word; "healthy" must not trip on a dongle that only charges (no USB host).
+  tpm P2534#21oct-1844. ^v1.0
+- 📋 **FW-46 Hub kept across MCU resets**: the hub stays attached and configured through a firmware update, crash or
+  reset (the FW-12 RTC_OUT1 hold on rev A, the RESET_N pull-up on rev B), so the DUT's USB link survives them; the
+  boot checks the hub's config over I2C and pulses its reset only when it differs. tpm P2534#21oct-1844b.
 - 🧪 **FW-47 Rev A workarounds behind the feature `rev_a`**: on by default while B153A is the only board; a rev B
   release firmware is built without it, the first boards keep it for testing and jigs (Roman, 21 Oct 2026). Gated:
   PA4 `HUB_I2C_EN` driven high for the hub's SDA pull-up (`src/hub.rs`; rev B: R301 to 3.3 V, PA4 free), the plug
@@ -534,6 +554,10 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `set_time_of_day` always `WrongState`, `info().sync_formats` empty. Code: `fw/donguru/src/ww/clock.rs`
   (`ClockState`), `fw/donguru/src/sync.rs` (the static `SYNC`). Tested against the mock and `just test`/`just
   lint`; flashed and run on B153A 21 Oct 2026 (FW-44 has the board test and what blocked `ww sync` there).
+- ✅ **API-58 `device.boot` and `device.dfu.node`** (`donguru_api` 0.5.1, `ww_dfu`): `BootControl` with
+  `reboot(App / Updater)` (the reply goes out, the reset 50 ms later), `boot_state` always `Confirmed`, `confirm`
+  `Ok`, `revert` `Unsupported`; `node` says `Profile::InPlace`, unsealed, `boot_control` only. `Updater` is the
+  STM32 ROM bootloader (FW-12). Code: `fw/donguru/src/ww/boot.rs`. `ww dfu reboot` tested on B153A 21 Oct 2026.
 
 - 📋 **API-20 SBU UART as CDC-ACM**: the SBU USART also as `/dev/ttyACM*`; one owner at a time (ACM while the tty is
   open, else WireWeaver), the owner shown in `sbu.function`, WireWeaver gets `InUse`, `sbu.release` overrides. With
@@ -677,7 +701,8 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 🚧 **CLI-8 `udev`**: `generate` writes the rule (uaccess / group / all); `install`, `uninstall`, `status` are stubs.
 - ⬜ **CLI-9 `config generate / show / path / validate`**: stub. Layering per the design doc (defaults, system,
   user, project file, `DONGURU_*`, flags).
-- 📋 **CLI-10 `fw version` / `fw update`**: in the design doc, not in the command tree yet. Needs FW-11, FW-12.
+- 📋 **CLI-10 `fw version` / `fw update`**: in the design doc, not in the command tree yet. FW-11 and FW-12 are
+  there: `ww dfu reboot` + `ww stm32dfu flash --wait --follow` (`just update`) do it today. tpm P2534#21oct-1844c.
 - ✅ **CLI-11 `power status / on / off / cycle / meter / watch / totals`** (`donguru-cli/src/commands/power.rs`):
   `status` tables plug + header + meter in one read; `on` (`--allow-voltage`, `--trip`) and `off` read back `vbus`
   after the write and fail the exit code unless it ended up where asked (`On` / `Off`), covering a trip or a latched

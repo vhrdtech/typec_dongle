@@ -108,6 +108,8 @@ pub struct MockState {
     pub last_reset_boots_since_crash: u32,
     /// Boots since `clear()`.
     pub boot_count: u32,
+    /// Targets of the `device.boot.reboot` calls, in call order (API-58); the mock does not reset.
+    pub reboots: Vec<ww_dfu::BootTarget>,
     pub settings: MockSettings,
     pub leds_mode: ww_indication::Mode,
     pub leds_brightness: ww_indication::Brightness,
@@ -167,6 +169,7 @@ impl Default for MockState {
             last_reset_message: String::new(),
             last_reset_boots_since_crash: 0,
             boot_count: 1,
+            reboots: Vec::new(),
             settings: MockSettings::default(),
             leds_mode: ww_indication::Mode::Normal,
             leds_brightness: ww_indication::Brightness::Normal,

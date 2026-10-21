@@ -33,7 +33,7 @@ use embassy_stm32::gpio::{Flex, Level, Output, Pull, Speed};
 use embassy_stm32::i2c::{I2c, Master};
 use embassy_stm32::mode::Blocking;
 use embassy_stm32::pac;
-use embassy_stm32::peripherals::PA10;
+use embassy_stm32::peripherals::{PA10, PC13};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::signal::Signal;
 use embassy_time::{Duration, Instant, Timer};
@@ -119,12 +119,61 @@ pub fn request_recovery() {
     RECOVERY_REQUEST.signal(());
 }
 
+/// The hub's RESET_N on PC13 (B153A rework, hw_b153a.md §6; rev B's schematic has it there too).
+///
+/// Rev A (feature `rev_a`): R304 pulls it low, so every MCU reset would hold the hub in reset, and the ROM
+/// bootloader (FW-12) would sit on a dead USB path. It is driven from RTC_OUT1 instead of the GPIO: RTC_CR (in the
+/// backup domain) keeps the level through a system reset, the hub stays attached through the reset into the ROM and
+/// the reset after the ROM's leave (`donguru_board::boot::rtc_cr_hub`, values tested on B153A 21 Oct 2026). A power
+/// cycle resets the backup domain: PC13 back to the pull-down, as before. Rev B: a pull-up instead of R304
+/// (change_b153b.md), the GPIO drives it.
+struct ResetPin {
+    #[cfg(not(feature = "rev_a"))]
+    pin: Output<'static>,
+}
+
+impl ResetPin {
+    /// Holds the hub in reset.
+    fn new(pc13: Peri<'static, PC13>) -> Self {
+        #[cfg(feature = "rev_a")]
+        {
+            // RTC_OUT1 overrides the GPIO while RTC_CR.OSEL selects it: the pin stays in its reset state
+            let _ = pc13;
+            let mut pin = ResetPin {};
+            pin.set(false);
+            pin
+        }
+        #[cfg(not(feature = "rev_a"))]
+        ResetPin {
+            pin: Output::new(pc13, Level::Low, Speed::Low),
+        }
+    }
+
+    /// Low (hub in reset) or high (`run`).
+    fn set(&mut self, run: bool) {
+        #[cfg(feature = "rev_a")]
+        {
+            // RTC and backup domain clocked and writable since init::init
+            let rtc = pac::RTC;
+            rtc.wpr().write_value(pac::rtc::regs::Wpr(0xCA));
+            rtc.wpr().write_value(pac::rtc::regs::Wpr(0x53));
+            rtc.cr()
+                .modify(|w| w.0 = donguru_board::boot::rtc_cr_hub(w.0, run));
+            // any wrong key locks again
+            rtc.wpr().write_value(pac::rtc::regs::Wpr(0xFF));
+        }
+        #[cfg(not(feature = "rev_a"))]
+        self.pin
+            .set_level(if run { Level::High } else { Level::Low });
+    }
+}
+
 /// Owns the hub's reset pin and I2C bus for the life of the firmware, so [`watchdog_task`] can redo the
 /// bring-up without re-touching PA4 (the SDA pull-up supply, driven high for good by [`bring_up`]). The bus
 /// itself stays a plain [`I2c`]: [`dev`](Hub::dev) wraps `&mut` it in a fresh [`Usb251xb`] per call instead of
 /// the driver owning it outright.
 pub struct Hub {
-    nrst: Output<'static>,
+    nrst: ResetPin,
     i2c: I2c<'static, Blocking, Master>,
     /// Read once from the PA10 strap in [`bring_up`], reused by every [`configure`](Hub::configure) /
     /// [`recover`](Hub::recover): the fitted hub does not change at runtime, so there is nothing to re-read.
@@ -201,9 +250,9 @@ impl Hub {
     /// (module doc): `self.variant` carries over from [`bring_up`].
     async fn recover(&mut self, why: &str) {
         warn!("hub: lost ({=str}), redoing bring-up", why);
-        self.nrst.set_low();
+        self.nrst.set(false);
         Timer::after_millis(1).await;
-        self.nrst.set_high();
+        self.nrst.set(true);
         Timer::after_millis(HUB_RESET_RELEASE_SETTLE_MS).await;
         self.configure();
     }
@@ -252,14 +301,14 @@ pub async fn bring_up(r: HubResources) -> Hub {
     let variant = read_board_variant_strap(r.pa10).await;
     set_board_variant(variant);
 
-    let mut nrst = Output::new(r.pc13, Level::Low, Speed::Low);
+    let mut nrst = ResetPin::new(r.pc13);
     // SDA pull-up R301 goes to PA4 on B153A, not to 3.3 V; rev B has it on 3.3 V and PA4 free
     #[cfg(feature = "rev_a")]
     let i2c_en = Output::new(r.pa4, Level::High, Speed::Low);
     #[cfg(not(feature = "rev_a"))]
     let _ = r.pa4;
     Timer::after_millis(1).await;
-    nrst.set_high();
+    nrst.set(true);
     Timer::after_millis(HUB_RESET_RELEASE_SETTLE_MS).await;
 
     let i2c = I2c::new_blocking(r.i2c2, r.pb10, r.pb14, Default::default());

@@ -1,6 +1,6 @@
 [package]
 name = "donguru_api"
-version = "0.5.0" # identifies the API on the wire, bump with every change
+version = "0.5.1" # identifies the API on the wire, bump with every change
 edition.workspace = true
 license.workspace = true
 description = "WireWeaver API of the donguru firmware"
@@ -13,6 +13,7 @@ std = [
     "ww_adc/std",
     "ww_board_info/std",
     "ww_counters/std",
+    "ww_dfu/std",
     "ww_firmware_info/std",
     "ww_gpio/std",
     "ww_i2c/std",
@@ -34,6 +35,7 @@ ww_si = { path = "../../wire_weaver/ww_stdlib/ww_si", default-features = false, 
 ww_adc = { path = "../../wire_weaver/ww_stdlib/ww_adc", default-features = false }
 ww_board_info = { path = "../../wire_weaver/ww_stdlib/ww_board_info", default-features = false }
 ww_counters = { path = "../../wire_weaver/ww_stdlib/ww_counters", default-features = false }
+ww_dfu = { path = "../../wire_weaver/ww_stdlib/ww_dfu", default-features = false }
 ww_firmware_info = { path = "../../wire_weaver/ww_stdlib/ww_firmware_info", default-features = false }
 ww_gpio = { path = "../../wire_weaver/ww_stdlib/ww_gpio", default-features = false }
 ww_i2c = { path = "../../wire_weaver/ww_stdlib/ww_i2c", default-features = false }

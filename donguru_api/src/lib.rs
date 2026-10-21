@@ -15,6 +15,9 @@
 //! 0.5 adds `clock` (API-57, `ww_timebase::Clock`, host sync and the status LEDs on shared time, FW-44): the whole
 //! `host_sync` group (`steer`, `shared_now`) is implemented, so the omit list grows with `clock.*` only if a future
 //! firmware drops it.
+//!
+//! 0.5.1 adds `device.boot` (`ww_dfu::BootControl`) and `device.dfu.node` (API-58): firmware updates through the
+//! STM32 ROM bootloader (FW-12). Wire-compatible: older hosts and devices keep connecting.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use wire_weaver::prelude::*;
@@ -70,7 +73,8 @@ pub trait Device {
     ww_impl!(last_reset: ww_firmware_info::LastReset);
     /// Board name, revision and variant.
     ww_impl!(board: ww_board_info::BoardInfo);
-    /// STM32 96-bit unique id, also the USB serial number.
+    /// STM32 96-bit unique id. The USB serial number is derived from it: the form the STM32 ROM bootloader reports
+    /// (FW-12), 12 hex digits.
     ww_impl!(uid: ww_uid::Uid);
     /// User label and notes, kept in the settings store (API-19).
     ww_impl!(label: ww_user_info::UserInfo);
@@ -82,6 +86,22 @@ pub trait Device {
     property!(ro variant: BoardVariant);
     /// Settings kept in flash (API-19).
     ww_impl!(settings: Settings);
+    /// Boot state, confirm, revert, reboot: `reboot(Updater)` goes to the STM32 ROM bootloader (USB DFU), the way
+    /// firmware updates come in (API-58, FW-12). The state is always `Confirmed`, there is no image to revert to.
+    #[since = "0.5.1"]
+    ww_impl!(boot: ww_dfu::BootControl);
+    /// The update node: the firmware in place, written by the ROM bootloader (`Profile::InPlace`, `device.boot`
+    /// only), API-58.
+    #[since = "0.5.1"]
+    ww_impl!(dfu: Dfu);
+}
+
+/// Firmware update over the API (`ww_dfu`): here only who the node is. Updates go through the STM32 ROM bootloader
+/// (`device.boot.reboot(Updater)`, then `ww stm32dfu flash`).
+#[ww_trait]
+pub trait Dfu {
+    /// Who this node is: product, profile, boot state, last result.
+    ww_impl!(node: ww_dfu::UpdateNode);
 }
 
 /// Board variant, see [`Device::variant`]. New boards add variants: a host reads one it doesn't know as

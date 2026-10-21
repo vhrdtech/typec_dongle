@@ -750,6 +750,7 @@ dependencies = [
  "ww_counters",
  "ww_date_time",
  "ww_device",
+ "ww_dfu",
  "ww_firmware_info",
  "ww_gpio",
  "ww_i2c",
@@ -765,13 +766,14 @@ dependencies = [
 
 [[package]]
 name = "donguru_api"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "defmt",
  "wire_weaver",
  "ww_adc",
  "ww_board_info",
  "ww_counters",
+ "ww_dfu",
  "ww_firmware_info",
  "ww_gpio",
  "ww_i2c",
@@ -788,6 +790,7 @@ dependencies = [
 name = "donguru_board"
 version = "0.20.17"
 dependencies = [
+ "defmt",
  "donguru_api",
  "usb251xb",
  "ww_si",
@@ -2797,6 +2800,13 @@ dependencies = [
  "ww_framer",
  "ww_link",
  "ww_tap",
+]
+
+[[package]]
+name = "ww_dfu"
+version = "0.1.0"
+dependencies = [
+ "wire_weaver",
 ]
 
 [[package]]
