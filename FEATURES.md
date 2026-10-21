@@ -701,8 +701,16 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 🚧 **CLI-8 `udev`**: `generate` writes the rule (uaccess / group / all); `install`, `uninstall`, `status` are stubs.
 - ⬜ **CLI-9 `config generate / show / path / validate`**: stub. Layering per the design doc (defaults, system,
   user, project file, `DONGURU_*`, flags).
-- 📋 **CLI-10 `fw version` / `fw update`**: in the design doc, not in the command tree yet. FW-11 and FW-12 are
-  there: `ww dfu reboot` + `ww stm32dfu flash --wait --follow` (`just update`) do it today. tpm P2534#21oct-1844c.
+- ✅ **CLI-10 `fw version` / `fw update`** (`donguru-cli/src/commands/fw.rs`, `donguru-core/src/update.rs`): `fw version`
+  prints name, version, git commit (`-dirty`), profile and the API version (`--format json` too). `fw update [ELF|-]`
+  (default `fw/donguru/target/thumbv6m-none-eabi/release/donguru`) reads the old version, `device.boot.reboot(Updater)`
+  (API-58), follows the dongle by its USB serial into the ROM bootloader with wire_weaver_client
+  `follow::stm32_dfu_update_with`, erases, writes and verifies, waits for the firmware, reconnects by serial and prints
+  old -> new; progress bar on stderr, json report. Logic in `donguru_core::update` (typed `FirmwareImage`,
+  `Dongle::update_firmware`, `update_with` takes the bus, DFU interface and reconnect: mock + simulated ROM tests).
+  A firmware with the 24-hex serial gets the ROM serial from its UID. Tested on B153A (omarchy-m1, 21 Oct 2026):
+  three updates in a row, 44.1-44.7 s each, version read back. Docs: `docs/user/firmware-update.md`. Not done: a
+  firmware that does not start (FW-45), `--wait`/timeouts flags. tpm P2534#21oct-1844c. ^v1.0
 - ✅ **CLI-11 `power status / on / off / cycle / meter / watch / totals`** (`donguru-cli/src/commands/power.rs`):
   `status` tables plug + header + meter in one read; `on` (`--allow-voltage`, `--trip`) and `off` read back `vbus`
   after the write and fail the exit code unless it ended up where asked (`On` / `Off`), covering a trip or a latched

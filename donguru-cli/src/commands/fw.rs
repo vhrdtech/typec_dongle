@@ -145,7 +145,11 @@ impl Bar {
             };
         }
         let bar = ProgressBar::new(1);
-        let bar_style = if colour { "{bar:30.cyan/blue}" } else { "{bar:30}" };
+        let bar_style = if colour {
+            "{bar:30.cyan/blue}"
+        } else {
+            "{bar:30}"
+        };
         bar.set_style(
             ProgressStyle::with_template(&format!(
                 "{{msg:<28}} {bar_style} {{bytes}}/{{total_bytes}} {{elapsed}}"

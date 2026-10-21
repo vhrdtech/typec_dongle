@@ -6,6 +6,14 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- `dg fw version` shows the running firmware (name, version, git commit, profile, API version) and `dg fw update
+  [ELF]` writes a firmware over USB without a probe: reboots into the STM32 ROM bootloader, writes and verifies,
+  waits for the firmware and prints the old and the new version, with a progress bar on stderr and `--format json`
+  (CLI-10). `donguru_core::update` has the typed API (`FirmwareImage`, `Dongle::update_firmware`,
+  `Device::reboot`). Tested on B153A (omarchy-m1, 21 Oct 2026): three updates in a row, 44 s each.
+
 ## [0.20.18] - 2026-10-21
 
 ### Added

@@ -17,9 +17,30 @@ usb 001-1.1.3.1 c0de:cafe  donguru  204B319B5431  donguru_api@0.5.1  donguru-m1
 ```
 
 The serial number is the same in the firmware and in the ROM bootloader, so `ww` follows the dongle through the whole
-update. A `dg update` command is planned (CLI-10).
+update. 
+## With `dg fw update`
 
-## Steps
+```sh
+dg fw version                 # what runs now
+dg fw update donguru.elf      # reboot into the bootloader, write, verify, start, wait
+```
+
+```
+204B319B5431: donguru 0.1.1 (7d794b3-dirty, release) -> donguru 0.1.1 (10af2b7, release)
+415288 bytes in 44.5 s
+```
+
+Without a file, `dg fw update` takes `fw/donguru/target/thumbv6m-none-eabi/release/donguru` of the current directory, where
+`cargo build --release` in this repository puts it; `-` reads the ELF from stdin. A progress bar on stderr shows the
+steps (hidden with `-q` or when stderr is not a terminal). `--format json` prints one object with `serial`, `old`,
+`new`, `bytes` and `seconds` on stdout. Exit codes are the common ones: 3 no dongle, 4 the dongle refused (a firmware
+without `device.boot`), 5 timeout (the bootloader or the firmware did not show up), 1 the write failed.
+
+With several dongles connected, pick one with `-d SERIAL`.
+
+## Steps with `ww`
+
+The same in two steps with the WireWeaver CLI:
 
 ```sh
 ww dfu -s 204B319B5431 reboot                          # into the ROM bootloader

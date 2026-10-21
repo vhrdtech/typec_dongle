@@ -209,10 +209,7 @@ pub async fn update_with<I: ww_stm32_dfu::DfuIo>(
     let serial = rom_serial(&entry, uid.as_deref());
 
     on_step(UpdateStep::Reboot, 0, 1);
-    dongle
-        .device()
-        .reboot(ww_dfu::BootTarget::Updater)
-        .await?;
+    dongle.device().reboot(ww_dfu::BootTarget::Updater).await?;
     // the firmware resets right away: the link is gone, closing it can fail
     let _ = dongle.close().await;
     on_step(UpdateStep::WaitBootloader, 0, 1);
