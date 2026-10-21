@@ -497,7 +497,7 @@ impl MockServer {
     async fn clock_sync_status(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> RpcResult<ww_timebase::SyncStatus> {
+    ) -> RpcResult<ww_timebase::SyncStatus<'_>> {
         Unimplemented.into()
     }
 
@@ -512,7 +512,7 @@ impl MockServer {
     async fn clock_steer(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _point: ww_timebase::SteerPoint,
+        _point: ww_timebase::SteerPoint<'_>,
     ) -> RpcResult<Result<Option<ww_timebase::SyncSource>, ww_timebase::ClockError<'_>>> {
         Unimplemented.into()
     }

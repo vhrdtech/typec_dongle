@@ -97,7 +97,7 @@ impl ServerState {
     pub(super) fn clock_sync_status(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> RpcResult<SyncStatus> {
+    ) -> RpcResult<SyncStatus<'_>> {
         Ready(SYNC.with(|clock, now_us| self.clock.server.sync_status(clock, now_us)))
     }
 
@@ -118,7 +118,7 @@ impl ServerState {
     pub(super) async fn clock_steer(
         &mut self,
         cx: &mut Context<'_, impl EventOut>,
-        point: SteerPoint,
+        point: SteerPoint<'_>,
     ) -> RpcResult<Result<Option<SyncSource>, ClockError<'_>>> {
         let result = SYNC.with(|clock, now_us| self.clock.server.steer(clock, now_us, &point));
         if result.is_ok()
