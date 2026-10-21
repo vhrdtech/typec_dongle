@@ -8,7 +8,7 @@ use cnt::cnt;
 use core::sync::atomic::AtomicU32;
 use defmt::{info, warn};
 use donguru_api::BoardVariant;
-use donguru_power::Limits;
+use donguru_board::power::Limits;
 use embassy_time::Instant;
 use wire_weaver::prelude::*;
 use wire_weaver::shrink_wrap::ArrayString;

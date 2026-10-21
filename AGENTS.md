@@ -57,6 +57,8 @@ The tpm repo's `/sync-repos` reads this file to log progress, so a missing entry
     version identify the API on the wire.
   - `donguru_dap/` — `#![no_std]` CMSIS-DAP request framing used by the firmware (`fw/donguru/src/cmsis_dap.rs`):
     firmware logic that needs no hardware, here so `just test` runs its unit tests.
+  - `donguru_board/` — `#![no_std]` board logic of the firmware, unit-tested the same way: `hub` (U301 variant
+    and config), `power` (VBUS modes and the guard).
 - `fw/donguru/` — firmware (embassy, thumbv6m), a separate Cargo project with its own `Cargo.lock` and toolchain:
   `src/main.rs` (clocks, tasks, fault handlers), `led.rs`, `adc.rs`, `button.rs`, `ww.rs` (API server), `init.rs`.
 - `docs/` — documentation site (Zensical), published to vhrdtech.github.io/typec_dongle. `developer-notes.md` —

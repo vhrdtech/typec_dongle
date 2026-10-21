@@ -493,9 +493,8 @@ dependencies = [
  "defmt 1.1.1",
  "defmt-rtt",
  "donguru_api",
+ "donguru_board",
  "donguru_dap",
- "donguru_hub",
- "donguru_power",
  "embassy-executor",
  "embassy-futures",
  "embassy-stm32",
@@ -553,24 +552,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "donguru_dap"
-version = "0.20.17"
-
-[[package]]
-name = "donguru_hub"
+name = "donguru_board"
 version = "0.20.17"
 dependencies = [
  "donguru_api",
  "usb251xb",
+ "ww_si",
 ]
 
 [[package]]
-name = "donguru_power"
+name = "donguru_dap"
 version = "0.20.17"
-dependencies = [
- "donguru_api",
- "ww_si",
-]
 
 [[package]]
 name = "dsp-fixedpoint"

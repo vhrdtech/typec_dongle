@@ -208,15 +208,15 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   experimental: 🧪 on purpose, no more bench time planned.
 - 🧪 **FW-22 Board variant detection**: Main (2-port USB2512B) vs. Plus (4-port USB2514B, not decided/built yet)
   identified at boot from a GPIO strap, not the hub's PID (`src/hub.rs::read_board_variant_strap`,
-  `donguru_hub` crate, P2534#14oct-1439). Reading the hub's own power-on-default VID/PID/DID (HUB-5) before
+  `donguru_board::hub`, P2534#14oct-1439). Reading the hub's own power-on-default VID/PID/DID (HUB-5) before
   configuring it does not work on this hub's SMBus-slave strap — it reads all-zero regardless of delay (tried
   0/5/100/1000 ms), confirming hw_b153a.md §9's existing caution that these registers hold whatever was last
   written there, not a factory default. The signal used instead: PA10 (`SBU_TO_USB`, U901 S) carries R902, a
   10K pull-down fitted only on Plus (hw_b153a.md §9/§11); read against the MCU's own ~40k pull-up after
   releasing PA10's UCPD1 dead-battery pull-down (`SYSCFG.cfgr1().ucpd1_strobe`, resolves the 🔍 open in
-  hw_b153a.md §11), high = Main, low = Plus. `donguru_hub::hub_config` then builds the hub's config
+  hw_b153a.md §11), high = Main, low = Plus. `donguru_board::hub::hub_config` then builds the hub's config
   (`usb251xb::Variant`, port count, D+/D- swap mask for FW-6) from the detected variant instead of a hardcoded
-  Main constant; the pure mapping and config builder are host-unit-tested for both variants (`donguru_hub`,
+  Main constant; the pure mapping and config builder are host-unit-tested for both variants (`donguru_board::hub`,
   `just test`), including the not-yet-built Plus. Variant exposed read-only over WireWeaver
   (`device.variant`, API-7, FW-11 hw_info). Tested 14 Oct 2026 on B153A (J-Link via omarchy-m1,
   P2534#14oct-1439): reads PA10 high → `BoardVariant::Main` on 2 cold power-cycles (true replug, J-Link VTref
@@ -442,7 +442,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `On`, `Fault`, `Tripped(..)`), `plug.vbus_cycle(off, release_sbu)` answered when VBUS is back on (deferred),
   `plug.data` (U701), `header.relay`; all observable. The guard runs on every ADC update (~15 ms) against the worst
   voltage and |current| of the update; a guarded mode is refused above `max_voltage`; trips and the AOZ1375 fault
-  (FLTB PC14, two updates low) latch until the next mode write, which re-arms. Logic in `donguru_power` (host tests),
+  (FLTB PC14, two updates low) latch until the next mode write, which re-arms. Logic in `donguru_board::power` (host tests),
   pins and tasks in `fw/donguru/src/power.rs`, handlers in `src/ww/plug.rs` / `header.rs`; docs
   `docs/user/power.md`. Needs WireWeaver SRV-20 (deferred answers on nested levels). Tested 15 Oct 2026 on B153A +
   B129A (~10 mA load) at 5.2 V: on / off, refused at a lower `max_voltage`, OverCurrent and OverPower trips 8 ms
@@ -606,14 +606,14 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   flipped bits). Unit-tested against fake RAM with a stuck bit, an aliased address bit, swapped byte lanes and rare
   read flips. Feature `probe-rs` (`swd_memtest/probe.rs`): attach through any CMSIS-DAP v2 probe at a given speed,
   halt, save the region, run, restore, resume; probe-rs without its C HID backend.
-- 🐛 **CORE-6 Mock's VBUS guard doesn't refuse, it trips**: `docs/user/power.md` and `donguru_power` (the firmware
-  logic crate, `donguru_power/src/lib.rs`'s `Switch::set_mode`, tested in `refused_over_the_limit_changes_nothing`)
+- 🐛 **CORE-6 Mock's VBUS guard doesn't refuse, it trips**: `docs/user/power.md` and `donguru_board::power` (the firmware
+  logic crate, `donguru_board/src/power.rs`'s `Switch::set_mode`, tested in `refused_over_the_limit_changes_nothing`)
   both say writing a guarded mode while VBUS is already over `max_voltage` is `Refused` and changes nothing. The
   mock's `MockState::apply` (`donguru-core/src/mock/mod.rs`) instead always applies the write and reports
   `Tripped(OverVoltage)`, as `donguru-core/tests/mock.rs`'s `plug_vbus_guard_and_cycle` shows ("switching on above
   the limit trips"). Found while building CLI-11 / CLI-16: `dg power on` / `dg header vbus on` cope either way (they
   read back `vbus` after the write and fail the exit code unless it is `On`), but a CORE-3 test relying on the
-  mock's `Set` to refuse would be testing the wrong thing. Fix: give the mock the same refusal `donguru_power` has.
+  mock's `Set` to refuse would be testing the wrong thing. Fix: give the mock the same refusal `donguru_board::power` has.
 - ✅ **CORE-7 ELF keeper: `dg` always finds the firmware ELF** (CLI-19's `device counters` / `device log` decode):
   `cnt_core::elf::resolve` already did the lookup (`WW_ELF_PATH`, then `~/.cache/ww/elf`, then `target/`) that
   `donguru-core/src/counters.rs` / `src/log.rs` call; `just fw-size`'s release build calls `cnt elf add "$elf"`

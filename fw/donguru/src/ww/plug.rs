@@ -5,7 +5,7 @@ use crate::power::{self, Which};
 use crate::swd;
 use defmt::info;
 use donguru_api::{DataPath, PowerError};
-use donguru_power::{CycleError, ModeError};
+use donguru_board::power::{CycleError, ModeError};
 use wire_weaver::prelude::*;
 
 impl ServerState {
@@ -140,7 +140,7 @@ pub(super) fn cycle_result(
 ) -> Result<donguru_api::VbusState, PowerError<'static>> {
     result.map_err(|e| match e {
         ModeError::OverVoltage { measured_mv } => PowerError::OverVoltage {
-            measured: donguru_power::volt(measured_mv),
+            measured: donguru_board::power::volt(measured_mv),
         },
         e => PowerError::Common(mode_error(e)),
     })

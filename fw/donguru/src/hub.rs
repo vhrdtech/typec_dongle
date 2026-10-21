@@ -26,6 +26,7 @@ use core::sync::atomic::{AtomicU8, Ordering};
 use crate::HubResources;
 use defmt::{info, warn};
 use donguru_api::BoardVariant;
+use donguru_board::hub::{board_variant_from_strap, hub_config};
 use embassy_futures::select::{Either, select};
 use embassy_stm32::Peri;
 use embassy_stm32::gpio::{Flex, Level, Output, Pull, Speed};
@@ -52,7 +53,7 @@ const BOARD_VARIANT_STRAP_SETTLE_MS: u64 = 1;
 
 /// Reads the board-variant strap on PA10 (SBU_TO_USB, U901's S, hw_b153a.md §9/§11): R902, a 10K pull-down to
 /// GND, is fitted only on Plus, so the net reads low there against the MCU's own ~40k pull-up winning on Main,
-/// where nothing else pulls on it. [`donguru_hub::board_variant_from_strap`] does that mapping; this function
+/// where nothing else pulls on it. [`board_variant_from_strap`] does that mapping; this function
 /// only does the GPIO/register side of reading it.
 ///
 /// PA10 doubles as UCPD1's DBCC2 dead-battery pin, which otherwise holds an internal pull-down on it (active
@@ -65,7 +66,7 @@ async fn read_board_variant_strap(pa10: Peri<'static, PA10>) -> BoardVariant {
     pa10.set_as_input(Pull::Up);
     Timer::after_millis(BOARD_VARIANT_STRAP_SETTLE_MS).await;
     let high = pa10.is_high();
-    let variant = donguru_hub::board_variant_from_strap(high);
+    let variant = board_variant_from_strap(high);
     info!(
         "board variant strap (PA10): {} -> {}",
         if high { "high" } else { "low" },
@@ -186,7 +187,7 @@ impl Hub {
     fn configure(&mut self) {
         self.read_power_on_defaults();
         let variant = self.variant;
-        if let Err(e) = self.dev().configure(&donguru_hub::hub_config(variant)) {
+        if let Err(e) = self.dev().configure(&hub_config(variant)) {
             warn!("hub config: {:?}", e);
         }
         self.log_vid_pid_after_config();

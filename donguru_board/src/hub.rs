@@ -17,7 +17,6 @@
 //! No embassy and no GPIO/I2C in here — just the mapping and the `usb251xb` crate's pure config builder — so
 //! this is unit-tested on the host (`fw/donguru/src/hub.rs` only reads the strap and calls through here), the
 //! same way `donguru_dap` keeps the CMSIS-DAP framing apart from the firmware's USB plumbing.
-#![no_std]
 
 use donguru_api::BoardVariant;
 use usb251xb::register::ConfigByte3;

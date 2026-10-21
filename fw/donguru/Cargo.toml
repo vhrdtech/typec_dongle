@@ -43,10 +43,9 @@ bedrock_sync = { path = "../../../embedded_bedrock/bedrock_sync", features = ["e
 dap-rs = { version = "0.2", default-features = false, features = ["usb-hs"] }
 # where a CMSIS-DAP request ends when it spans several USB packets: no_std, unit-tested on the host
 donguru_dap = { path = "../../donguru_dap" }
-# hub (U301) variant detection and per-variant config: no_std, unit-tested on the host
-donguru_hub = { path = "../../donguru_hub" }
-# VBUS modes and the guard: no_std, unit-tested on the host
-donguru_power = { path = "../../donguru_power" }
+# board logic, no_std, unit-tested on the host: hub (U301) variant detection and per-variant config, VBUS modes and
+# the guard
+donguru_board = { path = "../../donguru_board" }
 # WireWeaver: API crate in the repo root, served by src/ww.rs. wire_weaver from the local checkout next to this repo
 donguru_api = { path = "../../donguru_api", features = ["defmt"] }
 wire_weaver = { path = "../../../wire_weaver/wire_weaver", default-features = false, features = ["defmt"] }

@@ -785,24 +785,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "donguru_dap"
-version = "0.20.17"
-
-[[package]]
-name = "donguru_hub"
+name = "donguru_board"
 version = "0.20.17"
 dependencies = [
  "donguru_api",
  "usb251xb",
+ "ww_si",
 ]
 
 [[package]]
-name = "donguru_power"
+name = "donguru_dap"
 version = "0.20.17"
-dependencies = [
- "donguru_api",
- "ww_si",
-]
 
 [[package]]
 name = "either"
@@ -2010,6 +2003,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
+name = "stm32_dfu_host"
+version = "0.1.0"
+dependencies = [
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
 name = "strsim"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2661,6 +2662,7 @@ dependencies = [
  "picoboot_host",
  "ron",
  "semver",
+ "stm32_dfu_host",
  "strum",
  "strum_macros",
  "thiserror",

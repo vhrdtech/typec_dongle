@@ -5,8 +5,7 @@
 //! mode's limits, or when the switch reports a fault (U601 FLTB). The firmware drives the enable pin from
 //! [`Switch::enabled`] after every call and feeds it one [`Sample`] per ADC update.
 //!
-//! No embassy and no GPIO in here, so the rules are unit-tested on the host, as `donguru_hub` and `donguru_dap` do.
-#![no_std]
+//! No embassy and no GPIO in here, so the rules are unit-tested on the host, as [`crate::hub`] and `donguru_dap` do.
 
 use donguru_api::{GuardTrip, VbusMode, VbusState};
 use ww_si::ww_numeric::NumericValue;

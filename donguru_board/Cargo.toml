@@ -1,10 +1,11 @@
 [package]
-name = "donguru_power"
+name = "donguru_board"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "VBUS switch modes and the firmware-side guard of the donguru firmware, kept apart so it is unit-tested on the host"
+description = "Board logic of the donguru firmware (B153): USB hub configuration, VBUS switch guard; no_std, unit-tested on the host"
 
 [dependencies]
 donguru_api = { path = "../donguru_api" }
+usb251xb = { version = "0.1.0", default-features = false }
 ww_si = { path = "../../wire_weaver/ww_stdlib/ww_si", default-features = false, features = ["time", "electrical", "u16", "u32", "i32"] }
