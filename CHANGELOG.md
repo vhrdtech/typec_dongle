@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.24] - 2026-10-22
+
 ### Changed
 
 - Firmware: the shared clock follows one steerer at a time (bedrock_sync DEV-13, wire_weaver SRV-31): while one program's steer points keep coming, another one's are only noted, and it takes over after 3 s without the first; `clock.sync_status` names the followed (`steerer`) and the noted program (`noted`). No API change on Donguru's side (`ww_timebase` fields are `#[default = None]`). (FW-44)
