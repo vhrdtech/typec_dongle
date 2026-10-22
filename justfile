@@ -120,7 +120,7 @@ hooks-all:
 hooks-update:
     prek update
 
-# The WireWeaver CLI, with `ww stm32dfu` (wire_weaver master since 21 Oct 2026); `just ww=PATH update ...` for another
+# The WireWeaver CLI, with `ww dfu stm32` (wire_weaver master since 21 Oct 2026); `just ww=PATH update ...` for another
 ww := "ww"
 
 # Update the firmware over USB without a probe (FW-12): build, reboot into the STM32 ROM bootloader, write, back.
@@ -130,7 +130,7 @@ ww := "ww"
 update SERIAL:
     cargo build --release
     {{ ww }} dfu -s {{ SERIAL }} reboot
-    {{ ww }} stm32dfu -s {{ SERIAL }} flash target/thumbv6m-none-eabi/release/donguru --wait 10 --follow
+    {{ ww }} dfu stm32 -s {{ SERIAL }} flash target/thumbv6m-none-eabi/release/donguru --wait 10 --follow
 
 # Build firmware in release, print FLASH/RAM usage (limits from memory.x) and top 25 symbols
 [group: 'fw']

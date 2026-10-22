@@ -84,7 +84,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   serial is the ROM's form for this chip (`donguru_board::boot::rom_serial`), so `ww` follows the board into the
   ROM and back. Pure logic in `donguru_board::boot` (host tests). `just update SERIAL`, user page
   `docs/user/firmware-update.md`. Tested on B153A (omarchy-m1, 21 Oct 2026): reboot -> 0483:df11 behind the hub in
-  under 0.5 s -> `ww stm32dfu flash --wait 10 --follow` 415 KB written and verified in 42.5-42.9 s -> firmware back,
+  under 0.5 s -> `ww dfu stm32 flash --wait 10 --follow` 415 KB written and verified in 42.5-42.9 s -> firmware back,
   5 times in a row, no power cycle; `reboot --into app` too. Not covered: a firmware that does not start (FW-45),
   BOOT0 (nBOOT_SEL = 1 on B153A, change_b153b.md). ^v1.0
 - ✅ **FW-13 HardFault handling for production**: `HardFault` and the panic handler save a `bedrock_crash` record
@@ -398,8 +398,8 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   logs it and reports `device.dfu.node` `last_result` `Recovery` until a requested update or a power cycle. Not
   caught: a crash after USB is configured or after 10 s, a crash in the hub bring-up itself. Test image: feature
   `crash-loop-test`. Tested on B153A (omarchy-m1, 21 Oct 2026), all over USB, no probe: the test image written
-  with `ww stm32dfu flash` -> 0483:df11 behind the hub (same serial) about 1 s after the ROM's jump, stays there ->
-  the good image back with `ww stm32dfu flash --follow`, `ww dfu status` last update `Recovery` -> `just update`
+  with `ww dfu stm32 flash` -> 0483:df11 behind the hub (same serial) about 1 s after the ROM's jump, stays there ->
+  the good image back with `ww dfu stm32 flash --follow`, `ww dfu status` last update `Recovery` -> `just update`
   clears it to `Nothing`; 5 `reboot --into app` in a row stay in the firmware. Not tested: the rescue after a power
   cycle (hub not yet held, the rescue's own bring-up), the 10 s mark without a USB host. tpm P2534#21oct-1844. ^v1.0
 - ✅ **FW-46 Hub kept across MCU resets**: the hub stays attached and configured through a firmware update, crash or

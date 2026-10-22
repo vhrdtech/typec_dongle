@@ -97,7 +97,7 @@ pub trait Device {
 }
 
 /// Firmware update over the API (`ww_dfu`): here only who the node is. Updates go through the STM32 ROM bootloader
-/// (`device.boot.reboot(Updater)`, then `ww stm32dfu flash`).
+/// (`device.boot.reboot(Updater)`, then `ww dfu stm32 flash`).
 #[ww_trait]
 pub trait Dfu {
     /// Who this node is: product, profile, boot state, last result.

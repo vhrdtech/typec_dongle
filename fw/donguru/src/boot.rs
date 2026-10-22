@@ -4,7 +4,7 @@
 //!
 //! - `reboot(Updater)`: [reboot] writes the ROM request into the boot word (TAMP_BKP4R) and resets. [early] finds it,
 //!   clears it and jumps to the ROM bootloader from the reset state (AN2606 §4.1): USB DFU behind the hub, which
-//!   `ww stm32dfu flash` writes.
+//!   `ww dfu stm32 flash` writes.
 //! - The ROM's leave jumps to the firmware with its clocks, USB and vector table set up: [early] sees it
 //!   (`Entered::from_reset`) and resets once, so embassy starts from the reset state (as B135 BOOT-10).
 //! - On rev A the hub stays up through those resets because RTC_OUT1 holds its RESET_N (`src/hub.rs`).

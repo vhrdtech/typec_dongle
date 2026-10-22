@@ -1,6 +1,6 @@
 //! `device.boot` (`ww_dfu::BootControl`) and `device.dfu.node` (API-58): firmware updates through the STM32 ROM
 //! bootloader (FW-12). The firmware sits alone at the start of flash: `reboot(Updater)` resets into the ROM (USB DFU
-//! behind the hub, `ww stm32dfu flash`), the boot state is always `Confirmed`, there is nothing to revert to. The
+//! behind the hub, `ww dfu stm32 flash`), the boot state is always `Confirmed`, there is nothing to revert to. The
 //! resets themselves are `crate::boot`'s.
 
 use super::ServerState;
