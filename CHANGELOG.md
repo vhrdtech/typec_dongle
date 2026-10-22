@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.26] - 2026-10-22
+
 ### Changed
 
 - `just update` and the firmware-update docs use `ww dfu stm32 ...` (wire_weaver renamed `ww stm32dfu` under `ww dfu`; the old name still runs as a hidden alias for now) (FW-12).

@@ -707,7 +707,7 @@ dependencies = [
 
 [[package]]
 name = "donguru-cli"
-version = "0.20.25"
+version = "0.20.26"
 dependencies = [
  "anstream",
  "anyhow",
@@ -731,7 +731,7 @@ dependencies = [
 
 [[package]]
 name = "donguru-core"
-version = "0.20.25"
+version = "0.20.26"
 dependencies = [
  "anyhow",
  "clap",
@@ -793,7 +793,7 @@ dependencies = [
 
 [[package]]
 name = "donguru_board"
-version = "0.20.25"
+version = "0.20.26"
 dependencies = [
  "defmt",
  "donguru_api",
@@ -803,7 +803,7 @@ dependencies = [
 
 [[package]]
 name = "donguru_dap"
-version = "0.20.25"
+version = "0.20.26"
 
 [[package]]
 name = "either"
