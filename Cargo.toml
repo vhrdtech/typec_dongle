@@ -3,7 +3,7 @@ resolver = "3"
 members = ["donguru-cli", "donguru-core", "donguru_api", "donguru_board", "donguru_dap"]
 
 [workspace.package]
-version = "0.20.26"
+version = "0.20.27"
 edition = "2024"
 license = "TBD"
 repository = ""
