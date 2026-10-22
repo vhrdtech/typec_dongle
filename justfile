@@ -156,15 +156,22 @@ fw-size:
     cnt list "$elf"
     cnt elf add "$elf"
 
-# Where `cargo install` puts the binaries
-cargo-bin := env("CARGO_HOME", env("HOME") / ".cargo") / "bin"
-
-# Build and install `donguru` on this PC, `dg` as a link to the same executable, and the shell completions
+# Build and install `donguru` on this PC, `dg` as a link to the same executable beside it, and the shell completions
 [group: 'install']
 install:
-    cargo install --path donguru-cli --locked
-    ln -sf donguru {{ cargo-bin }}/dg
-    {{ cargo-bin }}/donguru completions --install
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cargo build --profile deploy --locked -p donguru-cli
+    # With tpm on PATH: tpm install (kept-releases stack, one copy on PATH); otherwise: cargo install
+    if command -v tpm >/dev/null; then
+        tpm install target/deploy/donguru
+        bin="$HOME/.local/bin"
+    else
+        cargo install --path donguru-cli --locked
+        bin="${CARGO_INSTALL_ROOT:-${CARGO_HOME:-$HOME/.cargo}}/bin"
+    fi
+    ln -sf donguru "$bin/dg"
+    "$bin/donguru" completions --install
 
 # Bring this PC up to main: pull, update the sibling checkouts, install, check the installed version is this commit
 [group: 'install']
@@ -173,8 +180,8 @@ deploy:
     git pull --ff-only
     just deps-pull
     just install
-    {{ cargo-bin }}/dg --version | grep -qF "($(git rev-parse --short HEAD),"
-    {{ cargo-bin }}/dg --version
+    donguru --version | grep -qF "($(git rev-parse --short HEAD),"
+    donguru --version
 
 # Fast-forward the sibling checkouts this repo builds against by path (wire_weaver, embedded_bedrock)
 [group: 'rust']

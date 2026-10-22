@@ -19,3 +19,8 @@ clap_complete = { version = "4", features = ["unstable-dynamic"] }
 humantime = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+
+# just install: release, but incremental so a rebuild after a small change is quick
+[profile.deploy]
+inherits = "release"
+incremental = true

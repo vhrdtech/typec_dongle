@@ -75,6 +75,7 @@ The `justfile` is the single entry point for tasks; CI runs the same targets.
 just                     # list recipes
 just verify              # fmt check, clippy (-D warnings), tests: what CI runs
 just fmt
+just install             # donguru, dg and completions onto PATH; works anywhere, with tpm it uses the release stack
 just hooks-install       # once after cloning: prek pre-commit / pre-push hooks
 just serve-docs          # docs site with live reload
 just fw-size             # firmware release build, FLASH / RAM use, biggest symbols, counters
