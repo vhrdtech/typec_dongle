@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.25] - 2026-10-22
+
 ### Changed
 
 - `just install` builds with the `deploy` profile; with tpm it installs through the kept-releases stack in ~/.local/bin (the `dg` link beside it), without tpm it runs plain `cargo install` (link in the cargo bin dir). `just deploy` works without tpm and checks `donguru --version`
