@@ -2682,6 +2682,7 @@ dependencies = [
  "picoboot_host",
  "ron",
  "semver",
+ "sha2",
  "stm32_dfu_host",
  "strum",
  "strum_macros",
@@ -2692,6 +2693,7 @@ dependencies = [
  "wire_weaver",
  "wire_weaver_snapshots",
  "ww_client_server",
+ "ww_date_time",
  "ww_device",
  "ww_framer",
  "ww_global",
@@ -2704,6 +2706,7 @@ dependencies = [
  "ww_stream",
  "ww_tap",
  "ww_tape",
+ "ww_timebase",
  "ww_version",
 ]
 
