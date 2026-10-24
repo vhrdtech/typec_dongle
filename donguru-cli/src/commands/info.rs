@@ -13,6 +13,6 @@ pub fn run(ctx: &Context) -> anyhow::Result<ExitCode> {
         dongle.close().await?;
         Ok::<_, anyhow::Error>((entry, summary))
     })?;
-    super::device::print_info(ctx.format, &entry, &summary, &mut std::io::stdout().lock())?;
+    crate::output::Output::stdout(ctx).emit(&super::device::Info::new(&entry, &summary))?;
     Ok(ExitCode::Success)
 }

@@ -1,12 +1,13 @@
 //! `donguru device label` - the user label (`UserInfo`): a short name and free-text notes (CLI-19, API-9).
 
-use std::io::Write;
+use std::io::{self, Write};
 
 use clap::Args;
 
-use crate::cli::Format;
 use crate::context::Context;
 use crate::exit::ExitCode;
+use crate::output::{Output, Render};
+use crate::theme::Theme;
 
 #[derive(Debug, Args)]
 pub struct Label {
@@ -31,55 +32,69 @@ pub fn run(ctx: &Context, args: Label) -> anyhow::Result<ExitCode> {
         let name = device.label().await?;
         let notes = device.notes().await?;
         dongle.close().await?;
-        print_label(
-            ctx.format,
-            &name,
-            notes.as_deref(),
-            &mut std::io::stdout().lock(),
-        )?;
-        Ok(ExitCode::Success)
+        Output::stdout(ctx).emit(&Shown { name, notes })?;
+        Ok::<_, anyhow::Error>(ExitCode::Success)
     })
 }
 
-fn print_label(
-    format: Format,
-    name: &str,
-    notes: Option<&str>,
-    out: &mut impl Write,
-) -> anyhow::Result<()> {
-    match format {
-        Format::Text => {
-            writeln!(out, "name   {name:?}")?;
-            match notes {
-                Some(notes) if !notes.is_empty() => writeln!(out, "notes  {notes:?}")?,
-                Some(_) => writeln!(out, "notes  (empty)")?,
-                None => writeln!(out, "notes  (not in this firmware)")?,
-            }
-        }
-        Format::Json | Format::Jsonl => writeln!(
+/// The label after any change: name and notes (`None` from a firmware without notes).
+struct Shown {
+    name: String,
+    notes: Option<String>,
+}
+
+impl Render for Shown {
+    fn text(&self, out: &mut dyn Write, th: &Theme) -> io::Result<()> {
+        writeln!(
             out,
-            "{}",
-            serde_json::json!({ "name": name, "notes": notes })
-        )?,
+            "{}   {}",
+            th.key("name"),
+            th.value(format!("{:?}", self.name))
+        )?;
+        match self.notes.as_deref() {
+            Some(notes) if !notes.is_empty() => {
+                writeln!(
+                    out,
+                    "{}  {}",
+                    th.key("notes"),
+                    th.value(format!("{notes:?}"))
+                )
+            }
+            Some(_) => writeln!(out, "{}  {}", th.key("notes"), th.dim("(empty)")),
+            None => writeln!(
+                out,
+                "{}  {}",
+                th.key("notes"),
+                th.dim("(not in this firmware)")
+            ),
+        }
     }
-    Ok(())
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({ "name": self.name, "notes": self.notes })
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cli::Format;
+    use crate::output::render;
+
+    fn shown(notes: Option<&str>) -> Shown {
+        Shown {
+            name: "bench".into(),
+            notes: notes.map(Into::into),
+        }
+    }
 
     #[test]
     fn text_with_notes() {
-        let mut text = Vec::new();
-        print_label(Format::Text, "bench", Some("on the shelf"), &mut text).unwrap();
-        insta::assert_snapshot!(String::from_utf8(text).unwrap());
+        insta::assert_snapshot!(render(Format::Text, &shown(Some("on the shelf"))));
     }
 
     #[test]
     fn json_without_notes() {
-        let mut json = Vec::new();
-        print_label(Format::Json, "bench", None, &mut json).unwrap();
-        insta::assert_snapshot!(String::from_utf8(json).unwrap());
+        insta::assert_snapshot!(render(Format::Json, &shown(None)));
     }
 }

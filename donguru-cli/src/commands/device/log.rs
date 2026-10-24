@@ -1,7 +1,7 @@
 //! `donguru device log` - the stored defmt log, decoded with the firmware's ELF found by its build id (CLI-19,
 //! API-10).
 
-use std::io::Write;
+use std::io::{self, Write};
 use std::path::PathBuf;
 
 use crate::completion;
@@ -12,6 +12,8 @@ use donguru_core::log::LogReport;
 use crate::cli::Format;
 use crate::context::Context;
 use crate::exit::ExitCode;
+use crate::output::{Output, Render};
+use crate::theme::Theme;
 
 #[derive(Debug, Args)]
 pub struct Log {
@@ -38,14 +40,13 @@ pub fn run(ctx: &Context, args: Log) -> anyhow::Result<ExitCode> {
         let dongle = super::open(ctx).await?;
         let device = dongle.device();
         if args.follow {
-            let format = ctx.format;
-            let mut out = std::io::stdout().lock();
+            let mut out = Output::stdout(ctx);
             device
                 .log_follow(
                     args.elf.as_deref(),
                     args.force,
                     |line| {
-                        let _ = print_line(format, line, &mut out);
+                        let _ = out.record(&Line(line));
                     },
                     |warning| eprintln!("donguru: {warning}"),
                 )
@@ -57,52 +58,84 @@ pub fn run(ctx: &Context, args: Log) -> anyhow::Result<ExitCode> {
             {
                 eprintln!("donguru: {w}");
             }
-            print_report(ctx.format, &report, &mut std::io::stdout().lock())?;
+            Output::stdout(ctx).emit(&report)?;
         }
         dongle.close().await?;
-        Ok(ExitCode::Success)
+        Ok::<_, anyhow::Error>(ExitCode::Success)
     })
 }
 
-fn print_line(format: Format, line: &str, out: &mut impl Write) -> anyhow::Result<()> {
-    match format {
-        Format::Text => writeln!(out, "{line}")?,
-        Format::Json | Format::Jsonl => writeln!(out, "{}", serde_json::json!({ "line": line }))?,
+/// One decoded log line: `{"line": "..."}` in json.
+struct Line<'a>(&'a str);
+
+impl Render for Line<'_> {
+    fn text(&self, out: &mut dyn Write, th: &Theme) -> io::Result<()> {
+        writeln!(out, "{}", line_text(th, self.0))
     }
-    Ok(())
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({ "line": self.0 })
+    }
 }
 
-fn print_report(format: Format, report: &LogReport, out: &mut impl Write) -> anyhow::Result<()> {
-    match format {
-        Format::Text => {
-            if report.lines.is_empty() {
-                writeln!(out, "the device's log is empty")?;
-            } else {
-                for line in &report.lines {
-                    writeln!(out, "{line}")?;
-                }
-            }
-        }
-        Format::Json => writeln!(out, "{}", serde_json::to_value(report)?)?,
-        Format::Jsonl => {
-            for line in &report.lines {
-                print_line(Format::Jsonl, line, out)?;
-            }
-        }
+/// A line in colour: the defmt level (and the timestamp before it), and the host's own `--- ... ---` notes.
+fn line_text(th: &Theme, line: &str) -> String {
+    if line.starts_with("---") {
+        return th.warn(line).to_string();
     }
-    Ok(())
+    let mut words = line.splitn(3, ' ');
+    let (first, second) = (words.next().unwrap_or(""), words.next());
+    let level = |w: &str| -> Option<String> {
+        Some(match w {
+            "ERROR" => th.bad(w).to_string(),
+            "WARN" => th.warn(w).to_string(),
+            "INFO" => th.ok(w).to_string(),
+            "DEBUG" | "TRACE" => th.dim(w).to_string(),
+            _ => return None,
+        })
+    };
+    if let Some(l) = level(first) {
+        return format!("{l}{}", &line[first.len()..]);
+    }
+    if let Some(second) = second
+        && let Some(l) = level(second)
+    {
+        let rest = &line[first.len() + 1 + second.len()..];
+        return format!("{} {l}{rest}", th.dim(first));
+    }
+    line.to_string()
+}
+
+impl Render for LogReport {
+    fn text(&self, out: &mut dyn Write, th: &Theme) -> io::Result<()> {
+        if self.lines.is_empty() {
+            return writeln!(out, "{}", th.dim("the device's log is empty"));
+        }
+        for line in &self.lines {
+            writeln!(out, "{}", line_text(th, line))?;
+        }
+        Ok(())
+    }
+
+    fn json(&self) -> serde_json::Value {
+        // strings and numbers: serialising can't fail
+        serde_json::to_value(self).unwrap_or_default()
+    }
+
+    fn jsonl(&self) -> Vec<serde_json::Value> {
+        self.lines.iter().map(|l| Line(l).json()).collect()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::output::render;
 
     #[test]
     fn empty_log_says_so_in_text() {
-        let mut out = Vec::new();
-        print_report(Format::Text, &LogReport::default(), &mut out).unwrap();
         assert_eq!(
-            String::from_utf8(out).unwrap(),
+            render(Format::Text, &LogReport::default()),
             "the device's log is empty\n"
         );
     }
@@ -114,11 +147,28 @@ mod tests {
             lost: 0,
             warning: None,
         };
-        let mut out = Vec::new();
-        print_report(Format::Jsonl, &report, &mut out).unwrap();
-        let out = String::from_utf8(out).unwrap();
+        let out = render(Format::Jsonl, &report);
         assert_eq!(out.lines().count(), 2);
         let first: serde_json::Value = serde_json::from_str(out.lines().next().unwrap()).unwrap();
         assert_eq!(first["line"], "INFO boot");
+    }
+
+    #[test]
+    fn levels_in_colour_text_unchanged() {
+        let plain = Theme::plain();
+        for line in [
+            "0.001 INFO boot",
+            "WARN low",
+            "--- 3 log messages lost ---",
+            "x",
+        ] {
+            assert_eq!(line_text(&plain, line), line);
+        }
+        let colour = Theme::new(true);
+        let l = line_text(&colour, "0.001 ERROR boom now");
+        assert!(
+            l.contains("ERROR") && l.ends_with(" boom now") && l.contains('\x1b'),
+            "{l:?}"
+        );
     }
 }

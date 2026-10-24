@@ -1,7 +1,7 @@
 //! `donguru device counters` - the `cnt` counters, decoded with the firmware's ELF found by its build id (CLI-19,
 //! API-9).
 
-use std::io::Write;
+use std::io::{self, Write};
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -13,6 +13,8 @@ use donguru_core::counters::CountersReport;
 use crate::cli::Format;
 use crate::context::Context;
 use crate::exit::ExitCode;
+use crate::output::{Output, Render};
+use crate::theme::Theme;
 
 #[derive(Debug, Args)]
 pub struct Counters {
@@ -42,7 +44,7 @@ pub fn run(ctx: &Context, args: Counters) -> anyhow::Result<ExitCode> {
     super::runtime()?.block_on(async {
         let dongle = super::open(ctx).await?;
         let device = dongle.device();
-        let mut out = std::io::stdout().lock();
+        let mut out = Output::stdout(ctx);
         loop {
             let report = device.counters(args.elf.as_deref(), args.force).await?;
             if let Some(w) = &report.warning
@@ -50,60 +52,76 @@ pub fn run(ctx: &Context, args: Counters) -> anyhow::Result<ExitCode> {
             {
                 eprintln!("donguru: {w}");
             }
-            print_counters(ctx.format, &report, &mut out)?;
+            if args.watch {
+                out.record(&report)?;
+            } else {
+                out.emit(&report)?;
+            }
             if !args.watch {
                 break;
             }
             tokio::time::sleep(Duration::from_millis(args.interval)).await;
         }
         dongle.close().await?;
-        Ok(ExitCode::Success)
+        Ok::<_, anyhow::Error>(ExitCode::Success)
     })
 }
 
-fn print_counters(
-    format: Format,
-    report: &CountersReport,
-    out: &mut impl Write,
-) -> anyhow::Result<()> {
-    match format {
-        Format::Text => {
-            if report.counters.is_empty() {
-                writeln!(out, "no counters")?;
-                return Ok(());
-            }
-            let name_w = report
-                .counters
-                .iter()
-                .map(|c| c.name.len())
-                .max()
-                .unwrap_or(0);
-            for c in &report.counters {
-                let unit = if c.unit.is_empty() {
-                    String::new()
-                } else {
-                    format!(" {}", c.unit)
-                };
-                writeln!(
-                    out,
-                    "{:<4} {:7} {:name_w$} {}{unit}",
-                    c.buffer, c.severity, c.name, c.value
-                )?;
-            }
+impl Render for CountersReport {
+    fn text(&self, out: &mut dyn Write, th: &Theme) -> io::Result<()> {
+        if self.counters.is_empty() {
+            return writeln!(out, "{}", th.dim("no counters"));
         }
-        Format::Json => writeln!(out, "{}", serde_json::to_value(report)?)?,
-        Format::Jsonl => {
-            for c in &report.counters {
-                writeln!(out, "{}", serde_json::to_value(c)?)?;
-            }
+        let name_w = self
+            .counters
+            .iter()
+            .map(|c| c.name.len())
+            .max()
+            .unwrap_or(0);
+        for c in &self.counters {
+            let unit = if c.unit.is_empty() {
+                String::new()
+            } else {
+                format!(" {}", th.dim(&c.unit))
+            };
+            let severity = match c.severity.as_str() {
+                "error" => th.bad(&c.severity),
+                "warn" => th.warn(&c.severity),
+                _ => th.dim(&c.severity),
+            };
+            // a warn / error counter that counted something is the row to look at
+            let value = match c.severity.as_str() {
+                "error" if c.value != 0 => th.bad(c.value),
+                "warn" if c.value != 0 => th.warn(c.value),
+                _ => th.value(c.value),
+            };
+            writeln!(
+                out,
+                "{:<4} {severity:7} {:name_w$} {value}{unit}",
+                th.dim(c.buffer),
+                th.key(&c.name),
+            )?;
         }
+        Ok(())
     }
-    Ok(())
+
+    fn json(&self) -> serde_json::Value {
+        // a plain struct of strings and numbers: serialising can't fail
+        serde_json::to_value(self).unwrap_or_default()
+    }
+
+    fn jsonl(&self) -> Vec<serde_json::Value> {
+        self.counters
+            .iter()
+            .map(|c| serde_json::to_value(c).unwrap_or_default())
+            .collect()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::output::render;
     use donguru_core::counters::CounterValue;
 
     fn report(counters: Vec<CounterValue>) -> CountersReport {
@@ -136,22 +154,17 @@ mod tests {
 
     #[test]
     fn text_table() {
-        let mut text = Vec::new();
-        print_counters(Format::Text, &one(), &mut text).unwrap();
-        insta::assert_snapshot!(String::from_utf8(text).unwrap());
+        insta::assert_snapshot!(render(Format::Text, &one()));
     }
 
     #[test]
     fn json() {
-        let mut json = Vec::new();
-        print_counters(Format::Json, &one(), &mut json).unwrap();
-        insta::assert_snapshot!(String::from_utf8(json).unwrap());
+        insta::assert_snapshot!(render(Format::Json, &one()));
+        assert_eq!(render(Format::Jsonl, &one()).lines().count(), 2);
     }
 
     #[test]
     fn empty_report_says_so_in_text() {
-        let mut out = Vec::new();
-        print_counters(Format::Text, &report(vec![]), &mut out).unwrap();
-        assert_eq!(String::from_utf8(out).unwrap(), "no counters\n");
+        assert_eq!(render(Format::Text, &report(vec![])), "no counters\n");
     }
 }
