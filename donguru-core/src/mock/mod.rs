@@ -20,7 +20,7 @@
 //! - `leds`: mode, brightness, identify (`Unsupported` above 60 s).
 //! - `meter`: the reading, temperature and totals the test puts into the state; window 1 ms..=1 s.
 //! - `plug` / `header`: `vbus_mode` with the guard against the meter's `vbus_in` (above the mode's `max_voltage`
-//!   the switch is `Tripped(OverVoltage)`; a `max_voltage` above 21 V is `InvalidArgument`), `vbus_cycle`
+//!   a write is `Refused` and changes nothing, CORE-6; a `max_voltage` above 21 V is `InvalidArgument`), `vbus_cycle`
 //!   (`WrongState` in `ForceOff`, `OverVoltage` above the limit), data, orientation, relay.
 //! - `sbu`: function, release, pull-ups (`InUse` while SWD holds SBU), `route_usb` (`Unsupported` on Main).
 //! - `inputs`, `hub`, `swd`: state, button action, recover, mode.
@@ -249,14 +249,15 @@ impl MockState {
         }
     }
 
-    /// What a VBUS switch does in `mode` with the receptacle at `reading.vbus_in`.
-    fn apply(&self, mode: &VbusMode) -> VbusState {
+    /// What a VBUS switch does in `mode` with the receptacle at `reading.vbus_in`, as `donguru_board::power`'s
+    /// `Switch::set_mode`: a guarded mode over its `max_voltage` is `Refused` and changes nothing.
+    fn apply(&self, mode: &VbusMode) -> core::result::Result<VbusState, CommonError<'static>> {
         match mode {
-            VbusMode::ForceOff => VbusState::Off,
-            _ if self.reading.vbus_in.to_f64() > max_voltage(mode) => {
-                VbusState::Tripped(GuardTrip::OverVoltage)
-            }
-            _ => VbusState::On,
+            VbusMode::ForceOff => Ok(VbusState::Off),
+            _ if self.reading.vbus_in.to_f64() > max_voltage(mode) => Err(CommonError::Refused {
+                reason: MaxLen::new_unchecked("VBUS is over max_voltage"),
+            }),
+            _ => Ok(VbusState::On),
         }
     }
 

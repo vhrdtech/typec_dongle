@@ -715,14 +715,11 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   flipped bits). Unit-tested against fake RAM with a stuck bit, an aliased address bit, swapped byte lanes and rare
   read flips. Feature `probe-rs` (`swd_memtest/probe.rs`): attach through any CMSIS-DAP v2 probe at a given speed,
   halt, save the region, run, restore, resume; probe-rs without its C HID backend.
-- 🐛 **CORE-6 Mock's VBUS guard doesn't refuse, it trips**: `docs/user/power.md` and `donguru_board::power` (the firmware
-  logic crate, `donguru_board/src/power.rs`'s `Switch::set_mode`, tested in `refused_over_the_limit_changes_nothing`)
-  both say writing a guarded mode while VBUS is already over `max_voltage` is `Refused` and changes nothing. The
-  mock's `MockState::apply` (`donguru-core/src/mock/mod.rs`) instead always applies the write and reports
-  `Tripped(OverVoltage)`, as `donguru-core/tests/mock.rs`'s `plug_vbus_guard_and_cycle` shows ("switching on above
-  the limit trips"). Found while building CLI-11 / CLI-16: `dg power on` / `dg header vbus on` cope either way (they
-  read back `vbus` after the write and fail the exit code unless it is `On`), but a CORE-3 test relying on the
-  mock's `Set` to refuse would be testing the wrong thing. Fix: give the mock the same refusal `donguru_board::power` has.
+- ✅ **CORE-6 Mock's VBUS guard refuses like `donguru_board::power`**: writing a guarded mode while VBUS is over
+  `max_voltage` answers `Refused` and changes nothing, on `plug.vbus_mode` and `header.vbus_sw_mode`
+  (`donguru-core/src/mock/mod.rs` `MockState::apply`), as `Switch::set_mode` does and `docs/user/power.md` says.
+  Tested in `donguru-core/tests/mock.rs` (`plug_vbus_guard_and_cycle`); a `Tripped` state for CLI tests is put into the
+  mock state directly.
 - ✅ **CORE-7 ELF keeper: `dg` always finds the firmware ELF** (CLI-19's `device counters` / `device log` decode):
   `cnt_core::elf::resolve` already did the lookup (`WW_ELF_PATH`, then `~/.cache/ww/elf`, then `target/`) that
   `donguru-core/src/counters.rs` / `src/log.rs` call; `just fw-size`'s release build calls `cnt elf add "$elf"`

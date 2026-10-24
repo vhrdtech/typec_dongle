@@ -264,16 +264,27 @@ async fn plug_vbus_guard_and_cycle() {
         })
     );
 
-    // switching on above the limit trips
-    plug.set_vbus_mode(VbusMode::ForceOn {
-        max_voltage: mv(5_500),
-    })
-    .await
-    .unwrap();
-    assert_eq!(
-        plug.vbus().await.unwrap(),
-        VbusState::Tripped(GuardTrip::OverVoltage)
-    );
+    // switching on above the limit is refused and changes nothing, as `donguru_board::power` does (CORE-6)
+    let before = plug.vbus_mode().await.unwrap();
+    let e = plug
+        .set_vbus_mode(VbusMode::ForceOn {
+            max_voltage: mv(5_500),
+        })
+        .await
+        .unwrap_err();
+    assert_eq!(device_kind(e), DeviceErrorKind::Refused);
+    assert_eq!(plug.vbus_mode().await.unwrap(), before);
+    assert_eq!(plug.vbus().await.unwrap(), VbusState::On);
+    plug.set_vbus_mode(VbusMode::ForceOff).await.unwrap();
+    let e = plug
+        .set_vbus_mode(VbusMode::ForceOn {
+            max_voltage: mv(5_500),
+        })
+        .await
+        .unwrap_err();
+    assert_eq!(device_kind(e), DeviceErrorKind::Refused);
+    assert_eq!(plug.vbus_mode().await.unwrap(), VbusMode::ForceOff);
+    assert_eq!(plug.vbus().await.unwrap(), VbusState::Off);
     let auto = VbusMode::Auto {
         max_voltage: mv(20_000),
         max_current: Ampere::new(Prefix::Milli, 3_000),

@@ -686,7 +686,10 @@ impl MockServer {
         if let Err(e) = check_mode(&value) {
             return SetError(e);
         }
-        self.state.plug_vbus = self.state.apply(&value);
+        match self.state.apply(&value) {
+            Ok(state) => self.state.plug_vbus = state,
+            Err(e) => return SetError(e),
+        }
         self.state.plug_vbus_mode = value;
         self.mark_changed_plug_vbus_mode();
         self.mark_changed_plug_vbus();
@@ -791,7 +794,10 @@ impl MockServer {
         if let Err(e) = check_mode(&value) {
             return SetError(e);
         }
-        self.state.header_vbus = self.state.apply(&value);
+        match self.state.apply(&value) {
+            Ok(state) => self.state.header_vbus = state,
+            Err(e) => return SetError(e),
+        }
         self.state.header_vbus_mode = value;
         self.mark_changed_header_vbus_sw_mode();
         self.mark_changed_header_vbus_sw();

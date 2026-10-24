@@ -726,15 +726,10 @@ mod tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn on_reports_a_trip_as_failure() {
         let mock = MockDevice::start("cli/power_trip");
-        mock.with(|s| s.reading.vbus_in = mv(9_000)).await;
+        // a switch that tripped after it was on (the mock refuses to switch on over the limit, CORE-6)
+        mock.with(|s| s.plug_vbus = VbusState::Tripped(GuardTrip::OverVoltage))
+            .await;
         let dongle = mock.open().await.unwrap();
-        dongle
-            .plug()
-            .set_vbus_mode(VbusMode::ForceOn {
-                max_voltage: mv(5_500),
-            })
-            .await
-            .unwrap();
         let state = dongle.plug().vbus().await.unwrap();
         assert_eq!(state, VbusState::Tripped(GuardTrip::OverVoltage));
         let ctx = Context {

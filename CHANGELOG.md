@@ -6,6 +6,10 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Fixed
+
+- The mock dongle refuses a guarded VBUS mode write while VBUS is over `max_voltage` (`Refused`, nothing changes) instead of tripping, like the firmware's `donguru_board::power` (CORE-6).
+
 ## [0.20.32] - 2026-10-25
 
 ### Added
