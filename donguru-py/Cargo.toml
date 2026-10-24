@@ -1,0 +1,27 @@
+[package]
+name = "donguru-py"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Python bindings of donguru-core (CORE-4): the `donguru` package"
+publish = false
+
+[lib]
+name = "_donguru"
+crate-type = ["cdylib"]
+# tested from Python: `just py-test` (pytest against the mock)
+test = false
+doctest = false
+
+[dependencies]
+donguru-core.workspace = true
+# abi3: one wheel for every CPython from 3.10 on. `extension-module` comes from maturin (pyproject.toml), so
+# `cargo test --workspace --all-features` doesn't build this crate without libpython.
+pyo3 = { version = "0.29", features = ["abi3-py310"] }
+tokio = { version = "1", features = ["rt-multi-thread", "time"] }
+ww_si = { path = "../../wire_weaver/ww_stdlib/ww_si", features = ["std", "time", "electrical", "mechanical", "thermal"] }
+ww_uart = { path = "../../wire_weaver/ww_stdlib/ww_uart", features = ["std"] }
+
+[features]
+# `donguru.mock`: a dongle in the same process (donguru-core's CORE-3 mock), for tests of scripts without hardware
+mock = ["donguru-core/mock"]
