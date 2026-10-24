@@ -13,13 +13,14 @@ pub mod log;
 pub mod mock;
 pub mod nets;
 pub mod swd_memtest;
+pub mod udev;
 pub mod update;
 pub mod vbus;
 
 pub use device::{DeviceEntry, Dongle, Selector};
 pub use donguru_api as api;
-pub use ww_indication;
 pub use error::{DeviceError, DeviceErrorKind, Error, Result};
+pub use ww_indication;
 
 /// Power into the DUT of a meter reading, in W: `vbus_in` x `current` (the device doesn't send it, it is exactly
 /// this product; the U601 drop is not measured).

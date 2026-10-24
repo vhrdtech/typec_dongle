@@ -49,6 +49,7 @@ probe-rs = ["dep:probe-rs"]
 mock = ["wire_weaver_client/in_process", "dep:ww_device", "dep:ww_stream"]
 
 [dev-dependencies]
+tempfile = "3"
 semver = "1"
 ww_stm32_dfu = { package = "stm32_dfu_host", path = "../../wire_weaver/stm32_dfu_host", features = ["sim"] }
 donguru-core = { path = ".", features = ["mock"] }

@@ -9,7 +9,6 @@ use crate::exit::ExitCode;
 use crate::output::{Output, Render, Spinner};
 use crate::theme::Theme;
 use clap::{Args, Subcommand, ValueEnum};
-use donguru_core::{Dongle, api};
 use donguru_core::swd_memtest::probe::{DONGURU_PROBE, Target};
 use donguru_core::swd_memtest::{Pattern, PatternResult, Region};
 use std::io::{self, Write};
