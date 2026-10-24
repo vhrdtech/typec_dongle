@@ -5,8 +5,8 @@ icon: lucide/file-code-corner
 # Scripting
 
 `donguru` (or `dg`) is meant to be driven from shell scripts and test benches: every command can print JSON, and its
-exit code says what went wrong. This page is the contract scripts can rely on. The Python and Rust interfaces are
-planned and will get their own section here.
+exit code says what went wrong. This page is the contract scripts can rely on. From Python, use the `donguru`
+package instead, see [Python](python.md); the Rust interface (`donguru-core`) is not documented yet.
 
 ## stdout is data, stderr is diagnostics
 

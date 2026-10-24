@@ -98,9 +98,22 @@ impl From<&DeviceSummary> for Info {
 impl Info {
     fn __repr__(&self) -> String {
         format!(
-            "Info(variant={:?}, firmware={:?}, board={:?}, uid={:?}, label={:?}, last_reset={:?})",
-            self.variant, self.firmware, self.board, self.uid, self.label, self.last_reset
+            "Info(variant={:?}, firmware={}, board={}, uid={}, label={}, last_reset={})",
+            self.variant,
+            py_opt(&self.firmware),
+            py_opt(&self.board),
+            py_opt(&self.uid),
+            py_opt(&self.label),
+            py_opt(&self.last_reset)
         )
+    }
+}
+
+/// An optional string as Python writes it: `'x'` quoted, or `None`.
+fn py_opt(s: &Option<String>) -> String {
+    match s {
+        Some(s) => format!("{s:?}"),
+        None => "None".to_string(),
     }
 }
 

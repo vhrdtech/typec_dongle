@@ -8,6 +8,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ### Added
 
+- Python package `donguru` (`donguru-py/`, PyO3 + maturin): `donguru.list()`, `donguru.open("bench-1")`, power, meter (read, `watch()` as an iterator, totals), USB data, header, UART configure, settings, LEDs, firmware version and info, as a blocking API with SI floats; exceptions per error category; `donguru.mock.MockDevice` to test scripts without a dongle; type hints. `just py-test` runs pytest against the mock (also part of `just test`), `just py-build` builds the wheel. Tested against the mock only, not on a board yet (CORE-4).
+- Docs page [Python](docs/user/python.md) (CORE-4).
 - Pick a dongle by its user label: `--device bench-1` (when no serial matches) or `--device label:bench-1`, any case; the "matches none" / "matches 2" errors list the labels (CORE-1, for CORE-4's `donguru.open("bench-1")`).
 
 ## [0.20.31] - 2026-10-25

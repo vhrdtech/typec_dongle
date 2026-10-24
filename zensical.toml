@@ -20,6 +20,7 @@ nav = [
       { "Usage" = "user/usage.md" },
       { "Power and data switches" = "user/power.md" },
       { "Scripting" = "user/scripting.md" },
+      { "Python" = "user/python.md" },
       { "Firmware update" = "user/firmware-update.md" },
       { "Bring-up and debug" = "user/debug.md" },
   ]

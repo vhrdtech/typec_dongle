@@ -697,9 +697,18 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   host stack (link setup, version check, timeouts, observe). Models the Donguru levels with the firmware's rules
   (VBUS guard, SBU ownership, refused debug pins); IO arrays and streams answer `Unimplemented`.
   `donguru-core/tests/mock.rs` covers every level, device errors, `Unimplemented`, observe and a stuck device.
-- 📋 **CORE-4 Python bindings** over the Rust core (PyO3 + maturin, `uv add donguru`): `donguru.list()`,
-  `donguru.open(selector)`, levels as attributes (`dg.power.on()`, `dg.meter.read()`, `dg.meter.watch()`,
-  `dg.meter.record()` → pandas, `dg.inputs.events()`), SI values as floats. The labs use this shape. ^v1.0
+- 🧪 **CORE-4 Python bindings** (`donguru-py/`, PyO3 + maturin, package `donguru`, abi3 wheel for CPython ≥ 3.10):
+  blocking API with SI floats, enums as strings, one exception class per error category (`donguru.Error`,
+  `NoDevice`, `DeviceError` with `.kind`/`.item`, `Unimplemented`, `Timeout`, `Incompatible`, `LinkError`).
+  `donguru.list()`, `donguru.open(selector)` (index, serial, path, label), `Dongle` with `info()`,
+  `firmware_version`, `label`, and the levels `power` (on/off/cycle, trip), `meter` (read, `watch()` iterator:
+  periodic, on change, samples; totals, temperature, window, deadband), `usb`, `header` (relay, VBUS_SW),
+  `uart.plug`/`uart.header` (`configure`), `settings`, `leds.identify`. `donguru.mock.MockDevice` (CORE-3's mock)
+  ships in the wheel for script tests; type stub `_donguru.pyi`. `just py-test` (pytest against the mock, also in
+  `just test-all`), `just py-build`; docs `docs/user/python.md`. Not run against a dongle yet; on B153A check:
+  `donguru.list()` and `open("label")`, `power.on(trip=...)`/`off`/`cycle` with a DUT, `meter.watch()` at 0.5 s,
+  `on_change` and `samples` (rate, `t`, Ctrl-C), `uart.plug.configure(baud=...)` answer, `settings` round-trip over
+  a reset. The rest of the labs' shape is CORE-13. ^v1.0
 - ✅ **CORE-5 SWD link memtest** (`donguru-core/src/swd_memtest.rs`): memtest-style patterns over any
   `WordMemory` (data bus walking 1/0, Barr address bus, solid, checkerboard, address-in-address, moving inversions
   per chunk, byte lanes, seeded xorshift64* random), mismatches counted and located (address, expected, read,
@@ -747,6 +756,10 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 💡 **CORE-12 Through the local WireWeaver server**: donguru-core (CLI, Python, GUI) connects to a running `ww serve`
   over IPC when there is one, and opens the USB interface itself only when there isn't, so any number of local
   programs use one dongle at once. The server itself is wire_weaver's (not built yet). Lab `many-clients`.
+- 📋 **CORE-13 Python, the rest of the labs' shape** (after CORE-4): `dg.meter.record(seconds)` → pandas DataFrame
+  (optional extra), `dg.inputs.events()` iterator (button, switch), `dg.usb.cycle(wait_for=...)`, `measure()`
+  helpers, the GPIO / I2C / ADC levels as their API items land, an asyncio API beside the blocking one, wheels per
+  platform on PyPI (`uv add donguru`). ^v1.0
 
 ## CLI (`CLI`)
 
