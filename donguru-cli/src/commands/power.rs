@@ -9,7 +9,7 @@ use clap::{Args, Subcommand};
 use crate::cli::Format;
 use crate::context::Context;
 use crate::exit::ExitCode;
-use crate::output::{Output, Render};
+use crate::output::{Output, Render, Spinner};
 use crate::theme::Theme;
 use donguru_core::api::{
     DataPath, GuardTrip, MeterReading, MeterTotals, Second, VbusMode, VbusState,
@@ -407,9 +407,31 @@ fn off(ctx: &Context) -> anyhow::Result<ExitCode> {
 fn cycle(ctx: &Context, off: Duration, release_sbu: bool) -> anyhow::Result<ExitCode> {
     // Integer milliseconds: the firmware's `ww_si` has no `f32` (see `donguru_core::vbus`'s doc comment).
     let off_s = Second::milli(off.as_millis() as i32);
+    // a long off time counts down on stderr (CLI-53); a short one would only flicker
+    let spinner = (off >= Duration::from_secs(1)).then(|| Spinner::new(ctx, ""));
     let state = super::with_dongle(ctx, async |dongle| {
-        dongle.plug().vbus_cycle(off_s, release_sbu).await
+        let plug = dongle.plug();
+        let cycle = plug.vbus_cycle(off_s, release_sbu);
+        let Some(spinner) = &spinner else {
+            return cycle.await;
+        };
+        let started = std::time::Instant::now();
+        let countdown = async {
+            loop {
+                let left = off.saturating_sub(started.elapsed());
+                spinner.set_message(format!(
+                    "plug VBUS off, back on in {:.1} s",
+                    left.as_secs_f64()
+                ));
+                tokio::time::sleep(Duration::from_millis(100)).await;
+            }
+        };
+        tokio::select! {
+            state = cycle => state,
+            never = countdown => never,
+        }
     })?;
+    drop(spinner);
     report_vbus_state(ctx, "plug", state, true)
 }
 

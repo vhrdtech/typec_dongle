@@ -12,7 +12,7 @@ use donguru_core::log::LogReport;
 use crate::cli::Format;
 use crate::context::Context;
 use crate::exit::ExitCode;
-use crate::output::{Output, Render};
+use crate::output::{Output, Render, Spinner};
 use crate::theme::Theme;
 
 #[derive(Debug, Args)]
@@ -40,7 +40,8 @@ pub fn run(ctx: &Context, args: Log) -> anyhow::Result<ExitCode> {
         let dongle = super::open(ctx).await?;
         let device = dongle.device();
         if args.follow {
-            let mut out = Output::stdout(ctx);
+            let spinner = Spinner::counting(ctx, "following the device log", "lines");
+            let mut out = Output::stdout(ctx).with_spinner(&spinner);
             device
                 .log_follow(
                     args.elf.as_deref(),
@@ -48,7 +49,7 @@ pub fn run(ctx: &Context, args: Log) -> anyhow::Result<ExitCode> {
                     |line| {
                         let _ = out.record(&Line(line));
                     },
-                    |warning| eprintln!("donguru: {warning}"),
+                    |warning| spinner.suspend(|| eprintln!("donguru: {warning}")),
                 )
                 .await?;
         } else {

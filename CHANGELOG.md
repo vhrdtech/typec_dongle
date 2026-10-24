@@ -6,11 +6,15 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- A spinner on stderr while `power cycle --off` (1 s or more, counting down), `device log --follow` and `device counters --watch` wait; hidden with `-q` or when stderr is not a terminal, stdout unchanged. Not run on a board yet (CLI-53).
+
 ### Changed
 
+- `swd memtest` shows its spinner also under `--format json` / `jsonl` (on stderr, only on a terminal); its output is unchanged (CLI-15).
 - `--format json` / `jsonl`: a failed command writes `{"error": {"exit": "no_device", "code": 3, "message": "...", "kind": "refused"}}` as one line on stderr instead of `donguru: error: ...`; stdout stays data only, the exit code is unchanged; `kind` only when the dongle answered with an error. Text output keeps the old line. `docs/user/scripting.md` documents formats, exit codes and the error object (CLI-52).
-- Text output of `power`, `header`, `usb`, `uart`, `info`, `device`, `settings` and `fw` is coloured on a terminal (keys, values, states: on / connected green, tripped / fault red); `--color never`, `NO_COLOR` or a pipe give the same text as before. json and jsonl are unchanged (CLI-15, CLI-51).
-
+- Text output of `power`, `header`, `usb`, `uart`, `info`, `device`, `settings`, `fw` and `swd memtest` is coloured on a terminal (keys, values, states: on / connected green, tripped / fault red); `--color never`, `NO_COLOR` or a pipe give the same text as before. json and jsonl are unchanged (CLI-15, CLI-51).
 - Exit codes settled as `src/exit.rs` has them, now the documented contract: 0 success, 1 failure, 2 bad arguments, 3 no device, 4 device error, 5 timeout; each has a stable name (`no_device`, ...). `developer-notes.md` and `docs/design/cli` no longer list a transport code; a broken link stays 1. No exit code changed (CLI-13).
 
 ## [0.20.30] - 2026-10-25

@@ -815,10 +815,11 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - ✅ **CLI-14 `--version` with git SHA and build time** (`donguru-cli/build.rs`, no extra crates): `donguru 0.20.20
   (554cf91-dirty, built 21 Oct 2026 18:53 UTC)`; `SOURCE_DATE_EPOCH` honoured, `unknown` without git. Shows `donguru`
   also when run as `dg`.
-- 🚧 **CLI-15 Output renderer** (`donguru-cli/src/output.rs`): commands build a typed value that implements
+- ✅ **CLI-15 Output renderer** (`donguru-cli/src/output.rs`): commands build a typed value that implements
   `Render` (text with the theme, json, jsonl records) and hand it to `Output`, which writes the selected format;
-  streams use `Output::record`. Ported: `power`, `header`, `usb`, `uart`, `info`, `device`, `settings`, `fw`; `swd`
-  still prints by hand (CLI-17 reworks it).
+  streams use `Output::record`. Every command that prints a result goes through it: `power`, `header`, `usb`, `uart`,
+  `info`, `device`, `settings`, `fw`, `swd memtest`. json shapes and plain text are unchanged (the insta snapshots
+  from before pass as they were; new ones for `settings`, `fw`, `swd memtest`, `device`).
 - ⬜ **CLI-17 `swd orientation / release`**: arguments parsed, prints "not implemented" (`src/commands/swd.rs`),
   same as the other device commands: needs CORE-1, API-4. CMSIS-DAP itself (FW-15) is not a `donguru` subcommand,
   probe-rs talks to it directly over USB.
@@ -935,17 +936,23 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - ✅ **CLI-50 `just install` / `just deploy`** (`justfile`): `cargo install --path donguru-cli --locked`, `dg` as a link
   to the same executable in the cargo bin directory (not a second `[[bin]]`), completions; `deploy` refuses on local
   changes, pulls `--ff-only`, `deps-pull`, installs and checks `--version` against HEAD.
-- ⬜ **CLI-51 Colour in text output**: only `swd memtest` colours its stdout (`Paint`); `device list`, `power status`,
-  `settings show`, `fw version` print plain text. Give every text renderer the theme and `theme::colour_enabled`
-  (`--color`, `NO_COLOR`, TTY), keep json / jsonl plain. Colour in help, `--color` for clap's own output and the `fw
-  update` bar already follow it.
+- ✅ **CLI-51 Colour in text output** (`donguru-cli/src/theme.rs`, `Theme`: key, heading, ok, warn, bad, value,
+  dim; `Painted` pads the visible text): every text renderer takes the theme, coloured per `--color`, `NO_COLOR`,
+  `TERM=dumb` and whether stdout is a terminal, 24-bit or 16 colours per the terminal; json / jsonl stay plain.
+  `swd memtest`'s private `Paint` is gone. Checked in the snapshot tests (plain) and by the unit test of `Painted`;
+  the colours themselves on a terminal not looked at yet.
 - ✅ **CLI-52 Errors under `--format json`** (`donguru-cli/src/output.rs`, `report_error` / `error_json`): text keeps
   `donguru: error: ...`; json and jsonl write `{"error":{"exit","code","message","kind?"}}` as one line on stderr
   (stdout stays data), `exit` the exit code's name (CLI-13), `kind` the dongle's error kind. Documented in
   `docs/user/scripting.md` and `docs/design/cli/index.md` ("Errors under json"). Unit-tested; no hardware involved.
-- ⬜ **CLI-53 Progress for the other slow commands**: `fw update` has a bar, `swd memtest` a spinner; `power cycle
-  --off` with a long off time, `device log --follow` and `device counters --watch` show nothing while they wait.
-  Checked: nothing else takes more than a few seconds today.
+- 🧪 **CLI-53 Progress for the other slow commands** (`output::Spinner`, on stderr, hidden with `-q` or when stderr
+  is not a terminal; `Output::with_spinner` clears it around each record and counts them): `power cycle --off` of
+  1 s or more counts down ("plug VBUS off, back on in 3.2 s"), `device log --follow` ("following the device log, 12
+  lines"), `device counters --watch` ("reading the counters every 1000 ms, 3 snapshots"); `swd memtest` uses the same
+  spinner. Built and unit-tested, not run against a board: on B153A check `dg power cycle --off 5s` (countdown, then
+  the usual `plug vbus: on` line, nothing left on the terminal), `dg device log --follow` while pressing the button
+  (lines print above the spinner, the count goes up), `dg device counters --watch -f jsonl` (spinner on stderr, clean
+  jsonl when piped: `| cat` shows no spinner), `dg swd memtest` (spinner per pattern as before).
 - 🐛 **CLI-54 Argument checks inside commands exit 1, not 2**: clap's usage errors exit 2 (`bad_args`), but a
   value a command checks itself (`settings set ... auto` without `--trip`, `power watch -f json`, a bad `uart_plug`
   value) bails with a plain anyhow error and exits 1 (`failure`). A typed usage error mapped to `ExitCode::BadArgs`

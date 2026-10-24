@@ -1,0 +1,9 @@
+---
+source: donguru-cli/src/commands/swd.rs
+expression: text
+---
+▶ pass 1/2  4000 kHz  0x20000000..0x20024000 (144 KiB)  seed 42
+  ok   solid                  73728 words     1.5 s  192.0 KiB/s
+  FAIL checkerboard           73728 words     1.5 s  192.0 KiB/s  1 mismatches
+       0x20000010: expected 0x55555555, read 0x55555554, bits 0x00000001
+1 pattern run(s) failed: 2 runs, 576 KiB over the link, seed 42

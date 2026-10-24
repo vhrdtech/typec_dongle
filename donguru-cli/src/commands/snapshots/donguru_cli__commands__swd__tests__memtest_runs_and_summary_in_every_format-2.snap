@@ -1,0 +1,5 @@
+---
+source: donguru-cli/src/commands/swd.rs
+expression: "render(Format::Jsonl, &run(1))"
+---
+{"first_mismatches":[{"addr":536870928,"expected":1431655765,"read":1431655764}],"mismatches":1,"pass":1,"passed":false,"pattern":"checkerboard","seconds":1.5,"seed":42,"speed_khz":4000,"words_read":36864,"words_written":36864}

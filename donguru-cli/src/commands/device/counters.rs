@@ -13,7 +13,7 @@ use donguru_core::counters::CountersReport;
 use crate::cli::Format;
 use crate::context::Context;
 use crate::exit::ExitCode;
-use crate::output::{Output, Render};
+use crate::output::{Output, Render, Spinner};
 use crate::theme::Theme;
 
 #[derive(Debug, Args)]
@@ -44,13 +44,26 @@ pub fn run(ctx: &Context, args: Counters) -> anyhow::Result<ExitCode> {
     super::runtime()?.block_on(async {
         let dongle = super::open(ctx).await?;
         let device = dongle.device();
-        let mut out = Output::stdout(ctx);
+        let spinner = args.watch.then(|| {
+            Spinner::counting(
+                ctx,
+                format!("reading the counters every {} ms", args.interval),
+                "snapshots",
+            )
+        });
+        let mut out = match &spinner {
+            Some(spinner) => Output::stdout(ctx).with_spinner(spinner),
+            None => Output::stdout(ctx),
+        };
         loop {
             let report = device.counters(args.elf.as_deref(), args.force).await?;
             if let Some(w) = &report.warning
                 && !ctx.quiet
             {
-                eprintln!("donguru: {w}");
+                match &spinner {
+                    Some(spinner) => spinner.suspend(|| eprintln!("donguru: {w}")),
+                    None => eprintln!("donguru: {w}"),
+                }
             }
             if args.watch {
                 out.record(&report)?;

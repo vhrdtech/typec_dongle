@@ -3,17 +3,15 @@
 //! `donguru` subcommand: probe-rs talks to it directly over USB (see the hardware checklist in
 //! `docs/development/index.md`).
 
-use crate::cli::{ColorMode, Format};
+use crate::cli::Format;
 use crate::context::Context;
 use crate::exit::ExitCode;
-use crate::theme::{self, DEFAULT_PALETTE};
-use clap::builder::styling::Style;
+use crate::output::{Output, Render, Spinner};
+use crate::theme::Theme;
 use clap::{Args, Subcommand, ValueEnum};
 use donguru_core::swd_memtest::probe::{DONGURU_PROBE, Target};
 use donguru_core::swd_memtest::{Pattern, PatternResult, Region};
-use indicatif::{ProgressBar, ProgressStyle};
-use std::io::IsTerminal;
-use std::time::Duration;
+use std::io::{self, Write};
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum Orientation {
@@ -142,75 +140,180 @@ fn memtest(ctx: &Context, args: MemtestArgs) -> anyhow::Result<ExitCode> {
             .map(|d| d.as_nanos() as u64)
             .unwrap_or(1)
     });
-    let text = matches!(ctx.format, Format::Text);
-    let paint = Paint::new(ctx.color);
     let mut all = Vec::new();
 
     for pass in 1..=args.passes {
         for &speed in &args.speed {
             let mut target = Target::attach(&args.probe, &args.chip, speed)?;
             let region = region(&target, &args)?;
-            if text {
-                println!(
-                    "{} pass {pass}/{}  {} kHz  {:#x}..{:#x} ({} KiB)  seed {seed}",
-                    paint.header("▶"),
-                    args.passes,
-                    target.speed_khz,
-                    region.base,
-                    region.base + 4 * region.words as u64,
-                    region.words * 4 / 1024,
-                );
-            }
-            let spinner = spinner(ctx, text);
             let speed_khz = target.speed_khz;
-            spinner.set_message(patterns[0].name());
+            let spinner = Spinner::new(ctx, patterns[0].name());
+            let mut out = Output::stdout(ctx).with_spinner(&spinner);
+            if out.format() == Format::Text {
+                out.record(&PassHeader {
+                    pass,
+                    passes: args.passes,
+                    khz: speed_khz,
+                    region,
+                    seed,
+                })?;
+            }
             let mut next = patterns.iter().skip(1);
+            let mut failed_write = None;
             let results = target.run(region, &patterns, seed, !args.no_restore, |r| {
-                spinner.suspend(|| report(ctx, &paint, pass, speed_khz, seed, r));
+                // `--format json` prints every run once at the end, in the summary
+                if out.format() != Format::Json
+                    && let Err(e) = out.record(&Run {
+                        pass,
+                        khz: speed_khz,
+                        seed,
+                        r,
+                    })
+                {
+                    failed_write.get_or_insert(e);
+                }
                 if let Some(p) = next.next() {
                     spinner.set_message(p.name());
                 }
             })?;
-            spinner.finish_and_clear();
+            if let Some(e) = failed_write {
+                return Err(e);
+            }
             all.extend(results.into_iter().map(|r| (pass, speed_khz, r)));
         }
     }
 
     let failed = all.iter().filter(|(_, _, r)| !r.passed()).count();
-    match ctx.format {
-        Format::Text => {
-            let bytes: u64 = all
-                .iter()
-                .map(|(_, _, r)| 4 * (r.words_read + r.words_written))
-                .sum();
-            let verdict = if failed == 0 {
-                paint.valid("all patterns passed")
-            } else {
-                paint.error(&format!("{failed} pattern run(s) failed"))
-            };
-            println!(
-                "{verdict}: {} runs, {} KiB over the link, seed {seed}",
-                all.len(),
-                bytes / 1024
-            );
-        }
-        Format::Json => {
-            let runs: Vec<_> = all
-                .iter()
-                .map(|(pass, khz, r)| json(*pass, *khz, seed, r))
-                .collect();
-            println!(
-                "{}",
-                serde_json::json!({ "seed": seed, "passed": failed == 0, "runs": runs })
-            );
-        }
-        Format::Jsonl => {}
-    }
+    Output::stdout(ctx).emit(&Summary { seed, all: &all })?;
     Ok(if failed == 0 {
         ExitCode::Success
     } else {
         ExitCode::Failure
     })
+}
+
+/// `▶ pass 1/2  4000 kHz  0x20000000..0x20024000 (144 KiB)  seed 42`, text only.
+struct PassHeader {
+    pass: u32,
+    passes: u32,
+    khz: u32,
+    region: Region,
+    seed: u64,
+}
+
+impl Render for PassHeader {
+    fn text(&self, out: &mut dyn Write, th: &Theme) -> io::Result<()> {
+        let r = &self.region;
+        writeln!(
+            out,
+            "{} pass {}/{}  {} kHz  {:#x}..{:#x} ({} KiB)  seed {}",
+            th.heading("▶"),
+            self.pass,
+            self.passes,
+            self.khz,
+            r.base,
+            r.base + 4 * r.words as u64,
+            r.words * 4 / 1024,
+            self.seed,
+        )
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::Value::Null
+    }
+}
+
+/// One pattern run: a line (and its first mismatches) in text, one record in jsonl.
+struct Run<'a> {
+    pass: u32,
+    khz: u32,
+    seed: u64,
+    r: &'a PatternResult,
+}
+
+impl Render for Run<'_> {
+    fn text(&self, out: &mut dyn Write, th: &Theme) -> io::Result<()> {
+        let r = self.r;
+        let status = if r.passed() {
+            th.ok("ok  ")
+        } else {
+            th.bad("FAIL")
+        };
+        let words = r.words_read + r.words_written;
+        let rate = 4.0 * words as f64 / r.elapsed.as_secs_f64().max(1e-9) / 1024.0;
+        writeln!(
+            out,
+            "  {status} {:<19} {:>8} words  {:>6.1} s  {:>5.1} KiB/s{}",
+            r.pattern.name(),
+            words,
+            r.elapsed.as_secs_f64(),
+            rate,
+            if r.passed() {
+                String::new()
+            } else {
+                format!("  {} mismatches", th.bad(r.mismatches))
+            }
+        )?;
+        for m in &r.first_mismatches {
+            writeln!(
+                out,
+                "       {:#010x}: expected {:#010x}, read {:#010x}, bits {:#010x}",
+                m.addr,
+                m.expected,
+                m.actual,
+                m.xor()
+            )?;
+        }
+        Ok(())
+    }
+
+    fn json(&self) -> serde_json::Value {
+        json(self.pass, self.khz, self.seed, self.r)
+    }
+}
+
+/// The verdict over every run: a line in text, every run in json, nothing more in jsonl (its runs were the
+/// records).
+struct Summary<'a> {
+    seed: u64,
+    all: &'a [(u32, u32, PatternResult)],
+}
+
+impl Render for Summary<'_> {
+    fn text(&self, out: &mut dyn Write, th: &Theme) -> io::Result<()> {
+        let failed = self.all.iter().filter(|(_, _, r)| !r.passed()).count();
+        let bytes: u64 = self
+            .all
+            .iter()
+            .map(|(_, _, r)| 4 * (r.words_read + r.words_written))
+            .sum();
+        let verdict = if failed == 0 {
+            th.ok("all patterns passed".to_string())
+        } else {
+            th.bad(format!("{failed} pattern run(s) failed"))
+        };
+        writeln!(
+            out,
+            "{verdict}: {} runs, {} KiB over the link, seed {}",
+            self.all.len(),
+            bytes / 1024,
+            self.seed
+        )
+    }
+
+    fn json(&self) -> serde_json::Value {
+        let runs: Vec<_> = self
+            .all
+            .iter()
+            .map(|(pass, khz, r)| json(*pass, *khz, self.seed, r))
+            .collect();
+        let passed = self.all.iter().all(|(_, _, r)| r.passed());
+        serde_json::json!({ "seed": self.seed, "passed": passed, "runs": runs })
+    }
+
+    fn jsonl(&self) -> Vec<serde_json::Value> {
+        Vec::new()
+    }
 }
 
 fn region(target: &Target, args: &MemtestArgs) -> anyhow::Result<Region> {
@@ -240,43 +343,6 @@ fn region(target: &Target, args: &MemtestArgs) -> anyhow::Result<Region> {
     })
 }
 
-fn report(ctx: &Context, paint: &Paint, pass: u32, khz: u32, seed: u64, r: &PatternResult) {
-    match ctx.format {
-        Format::Text => {
-            let status = if r.passed() {
-                paint.valid("ok  ")
-            } else {
-                paint.error("FAIL")
-            };
-            let words = r.words_read + r.words_written;
-            let rate = 4.0 * words as f64 / r.elapsed.as_secs_f64().max(1e-9) / 1024.0;
-            println!(
-                "  {status} {:<19} {:>8} words  {:>6.1} s  {:>5.1} KiB/s{}",
-                r.pattern.name(),
-                words,
-                r.elapsed.as_secs_f64(),
-                rate,
-                if r.passed() {
-                    String::new()
-                } else {
-                    format!("  {} mismatches", r.mismatches)
-                }
-            );
-            for m in &r.first_mismatches {
-                println!(
-                    "       {:#010x}: expected {:#010x}, read {:#010x}, bits {:#010x}",
-                    m.addr,
-                    m.expected,
-                    m.actual,
-                    m.xor()
-                );
-            }
-        }
-        Format::Jsonl => println!("{}", json(pass, khz, seed, r)),
-        Format::Json => {}
-    }
-}
-
 fn json(pass: u32, khz: u32, seed: u64, r: &PatternResult) -> serde_json::Value {
     serde_json::json!({
         "pass": pass,
@@ -292,53 +358,6 @@ fn json(pass: u32, khz: u32, seed: u64, r: &PatternResult) -> serde_json::Value 
             "addr": m.addr, "expected": m.expected, "read": m.actual,
         })).collect::<Vec<_>>(),
     })
-}
-
-fn spinner(ctx: &Context, text: bool) -> ProgressBar {
-    if !text || ctx.quiet || !std::io::stderr().is_terminal() {
-        return ProgressBar::hidden();
-    }
-    let pb = ProgressBar::new_spinner();
-    pb.set_style(
-        ProgressStyle::with_template("  {spinner} {msg} {elapsed}").expect("valid template"),
-    );
-    pb.enable_steady_tick(Duration::from_millis(120));
-    pb
-}
-
-/// Colour on stdout per `--color` and `NO_COLOR`.
-struct Paint(bool);
-
-impl Paint {
-    fn new(mode: ColorMode) -> Self {
-        Paint(theme::colour_enabled(mode, std::io::stdout().is_terminal()))
-    }
-
-    fn with(&self, style: Style, s: &str) -> String {
-        if self.0 {
-            format!("{style}{s}{style:#}")
-        } else {
-            s.to_string()
-        }
-    }
-
-    fn header(&self, s: &str) -> String {
-        self.with(
-            Style::new().fg_color(Some(DEFAULT_PALETTE.header())).bold(),
-            s,
-        )
-    }
-
-    fn valid(&self, s: &str) -> String {
-        self.with(Style::new().fg_color(Some(DEFAULT_PALETTE.valid())), s)
-    }
-
-    fn error(&self, s: &str) -> String {
-        self.with(
-            Style::new().fg_color(Some(DEFAULT_PALETTE.error())).bold(),
-            s,
-        )
-    }
 }
 
 /// `0x...`, decimal, or decimal with a K or M (binary) suffix.
@@ -359,7 +378,65 @@ fn parse_size(s: &str) -> Result<u64, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::parse_size;
+    use super::*;
+    use crate::output::render;
+    use donguru_core::swd_memtest::Mismatch;
+    use std::time::Duration;
+
+    fn result(pattern: Pattern, mismatches: Vec<Mismatch>) -> PatternResult {
+        PatternResult {
+            pattern,
+            words_written: 36_864,
+            words_read: 36_864,
+            mismatches: mismatches.len() as u64,
+            first_mismatches: mismatches,
+            elapsed: Duration::from_millis(1_500),
+        }
+    }
+
+    #[test]
+    fn memtest_runs_and_summary_in_every_format() {
+        let bad = Mismatch {
+            addr: 0x2000_0010,
+            expected: 0x5555_5555,
+            actual: 0x5555_5554,
+        };
+        let all = vec![
+            (1, 4000, result(Pattern::Solid, Vec::new())),
+            (1, 4000, result(Pattern::Checkerboard, vec![bad])),
+        ];
+        let header = PassHeader {
+            pass: 1,
+            passes: 2,
+            khz: 4000,
+            region: Region {
+                base: 0x2000_0000,
+                words: 36_864,
+            },
+            seed: 42,
+        };
+        let run = |i: usize| Run {
+            pass: all[i].0,
+            khz: all[i].1,
+            seed: 42,
+            r: &all[i].2,
+        };
+        let summary = Summary {
+            seed: 42,
+            all: &all,
+        };
+        let text = [
+            render(Format::Text, &header),
+            render(Format::Text, &run(0)),
+            render(Format::Text, &run(1)),
+            render(Format::Text, &summary),
+        ]
+        .concat();
+        insta::assert_snapshot!(text);
+        insta::assert_snapshot!(render(Format::Jsonl, &run(1)));
+        insta::assert_snapshot!(render(Format::Json, &summary));
+        assert_eq!(render(Format::Jsonl, &summary), "");
+    }
 
     #[test]
     fn sizes() {
