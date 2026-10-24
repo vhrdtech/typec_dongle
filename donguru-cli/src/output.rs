@@ -168,7 +168,7 @@ pub fn report_error(
     out: &mut impl Write,
 ) -> io::Result<()> {
     match format {
-        Format::Text => writeln!(out, "donguru: error: {err:#}"),
+        Format::Text => writeln!(out, "donguru: error: {}", crate::exit::message(err)),
         Format::Json | Format::Jsonl => writeln!(out, "{}", error_json(err, exit)),
     }
 }
@@ -179,7 +179,7 @@ pub fn error_json(err: &anyhow::Error, exit: ExitCode) -> serde_json::Value {
     let mut e = serde_json::json!({
         "exit": exit.name(),
         "code": exit.code(),
-        "message": format!("{err:#}"),
+        "message": crate::exit::message(err),
     });
     if let Some(kind) = err
         .downcast_ref::<donguru_core::Error>()

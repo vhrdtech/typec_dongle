@@ -6,6 +6,11 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- `donguru swd orientation [auto|normal|swapped]` and `swd release` (CLI-17), `donguru led mode / brightness / identify` (CLI-21): mock-tested, not yet on a board.
+- An item the dongle's firmware doesn't implement yet ends with "the device's firmware does not support this yet", exit code 4 as before (CLI-17, CLI-21).
+
 ### Fixed
 
 - The mock dongle refuses a guarded VBUS mode write while VBUS is over `max_voltage` (`Refused`, nothing changes) instead of tripping, like the firmware's `donguru_board::power` (CORE-6).

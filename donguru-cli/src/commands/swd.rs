@@ -9,16 +9,37 @@ use crate::exit::ExitCode;
 use crate::output::{Output, Render, Spinner};
 use crate::theme::Theme;
 use clap::{Args, Subcommand, ValueEnum};
+use donguru_core::{Dongle, api};
 use donguru_core::swd_memtest::probe::{DONGURU_PROBE, Target};
 use donguru_core::swd_memtest::{Pattern, PatternResult, Region};
 use std::io::{self, Write};
 
-#[derive(Debug, Clone, Copy, ValueEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum Orientation {
+    /// From the CC polarity once detected, normal until then
+    Auto,
     /// SBU1 = SWCLK, SBU2 = SWDIO
     Normal,
     /// SBU1 = SWDIO, SBU2 = SWCLK
     Swapped,
+}
+
+impl From<Orientation> for api::Orientation {
+    fn from(o: Orientation) -> Self {
+        match o {
+            Orientation::Auto => api::Orientation::Auto,
+            Orientation::Normal => api::Orientation::Normal,
+            Orientation::Swapped => api::Orientation::Swapped,
+        }
+    }
+}
+
+fn fmt_orientation(o: api::Orientation) -> &'static str {
+    match o {
+        api::Orientation::Auto => "auto",
+        api::Orientation::Normal => "normal",
+        api::Orientation::Swapped => "swapped",
+    }
 }
 
 #[derive(Debug, Subcommand)]
@@ -116,16 +137,72 @@ impl From<PatternArg> for Pattern {
 
 pub fn run(ctx: &Context, cmd: Swd) -> anyhow::Result<ExitCode> {
     match cmd {
-        Swd::Orientation { orientation: None } => super::stub("swd orientation", ExitCode::Failure),
-        Swd::Orientation {
-            orientation: Some(orientation),
-        } => super::stub(
-            &format!("swd orientation {orientation:?}"),
-            ExitCode::Failure,
-        ),
-        Swd::Release => super::stub("swd release", ExitCode::Failure),
+        Swd::Orientation { orientation } => orientation_cmd(ctx, orientation),
+        Swd::Release => release(ctx),
         Swd::Memtest(args) => memtest(ctx, args),
     }
+}
+
+/// Shows, or sets and reads back, `plug.orientation`: the one orientation of everything on the plug SBU lines.
+fn orientation_cmd(ctx: &Context, wanted: Option<Orientation>) -> anyhow::Result<ExitCode> {
+    let now = super::with_dongle(ctx, async |dongle| orientation_on(dongle, wanted).await)?;
+    match ctx.format {
+        Format::Text => println!("orientation: {}", fmt_orientation(now)),
+        Format::Json | Format::Jsonl => {
+            println!(
+                "{}",
+                serde_json::json!({ "orientation": fmt_orientation(now) })
+            )
+        }
+    }
+    Ok(match wanted {
+        Some(w) if api::Orientation::from(w) != now => ExitCode::Failure,
+        _ => ExitCode::Success,
+    })
+}
+
+async fn orientation_on(
+    dongle: &Dongle,
+    wanted: Option<Orientation>,
+) -> donguru_core::Result<api::Orientation> {
+    if let Some(wanted) = wanted {
+        dongle.plug().set_orientation(wanted.into()).await?;
+    }
+    dongle.plug().orientation().await
+}
+
+async fn release_on(dongle: &Dongle) -> donguru_core::Result<api::SbuFunction> {
+    dongle.sbu().release().await?;
+    dongle.sbu().function().await
+}
+
+fn fmt_function(f: api::SbuFunction) -> &'static str {
+    match f {
+        api::SbuFunction::Off => "off",
+        api::SbuFunction::Swd => "swd",
+        api::SbuFunction::Uart { .. } => "uart",
+        api::SbuFunction::I2c => "i2c",
+        api::SbuFunction::Gpio => "gpio",
+        api::SbuFunction::Usb => "usb",
+        #[allow(unreachable_patterns)] // a function of a newer firmware
+        _ => "unknown",
+    }
+}
+
+/// `sbu.release`, then reads back who owns SBU: anything but `off` is a failure.
+fn release(ctx: &Context) -> anyhow::Result<ExitCode> {
+    let function = super::with_dongle(ctx, async |dongle| release_on(dongle).await)?;
+    match ctx.format {
+        Format::Text => println!("sbu: {}", fmt_function(function)),
+        Format::Json | Format::Jsonl => {
+            println!("{}", serde_json::json!({ "sbu": fmt_function(function) }))
+        }
+    }
+    Ok(if matches!(function, api::SbuFunction::Off) {
+        ExitCode::Success
+    } else {
+        ExitCode::Failure
+    })
 }
 
 fn memtest(ctx: &Context, args: MemtestArgs) -> anyhow::Result<ExitCode> {
@@ -379,6 +456,7 @@ fn parse_size(s: &str) -> Result<u64, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use donguru_core::mock::MockDevice;
     use crate::output::render;
     use donguru_core::swd_memtest::Mismatch;
     use std::time::Duration;
@@ -445,5 +523,31 @@ mod tests {
         assert_eq!(parse_size("1M"), Ok(1 << 20));
         assert_eq!(parse_size("4096"), Ok(4096));
         assert!(parse_size("0xZZ").is_err());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn orientation_round_trip_and_release() {
+        let mock = MockDevice::start("cli/swd_orientation");
+        let dongle = mock.open().await.unwrap();
+        assert_eq!(
+            orientation_on(&dongle, None).await.unwrap(),
+            api::Orientation::Auto
+        );
+        assert_eq!(
+            orientation_on(&dongle, Some(Orientation::Swapped))
+                .await
+                .unwrap(),
+            api::Orientation::Swapped
+        );
+        // release puts SBU to Hi-Z, also while another function holds it
+        mock.with(|s| s.sbu_function = api::SbuFunction::Swd).await;
+        assert_eq!(release_on(&dongle).await.unwrap(), api::SbuFunction::Off);
+        dongle.close().await.unwrap();
+    }
+
+    #[test]
+    fn orientation_names() {
+        assert_eq!(fmt_orientation(Orientation::Swapped.into()), "swapped");
+        assert_eq!(fmt_orientation(Orientation::Auto.into()), "auto");
     }
 }

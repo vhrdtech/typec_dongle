@@ -145,6 +145,10 @@ pub enum Command {
     #[command(subcommand)]
     Swd(crate::commands::swd::Swd),
 
+    /// The power and status LEDs: mode, brightness, and a blink to find this dongle
+    #[command(subcommand)]
+    Led(crate::commands::led::Led),
+
     /// Serial ports: set the header UART's baud rate and framing
     #[command(subcommand)]
     Uart(crate::commands::uart::Uart),

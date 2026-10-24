@@ -76,6 +76,17 @@ impl From<&anyhow::Error> for ExitCode {
     }
 }
 
+/// The line `donguru: error:` prints for `err`: the error with its causes, and for an item the firmware doesn't
+/// implement yet (`Unimplemented`, exit code 4) a plain "firmware does not support this yet" instead of the API item.
+pub fn message(err: &anyhow::Error) -> String {
+    match err.downcast_ref::<donguru_core::Error>() {
+        Some(donguru_core::Error::Unimplemented { item }) => format!(
+            "the device's firmware does not support this yet ({item} is not implemented); update the firmware (`donguru fw update`) once a release has it"
+        ),
+        _ => format!("{err:#}"),
+    }
+}
+
 /// The error is a write to a closed pipe, `dg ... | head`.
 pub fn is_broken_pipe(err: &anyhow::Error) -> bool {
     err.chain()
@@ -102,6 +113,17 @@ mod tests {
         for (code, n, name) in all {
             assert_eq!((code.code(), code.name()), (n, name));
         }
+    }
+
+    #[test]
+    fn unimplemented_is_said_plainly_with_the_device_error_code() {
+        let err = anyhow::Error::new(donguru_core::Error::Unimplemented {
+            item: "Sbu::release".into(),
+        });
+        assert!(message(&err).starts_with("the device's firmware does not support this yet"));
+        assert!(message(&err).contains("Sbu::release"));
+        assert!(matches!(ExitCode::from(&err), ExitCode::DeviceError));
+        assert_eq!(message(&anyhow::anyhow!("other")), "other");
     }
 
     #[test]

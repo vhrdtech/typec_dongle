@@ -33,7 +33,7 @@ fn parse_interval(duration: &str) -> Result<Duration, String> {
 }
 
 /// A volt or an ampere value, as a plain number with an optional unit suffix (`20`, `20V`, `2A`).
-fn parse_quantity(s: &str, unit: char) -> Result<f64, String> {
+pub(crate) fn parse_quantity(s: &str, unit: char) -> Result<f64, String> {
     let trimmed = s.trim();
     let trimmed = trimmed
         .strip_suffix(unit)

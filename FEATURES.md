@@ -831,9 +831,13 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   streams use `Output::record`. Every command that prints a result goes through it: `power`, `header`, `usb`, `uart`,
   `info`, `device`, `settings`, `fw`, `swd memtest`. json shapes and plain text are unchanged (the insta snapshots
   from before pass as they were; new ones for `settings`, `fw`, `swd memtest`, `device`).
-- ⬜ **CLI-17 `swd orientation / release`**: arguments parsed, prints "not implemented" (`src/commands/swd.rs`),
-  same as the other device commands: needs CORE-1, API-4. CMSIS-DAP itself (FW-15) is not a `donguru` subcommand,
-  probe-rs talks to it directly over USB.
+- 🧪 **CLI-17 `swd orientation / release`** (`donguru-cli/src/commands/swd.rs`): `swd orientation [auto|normal|swapped]`
+  shows or sets `plug.orientation` and reads it back (exit 1 if it didn't stick); `swd release` calls `sbu.release`
+  and reads `sbu.function` back (exit 1 unless `off`); text / json. An item the firmware lacks exits 4 with "the
+  device's firmware does not support this yet". Tested against the mock only (`swd::tests`, `exit::tests`). On B153A
+  check: `dg swd orientation` prints `auto`; `swapped` then `normal` read back; with a probe-rs session running
+  `dg swd release` ends it and prints `sbu: off`; same on a firmware whose `sbu.release` is `Unimplemented` (exit 4,
+  plain message). CMSIS-DAP itself (FW-15) is not a `donguru` subcommand, probe-rs talks to it directly over USB. ^revB
 - ✅ **CLI-18 `swd memtest`**: CORE-5 from the command line, `--chip` (probe-rs name), `--probe` (Donguru by
   default), `--speed` list in kHz, `--base`/`--size` (default the chip's largest RAM), `--pattern`, `--seed`,
   `--passes`, `--no-restore`; text with colour and a spinner, `json`/`jsonl`; exit 1 on any mismatch. Tested
@@ -861,7 +865,12 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 🚧 **CLI-20 `sbu` and `uart`**: `sbu status / release / orientation`, `uart open / monitor / pty / break` (API-14). ^revB
   Done: `uart configure BAUD [8N1] [--port header|plug]` prints the line set and its error from the asked rate
   (`donguru-cli/src/commands/uart.rs`); the setting lasts until the dongle resets.
-- 📋 **CLI-21 `led mode / brightness / identify`** (API-9).
+- 🧪 **CLI-21 `led mode / brightness / identify`** (`donguru-cli/src/commands/led.rs`, API-9): `led mode
+  [all-off|essential|normal]`, `led brightness [lowest..highest]` show or set and read back (exit 1 if it didn't
+  stick), `led identify [SECONDS]` (default 5, at most 600; sent as whole ms, `Leds::identify_secs` in core). Mock-tested
+  (`led::tests`). On B153A check: the three modes visibly change the LEDs and read back; brightness steps are visible
+  and `lowest` is dim; `identify 3` blinks both LEDs for 3 s and returns to the mode; a second `identify` during one
+  exits 4 (`Busy`); on a firmware without `leds.brightness` / `leds.identify` exit 4 with the plain message. ^revB
 - 📋 **CLI-22 `adc`, `input`, `hub`**: `adc read`, `input status / watch`, `hub status / recover` (API-12, API-13,
   API-17).
 - 🧪 **CLI-23 `debug`**: pins by net name or port pin, boot-state diff, hub registers, UCPD, register reads (API-18).

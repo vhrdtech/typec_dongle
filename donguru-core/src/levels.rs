@@ -390,6 +390,15 @@ impl<'a> Leds<'a> {
         call("Indication::identify", self.c.leds().identify(duration)).await
     }
 
+    /// [identify](Self::identify) for `secs` seconds, sent as whole milliseconds (the firmware has no float numbers).
+    pub async fn identify_secs(&self, secs: f64) -> Result<()> {
+        self.identify(Second::new(
+            ww_si::Prefix::Milli,
+            (secs * 1000.0).round() as i32,
+        ))
+        .await
+    }
+
     pub fn raw(&self) -> generated::ww_indication_indication::WwIndicationIndicationClient<'a> {
         self.c.leds()
     }
