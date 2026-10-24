@@ -204,3 +204,22 @@ deploy:
 deps-pull:
     git -C ../wire_weaver pull --ff-only
     git -C ../embedded_bedrock pull --ff-only
+
+# Build .deb and .rpm packages: release binary, man pages, completions and the udev rule (PKG-3)
+[group: 'package']
+package:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cargo build --release --locked -p donguru-cli
+    cargo run -p xtask -- man
+    cargo run -p xtask -- completions
+    if ! cargo deb --version >/dev/null 2>&1; then
+        echo "cargo-deb not found: cargo install cargo-deb" >&2
+        exit 1
+    fi
+    if ! cargo generate-rpm --version >/dev/null 2>&1; then
+        echo "cargo-generate-rpm not found: cargo install cargo-generate-rpm" >&2
+        exit 1
+    fi
+    cargo deb --no-build -p donguru-cli
+    cargo generate-rpm -p donguru-cli

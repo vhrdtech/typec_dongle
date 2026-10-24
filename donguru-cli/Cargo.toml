@@ -41,3 +41,56 @@ anstream = "1"
 insta = { version = "1", features = ["json"] }
 tempfile = "3"
 wire_weaver = { path = "../../wire_weaver/wire_weaver", features = ["std"] }
+
+# PKG-3: `cargo deb --no-build -p donguru-cli` from the workspace root, after `just package` has
+# built the release binary and generated man pages / completions into target/dist.
+[package.metadata.deb]
+maintainer = "vhrd.tech <hello@vhrd.tech>"
+license-file = ["../LICENSE", "0"]
+depends = "$auto"
+section = "utility"
+priority = "optional"
+maintainer-scripts = "../packaging/deb"
+#
+# `target/release/...` gets cargo-deb's special handling (resolved against the real cargo target
+# dir regardless of package dir); every other asset path is relative to this crate's own
+# directory, so the dist/ and packaging/ assets built from the workspace root need a `../`.
+assets = [
+    ["target/release/donguru", "usr/bin/", "755"],
+    ["../target/dist/man/*.1", "usr/share/man/man1/", "644"],
+    ["../packaging/dg.1", "usr/share/man/man1/", "644"],
+    ["../target/dist/completions/bash/donguru", "usr/share/bash-completion/completions/donguru", "644"],
+    ["../target/dist/completions/bash/dg", "usr/share/bash-completion/completions/dg", "644"],
+    ["../target/dist/completions/zsh/_donguru", "usr/share/zsh/site-functions/_donguru", "644"],
+    ["../target/dist/completions/zsh/_dg", "usr/share/zsh/site-functions/_dg", "644"],
+    ["../target/dist/completions/fish/donguru.fish", "usr/share/fish/vendor_completions.d/donguru.fish", "644"],
+    ["../target/dist/completions/fish/dg.fish", "usr/share/fish/vendor_completions.d/dg.fish", "644"],
+    ["../packaging/60-donguru.rules", "usr/lib/udev/rules.d/60-donguru.rules", "644"],
+]
+
+# PKG-3: `cargo generate-rpm -p donguru-cli` from the workspace root, same inputs as cargo-deb above.
+[package.metadata.generate-rpm]
+assets = [
+    { source = "target/release/donguru", dest = "/usr/bin/donguru", mode = "755" },
+    { source = "target/dist/man/*.1", dest = "/usr/share/man/man1/", mode = "644", doc = true },
+    { source = "../packaging/dg.1", dest = "/usr/share/man/man1/dg.1", mode = "644", doc = true },
+    { source = "target/dist/completions/bash/donguru", dest = "/usr/share/bash-completion/completions/donguru", mode = "644" },
+    { source = "target/dist/completions/bash/dg", dest = "/usr/share/bash-completion/completions/dg", mode = "644" },
+    { source = "target/dist/completions/zsh/_donguru", dest = "/usr/share/zsh/site-functions/_donguru", mode = "644" },
+    { source = "target/dist/completions/zsh/_dg", dest = "/usr/share/zsh/site-functions/_dg", mode = "644" },
+    { source = "target/dist/completions/fish/donguru.fish", dest = "/usr/share/fish/vendor_completions.d/donguru.fish", mode = "644" },
+    { source = "target/dist/completions/fish/dg.fish", dest = "/usr/share/fish/vendor_completions.d/dg.fish", mode = "644" },
+    { source = "../packaging/60-donguru.rules", dest = "/usr/lib/udev/rules.d/60-donguru.rules", mode = "644" },
+]
+post_install_script = """
+ln -sf donguru /usr/bin/dg
+udevadm control --reload-rules || true
+udevadm trigger || true
+"""
+post_uninstall_script = """
+if [ "$1" = "0" ]; then
+    rm -f /usr/bin/dg
+    udevadm control --reload-rules || true
+    udevadm trigger || true
+fi
+"""

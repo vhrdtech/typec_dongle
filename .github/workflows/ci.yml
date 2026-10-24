@@ -94,6 +94,47 @@ jobs:
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.run-tests }}
         run: just test
 
+  # Builds the .deb and .rpm (PKG-3) as artifacts; never published from here.
+  package:
+    name: package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.2.0
+
+      - name: Install just
+        run: uv tool install rust-just
+
+      - name: Install Rust toolchain
+        run: rustup toolchain install
+
+      # dpkg-dev provides dpkg-shlibdeps, which resolves donguru-cli's
+      # `[package.metadata.deb]` Depends = "$auto"; cargo-deb builds without
+      # it too, just with an empty dependency list.
+      - name: Install packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev
+          cargo install --locked cargo-deb cargo-generate-rpm
+
+      - name: just package
+        run: just package
+
+      - name: Upload .deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: donguru-deb
+          path: target/debian/*.deb
+
+      - name: Upload .rpm
+        uses: actions/upload-artifact@v4
+        with:
+          name: donguru-rpm
+          path: target/generate-rpm/*.rpm
+
   # Runs the same git hooks that fire locally on commit, which covers the
   # non-Rust checks (trailing whitespace, YAML/TOML syntax, ...). The Rust
   # hooks are skipped because the `verify` job already covers them.

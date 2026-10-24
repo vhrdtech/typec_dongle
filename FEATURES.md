@@ -957,8 +957,19 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - ✅ **PKG-1 Documentation site**: Zensical, quickstart / usage / scripting / design pages, published by
   `.github/workflows/docs.yml`. User pages are mostly placeholders until commands work.
 - ✅ **PKG-2 CI and hooks**: `just verify` in GitHub Actions, prek pre-commit / pre-push hooks.
-- 📋 **PKG-3 Packages**: `.deb` / `.rpm` first, then Homebrew and Chocolatey; man pages, completions and the udev rule
-  installed by the package (`docs/design/packaging/`). ^v1.0
+- 🧪 **PKG-3 Packages**: `.deb` / `.rpm` first, then Homebrew and Chocolatey; man pages, completions and the udev rule
+  installed by the package (`docs/design/packaging/`, `docs/user/installation.md`). `just package` builds both:
+  `xtask` (man pages via `clap_mangen`, completions via `donguru_cli::completion` directly, no shelling out to the
+  built binary) feeds `cargo-deb` / `cargo-generate-rpm`, driven by `[package.metadata.deb]` /
+  `[package.metadata.generate-rpm]` in `donguru-cli/Cargo.toml`; `packaging/` holds the udev rule and deb
+  maintainer scripts (rpm scriptlets are inline in Cargo.toml). CI builds both as `upload-artifact`s
+  (`.github/workflows/ci.yml` `package` job), no publish step. Verified by content: `dpkg-deb -c`/`-I` and
+  `rpm -qlpv`/`--scripts` (via rootless `podman` containers, no `dpkg-deb`/`rpm` on this box) confirm both packages
+  carry the binary at 755, every other asset at 644, the `dg` symlink and udev reload in postinst/postrm (rpm:
+  inline scriptlets), and `License: TBD` from the workspace. Not yet done: an actual `apt`/`dnf` install on a real
+  machine (needs root, done deliberately only as a content check tonight), `dpkg-shlibdeps`'s `Depends: $auto`
+  (neither this box nor the minimal `debian:stable` container used to check it had `dpkg-dev` installed; CI's
+  `package` job installs `dpkg-dev` so it should resolve there — check the next CI run). ^v1.0
 - 🚧 **PKG-5 Lab book**: 48 labs in six levels (first hour, bench, automation, developer, hacker, insane), one Typst
   file each in `labs/` (goal, setup, steps in CLI / Python / GUI, what you should see, what next), built into one
   PDF (`just labs-book`) and HTML pages with per-lab PDFs (`just build-labs`, Typst 0.15 bundle export,
@@ -966,7 +977,10 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   their status read from FEATURES.md, and the book ends with a feature map, missing first. Most features they use
   are 💡 items added for them. Missing: photos, real output from a rev B board, publishing (docs CI needs Typst and
   the vhrd package, P2534#17oct-1150). Catalog and findings: tpm `prj/P2534-donguru/design/lab-book*.md`.
-- 📋 **PKG-4 License**: the workspace says `license = "TBD"`. ^v1.0
+- 📋 **PKG-4 License**: the workspace says `license = "TBD"`. Still genuinely undecided, but now wired through
+  consistently: `donguru-cli` and `donguru-core` were missing `license.workspace = true` (every other crate had
+  it) and a root `LICENSE` file now exists so `license-file` (deb) has real content; both PKG-3's packages read
+  `TBD` from this one place rather than a separate copy. ^v1.0
 - 💡 **PKG-6 SBU breakout**: a small USB-C receptacle board with SBU1, SBU2, CC, VBUS, GND (and D+/D-) on 2.54 mm
   pins and labels, for wiring Donguru's SBU functions (UART, I2C, SWD, GPIO) to a board without Donguru's SBU
   convention; sold with it or as an accessory. Labs `serial-console`, `i2c-on-the-plug`.

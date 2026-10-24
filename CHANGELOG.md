@@ -6,6 +6,18 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- `just package` builds `.deb` and `.rpm` packages of `donguru`/`dg`: man pages for every command (`clap_mangen`),
+  bash/zsh/fish completions for both binary names, and a udev rule granting unprivileged USB access to the dongle,
+  with a `dg` symlink and udev reload wired into each package's install/remove scripts. Built as CI artifacts on
+  every run, not published anywhere yet. Docs: `docs/user/installation.md` (PKG-3).
+
+### Changed
+
+- `donguru-cli` and `donguru-core` now set `license.workspace = true` like every other workspace crate; the
+  workspace's `license = "TBD"` is the one place packaging metadata and `Cargo.toml` both read it from (PKG-4).
+
 ## [0.20.29] - 2026-10-25
 
 ### Added
