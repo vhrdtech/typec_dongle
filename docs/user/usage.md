@@ -64,3 +64,15 @@ dg header relay status
 dg header relay on
 dg header relay off
 ```
+
+## Bring-up and debug
+
+`donguru debug` sets MCU pins one by one by net name, compares the pins at boot with the reset state, and reads
+the hub's and UCPD's registers: see [Bring-up and debug](debug.md).
+
+```bash
+dg debug pin set RELAY_EN high
+dg debug pins --boot --diff
+dg debug hub read 0x00 4
+dg debug ucpd
+```

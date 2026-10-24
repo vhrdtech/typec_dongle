@@ -1,0 +1,5 @@
+---
+source: donguru-cli/src/commands/debug.rs
+expression: "text(|o| print_pins(Format::Text, &now.ports, true, o))"
+---
+PA5   RELAY_EN       output high                      (reset: analog)

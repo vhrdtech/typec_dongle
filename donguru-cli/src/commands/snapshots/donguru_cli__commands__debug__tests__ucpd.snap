@@ -1,0 +1,6 @@
+---
+source: donguru-cli/src/commands/debug.rs
+expression: "text(|o| print_ucpd(Format::Text, &ucpd, o))"
+---
+ucpd1  role off    cc1 off      cc2 off      CR 0x00000000 SR 0x00000000
+ucpd2  role rp1a5  cc1 vRa      cc2 vRa      CR 0x00000D00 SR 0x00000000

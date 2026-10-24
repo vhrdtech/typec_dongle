@@ -1,0 +1,6 @@
+---
+source: donguru-cli/src/commands/debug.rs
+expression: "text(|o| print_reg(Format::Text, 0x5000_0000, &reg, o))"
+---
+0x50000000  0xEBFFF7FF
+0x50000004  0x00000000

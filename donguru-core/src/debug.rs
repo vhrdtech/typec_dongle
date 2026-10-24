@@ -5,7 +5,7 @@
 use donguru_api::{CcRole, McuPin, PinState, PortRegs, UcpdState};
 use serde::Serialize;
 
-pub use donguru_board::pins::{REG_READ_MAX_WORDS, bonded, refused, reset_state};
+pub use donguru_board::pins::{REG_READ_MAX_WORDS, bonded, check_reg_read, refused, reset_state};
 pub use donguru_board::ucpd::role_of;
 
 use crate::nets;

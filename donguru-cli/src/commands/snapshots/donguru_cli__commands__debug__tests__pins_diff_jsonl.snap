@@ -1,0 +1,5 @@
+---
+source: donguru-cli/src/commands/debug.rs
+expression: "text(|o| print_pins(Format::Jsonl, &now.ports, true, o))"
+---
+{"af":0,"input":true,"mode":"output high","moder":1,"net":"RELAY_EN","open_drain":false,"output":true,"pin":"PA5","pull":0,"reset":"analog","speed":0}

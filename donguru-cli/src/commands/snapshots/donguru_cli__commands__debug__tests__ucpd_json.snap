@@ -1,0 +1,5 @@
+---
+source: donguru-cli/src/commands/debug.rs
+expression: "text(|o| print_ucpd(Format::Json, &ucpd, o))"
+---
+{"ucpd1":{"cc1":"off","cc2":"off","cr":0,"role":"off","sr":0},"ucpd2":{"cc1":"vRa","cc2":"vRa","cr":3328,"role":"rp1a5","sr":0}}

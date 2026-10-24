@@ -98,6 +98,24 @@ pub fn framings() -> Vec<CompletionCandidate> {
     .collect()
 }
 
+/// MCU pins for `dg debug pin`: the net names of the B153A with their port pin and what they do; the ones the
+/// firmware always refuses say so.
+pub fn nets() -> Vec<CompletionCandidate> {
+    donguru_core::nets::B153A
+        .iter()
+        .map(|n| {
+            let refused = donguru_core::debug::refused(n.pin)
+                .map(|r| format!(" (refused: {r})"))
+                .unwrap_or_default();
+            CompletionCandidate::new(n.name).help(help(format!(
+                "{}: {}{refused}",
+                donguru_core::nets::port_pin_name(n.pin),
+                n.note
+            )))
+        })
+        .collect()
+}
+
 /// Common baud rates.
 pub fn bauds() -> Vec<CompletionCandidate> {
     [
@@ -145,5 +163,6 @@ mod tests {
     fn framings_and_bauds_have_values() {
         assert!(framings().iter().any(|c| c.get_value() == "8N1"));
         assert!(bauds().iter().any(|c| c.get_value() == "115200"));
+        assert!(nets().iter().any(|c| c.get_value() == "RELAY_EN"));
     }
 }

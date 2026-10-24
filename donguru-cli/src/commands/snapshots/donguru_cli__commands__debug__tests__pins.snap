@@ -1,0 +1,48 @@
+---
+source: donguru-cli/src/commands/debug.rs
+expression: "text(|o| print_pins(Format::Text, &now.ports, false, o))"
+---
+PA0   SBU2           analog                           reads low
+PA1   SBU1           analog                           reads low
+PA2   IO9            analog                           reads low
+PA3   AN1            analog                           reads low
+PA4   HUB_I2C_EN     analog                           reads low
+PA5   RELAY_EN       output high                      reads high
+PA6   PWR_EN         analog                           reads low
+PA7   USER_SW_BTN    analog                           reads low
+PA8   PD1_CC1        analog                           reads low
+PA9   DATA_CUT       analog                           reads low
+PA10  SBU_TO_USB     analog                           reads low
+PA11  USB_D-         analog                           reads low
+PA12  USB_D+         analog                           reads low
+PA13  SWDIO          AF0 pull-up                      reads low
+PA14  SWCLK_BOOT0    AF0 pull-down                    reads low
+PA15  CC_DA_EN       analog                           reads low
+PB0   AN0            analog                           reads low
+PB1   PB1            analog                           reads low
+PB2   SBU_OE         analog                           reads low
+PB3   IO7            analog                           reads low
+PB4   IO8            analog                           reads low
+PB5   IO6            analog                           reads low
+PB6   PB6            analog                           reads low
+PB7   PB7            analog                           reads low
+PB8   SBU1_VT        analog                           reads low
+PB9   SBU2_VT        analog                           reads low
+PB10  HUB_I2C_SCL    analog                           reads low
+PB11  PB11           analog                           reads low
+PB12  IO10           analog                           reads low
+PB13  IO5            analog                           reads low
+PB14  HUB_I2C_SDA    analog                           reads low
+PB15  PD1_CC2        analog                           reads low
+PC6   GND            analog                           reads low
+PC7   +3V3           analog                           reads low
+PC13  HUB_RESET_N    analog                           reads low
+PC14  ~PWR_FLT       analog                           reads low
+PC15  SBU_PU_EN      analog                           reads low
+PD0   PD2_CC1        analog                           reads low
+PD1   5V_EN          analog                           reads low
+PD2   PD2_CC2        analog                           reads low
+PD3   VSBU_SEL       analog                           reads low
+PF0   LED_RED        analog                           reads low
+PF1   LED_GREEN      analog                           reads low
+PF2   ~HUB_RESET     analog                           reads low

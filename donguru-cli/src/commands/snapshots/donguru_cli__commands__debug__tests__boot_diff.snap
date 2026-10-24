@@ -1,0 +1,5 @@
+---
+source: donguru-cli/src/commands/debug.rs
+expression: "text(|o| print_pins(Format::Text, &boot.ports, true, o))"
+---
+every pin in its reset state

@@ -885,7 +885,8 @@ impl Debug<'_> {
         call_plain("Bringup::led_set", self.c.debug().led_set(led, mode)).await
     }
 
-    /// 32-bit words of peripheral space (0x4000_0000..0x5000_2000).
+    /// 32-bit words of peripheral space: word aligned, 1..=32, inside a block that holds a peripheral
+    /// ([crate::debug::check_reg_read] decides it, as the firmware does).
     pub async fn reg_read(&self, addr: u32, words: u8) -> Result<Vec<u32>> {
         let data =
             call::<_, DebugErrorOwned>("Bringup::reg_read", self.c.debug().reg_read(addr, words))

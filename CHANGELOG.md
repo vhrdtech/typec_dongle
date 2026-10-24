@@ -6,6 +6,15 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- Firmware: the `debug` level (API-18), behind `debug-api` (on by default): `pin_set` / `pin_get` / `pin_af` by MCU pin with the refused list (NRST, supply pins, our USB and SWD, CC_DA_EN, the VBUS enables, the hub's reset and I2C), `InUse` for pins a running function holds (a claim table in `donguru_board::pins`: LEDs, meter, button, header UART, V_SBU select, an SWD session and its plug CC drive, a UCPD role) and `Refused` for pin states that fight on the board (tied nets, SBU_OE with PA0 / PA1, PA0 / PA1 push-pull without V_SBU, `~PWR_FLT` push-pull); `pins` and `boot_pins` (GPIOA..F captured before init); `hub_read` / `hub_write` over SMBus through the hub watchdog task (STATUS/COMMAND refused); `ucpd` / `ucpd_role` (Rp on UCPD1 refused on rev A); `led_set`; `reg_read` in peripheral blocks only. A CMSIS-DAP `DAP_Connect` releases the SBU pins first and claims them for the session. No `donguru_api` change (the items were declared at API-8): old CLIs keep working. Release FLASH 425.41 -> 444.00 KiB of 504 KiB (88.09 %), RAM 89.83 -> 90.58 KiB of 144 KiB. Built, not run on a board.
+- `dg debug pin get|set|af PIN` (net name or port pin, completed with the net list), `dg debug pins [--boot] [--diff]`, `dg debug hub read|write`, `dg debug ucpd [1|2] [--role]`, `dg debug reg ADDR [N]`; refusals exit 4 with the firmware's reason (CLI-23). `donguru_core::debug`: pin decode, the diff against the reset state, UCPD decode. Docs: Bring-up and debug.
+
+### Changed
+
+- The mock's `debug` level runs the firmware's own rules (`donguru_board`): refused pins, claims, electrical rules, AF 0..=7 (was 0..=15), `hub_read` 1..=32 bytes, real UCPD_CR bits, `reg_read` in peripheral blocks (API-18).
+
 ## [0.20.28] - 2026-10-25
 
 ### Changed

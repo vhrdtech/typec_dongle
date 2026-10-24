@@ -589,8 +589,18 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 📋 **API-16 I2C buses**: plug SBU (I2C1) and header (I2C3) as `ww_i2c::I2c`. With FW-10. ^v1.0
 - 📋 **API-17 Hub and SWD state**: observable hub state and recoveries, `hub.recover`, observable SWD session; FW-18's
   spurious recoveries after a cold boot fixed. ^revB
-- 📋 **API-18 Bring-up API**: MCU pins by port and number (refused list, no memory write), boot-time pin snapshot,
+- 🧪 **API-18 Bring-up API**: MCU pins by port and number (refused list, no memory write), boot-time pin snapshot,
   hub SMBus registers, UCPD1/2 state and role, raw LEDs, peripheral register reads (P2534#14oct-1014). ^revB
+  Done: rules in `donguru_board::pins` (refused list, the pin claim table `Claims` with its holders: LEDs, meter,
+  button, header UART, V_SBU select from boot, an SWD session and its plug CC drive, a UCPD role; the electrical
+  rules: tied nets, SBU_OE with PA0 / PA1, PA0 / PA1 push-pull without V_SBU, `~PWR_FLT` push-pull; reg_read's
+  peripheral blocks) and `donguru_board::ucpd` (roles, Rp refused on UCPD1 of rev A), unit-tested; firmware
+  `fw/donguru/src/pins.rs` (boot capture first thing in `main`), `ucpd.rs`, `hub.rs` (SMBus block read / write
+  through the watchdog task, STATUS/COMMAND refused), `ww/debug.rs`, behind `debug-api` (D2); the mock in
+  `donguru-core` runs the same rules. Check on B153A: every allowed pin set and read back (`dg debug pin set
+  RELAY_EN high`: the relay clicks), `dg debug pins --boot --diff` clean against verify_b153a.md §0, hub VID/PID
+  via `dg debug hub read 0x00 4`, `dg debug ucpd` reads both ports and `dg debug ucpd 2 --role rd` / `off`, an SWD
+  session takes its pins back (`InUse` while connected), `dg debug reg 0x50000000 10` matches `dg debug pins`.
 
 - 🧪 **API-19 Persistent settings**: `device.settings` and `device.label` kept in flash by WireWeaver's `ww_settings`
   store (STD-32: a sparse record of the fields not at their default, power-cut safe, readable by older and newer
@@ -838,8 +848,11 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 📋 **CLI-21 `led mode / brightness / identify`** (API-9).
 - 📋 **CLI-22 `adc`, `input`, `hub`**: `adc read`, `input status / watch`, `hub status / recover` (API-12, API-13,
   API-17).
-- 📋 **CLI-23 `debug`**: pins by net name or port pin, boot-state diff, hub registers, UCPD, register reads (API-18).
-  ^revB
+- 🧪 **CLI-23 `debug`**: pins by net name or port pin, boot-state diff, hub registers, UCPD, register reads (API-18).
+  ^revB Done: `dg debug pin get|set|af PIN`, `pins [--boot] [--diff]`, `hub read|write`, `ucpd [1|2] [--role]`,
+  `reg ADDR [N]` (`donguru-cli/src/commands/debug.rs`, net-name completion), decode and reset diff in
+  `donguru_core::debug`, insta snapshots against the mock; refusals exit 4 with the firmware's reason. Docs
+  `docs/user/debug.md`. Not run against a board yet (API-18's check list).
 - 💡 **CLI-24 `dg top`**: one live screen of every observed level.
 - 💡 **CLI-25 `dg cc` and `dg pd`**: `cc status` (role and Type-C current on both sides), `cc plug --role
   source|sink|off|auto` (API-24); `pd caps | request V | watch | last` on the receptacle side (API-23). Labs

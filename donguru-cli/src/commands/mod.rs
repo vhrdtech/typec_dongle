@@ -1,5 +1,6 @@
 pub mod completions;
 pub mod config;
+pub mod debug;
 pub mod device;
 pub mod external;
 pub mod fw;
@@ -29,6 +30,7 @@ pub fn dispatch(ctx: &Context, command: Command) -> anyhow::Result<ExitCode> {
         Command::Swd(cmd) => swd::run(ctx, cmd),
         Command::Uart(cmd) => uart::run(ctx, cmd),
         Command::Settings(cmd) => settings::run(ctx, cmd),
+        Command::Debug(cmd) => debug::run(ctx, cmd),
         Command::Completions(args) => completions::run(ctx, args),
         Command::Fw(cmd) => fw::run(ctx, cmd),
         Command::Udev(cmd) => udev::run(ctx, cmd),

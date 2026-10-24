@@ -153,6 +153,10 @@ pub enum Command {
     #[command(subcommand, display_order = 65)]
     Settings(crate::commands::settings::Settings),
 
+    /// Bring-up and production test: MCU pins by net name, boot pins, hub SMBus, UCPD, peripheral registers
+    #[command(subcommand, display_order = 60)]
+    Debug(crate::commands::debug::Debug),
+
     /// Firmware version, and update over USB without a debug probe
     #[command(subcommand, display_order = 66)]
     Fw(crate::commands::fw::Fw),

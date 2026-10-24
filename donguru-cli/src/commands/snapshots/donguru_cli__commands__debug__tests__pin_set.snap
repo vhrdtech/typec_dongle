@@ -1,0 +1,5 @@
+---
+source: donguru-cli/src/commands/debug.rs
+expression: "text(|o| print_pin(Format::Text, relay, &set, o))"
+---
+PA5 RELAY_EN: output high, reads high
