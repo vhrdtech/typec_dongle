@@ -24,8 +24,10 @@
 //!   (`WrongState` in `ForceOff`, `OverVoltage` above the limit), data, orientation, relay.
 //! - `sbu`: function, release, pull-ups (`InUse` while SWD holds SBU), `route_usb` (`Unsupported` on Main).
 //! - `inputs`, `hub`, `swd`: state, button action, recover, mode.
-//! - `debug`: a register model of the pins with the firmware's refused pins, hub registers, UCPD roles (`Rp` on
-//!   UCPD1 refused), `reg_read` in peripheral space only.
+//! - `debug`: a register model of the pins under the firmware's own rules (`donguru_board::pins`: refused pins,
+//!   the claim table with what runs at boot and an SWD session, the electrical rules), hub registers (`hub_write`
+//!   refuses STATUS/COMMAND), UCPD roles with the real UCPD_CR bits (`Rp` on UCPD1 refused, rev A), `reg_read` in
+//!   the firmware's peripheral blocks (GPIO from the model, other words answer their address).
 //! - `uart[1]` (the header): the `tx` credit sink takes 2048 bytes ahead and loops them back to the counted `rx`
 //!   stream, as a jumper between IO7 and IO8 does on the firmware.
 //! - the rest of `uart[]`, `i2c[]`, `gpio[]`, `adc` and the streams answer `Unimplemented`, as the firmware does until their
@@ -44,6 +46,12 @@ use wire_weaver::{EventWriter, MessageSink, WireWeaverAsyncApiBackend};
 use wire_weaver_client::in_process::{self, TokioClock};
 use ww_firmware_info::ResetCause;
 use ww_si::{Ampere, Baud, Coulomb, DegreeCelsius, Joule, Prefix, Second, Volt};
+
+use donguru_board::pins::{
+    Change, Claims, Denied, Holder, MODE_ANALOG, MODE_INPUT, MODE_OUTPUT, PORTS, Port, Ports,
+    bonded, check, port_index, reset_state,
+};
+use donguru_board::ucpd::{self, role_fields};
 
 use crate::device::DeviceEntry;
 use crate::{Dongle, Result};
@@ -140,8 +148,11 @@ pub struct MockState {
     pub hub: HubState,
     pub swd_mode: SwdMode,
     pub swd_session: SwdSession,
-    /// GPIOA..F, 16 pins each.
+    /// GPIOA..F, 16 pins each; `input` (IDR) is what the pin reads.
     pub pins: [[PinState; 16]; 6],
+    /// Functions holding pins, as the firmware's table ([Claims::boot] at start); an SWD session holds its pins
+    /// on top while `swd_session` is `Connected`.
+    pub claims: Claims,
     /// The hub's SMBus registers.
     pub hub_regs: Vec<u8>,
     pub ucpd_role: [CcRole; 2],
@@ -218,7 +229,8 @@ impl Default for MockState {
             },
             swd_mode: SwdMode::BitBang,
             swd_session: SwdSession::Idle,
-            pins: [[RESET_PIN; 16]; 6],
+            pins: pins_of(&reset_state()),
+            claims: Claims::boot(),
             hub_regs: (0..=255).collect(),
             ucpd_role: [CcRole::Off, CcRole::Off],
             leds: [LedMode::Off, LedMode::Off],
@@ -226,26 +238,6 @@ impl Default for MockState {
         }
     }
 }
-
-/// A pin after reset: analog, no pull.
-const RESET_PIN: PinState = PinState {
-    moder: 3,
-    open_drain: false,
-    speed: 0,
-    pull: 0,
-    af: 0,
-    input: false,
-    output: false,
-};
-
-const PORTS: [GpioPort; 6] = [
-    GpioPort::A,
-    GpioPort::B,
-    GpioPort::C,
-    GpioPort::D,
-    GpioPort::E,
-    GpioPort::F,
-];
 
 impl MockState {
     pub fn zero_totals() -> MeterTotals {
@@ -268,57 +260,218 @@ impl MockState {
         }
     }
 
-    fn pin_mut(&mut self, pin: McuPin) -> &mut PinState {
-        &mut self.pins[pin.port as usize][pin.pin as usize & 15]
+    fn pin(&self, pin: McuPin) -> PinState {
+        self.pins[port_index(pin.port)][pin.pin as usize & 15]
+    }
+
+    /// The pins as the rules see them (IDR left out).
+    fn ports(&self) -> Ports {
+        PORTS.map(|port| {
+            let pins = &self.pins[port_index(port)];
+            let field = |bits: u32, f: &dyn Fn(&PinState) -> u32| {
+                pins.iter()
+                    .enumerate()
+                    .fold(0, |acc, (i, p)| acc | f(p) << (bits * i as u32))
+            };
+            Port {
+                moder: field(2, &|p| p.moder as u32),
+                otyper: field(1, &|p| p.open_drain as u32),
+                ospeedr: field(2, &|p| p.speed as u32),
+                pupdr: field(2, &|p| p.pull as u32),
+                odr: field(1, &|p| p.output as u32),
+                afrl: (0..8).fold(0, |acc, i| acc | (pins[i].af as u32) << (4 * i)),
+                afrh: (8..16).fold(0, |acc, i| acc | (pins[i].af as u32) << (4 * (i - 8))),
+            }
+        })
+    }
+
+    /// The claim table the firmware has now: an SWD session holds its pins while connected, and the plug CC
+    /// pins (`SwdCc`) when UCPD2 doesn't hold them, as `SwdHost::connected` claims them.
+    fn claims_now(&self) -> Claims {
+        let mut claims = self.claims;
+        if matches!(self.swd_session, SwdSession::Connected { .. })
+            && claims.claim(Holder::Swd).is_ok()
+        {
+            let _ = claims.claim(Holder::SwdCc);
+        }
+        claims
+    }
+
+    /// `pin_get`: a pin on the LQFP48.
+    fn pin_get(&self, pin: McuPin) -> core::result::Result<PinState, Denied> {
+        if pin.pin > 15 || !bonded(pin) {
+            return Err(Denied::Invalid {
+                arg: 0,
+                reason: "not a pin of the LQFP48",
+            });
+        }
+        Ok(self.pin(pin))
+    }
+
+    /// `pin_set` / `pin_af` under the firmware's rules ([donguru_board::pins::check]).
+    fn pin_change(
+        &mut self,
+        pin: McuPin,
+        change: Change,
+    ) -> core::result::Result<PinState, Denied> {
+        let mut ports = self.ports();
+        let write = check(pin, change, &self.claims_now(), &ports)?;
+        let port = port_index(pin.port);
+        write.apply(pin.pin, &mut ports[port]);
+        let input = self.pins[port].map(|p| p.input);
+        self.pins[port] = pins_of(&ports)[port];
+        for (p, was) in self.pins[port].iter_mut().zip(input) {
+            p.input = was;
+        }
+        let state = &mut self.pins[port][pin.pin as usize];
+        // what the pin reads: an output its level, a pulled input its pull; a floating one keeps what it read
+        state.input = match (state.moder, state.pull) {
+            (MODE_OUTPUT, _) => state.output,
+            (MODE_INPUT, 1) => true,
+            (MODE_INPUT, 2) | (MODE_ANALOG, _) => false,
+            _ => state.input,
+        };
+        Ok(*state)
     }
 
     fn dump(&self) -> Vec<PortRegs> {
+        let ports = self.ports();
         PORTS
             .iter()
             .map(|&port| {
-                let pins = &self.pins[port as usize];
-                let field = |bits: u32, f: &dyn Fn(&PinState) -> u32| {
-                    pins.iter()
-                        .enumerate()
-                        .fold(0, |acc, (i, p)| acc | f(p) << (bits * i as u32))
-                };
+                let r = &ports[port_index(port)];
+                let idr = self.pins[port_index(port)]
+                    .iter()
+                    .enumerate()
+                    .fold(0, |acc, (i, p)| acc | (p.input as u32) << i);
                 PortRegs {
                     port,
-                    moder: field(2, &|p| p.moder as u32),
-                    otyper: field(1, &|p| p.open_drain as u32),
-                    ospeedr: field(2, &|p| p.speed as u32),
-                    pupdr: field(2, &|p| p.pull as u32),
-                    idr: field(1, &|p| p.input as u32),
-                    odr: field(1, &|p| p.output as u32),
-                    afrl: (0..8).fold(0, |acc, i| acc | (pins[i].af as u32) << (4 * i)),
-                    afrh: (8..16).fold(0, |acc, i| acc | (pins[i].af as u32) << (4 * (i - 8))),
+                    moder: r.moder,
+                    otyper: r.otyper,
+                    ospeedr: r.ospeedr,
+                    pupdr: r.pupdr,
+                    idr,
+                    odr: r.odr,
+                    afrl: r.afrl,
+                    afrh: r.afrh,
                 }
             })
             .collect()
     }
 
-    /// The pins as captured at boot: every one at reset.
+    /// The pins as captured at boot: every one at reset, IDR 0.
     fn reset_dump() -> Vec<PortRegs> {
-        MockState::default().dump()
+        let reset = reset_state();
+        PORTS
+            .iter()
+            .map(|&port| {
+                let r = &reset[port_index(port)];
+                PortRegs {
+                    port,
+                    moder: r.moder,
+                    otyper: r.otyper,
+                    ospeedr: r.ospeedr,
+                    pupdr: r.pupdr,
+                    idr: 0,
+                    odr: r.odr,
+                    afrl: r.afrl,
+                    afrh: r.afrh,
+                }
+            })
+            .collect()
+    }
+
+    /// `reg_read`: GPIOA..F from the pin model, every other word its own address.
+    fn reg(&self, addr: u32) -> u32 {
+        if !(0x5000_0000..0x5000_1800).contains(&addr) {
+            return addr;
+        }
+        let dump = self.dump();
+        let r = &dump[((addr - 0x5000_0000) / 0x400) as usize];
+        match addr & 0x3FF {
+            0x00 => r.moder,
+            0x04 => r.otyper,
+            0x08 => r.ospeedr,
+            0x0C => r.pupdr,
+            0x10 => r.idr,
+            0x14 => r.odr,
+            0x20 => r.afrl,
+            0x24 => r.afrh,
+            _ => 0,
+        }
     }
 
     fn ucpd(&self, port: UcpdPort) -> UcpdState {
         let role = self.ucpd_role[port as usize];
+        // the UCPD_CR bits the firmware writes (RM0444 §34.7.2): CCENABLE 11:10, ANAMODE 9, ANASUBMODE 8:7
+        let cr = match role_fields(port, role, false) {
+            Ok(f) => {
+                (if f.enabled { 3 << 10 } else { 0 }) | (f.sink as u32) << 9 | (f.rp as u32) << 7
+            }
+            Err(_) => 0,
+        };
         UcpdState {
-            // ANAMODE / ANASUBMODE stand-in: the role as a number
-            cr: match role {
-                CcRole::Off => 0,
-                CcRole::Rd => 1,
-                CcRole::Rp0A9 => 2,
-                CcRole::Rp1A5 => 3,
-                CcRole::Rp3A0 => 4,
-                _ => 0xff,
-            },
+            cr,
             sr: 0,
             cc1: 0,
             cc2: 0,
         }
     }
+
+    /// `ucpd_role`: refused as on the firmware (rev A: no `Rp` on UCPD1), the CC pins claimed while a role is on.
+    fn ucpd_role(
+        &mut self,
+        port: UcpdPort,
+        role: CcRole,
+    ) -> core::result::Result<UcpdState, Denied> {
+        // the mock is a B153A
+        let fields = role_fields(port, role, true)?;
+        let holder = ucpd::holder(port);
+        if fields.enabled {
+            // against what holds pins now, an SWD session included
+            self.claims_now().claim(holder).map_err(Denied::InUse)?;
+            self.claims.claim(holder).map_err(Denied::InUse)?;
+        } else {
+            self.claims.release(holder);
+        }
+        self.ucpd_role[port as usize] = role;
+        Ok(self.ucpd(port))
+    }
+}
+
+/// The API error of a refused change, as the firmware answers it.
+fn denied(d: Denied) -> DebugError<'static> {
+    DebugError::Common(match d {
+        Denied::Invalid { arg, reason } => CommonError::InvalidArgument {
+            arg,
+            reason: MaxLen::new_unchecked(reason),
+        },
+        Denied::Refused(reason) => CommonError::Refused {
+            reason: MaxLen::new_unchecked(reason),
+        },
+        Denied::InUse(holder) => CommonError::InUse {
+            by: MaxLen::new_unchecked(holder.name()),
+        },
+    })
+}
+
+/// Pins of the rules' register view, IDR 0.
+fn pins_of(ports: &Ports) -> [[PinState; 16]; 6] {
+    core::array::from_fn(|port| {
+        let r = &ports[port];
+        core::array::from_fn(|pin| {
+            let pin = pin as u8;
+            PinState {
+                moder: r.mode(pin),
+                open_drain: r.open_drain(pin),
+                speed: r.speed(pin),
+                pull: r.pull(pin),
+                af: r.af(pin),
+                input: false,
+                output: r.output(pin),
+            }
+        })
+    })
 }
 
 /// `max_voltage` of a mode in volts, 0 for `ForceOff`.
@@ -361,52 +514,6 @@ fn check_window(window: Second) -> core::result::Result<(), CommonError<'static>
             reason: MaxLen::new_unchecked("window 1 ms..=1 s"),
         })
     }
-}
-
-fn invalid_pin() -> DebugError<'static> {
-    DebugError::Common(CommonError::InvalidArgument {
-        arg: 0,
-        reason: MaxLen::new_unchecked("pin 0..=15"),
-    })
-}
-
-/// The pins the firmware never hands to `debug` (design: Refused pins): NRST, supply, our USB and SWD, PA15, the
-/// VBUS enables, the hub reset and I2C.
-fn check_pin(pin: McuPin) -> core::result::Result<(), DebugError<'static>> {
-    use GpioPort::*;
-    if pin.pin > 15 {
-        return Err(invalid_pin());
-    }
-    let refused = match (pin.port, pin.pin) {
-        (F, 2) => "NRST",
-        (C, 6) | (C, 7) => "supply pin",
-        (A, 11) | (A, 12) => "our USB",
-        (A, 13) | (A, 14) => "our SWD",
-        (A, 15) => "CC_DA_EN",
-        (A, 6) | (D, 1) => "VBUS enable: use plug / header",
-        (C, 13) | (A, 4) | (B, 10) | (B, 14) => "hub: use hub_read / hub_write",
-        _ => return Ok(()),
-    };
-    Err(DebugError::Common(CommonError::Refused {
-        reason: MaxLen::new_unchecked(refused),
-    }))
-}
-
-fn set_pin_mode(state: &mut PinState, mode: PinMode) {
-    let (moder, open_drain, pull) = match mode {
-        PinMode::Analog => (3, false, 0),
-        PinMode::Input => (0, false, 0),
-        PinMode::InputPullUp => (0, false, 1),
-        PinMode::InputPullDown => (0, false, 2),
-        PinMode::PushPull => (1, false, 0),
-        PinMode::OpenDrain => (1, true, 0),
-        PinMode::OpenDrainPullUp => (1, true, 1),
-        #[allow(unreachable_patterns)] // a mode from a newer host
-        _ => (state.moder, state.open_drain, state.pull),
-    };
-    state.moder = moder;
-    state.open_drain = open_drain;
-    state.pull = pull;
 }
 
 type Job = Box<dyn FnOnce(&mut MockServer) + Send>;

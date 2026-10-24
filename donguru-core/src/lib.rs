@@ -4,6 +4,7 @@
 
 pub mod client;
 pub mod counters;
+pub mod debug;
 pub mod device;
 pub mod error;
 pub mod levels;

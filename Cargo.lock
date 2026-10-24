@@ -739,6 +739,7 @@ dependencies = [
  "defmt-decoder",
  "donguru-core",
  "donguru_api",
+ "donguru_board",
  "object 0.36.7",
  "probe-rs",
  "semver",

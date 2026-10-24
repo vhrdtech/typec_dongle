@@ -425,6 +425,39 @@ async fn debug() {
     let state = debug.pin_af(relay_en, 4).await.unwrap();
     assert_eq!((state.moder, state.af), (2, 4));
 
+    let e = debug.pin_af(relay_en, 8).await.unwrap_err();
+    assert_eq!(device_kind(e), DeviceErrorKind::InvalidArgument, "AF 0..=7");
+    let led = donguru_core::nets::pin("LED_RED").expect("LED_RED in the table");
+    let e = debug.pin_set(led, PinMode::Input, None).await.unwrap_err();
+    assert_eq!(device_kind(e), DeviceErrorKind::InUse, "the LEDs hold PF0");
+    // PB1 and PB3 are both IO7: PB3 belongs to the header UART, PB1 is held with it
+    let e = debug
+        .pin_set(
+            McuPin {
+                port: GpioPort::B,
+                pin: 1,
+            },
+            PinMode::PushPull,
+            None,
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(device_kind(e), DeviceErrorKind::InUse);
+    let sbu = McuPin {
+        port: GpioPort::A,
+        pin: 0,
+    };
+    let e = debug
+        .pin_set(sbu, PinMode::PushPull, None)
+        .await
+        .unwrap_err();
+    assert_eq!(
+        device_kind(e),
+        DeviceErrorKind::Refused,
+        "PA0 push-pull needs V_SBU at 3.3 V"
+    );
+    debug.pin_set(sbu, PinMode::OpenDrain, None).await.unwrap();
+
     for refused in ["NRST", "USB_DP", "SWDIO", "PWR_EN"] {
         let pin =
             donguru_core::nets::pin(refused).unwrap_or_else(|| panic!("{refused} in the table"));
@@ -449,7 +482,11 @@ async fn debug() {
         "PA5 in the dump"
     );
     let boot = debug.boot_pins().await.unwrap();
-    assert_eq!(boot.ports[0].moder, u32::MAX, "all analog at reset");
+    assert_eq!(
+        boot.ports[0].moder, 0xEBFF_FFFF,
+        "all analog at reset but SWD"
+    );
+    assert_eq!(boot.ports[1].moder, u32::MAX);
 
     assert_eq!(
         debug.hub_read(0x10, 4).await.unwrap(),
@@ -469,6 +506,8 @@ async fn debug() {
         debug.hub_write(0, &[0; 33]).await.is_err(),
         "at most 32 bytes"
     );
+    let e = debug.hub_write(0xFF, &[0x01]).await.unwrap_err();
+    assert_eq!(device_kind(e), DeviceErrorKind::Refused, "STATUS/COMMAND");
 
     let e = debug
         .ucpd_role(UcpdPort::Ucpd1, CcRole::Rp3A0)
@@ -481,9 +520,11 @@ async fn debug() {
             .await
             .unwrap()
             .cr,
-        1
+        3 << 10 | 1 << 9,
+        "CCENABLE both, ANAMODE sink"
     );
-    assert_eq!(debug.ucpd(UcpdPort::Ucpd2).await.unwrap().cr, 1);
+    let cr = debug.ucpd(UcpdPort::Ucpd2).await.unwrap().cr;
+    assert_eq!(donguru_core::debug::role_of(cr), Some(CcRole::Rd));
 
     debug
         .led_set(
@@ -504,9 +545,17 @@ async fn debug() {
     );
 
     assert_eq!(
-        debug.reg_read(0x4800_0000, 2).await.unwrap(),
-        vec![0x4800_0000, 0x4800_0004]
+        debug.reg_read(0x4002_1000, 2).await.unwrap(),
+        vec![0x4002_1000, 0x4002_1004],
+        "RCC: the mock answers addresses"
     );
+    assert_eq!(
+        debug.reg_read(0x5000_0000, 1).await.unwrap(),
+        vec![pins.ports[0].moder],
+        "GPIOA_MODER from the pin model"
+    );
+    let e = debug.reg_read(0x4000_0C00, 1).await.unwrap_err();
+    assert_eq!(device_kind(e), DeviceErrorKind::Refused, "a reserved block");
     let e = debug.reg_read(0x2000_0000, 1).await.unwrap_err();
     assert_eq!(
         device_kind(e),

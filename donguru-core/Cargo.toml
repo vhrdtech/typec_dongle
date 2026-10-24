@@ -9,6 +9,8 @@ thiserror.workspace = true
 anyhow.workspace = true
 serde.workspace = true
 donguru_api.workspace = true
+# the firmware's own debug rules (refused pins, claim table, UCPD roles), modelled by the mock
+donguru_board = { path = "../donguru_board" }
 tokio = { version = "1", features = ["rt", "time", "sync", "macros"] }
 # local checkout next to this repo (~/git/wire_weaver), like donguru_api
 wire_weaver = { path = "../../wire_weaver/wire_weaver", features = ["std"] }

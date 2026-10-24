@@ -8,10 +8,8 @@ use wire_weaver::ww_error::CommonError;
 use ww_board_info::{BoardSummary, RevisionSource};
 use ww_firmware_info::{BuildProfile, FirmwareSummary, Version};
 
-use super::{
-    MockSettings, MockState, check_mode, check_pin, check_window, invalid_pin, max_voltage,
-    set_pin_mode,
-};
+use super::{MockSettings, MockState, check_mode, check_window, denied, max_voltage};
+use donguru_board::pins::{Change, Denied, HUB_REG_STATUS_COMMAND, Holder, check_reg_read};
 
 /// Bytes the mock's `uart[1].tx` accepts ahead, as the firmware's
 const UART_TX_BUF: u32 = 2048;
@@ -1401,16 +1399,23 @@ impl MockServer {
         mode: donguru_api::PinMode,
         level: Option<ww_gpio::Level>,
     ) -> RpcResult<Result<donguru_api::PinState, donguru_api::DebugError<'_>>> {
-        if let Err(e) = check_pin(pin) {
-            return Ready(Err(e));
-        }
-        let state = self.state.pin_mut(pin);
-        set_pin_mode(state, mode);
-        if let Some(level) = level {
-            state.output = matches!(level, Level::High);
-            state.input = state.output;
-        }
-        Ready(Ok(*state))
+        let level = match level {
+            None => None,
+            Some(Level::Low) => Some(false),
+            Some(Level::High) => Some(true),
+            #[allow(unreachable_patterns)] // a level of a newer host
+            Some(_) => {
+                return Ready(Err(denied(Denied::Invalid {
+                    arg: 2,
+                    reason: "unknown level",
+                })));
+            }
+        };
+        Ready(
+            self.state
+                .pin_change(pin, Change::Mode { mode, level })
+                .map_err(denied),
+        )
     }
 
     async fn debug_pin_get(
@@ -1418,10 +1423,7 @@ impl MockServer {
         _cx: &mut Context<'_, impl EventOut>,
         pin: donguru_api::McuPin,
     ) -> RpcResult<Result<donguru_api::PinState, donguru_api::DebugError<'_>>> {
-        if pin.pin > 15 {
-            return Ready(Err(invalid_pin()));
-        }
-        Ready(Ok(*self.state.pin_mut(pin)))
+        Ready(self.state.pin_get(pin).map_err(denied))
     }
 
     async fn debug_pin_af(
@@ -1430,19 +1432,7 @@ impl MockServer {
         pin: donguru_api::McuPin,
         af: u8,
     ) -> RpcResult<Result<donguru_api::PinState, donguru_api::DebugError<'_>>> {
-        if let Err(e) = check_pin(pin) {
-            return Ready(Err(e));
-        }
-        if af > 15 {
-            return Ready(Err(DebugError::Common(CommonError::InvalidArgument {
-                arg: 1,
-                reason: MaxLen::new_unchecked("AF 0..=15"),
-            })));
-        }
-        let state = self.state.pin_mut(pin);
-        state.moder = 2;
-        state.af = af;
-        Ready(Ok(*state))
+        Ready(self.state.pin_change(pin, Change::Af(af)).map_err(denied))
     }
 
     async fn debug_pins(
@@ -1477,7 +1467,13 @@ impl MockServer {
         >,
     > {
         let (reg, len) = (reg as usize, len as usize);
-        if len > 32 || reg + len > self.state.hub_regs.len() {
+        if len == 0 || len > 32 {
+            return Ready(Err(denied(Denied::Invalid {
+                arg: 1,
+                reason: "len 1..=32",
+            })));
+        }
+        if reg + len > self.state.hub_regs.len() {
             return Ready(Err(DebugError::Nack));
         }
         Ready(Ok(MaxLen::new_unchecked(RefVec::new_bytes(
@@ -1491,6 +1487,11 @@ impl MockServer {
         reg: u8,
         data: wire_weaver::shrink_wrap::MaxLen<wire_weaver::shrink_wrap::RefVec<'_, u8>, 32>,
     ) -> RpcResult<Result<(), donguru_api::DebugError<'_>>> {
+        if reg == HUB_REG_STATUS_COMMAND {
+            return Ready(Err(denied(Denied::Refused(
+                "STATUS/COMMAND drops our own USB: use hub.recover",
+            ))));
+        }
         let reg = reg as usize;
         if reg + data.len() > self.state.hub_regs.len() {
             return Ready(Err(DebugError::Nack));
@@ -1513,14 +1514,13 @@ impl MockServer {
         port: donguru_api::UcpdPort,
         role: donguru_api::CcRole,
     ) -> RpcResult<Result<donguru_api::UcpdState, donguru_api::DebugError<'_>>> {
-        if port == UcpdPort::Ucpd1 && matches!(role, CcRole::Rp0A9 | CcRole::Rp1A5 | CcRole::Rp3A0)
-        {
-            return Ready(Err(DebugError::Common(CommonError::Refused {
-                reason: MaxLen::new_unchecked("Rp on UCPD1 on rev A"),
-            })));
-        }
-        self.state.ucpd_role[port as usize] = role;
-        Ready(Ok(self.state.ucpd(port)))
+        Ready(self.state.ucpd_role(port, role).map_err(|d| match d {
+            Denied::InUse(Holder::SwdCc) => {
+                denied(Denied::Refused("CC pins in use by an SWD session"))
+            }
+            Denied::InUse(_) => denied(Denied::Refused("CC pins in use")),
+            d => denied(d),
+        }))
     }
 
     async fn debug_led_set(
@@ -1564,19 +1564,12 @@ impl MockServer {
             donguru_api::DebugError<'_>,
         >,
     > {
-        let end = addr as u64 + 4 * words as u64;
-        if words > 32 {
-            return Ready(Err(DebugError::Common(CommonError::InvalidArgument {
-                arg: 1,
-                reason: MaxLen::new_unchecked("at most 32 words"),
-            })));
+        if let Err(d) = check_reg_read(addr, words) {
+            return Ready(Err(denied(d)));
         }
-        if addr < 0x4000_0000 || end > 0x5000_2000 || !addr.is_multiple_of(4) {
-            return Ready(Err(DebugError::Common(CommonError::Refused {
-                reason: MaxLen::new_unchecked("peripheral space only"),
-            })));
-        }
-        self.words = (0..words as u32).map(|i| addr + 4 * i).collect();
+        self.words = (0..words as u32)
+            .map(|i| self.state.reg(addr + 4 * i))
+            .collect();
         Ready(Ok(MaxLen::new_unchecked(RefVec::Slice {
             slice: &self.words,
         })))
