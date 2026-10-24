@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.29] - 2026-10-25
+
 ### Added
 
 - Firmware: the `debug` level (API-18), behind `debug-api` (on by default): `pin_set` / `pin_get` / `pin_af` by MCU pin with the refused list (NRST, supply pins, our USB and SWD, CC_DA_EN, the VBUS enables, the hub's reset and I2C), `InUse` for pins a running function holds (a claim table in `donguru_board::pins`: LEDs, meter, button, header UART, V_SBU select, an SWD session and its plug CC drive, a UCPD role) and `Refused` for pin states that fight on the board (tied nets, SBU_OE with PA0 / PA1, PA0 / PA1 push-pull without V_SBU, `~PWR_FLT` push-pull); `pins` and `boot_pins` (GPIOA..F captured before init); `hub_read` / `hub_write` over SMBus through the hub watchdog task (STATUS/COMMAND refused); `ucpd` / `ucpd_role` (Rp on UCPD1 refused on rev A); `led_set`; `reg_read` in peripheral blocks only. A CMSIS-DAP `DAP_Connect` releases the SBU pins first and claims them for the session. No `donguru_api` change (the items were declared at API-8): old CLIs keep working. Release FLASH 425.41 -> 444.00 KiB of 504 KiB (88.09 %), RAM 89.83 -> 90.58 KiB of 144 KiB. Built, not run on a board.
