@@ -3,19 +3,21 @@
 //! Without a matching rule the character device is owned by `root`, so every command
 //! that talks to the hardware fails with a permission error unless run via `sudo`.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
+use crate::cli::Format;
 use crate::{context::Context, exit::ExitCode};
 use clap::{Args, Subcommand, ValueEnum, builder::ArgPredicate};
+use donguru_core::udev;
 
 /// Default location of the generated rules file.
 ///
 /// The `60-` prefix keeps the rule ahead of the systemd defaults that would otherwise
 /// claim the device first.
-const DEFAULT_RULES_PATH: &str = "/etc/udev/rules.d/60-donguru.rules";
+const DEFAULT_RULES_PATH: &str = udev::DEFAULT_RULES_PATH;
 
 /// Default group for [`Access::Group`].
-const DEFAULT_GROUP: &str = "plugdev";
+const DEFAULT_GROUP: &str = udev::DEFAULT_GROUP;
 
 /// How the generated rule hands out access to the device node.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -169,47 +171,278 @@ pub enum Udev {
     },
 }
 
-/// Describe the access policy for the stub messages.
-fn fmt_access(rule: &RuleOptions) -> String {
-    match rule.access {
-        Access::Group => format!("group={}", rule.group()),
-        other => format!("{other:?}").to_lowercase(),
+impl RuleOptions {
+    fn access(&self) -> udev::Access {
+        match self.access {
+            Access::Uaccess => udev::Access::Uaccess,
+            Access::Group => udev::Access::Group(self.group().to_string()),
+            Access::All => udev::Access::All,
+        }
+    }
+
+    /// The `--access` / `--group` arguments that give `self` back, for the root re-run.
+    fn args(&self) -> Vec<String> {
+        let mut args = vec![
+            "--access".to_string(),
+            match self.access {
+                Access::Uaccess => "uaccess",
+                Access::Group => "group",
+                Access::All => "all",
+            }
+            .to_string(),
+        ];
+        if matches!(self.access, Access::Group) {
+            args.extend(["--group".to_string(), self.group().to_string()]);
+        }
+        args
     }
 }
 
-pub fn run(_ctx: &Context, command: Udev) -> anyhow::Result<ExitCode> {
+pub fn run(ctx: &Context, command: Udev) -> anyhow::Result<ExitCode> {
     match command {
-        Udev::Generate { rule, output } => {
-            let target = output
-                .as_deref()
-                .map_or_else(|| "-".to_string(), |path| path.display().to_string());
-            super::stub(
-                &format!("udev generate [{}] -> {target}", fmt_access(&rule)),
-                ExitCode::Failure,
-            )
+        Udev::Generate { rule, output } => generate(&rule, output.as_deref()),
+        Udev::Install { rule, file, force } => install(&rule, &file, force),
+        Udev::Uninstall { file } => uninstall(&file),
+        Udev::Status { path } => status(ctx, &path),
+    }
+}
+
+fn generate(rule: &RuleOptions, output: Option<&Path>) -> anyhow::Result<ExitCode> {
+    let text = udev::generate(&rule.access());
+    match output {
+        Some(path) => std::fs::write(path, text)?,
+        None => print!("{text}"),
+    }
+    Ok(ExitCode::Success)
+}
+
+/// `pkexec` on `PATH`, to get root for the one write.
+fn find_pkexec() -> Option<PathBuf> {
+    std::env::split_paths(&std::env::var_os("PATH")?)
+        .map(|dir| dir.join("pkexec"))
+        .find(|p| p.is_file())
+}
+
+/// Runs this same command as root through `pkexec` (one password prompt), or tells what to run when there is no
+/// `pkexec`. The exit status of the root run is ours.
+fn as_root(args: &[String], what: &str, path: &Path) -> anyhow::Result<ExitCode> {
+    let Some(pkexec) = find_pkexec() else {
+        eprintln!(
+            "donguru: {what} {} needs root and `pkexec` is not installed; run it as root yourself:\n  sudo {} {}",
+            path.display(),
+            std::env::current_exe()?.display(),
+            args.join(" ")
+        );
+        return Ok(ExitCode::Failure);
+    };
+    eprintln!(
+        "donguru: {what} {} needs root, asking through pkexec",
+        path.display()
+    );
+    let status = std::process::Command::new(pkexec)
+        .arg(std::env::current_exe()?)
+        .args(args)
+        .status()?;
+    Ok(if status.success() {
+        ExitCode::Success
+    } else {
+        ExitCode::Failure
+    })
+}
+
+/// The arguments of `donguru udev <verb>` for `file`, as the root re-run needs them.
+fn file_args(verb: &str, file: &FileOptions) -> Vec<String> {
+    let mut args = vec![
+        "udev".to_string(),
+        verb.to_string(),
+        "--path".to_string(),
+        file.path.display().to_string(),
+    ];
+    if file.no_reload {
+        args.push("--no-reload".to_string());
+    }
+    args
+}
+
+/// Tells udev about the change so it applies to a dongle that is already plugged in.
+fn reload() -> anyhow::Result<()> {
+    let run = |args: &[&str]| -> anyhow::Result<()> {
+        let status = std::process::Command::new("udevadm").args(args).status()?;
+        anyhow::ensure!(status.success(), "`udevadm {}` failed", args.join(" "));
+        Ok(())
+    };
+    run(&["control", "--reload-rules"])?;
+    run(&["trigger", "--subsystem-match=usb", "--action=add"])
+}
+
+fn install(rule: &RuleOptions, file: &FileOptions, force: bool) -> anyhow::Result<ExitCode> {
+    let text = udev::generate(&rule.access());
+    if file.dry_run {
+        println!(
+            "would write {} ({}):\n{text}",
+            file.path.display(),
+            rule.access().name()
+        );
+        if !file.no_reload {
+            println!("would reload udev rules and re-trigger usb devices");
         }
-        Udev::Install { rule, file, force } => super::stub(
-            &format!(
-                "udev install [{}] -> {} (dry_run: {}, reload: {}, force: {force})",
-                fmt_access(&rule),
-                file.path.display(),
-                file.dry_run,
-                !file.no_reload,
-            ),
-            ExitCode::Failure,
-        ),
-        Udev::Uninstall { file } => super::stub(
-            &format!(
-                "udev uninstall {} (dry_run: {}, reload: {})",
-                file.path.display(),
-                file.dry_run,
-                !file.no_reload,
-            ),
-            ExitCode::Failure,
-        ),
-        Udev::Status { path } => super::stub(
-            &format!("udev status {}", path.display()),
-            ExitCode::Failure,
-        ),
+        return Ok(ExitCode::Success);
+    }
+    match udev::install(&file.path, &text, force) {
+        Ok(done) => {
+            eprintln!("donguru: {done:?}: {}", file.path.display());
+            if !matches!(done, udev::Installed::Unchanged) && !file.no_reload {
+                reload()?;
+            }
+            Ok(ExitCode::Success)
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
+            let mut args = file_args("install", file);
+            args.extend(rule.args());
+            if force {
+                args.push("--force".to_string());
+            }
+            as_root(&args, "installing", &file.path)
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+            eprintln!("donguru: {e}; `--force` overwrites it");
+            Ok(ExitCode::Failure)
+        }
+        Err(e) => Err(e.into()),
+    }
+}
+
+fn uninstall(file: &FileOptions) -> anyhow::Result<ExitCode> {
+    if file.dry_run {
+        println!("would remove {}", file.path.display());
+        return Ok(ExitCode::Success);
+    }
+    match udev::remove(&file.path) {
+        Ok(removed) => {
+            if removed {
+                eprintln!("donguru: removed {}", file.path.display());
+                if !file.no_reload {
+                    reload()?;
+                }
+            } else {
+                eprintln!("donguru: {} is not installed", file.path.display());
+            }
+            Ok(ExitCode::Success)
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
+            as_root(&file_args("uninstall", file), "removing", &file.path)
+        }
+        Err(e) => Err(e.into()),
+    }
+}
+
+fn describe(status: &udev::Status) -> String {
+    use std::fmt::Write;
+    let mut out = String::new();
+    if status.rules.is_empty() {
+        let _ = writeln!(out, "rules: not installed (`donguru udev install`)");
+    }
+    for r in &status.rules {
+        let policy = r.access.as_ref().map_or("custom", |a| a.name());
+        let state = if r.current {
+            ""
+        } else {
+            ", differs from this version's rule"
+        };
+        let _ = writeln!(out, "rules: {} ({policy}{state})", r.path.display());
+    }
+    if status.nodes.is_empty() {
+        let _ = writeln!(out, "no dongle connected");
+    }
+    for n in &status.nodes {
+        let mode = n.mode.map_or("?".to_string(), |m| format!("{m:04o}"));
+        let ids = match (n.uid, n.gid) {
+            (Some(u), Some(g)) => format!("uid {u} gid {g}"),
+            _ => "owner unknown".to_string(),
+        };
+        let _ = writeln!(
+            out,
+            "dongle {}: {} mode {mode} {ids}, {}",
+            n.usb_path,
+            n.node.display(),
+            if n.accessible {
+                "accessible"
+            } else {
+                "NOT accessible to this user"
+            }
+        );
+    }
+    out
+}
+
+fn status_json(status: &udev::Status) -> serde_json::Value {
+    serde_json::json!({
+        "ok": status.ok(),
+        "rules": status.rules.iter().map(|r| serde_json::json!({
+            "path": r.path,
+            "access": r.access.as_ref().map(|a| a.name()),
+            "current": r.current,
+        })).collect::<Vec<_>>(),
+        "devices": status.nodes.iter().map(|n| serde_json::json!({
+            "usb_path": n.usb_path,
+            "node": n.node,
+            "mode": n.mode,
+            "uid": n.uid,
+            "gid": n.gid,
+            "accessible": n.accessible,
+        })).collect::<Vec<_>>(),
+    })
+}
+
+fn status(ctx: &Context, path: &Path) -> anyhow::Result<ExitCode> {
+    let status = udev::status_here(path);
+    match ctx.format {
+        Format::Text => print!("{}", describe(&status)),
+        Format::Json | Format::Jsonl => println!("{}", status_json(&status)),
+    }
+    Ok(if status.ok() {
+        ExitCode::Success
+    } else {
+        ExitCode::Failure
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn root_rerun_args_round_trip() {
+        let rule = RuleOptions {
+            access: Access::Group,
+            group: Some("dialout".into()),
+        };
+        assert_eq!(rule.args(), ["--access", "group", "--group", "dialout"]);
+        assert_eq!(rule.access(), udev::Access::Group("dialout".into()));
+        let file = FileOptions {
+            path: "/x/60-donguru.rules".into(),
+            dry_run: false,
+            no_reload: true,
+        };
+        assert_eq!(
+            file_args("install", &file),
+            [
+                "udev",
+                "install",
+                "--path",
+                "/x/60-donguru.rules",
+                "--no-reload"
+            ]
+        );
+    }
+
+    #[test]
+    fn status_text_and_json_without_anything() {
+        let none = udev::Status {
+            rules: vec![],
+            nodes: vec![],
+        };
+        assert!(describe(&none).contains("not installed"));
+        assert_eq!(status_json(&none)["ok"], false);
     }
 }

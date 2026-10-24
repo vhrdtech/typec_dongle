@@ -8,6 +8,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ### Added
 
+- `donguru udev generate / install / uninstall / status` (CLI-8): the rule covers the dongle and the STM32 ROM bootloader; install and uninstall ask for root through `pkexec` or print the `sudo` command. Not yet run as root on a real system.
 - `donguru swd orientation [auto|normal|swapped]` and `swd release` (CLI-17), `donguru led mode / brightness / identify` (CLI-21): mock-tested, not yet on a board.
 - An item the dongle's firmware doesn't implement yet ends with "the device's firmware does not support this yet", exit code 4 as before (CLI-17, CLI-21).
 

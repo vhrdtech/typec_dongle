@@ -784,7 +784,15 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   json) agree, `device select 0` pins the serial in `donguru.toml` and is picked up as the device default on the
   next invocation, `device info --device serial:<bogus>` exits `NoDevice` (3), an unknown subcommand exits
   `BadArgs` (2).
-- 🚧 **CLI-8 `udev`**: `generate` writes the rule (uaccess / group / all); `install`, `uninstall`, `status` are stubs.
+- 🧪 **CLI-8 `udev`** (`donguru-cli/src/commands/udev.rs`, logic in `donguru-core/src/udev.rs`): `generate` writes the rule
+  (uaccess / group / all; the dongle `c0de:cafe` and the STM32 ROM bootloader `0483:df11` for `fw update`); `install`
+  / `uninstall` write or remove the rules file (atomic, `--force`, `--dry-run`, reload with `udevadm`), and on
+  permission denied re-run themselves through `pkexec` (one prompt) or print the exact `sudo` command; `status`
+  reports the installed rules (also in the vendor dirs) and each connected dongle's node, mode, owner and whether
+  this user can open it (exit 1 if not; text / json). Tested: core against tempdirs and a fake sysfs, `generate` and
+  `status` run for real; `install` / `uninstall` were never run on a real `/etc` (needs root). On a Linux PC with a
+  board check: `sudo dg udev install`, replug, `dg udev status` shows accessible without sudo; `pkexec` path from a
+  desktop session; `uninstall` removes it; `fw update` reaches the DFU device without root. ^revB
 - ⬜ **CLI-9 `config generate / show / path / validate`**: stub. Layering per the design doc (defaults, system,
   user, project file, `DONGURU_*`, flags).
 - ✅ **CLI-10 `fw version` / `fw update`** (`donguru-cli/src/commands/fw.rs`, `donguru-core/src/update.rs`): `fw version`
