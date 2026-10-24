@@ -45,7 +45,9 @@ pub fn file_layers(
 }
 
 fn env_path(name: &str) -> Option<PathBuf> {
-    std::env::var_os(name).filter(|v| !v.is_empty()).map(PathBuf::from)
+    std::env::var_os(name)
+        .filter(|v| !v.is_empty())
+        .map(PathBuf::from)
 }
 
 /// All layers for this process: files, the environment, then the flags that were typed.
@@ -144,7 +146,11 @@ mod tests {
         .unwrap();
         let proj = dir.path().join("proj");
         std::fs::create_dir(&proj).unwrap();
-        std::fs::write(proj.join(config::FILE_NAME), "device = \"serial:P\"\nbogus = 1\n").unwrap();
+        std::fs::write(
+            proj.join(config::FILE_NAME),
+            "device = \"serial:P\"\nbogus = 1\n",
+        )
+        .unwrap();
 
         let mut warnings = Vec::new();
         let layers = file_layers(&proj, Some(&xdg), None, |w| warnings.push(w));

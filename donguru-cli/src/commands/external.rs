@@ -42,7 +42,9 @@ pub fn list_plugins(path_var: &OsStr) -> BTreeMap<String, PathBuf> {
             let name = file.strip_prefix(PREFIX).unwrap_or_default();
             let name = name.strip_suffix(".exe").unwrap_or(name);
             if !name.is_empty() && is_executable(&entry.path()) {
-                found.entry(name.to_string()).or_insert_with(|| entry.path());
+                found
+                    .entry(name.to_string())
+                    .or_insert_with(|| entry.path());
             }
         }
     }
@@ -102,9 +104,8 @@ fn not_found(name: &str, path_var: &OsStr) -> String {
         .map(String::as_str)
         .chain(plugins.keys().map(String::as_str));
     let near = near_matches(name, candidates);
-    let mut msg = format!(
-        "no such command `{name}` (no built-in, and no `{PREFIX}{name}` on PATH)"
-    );
+    let mut msg =
+        format!("no such command `{name}` (no built-in, and no `{PREFIX}{name}` on PATH)");
     if !near.is_empty() {
         msg.push_str(&format!("\n\nDid you mean: {}?", near.join(", ")));
     }
@@ -118,7 +119,10 @@ pub fn plugin_env(ctx: &Context) -> [(&'static str, Option<String>); 2] {
         .format
         .to_possible_value()
         .map(|v| v.get_name().to_string());
-    [("DONGURU_DEVICE", ctx.device.clone()), ("DONGURU_OUTPUT", output)]
+    [
+        ("DONGURU_DEVICE", ctx.device.clone()),
+        ("DONGURU_OUTPUT", output),
+    ]
 }
 
 pub fn run(ctx: &Context, args: Vec<OsString>) -> anyhow::Result<ExitCode> {
@@ -184,7 +188,10 @@ mod tests {
         assert_eq!(found.keys().collect::<Vec<_>>(), ["bench", "flash"]);
         assert_eq!(found["flash"], a.path().join("donguru-flash"));
         let help = help_section(&path);
-        assert!(help.starts_with("External commands") && help.contains("bench"), "{help}");
+        assert!(
+            help.starts_with("External commands") && help.contains("bench"),
+            "{help}"
+        );
         assert_eq!(help_section(OsStr::new("")), "");
     }
 

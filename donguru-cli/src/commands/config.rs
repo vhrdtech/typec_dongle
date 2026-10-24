@@ -11,10 +11,10 @@ use std::path::PathBuf;
 
 use crate::cli::Format;
 use crate::context::Context;
-use anyhow::Context as _;
-use donguru_core::config::{self, Layer};
 use crate::exit::ExitCode;
+use anyhow::Context as _;
 use clap::{Subcommand, ValueEnum};
+use donguru_core::config::{self, Layer};
 
 /// One of the configuration files in the search path.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -151,8 +151,7 @@ fn generate(output: Option<PathBuf>, force: bool) -> anyhow::Result<ExitCode> {
         return Ok(ExitCode::Failure);
     }
     if let Some(dir) = path.parent().filter(|d| !d.as_os_str().is_empty()) {
-        std::fs::create_dir_all(dir)
-            .with_context(|| format!("cannot create {}", dir.display()))?;
+        std::fs::create_dir_all(dir).with_context(|| format!("cannot create {}", dir.display()))?;
     }
     std::fs::write(&path, text).with_context(|| format!("cannot write {}", path.display()))?;
     eprintln!("donguru: wrote {}", path.display());
@@ -164,7 +163,11 @@ fn show(ctx: &Context, key: Option<String>, origin: bool) -> anyhow::Result<Exit
         let Some(entry) = ctx.config.iter().find(|e| e.key.name == name) else {
             eprintln!(
                 "donguru: unknown key `{name}` (known: {})",
-                config::KEYS.iter().map(|k| k.name).collect::<Vec<_>>().join(", ")
+                config::KEYS
+                    .iter()
+                    .map(|k| k.name)
+                    .collect::<Vec<_>>()
+                    .join(", ")
             );
             return Ok(ExitCode::BadArgs);
         };
@@ -185,7 +188,10 @@ fn show(ctx: &Context, key: Option<String>, origin: bool) -> anyhow::Result<Exit
         Format::Text => {
             let width = config::KEYS.iter().map(|k| k.name.len()).max().unwrap_or(0);
             for e in &ctx.config {
-                let value = e.value.as_deref().map_or("<unset>".to_string(), |v| format!("{v:?}"));
+                let value = e
+                    .value
+                    .as_deref()
+                    .map_or("<unset>".to_string(), |v| format!("{v:?}"));
                 if origin {
                     println!("{:width$} = {value}  # {}", e.key.name, e.layer);
                 } else {
@@ -219,7 +225,10 @@ fn path(ctx: &Context, scope: Option<Scope>) -> anyhow::Result<ExitCode> {
             println!("{}", p.display());
             return Ok(ExitCode::Success);
         }
-        eprintln!("donguru: no {} configuration directory (HOME is not set)", fmt_enum(scope));
+        eprintln!(
+            "donguru: no {} configuration directory (HOME is not set)",
+            fmt_enum(scope)
+        );
         return Ok(ExitCode::Failure);
     }
     match ctx.format {
@@ -268,9 +277,15 @@ fn validate(path: Option<PathBuf>) -> anyhow::Result<ExitCode> {
         }
     }
     if files.is_empty() {
-        eprintln!("donguru: no configuration file found; `donguru config path` lists where they are looked for");
+        eprintln!(
+            "donguru: no configuration file found; `donguru config path` lists where they are looked for"
+        );
     }
-    Ok(if bad { ExitCode::Failure } else { ExitCode::Success })
+    Ok(if bad {
+        ExitCode::Failure
+    } else {
+        ExitCode::Success
+    })
 }
 
 /// Lowercase name of a `ValueEnum` variant.
@@ -295,10 +310,19 @@ mod tests {
     fn generate_refuses_to_overwrite_without_force() {
         let dir = tempfile::tempdir().unwrap();
         let file = dir.path().join("sub/donguru.toml");
-        assert!(matches!(generate(Some(file.clone()), false).unwrap(), ExitCode::Success));
+        assert!(matches!(
+            generate(Some(file.clone()), false).unwrap(),
+            ExitCode::Success
+        ));
         assert!(std::fs::read_to_string(&file).unwrap().contains("# output"));
-        assert!(matches!(generate(Some(file.clone()), false).unwrap(), ExitCode::Failure));
-        assert!(matches!(generate(Some(file.clone()), true).unwrap(), ExitCode::Success));
+        assert!(matches!(
+            generate(Some(file.clone()), false).unwrap(),
+            ExitCode::Failure
+        ));
+        assert!(matches!(
+            generate(Some(file.clone()), true).unwrap(),
+            ExitCode::Success
+        ));
     }
 
     #[test]

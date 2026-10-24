@@ -120,9 +120,9 @@ impl Settings {
             path: path.to_string(),
             message,
         };
-        let table: toml::Table = text.parse().map_err(|e: toml::de::Error| {
-            bad(e.to_string().trim_end().replace('\n', " "))
-        })?;
+        let table: toml::Table = text
+            .parse()
+            .map_err(|e: toml::de::Error| bad(e.to_string().trim_end().replace('\n', " ")))?;
         let mut settings = Self::default();
         for (name, value) in &table {
             let key = KEYS.iter().find(|k| k.name == name).ok_or_else(|| {
@@ -268,8 +268,14 @@ mod tests {
     #[test]
     fn higher_layers_win_per_key() {
         let layers = vec![
-            (Layer::Project, s(&[("device", "serial:A"), ("output", "json")])),
-            (Layer::User, s(&[("device", "serial:U"), ("color", "never")])),
+            (
+                Layer::Project,
+                s(&[("device", "serial:A"), ("output", "json")]),
+            ),
+            (
+                Layer::User,
+                s(&[("device", "serial:U"), ("color", "never")]),
+            ),
             (Layer::Flags, s(&[("output", "jsonl")])),
         ];
         let r = resolve(&layers);
@@ -292,9 +298,16 @@ mod tests {
     #[test]
     fn parse_rejects_unknown_keys_and_bad_values() {
         assert!(Settings::parse("f", "device = \"x\"\noutput = \"json\"").is_ok());
-        let e = Settings::parse("f", "colour = \"never\"").unwrap_err().to_string();
-        assert!(e.contains("unknown key `colour`") && e.starts_with("f:"), "{e}");
-        let e = Settings::parse("f", "output = \"yaml\"").unwrap_err().to_string();
+        let e = Settings::parse("f", "colour = \"never\"")
+            .unwrap_err()
+            .to_string();
+        assert!(
+            e.contains("unknown key `colour`") && e.starts_with("f:"),
+            "{e}"
+        );
+        let e = Settings::parse("f", "output = \"yaml\"")
+            .unwrap_err()
+            .to_string();
         assert!(e.contains("one of text, json, jsonl"), "{e}");
         assert!(Settings::parse("f", "device = 3").is_err());
         assert!(Settings::parse("f", "device = ").is_err());
@@ -321,7 +334,10 @@ mod tests {
         assert!(text.contains("# output = \"text\""));
         // uncommenting a line makes it a real setting
         let on = text.replace("# output = \"text\"", "output = \"json\"");
-        assert_eq!(Settings::parse("g", &on).unwrap().get("output"), Some("json"));
+        assert_eq!(
+            Settings::parse("g", &on).unwrap().get("output"),
+            Some("json")
+        );
     }
 
     #[test]
@@ -329,14 +345,22 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let sub = dir.path().join("a/b");
         std::fs::create_dir_all(&sub).unwrap();
-        assert_eq!(path_of(Layer::Project, &sub, None, None), Some(sub.join(FILE_NAME)));
+        assert_eq!(
+            path_of(Layer::Project, &sub, None, None),
+            Some(sub.join(FILE_NAME))
+        );
         std::fs::write(dir.path().join(FILE_NAME), "").unwrap();
         assert_eq!(
             path_of(Layer::Project, &sub, None, None),
             Some(dir.path().join(FILE_NAME))
         );
         assert_eq!(
-            path_of(Layer::User, &sub, Some(Path::new("/x")), Some(Path::new("/h"))),
+            path_of(
+                Layer::User,
+                &sub,
+                Some(Path::new("/x")),
+                Some(Path::new("/h"))
+            ),
             Some(PathBuf::from("/x/donguru/donguru.toml"))
         );
         assert_eq!(

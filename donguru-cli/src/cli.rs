@@ -84,9 +84,8 @@ impl Cli {
 
 impl Explicit {
     pub fn from_matches(matches: &clap::ArgMatches) -> Self {
-        let given = |id: &str| {
-            matches.value_source(id) == Some(clap::parser::ValueSource::CommandLine)
-        };
+        let given =
+            |id: &str| matches.value_source(id) == Some(clap::parser::ValueSource::CommandLine);
         Self {
             device: given("device"),
             format: given("format"),
