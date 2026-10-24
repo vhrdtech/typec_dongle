@@ -189,9 +189,10 @@ pub enum Holder {
     HeaderUart,
     /// V_SBU select (PD3), held at 3.3 V before PA0 / PA1 ever drive.
     VSbu,
-    /// A CMSIS-DAP session: the SBU pins on both sides of the level shifter, its OE, the pull-ups, the plug CC
-    /// stopgap drive.
+    /// A CMSIS-DAP session: the SBU pins on both sides of the level shifter, its OE, the pull-ups.
     Swd,
+    /// A CMSIS-DAP session's stopgap drive of the plug CC lines (FW-17), taken only when UCPD2 doesn't hold them.
+    SwdCc,
     /// UCPD1 with a CC role: the receptacle CC pins.
     Ucpd1,
     /// UCPD2 with a CC role: the plug CC pins.
@@ -199,13 +200,14 @@ pub enum Holder {
 }
 
 impl Holder {
-    const ALL: [Holder; 8] = [
+    const ALL: [Holder; 9] = [
         Holder::Leds,
         Holder::Meter,
         Holder::Button,
         Holder::HeaderUart,
         Holder::VSbu,
         Holder::Swd,
+        Holder::SwdCc,
         Holder::Ucpd1,
         Holder::Ucpd2,
     ];
@@ -219,6 +221,7 @@ impl Holder {
             Holder::HeaderUart => "the header UART (uart[1])",
             Holder::VSbu => "V_SBU select",
             Holder::Swd => "an SWD session",
+            Holder::SwdCc => "an SWD session (plug CC)",
             Holder::Ucpd1 => "UCPD1 (ucpd_role)",
             Holder::Ucpd2 => "UCPD2 (ucpd_role)",
         }
@@ -240,9 +243,8 @@ impl Holder {
             pin(B, 8),
             pin(B, 11),
             pin(C, 15),
-            pin(D, 0),
-            pin(D, 2),
         ];
+        const SWD_CC: &[McuPin] = &[pin(D, 0), pin(D, 2)];
         const UCPD1: &[McuPin] = &[pin(A, 8), pin(B, 15)];
         const UCPD2: &[McuPin] = &[pin(D, 0), pin(D, 2)];
         match self {
@@ -252,6 +254,7 @@ impl Holder {
             Holder::HeaderUart => HEADER_UART,
             Holder::VSbu => VSBU,
             Holder::Swd => SWD,
+            Holder::SwdCc => SWD_CC,
             Holder::Ucpd1 => UCPD1,
             Holder::Ucpd2 => UCPD2,
         }
@@ -822,12 +825,14 @@ mod tests {
     fn claims_come_and_go() {
         let mut c = Claims::boot();
         c.claim(Holder::Swd).unwrap();
+        c.claim(Holder::SwdCc).unwrap();
         assert_eq!(c.holder(pin(A, 0)), Some(Holder::Swd));
-        assert_eq!(c.holder(pin(D, 2)), Some(Holder::Swd));
+        assert_eq!(c.holder(pin(D, 2)), Some(Holder::SwdCc));
         c.claim(Holder::Swd).unwrap();
-        // the plug CC pins are the session's: UCPD2 can't have them, and takes none of them
-        assert_eq!(c.claim(Holder::Ucpd2), Err(Holder::Swd));
+        // the plug CC pins are the session's: UCPD2 can't have them
+        assert_eq!(c.claim(Holder::Ucpd2), Err(Holder::SwdCc));
         c.release(Holder::Swd);
+        c.release(Holder::SwdCc);
         assert_eq!(c.holder(pin(A, 0)), None);
         assert_eq!(
             c.holder(pin(D, 3)),
@@ -835,10 +840,22 @@ mod tests {
             "other holders keep theirs"
         );
         c.claim(Holder::Ucpd2).unwrap();
-        assert_eq!(c.claim(Holder::Swd), Err(Holder::Ucpd2));
-        assert_eq!(c.holder(pin(A, 0)), None, "all or nothing");
+        // a session then runs without the CC drive
+        c.claim(Holder::Swd).unwrap();
+        assert_eq!(c.claim(Holder::SwdCc), Err(Holder::Ucpd2));
+        assert_eq!(c.holder(pin(D, 0)), Some(Holder::Ucpd2));
         c.claim(Holder::Ucpd1).unwrap();
         assert_eq!(c.holder(pin(B, 15)), Some(Holder::Ucpd1));
+    }
+
+    #[test]
+    fn a_claim_is_all_or_nothing() {
+        let mut c = Claims::new();
+        c.claim(Holder::Ucpd2).unwrap();
+        // a made-up overlap: Swd's pins are free, but take one of them first
+        c.held[0][0] = Holder::Leds as u8;
+        assert_eq!(c.claim(Holder::Swd), Err(Holder::Leds));
+        assert_eq!(c.holder(pin(A, 1)), None);
     }
 
     #[test]
