@@ -782,7 +782,7 @@ dependencies = [
 
 [[package]]
 name = "donguru-py"
-version = "0.20.27"
+version = "0.20.31"
 dependencies = [
  "donguru-core",
  "pyo3",
