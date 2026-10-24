@@ -256,14 +256,13 @@ Higher priority numbers override lower ones on a per-key basis.
       (e.g. `~/.config/donguru/config.toml`).
     - **project** — a `donguru.toml` discovered by walking up from the current
       directory, so a repository can pin settings such as a default device
-      (the only key written today, by `device select`; CLI-9 builds the rest
-      of the layering).
+      (written by `device select`).
 - **Environment variables** use a `DONGURU_` prefix and mirror the key path
-  (e.g. `DONGURU_DEVICE`, `DONGURU_OUTPUT`).
+  (e.g. `DONGURU_DEVICE`, `DONGURU_OUTPUT`, `DONGURU_COLOR`).
 - **Command-line flags** always win.
 
-Typical configurable keys: default device selector, default output format,
-default timeouts, log verbosity.
+Configurable keys today: `device` (default device selector), `output` (default format) and `color`.
+`donguru config show --origin` prints each value with the layer it comes from.
 
 ## Device selection
 
@@ -272,7 +271,7 @@ With multiple dongles connected, a single device is chosen by, in order (CORE-1,
 1. `--device/-d <selector>` flag,
 2. `DONGURU_DEVICE` environment variable (the flag's `env`, so it wins at the same priority as the flag itself),
 3. the `device` key of the nearest `./donguru.toml` found by walking up from the current directory, written by
-   `device select SELECTOR` (the rest of the config layering, CLI-9, is still open),
+   `device select SELECTOR`,
 4. auto-selection when exactly one dongle is present.
 
 A *selector* is, without a prefix: a number below 1000 (an index into `device list`), `<bus>-<port>[.<port>...]`
@@ -288,8 +287,8 @@ The core is extended with a **Git/Cargo-style external subcommand** mechanism.
 When `donguru foo` is run and `foo` is not a built-in subcommand, the CLI
 searches `PATH` for an executable named `donguru-foo` and executes it,
 forwarding the remaining arguments and the resolved context (selected device,
-output format) via environment variables (e.g. `DONGURU_DEVICE`,
-`DONGURU_OUTPUT`).
+output format) via the environment variables `DONGURU_DEVICE` and
+`DONGURU_OUTPUT`.
 
 - Plugins are ordinary executables in any language.
 - `donguru help` lists discovered plugins alongside built-ins.

@@ -59,7 +59,16 @@ impl Cli {
     /// we manually apply the style rather than using `#[command(styles = ...)]` which
     /// requires a `const` and is applied "statically".
     pub fn parse_styled() -> Self {
-        let matches = Self::command()
+        let mut command = Self::command();
+        if asks_for_help(std::env::args_os().skip(1)) {
+            let plugins = crate::commands::external::help_section(
+                &std::env::var_os("PATH").unwrap_or_default(),
+            );
+            if !plugins.is_empty() {
+                command = command.after_help(plugins);
+            }
+        }
+        let matches = command
             .styles(theme::select_style())
             .color(theme::choice_from_args(std::env::args()))
             .get_matches();
@@ -84,6 +93,12 @@ impl Explicit {
             color: given("color"),
         }
     }
+}
+
+/// `donguru help`, `donguru -h`, `donguru --help`: the cases where the plugin list is worth a scan of `PATH`.
+fn asks_for_help(args: impl Iterator<Item = OsString>) -> bool {
+    args.take_while(|a| a != "--")
+        .any(|a| a == "help" || a == "-h" || a == "--help")
 }
 
 /// Settings accepted at every level of the command tree.

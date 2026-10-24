@@ -764,10 +764,10 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `--device`, `--format text|json|jsonl`, `--color`, `-v` / `-q` (`donguru-cli/src/cli.rs`).
 - ✅ **CLI-2 Colour theme** adapted to terminal capabilities (`src/theme.rs`, `examples/theme_preview.rs`).
 - ✅ **CLI-3 Shell completions** (`donguru completions <shell>`): since CLI-49 the scripts are dynamic.
-- ⬜ **CLI-4 External subcommands**: clap captures unknown subcommands, but `src/commands/external.rs` only prints
-  "not implemented": resolve `donguru-<name>` on `PATH` (with a near-match hint), export the resolved device and
-  format (the doc comment says `DONGURU_CTX_*`, the design doc `DONGURU_DEVICE` / `DONGURU_OUTPUT`: pick one), exec
-  it, and list plugins in `donguru help`.
+- ✅ **CLI-4 External subcommands** (`donguru-cli/src/commands/external.rs`): `donguru NAME ARGS` runs `donguru-NAME` from
+  `PATH` (exec on Unix, exit status passes through), with `DONGURU_DEVICE` and `DONGURU_OUTPUT` set from the resolved
+  context (the design doc's names); an unknown name exits 2 with a "did you mean" hint over built-ins and plugins;
+  `donguru help` lists the plugins found. Host-only, tested with fake plugins.
 - ⬜ **CLI-5 `gpio read / write / configure / watch`**: arguments parsed, prints "not implemented". Needs FW-10,
   API-3, CORE-1.
 - 🧪 **CLI-6 `usb status / connect / disconnect`**: the plug's USB data switch (U701) over `plug.data`
