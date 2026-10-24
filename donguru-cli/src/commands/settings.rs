@@ -4,13 +4,14 @@
 //! setting and the label back to its default, factory data stays. The design doc's `reset --factory` isn't in the
 //! API (FEATURES.md CLI-47) and so isn't here either.
 
-use std::io::Write;
+use std::io::{self, Write};
 
 use clap::{Args, Subcommand, ValueEnum};
 
-use crate::cli::Format;
 use crate::context::Context;
 use crate::exit::ExitCode;
+use crate::output::{Output, Render};
+use crate::theme::Theme;
 use donguru_core::api::{Ampere, ButtonAction, MeterDeadband, Second, VbusMode, Volt};
 use donguru_core::vbus;
 use ww_si::{Baud, Prefix};
@@ -112,50 +113,65 @@ fn show(ctx: &Context) -> anyhow::Result<ExitCode> {
             uart_plug: s.uart_plug().await?,
         })
     })?;
-    print_show(ctx.format, &v, &mut std::io::stdout().lock())?;
+    Output::stdout(ctx).emit(&v)?;
     Ok(ExitCode::Success)
 }
 
-fn print_show(format: Format, v: &Values, out: &mut impl Write) -> anyhow::Result<()> {
-    match format {
-        Format::Text => {
-            writeln!(
-                out,
-                "plug_vbus_at_boot   {}",
-                power::fmt_vbus_mode(&v.plug_vbus_at_boot)
-            )?;
-            writeln!(
-                out,
-                "button_action       {}",
-                fmt_button_action(v.button_action)
-            )?;
-            writeln!(out, "meter_window        {}", fmt_window(v.meter_window))?;
-            writeln!(
-                out,
-                "meter_deadband      {}",
-                fmt_deadband(&v.meter_deadband)
-            )?;
-            writeln!(out, "uart_plug           {}", fmt_uart_plug(&v.uart_plug))?;
+impl Render for Values {
+    fn text(&self, out: &mut dyn Write, th: &Theme) -> io::Result<()> {
+        let rows = [
+            (
+                "plug_vbus_at_boot",
+                power::fmt_vbus_mode(&self.plug_vbus_at_boot),
+            ),
+            (
+                "button_action",
+                fmt_button_action(self.button_action).to_string(),
+            ),
+            ("meter_window", fmt_window(self.meter_window)),
+            ("meter_deadband", fmt_deadband(&self.meter_deadband)),
+            ("uart_plug", fmt_uart_plug(&self.uart_plug)),
+        ];
+        for (key, value) in rows {
+            writeln!(out, "{:<20}{}", th.key(key), th.value(value))?;
         }
-        Format::Json | Format::Jsonl => {
-            let j = serde_json::json!({
-                "plug_vbus_at_boot": power::mode_json(&v.plug_vbus_at_boot),
-                "button_action": button_action_json(v.button_action),
-                "meter_window": window_json(v.meter_window),
-                "meter_deadband": deadband_json(&v.meter_deadband),
-                "uart_plug": uart_plug_json(&v.uart_plug),
-            });
-            writeln!(out, "{j}")?;
-        }
+        Ok(())
     }
-    Ok(())
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "plug_vbus_at_boot": power::mode_json(&self.plug_vbus_at_boot),
+            "button_action": button_action_json(self.button_action),
+            "meter_window": window_json(self.meter_window),
+            "meter_deadband": deadband_json(&self.meter_deadband),
+            "uart_plug": uart_plug_json(&self.uart_plug),
+        })
+    }
 }
 
-fn print_one(ctx: &Context, key: &str, text: &str, json: serde_json::Value) {
-    match ctx.format {
-        Format::Text => println!("{key}  {text}"),
-        Format::Json | Format::Jsonl => println!("{}", serde_json::json!({ key: json })),
+/// The one setting `settings set` stored, as read back.
+struct One<'a> {
+    key: &'a str,
+    text: String,
+    json: serde_json::Value,
+}
+
+impl Render for One<'_> {
+    fn text(&self, out: &mut dyn Write, th: &Theme) -> io::Result<()> {
+        writeln!(out, "{}  {}", th.key(self.key), th.value(&self.text))
     }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({ self.key: self.json })
+    }
+}
+
+fn print_one(ctx: &Context, key: &str, text: &str, json: serde_json::Value) -> anyhow::Result<()> {
+    Output::stdout(ctx).emit(&One {
+        key,
+        text: text.to_string(),
+        json,
+    })
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -212,7 +228,7 @@ fn set_plug_vbus_at_boot(ctx: &Context, args: &Set) -> anyhow::Result<ExitCode> 
         "plug_vbus_at_boot",
         &power::fmt_vbus_mode(&got),
         power::mode_json(&got),
-    );
+    )?;
     Ok(ExitCode::Success)
 }
 
@@ -263,7 +279,7 @@ fn set_button_action(ctx: &Context, args: &Set) -> anyhow::Result<ExitCode> {
         "button_action",
         fmt_button_action(got),
         serde_json::json!(button_action_json(got)),
-    );
+    )?;
     Ok(ExitCode::Success)
 }
 
@@ -290,7 +306,7 @@ fn set_meter_window(ctx: &Context, args: &Set) -> anyhow::Result<ExitCode> {
         checked(s.set_meter_window(window).await)?;
         s.meter_window().await
     })?;
-    print_one(ctx, "meter_window", &fmt_window(got), window_json(got));
+    print_one(ctx, "meter_window", &fmt_window(got), window_json(got))?;
     Ok(ExitCode::Success)
 }
 
@@ -375,7 +391,7 @@ fn set_meter_deadband(ctx: &Context, args: &Set) -> anyhow::Result<ExitCode> {
         "meter_deadband",
         &fmt_deadband(&got),
         deadband_json(&got),
-    );
+    )?;
     Ok(ExitCode::Success)
 }
 
@@ -508,7 +524,7 @@ fn set_uart_plug(ctx: &Context, args: &Set) -> anyhow::Result<ExitCode> {
         checked(s.set_uart_plug(cfg).await)?;
         s.uart_plug().await
     })?;
-    print_one(ctx, "uart_plug", &fmt_uart_plug(&got), uart_plug_json(&got));
+    print_one(ctx, "uart_plug", &fmt_uart_plug(&got), uart_plug_json(&got))?;
     Ok(ExitCode::Success)
 }
 
@@ -522,16 +538,28 @@ fn reset(ctx: &Context) -> anyhow::Result<ExitCode> {
     super::with_dongle(ctx, async |dongle| {
         checked(dongle.device().settings().reset().await)
     })?;
-    match ctx.format {
-        Format::Text => println!("settings reset"),
-        Format::Json | Format::Jsonl => println!("{}", serde_json::json!({ "reset": true })),
-    }
+    Output::stdout(ctx).emit(&Reset)?;
     Ok(ExitCode::Success)
+}
+
+/// `settings reset` went through.
+struct Reset;
+
+impl Render for Reset {
+    fn text(&self, out: &mut dyn Write, th: &Theme) -> io::Result<()> {
+        writeln!(out, "settings {}", th.ok("reset"))
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({ "reset": true })
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cli::Format;
+    use crate::output::render;
     use donguru_core::mock::MockDevice;
 
     #[test]
@@ -578,6 +606,22 @@ mod tests {
     }
 
     #[test]
+    fn set_and_reset_text_and_json() {
+        let one = One {
+            key: "button_action",
+            text: fmt_button_action(ButtonAction::CycleVbus).to_string(),
+            json: serde_json::json!(button_action_json(ButtonAction::CycleVbus)),
+        };
+        assert_eq!(render(Format::Text, &one), "button_action  cycle-vbus\n");
+        assert_eq!(
+            render(Format::Json, &one),
+            "{\"button_action\":\"cycle_vbus\"}\n"
+        );
+        assert_eq!(render(Format::Text, &Reset), "settings reset\n");
+        assert_eq!(render(Format::Json, &Reset), "{\"reset\":true}\n");
+    }
+
+    #[test]
     fn show_text_and_json() {
         let rt = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(2)
@@ -598,13 +642,8 @@ mod tests {
             dongle.close().await.unwrap();
             v
         });
-        let mut text = Vec::new();
-        print_show(Format::Text, &v, &mut text).unwrap();
-        insta::assert_snapshot!(String::from_utf8(text).unwrap());
-
-        let mut json = Vec::new();
-        print_show(Format::Json, &v, &mut json).unwrap();
-        insta::assert_snapshot!(String::from_utf8(json).unwrap());
+        insta::assert_snapshot!(render(Format::Text, &v));
+        insta::assert_snapshot!(render(Format::Json, &v));
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

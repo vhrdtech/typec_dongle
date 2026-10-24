@@ -1,6 +1,6 @@
 //! `donguru fw` - firmware version and update over USB, no debug probe (CLI-10, FW-12).
 
-use std::io::{IsTerminal, Read, Write};
+use std::io::{self, IsTerminal, Read, Write};
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -9,11 +9,11 @@ use clap_complete::engine::ArgValueCompleter;
 use donguru_core::update::{FirmwareImage, FirmwareVersion, UpdateReport, UpdateStep};
 use indicatif::{ProgressBar, ProgressStyle};
 
-use crate::cli::Format;
 use crate::completion;
 use crate::context::Context;
 use crate::exit::ExitCode;
-use crate::theme;
+use crate::output::{Output, Render};
+use crate::theme::{self, Theme};
 
 /// Where `cargo build --release` in a checkout of this repository puts the firmware.
 const DEFAULT_ELF: &str = "fw/donguru/target/thumbv6m-none-eabi/release/donguru";
@@ -49,35 +49,33 @@ fn version(ctx: &Context) -> anyhow::Result<ExitCode> {
         let fw = dongle.device().firmware_version().await?;
         Ok((dongle.entry().clone(), fw))
     })?;
-    print_version(
-        ctx.format,
-        entry.api_version.as_deref(),
-        &fw,
-        &mut std::io::stdout().lock(),
-    )?;
+    Output::stdout(ctx).emit(&Version {
+        api: entry.api_version.as_deref(),
+        fw: &fw,
+    })?;
     Ok(ExitCode::Success)
 }
 
-fn print_version(
-    format: Format,
-    api: Option<&str>,
-    fw: &FirmwareVersion,
-    out: &mut impl Write,
-) -> anyhow::Result<()> {
-    match format {
-        Format::Text => {
-            writeln!(out, "{fw}")?;
-            if let Some(api) = api {
-                writeln!(out, "donguru_api {api}")?;
-            }
+/// The running firmware and the API version it answers with.
+struct Version<'a> {
+    api: Option<&'a str>,
+    fw: &'a FirmwareVersion,
+}
+
+impl Render for Version<'_> {
+    fn text(&self, out: &mut dyn Write, th: &Theme) -> io::Result<()> {
+        writeln!(out, "{}", th.value(self.fw))?;
+        if let Some(api) = self.api {
+            writeln!(out, "{} {}", th.key("donguru_api"), th.value(api))?;
         }
-        Format::Json | Format::Jsonl => {
-            let mut v = serde_json::to_value(fw)?;
-            v["api_version"] = api.into();
-            writeln!(out, "{v}")?;
-        }
+        Ok(())
     }
-    Ok(())
+
+    fn json(&self) -> serde_json::Value {
+        let mut v = serde_json::to_value(self.fw).unwrap_or_default();
+        v["api_version"] = self.api.into();
+        v
+    }
 }
 
 fn update(ctx: &Context, args: Update) -> anyhow::Result<ExitCode> {
@@ -92,7 +90,7 @@ fn update(ctx: &Context, args: Update) -> anyhow::Result<ExitCode> {
     });
     bar.finish();
     let report = report?;
-    print_report(ctx.format, &report, &mut std::io::stdout().lock())?;
+    Output::stdout(ctx).emit(&Report(&report))?;
     Ok(ExitCode::Success)
 }
 
@@ -115,19 +113,29 @@ fn read_image(elf: Option<PathBuf>) -> anyhow::Result<FirmwareImage> {
     }
 }
 
-fn print_report(format: Format, r: &UpdateReport, out: &mut impl Write) -> anyhow::Result<()> {
-    match format {
-        Format::Text => {
-            let old = r
-                .old
-                .as_ref()
-                .map_or("(unknown)".to_string(), |o| o.to_string());
-            writeln!(out, "{}: {old} -> {}", r.serial, r.new)?;
-            writeln!(out, "{} bytes in {:.1} s", r.bytes, r.seconds)?;
-        }
-        Format::Json | Format::Jsonl => writeln!(out, "{}", serde_json::to_string(r)?)?,
+/// What an update did: the old and the new firmware.
+struct Report<'a>(&'a UpdateReport);
+
+impl Render for Report<'_> {
+    fn text(&self, out: &mut dyn Write, th: &Theme) -> io::Result<()> {
+        let r = self.0;
+        let old = r
+            .old
+            .as_ref()
+            .map_or("(unknown)".to_string(), |o| o.to_string());
+        writeln!(
+            out,
+            "{}: {} -> {}",
+            th.key(&r.serial),
+            th.dim(old),
+            th.ok(&r.new)
+        )?;
+        writeln!(out, "{} bytes in {:.1} s", th.value(r.bytes), r.seconds)
     }
-    Ok(())
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::to_value(self.0).unwrap_or_default()
+    }
 }
 
 /// The progress bar on stderr: hidden when stderr is not a terminal or with `-q`; plain without colour.
@@ -181,6 +189,8 @@ impl Bar {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cli::Format;
+    use crate::output::render;
 
     fn fw() -> FirmwareVersion {
         FirmwareVersion {
@@ -194,15 +204,16 @@ mod tests {
 
     #[test]
     fn version_text_and_json() {
-        let mut out = Vec::new();
-        print_version(Format::Text, Some("0.5.1"), &fw(), &mut out).unwrap();
+        let fw = fw();
+        let v = Version {
+            api: Some("0.5.1"),
+            fw: &fw,
+        };
         assert_eq!(
-            String::from_utf8(out).unwrap(),
+            render(Format::Text, &v),
             "donguru 0.20.18 (841ef1f-dirty, release)\ndonguru_api 0.5.1\n"
         );
-        let mut out = Vec::new();
-        print_version(Format::Json, Some("0.5.1"), &fw(), &mut out).unwrap();
-        let v: serde_json::Value = serde_json::from_slice(&out).unwrap();
+        let v: serde_json::Value = serde_json::from_str(&render(Format::Json, &v)).unwrap();
         assert_eq!(v["version"], "0.20.18");
         assert_eq!(v["git"], "841ef1f");
         assert_eq!(v["api_version"], "0.5.1");
@@ -221,15 +232,12 @@ mod tests {
             bytes: 415_000,
             seconds: 43.21,
         };
-        let mut out = Vec::new();
-        print_report(Format::Text, &r, &mut out).unwrap();
         assert_eq!(
-            String::from_utf8(out).unwrap(),
+            render(Format::Text, &Report(&r)),
             "204B319B5431: donguru 0.20.18 (841ef1f-dirty, release) -> donguru 0.20.19 (841ef1f, release)\n415000 bytes in 43.2 s\n"
         );
-        let mut out = Vec::new();
-        print_report(Format::Json, &r, &mut out).unwrap();
-        let v: serde_json::Value = serde_json::from_slice(&out).unwrap();
+        let v: serde_json::Value =
+            serde_json::from_str(&render(Format::Json, &Report(&r))).unwrap();
         assert_eq!(v["new"]["version"], "0.20.19");
         assert_eq!(v["serial"], "204B319B5431");
     }
