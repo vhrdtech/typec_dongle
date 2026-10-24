@@ -756,6 +756,7 @@ dependencies = [
  "serde",
  "serde_json",
  "stm32_dfu_host",
+ "tempfile",
  "thiserror",
  "tokio",
  "wire_weaver",
