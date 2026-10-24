@@ -1,0 +1,8 @@
+# Donguru USB-C dongle (VID:PID c0de:cafe, donguru-core::device::{USB_VID,USB_PID}): grants access to
+# the user logged in at the local seat, so `dg`/`donguru` works without sudo or group membership.
+#
+# Package-owned (PKG-3): installed by the .deb/.rpm into the vendor rules directory
+# (/usr/lib/udev/rules.d/), read together with whatever an admin adds under /etc/udev/rules.d/. For a
+# headless machine or a group-based policy instead of this uaccess default, add an admin rule with
+# `donguru udev install --access group|all` (CLI-8) rather than editing this file.
+SUBSYSTEM=="usb", ATTR{idVendor}=="c0de", ATTR{idProduct}=="cafe", TAG+="uaccess"

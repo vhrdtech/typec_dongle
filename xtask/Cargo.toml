@@ -1,0 +1,17 @@
+[package]
+name = "xtask"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Build-time helpers that are not part of any shipped crate (PKG-3: man pages)"
+publish = false
+
+[[bin]]
+name = "xtask"
+path = "src/main.rs"
+
+[dependencies]
+donguru-cli = { path = "../donguru-cli" }
+clap = { workspace = true }
+clap_mangen = "0.2"
+anyhow.workspace = true

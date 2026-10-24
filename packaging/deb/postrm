@@ -1,0 +1,13 @@
+#!/bin/sh
+# Undoes packaging/deb/postinst's `dg` symlink on removal or purge; a reload drops our udev rule.
+set -e
+
+case "$1" in
+    remove|purge)
+        rm -f /usr/bin/dg
+        ;;
+esac
+
+if command -v udevadm >/dev/null 2>&1; then
+    udevadm control --reload-rules || true
+fi

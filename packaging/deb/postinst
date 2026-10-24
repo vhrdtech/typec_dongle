@@ -1,0 +1,11 @@
+#!/bin/sh
+# donguru (PKG-3): `dg` is a short alias for the same binary, and an already-connected dongle needs
+# udev reloaded once so the new rule takes effect without a replug.
+set -e
+
+ln -sf donguru /usr/bin/dg
+
+if command -v udevadm >/dev/null 2>&1; then
+    udevadm control --reload-rules || true
+    udevadm trigger --subsystem-match=usb || true
+fi

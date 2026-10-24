@@ -2,6 +2,7 @@
 name = "donguru-cli"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 description = "Command-line interface for the Donguru USB-C dongle"
 
 [lib]
