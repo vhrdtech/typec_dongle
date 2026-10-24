@@ -738,6 +738,7 @@ mod tests {
             color: crate::cli::ColorMode::Never,
             verbosity: 0,
             quiet: true,
+            config: Vec::new(),
         };
         let code = report_vbus_state(&ctx, "plug", state, true).unwrap();
         assert!(matches!(code, ExitCode::Failure));

@@ -793,8 +793,12 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `status` run for real; `install` / `uninstall` were never run on a real `/etc` (needs root). On a Linux PC with a
   board check: `sudo dg udev install`, replug, `dg udev status` shows accessible without sudo; `pkexec` path from a
   desktop session; `uninstall` removes it; `fw update` reaches the DFU device without root. ^revB
-- ⬜ **CLI-9 `config generate / show / path / validate`**: stub. Layering per the design doc (defaults, system,
-  user, project file, `DONGURU_*`, flags).
+- 🧪 **CLI-9 `config generate / show / path / validate`** (`donguru-core/src/config.rs`, `donguru-cli/src/commands/config.rs`,
+  `context.rs`): layering defaults < `/etc/donguru/donguru.toml` < `$XDG_CONFIG_HOME/donguru/donguru.toml` < `./donguru.toml`
+  (walking up) < `DONGURU_*` < flags, per key, for the keys `device`, `output`, `color`. `show [KEY] [--origin]` (json
+  too), `path [SCOPE]`, `validate [PATH]` (unknown key or bad value: exit 1), `generate [-o FILE] [--force]` (all keys
+  commented out). A broken file is skipped with a warning by the other commands. Open: more keys (timeouts, verbosity)
+  once something reads them; the three-state merge of the design doc is not done (a layer cannot set a key back to None).
 - ✅ **CLI-10 `fw version` / `fw update`** (`donguru-cli/src/commands/fw.rs`, `donguru-core/src/update.rs`): `fw version`
   prints name, version, git commit (`-dirty`), profile and the API version (`--format json` too). `fw update [ELF|-]`
   (default `fw/donguru/target/thumbv6m-none-eabi/release/donguru`) reads the old version, `device.boot.reboot(Updater)`

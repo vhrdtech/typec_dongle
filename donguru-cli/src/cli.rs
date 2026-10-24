@@ -37,6 +37,19 @@ pub struct Cli {
 
     #[command(subcommand)]
     pub command: Command,
+
+    /// Which global settings were given on the command line itself (not from an environment variable or a
+    /// default): the config layering (CLI-9) treats those as its top layer.
+    #[arg(skip)]
+    pub explicit: Explicit,
+}
+
+/// The global settings that came from the command line itself.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct Explicit {
+    pub device: bool,
+    pub format: bool,
+    pub color: bool,
 }
 
 impl Cli {
@@ -51,8 +64,24 @@ impl Cli {
             .color(theme::choice_from_args(std::env::args()))
             .get_matches();
         match Self::from_arg_matches(&matches) {
-            Ok(cli) => cli,
+            Ok(mut cli) => {
+                cli.explicit = Explicit::from_matches(&matches);
+                cli
+            }
             Err(err) => err.exit(),
+        }
+    }
+}
+
+impl Explicit {
+    pub fn from_matches(matches: &clap::ArgMatches) -> Self {
+        let given = |id: &str| {
+            matches.value_source(id) == Some(clap::parser::ValueSource::CommandLine)
+        };
+        Self {
+            device: given("device"),
+            format: given("format"),
+            color: given("color"),
         }
     }
 }

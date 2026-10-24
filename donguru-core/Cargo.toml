@@ -9,6 +9,8 @@ description = "Library for interacting with Donguru dongles"
 thiserror.workspace = true
 anyhow.workspace = true
 serde.workspace = true
+# layered config files (CLI-9)
+toml = "0.9"
 donguru_api.workspace = true
 # the firmware's own debug rules (refused pins, claim table, UCPD roles), modelled by the mock
 donguru_board = { path = "../donguru_board" }
