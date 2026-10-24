@@ -46,7 +46,6 @@ wire_weaver = { path = "../../wire_weaver/wire_weaver", features = ["std"] }
 # built the release binary and generated man pages / completions into target/dist.
 [package.metadata.deb]
 maintainer = "vhrd.tech <hello@vhrd.tech>"
-license-file = ["../LICENSE", "0"]
 depends = "$auto"
 section = "utility"
 priority = "optional"

@@ -46,7 +46,8 @@ deploy mode and installs the shell completions for your user (see
 
 ## License
 
-The license is still **TBD** (PKG-4): both packages carry that as their license metadata
-(`License: TBD` in the `.deb`'s control file and in the `.rpm` header), taken from the
-workspace's own `license = "TBD"` rather than written separately for packaging. This will be
-replaced before the v1.0 CrowdSupply launch.
+The license is still **TBD** (PKG-4), Roman's decision to make, not written into the repository
+ahead of it: there is no `LICENSE` file. Both packages still carry `License: TBD` (the `.deb`'s
+auto-generated `usr/share/doc/donguru-cli/copyright`, the `.rpm` header), read straight from the
+workspace's own `license = "TBD"` rather than a separate copy. This will be replaced before the
+v1.0 CrowdSupply launch.

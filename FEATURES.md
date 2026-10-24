@@ -977,10 +977,12 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   their status read from FEATURES.md, and the book ends with a feature map, missing first. Most features they use
   are 💡 items added for them. Missing: photos, real output from a rev B board, publishing (docs CI needs Typst and
   the vhrd package, P2534#17oct-1150). Catalog and findings: tpm `prj/P2534-donguru/design/lab-book*.md`.
-- 📋 **PKG-4 License**: the workspace says `license = "TBD"`. Still genuinely undecided, but now wired through
-  consistently: `donguru-cli` and `donguru-core` were missing `license.workspace = true` (every other crate had
-  it) and a root `LICENSE` file now exists so `license-file` (deb) has real content; both PKG-3's packages read
-  `TBD` from this one place rather than a separate copy. ^v1.0
+- 📋 **PKG-4 License**: the workspace says `license = "TBD"`. Still genuinely undecided (Roman's call, not
+  written on his behalf), but now wired through consistently: `donguru-cli` and `donguru-core` were missing
+  `license.workspace = true` (every other crate had it), so both PKG-3's packages read `TBD` straight from the
+  workspace with no separate copy anywhere. No `LICENSE` file: cargo-deb's auto-generated `copyright` just says
+  "Copyright information missing" with `License: TBD`, which is honest rather than a text claiming terms that
+  don't exist yet. Decision recorded in tpm `prj/P2534-donguru/design/night-24oct-decisions.md` ("pkg"). ^v1.0
 - 💡 **PKG-6 SBU breakout**: a small USB-C receptacle board with SBU1, SBU2, CC, VBUS, GND (and D+/D-) on 2.54 mm
   pins and labels, for wiring Donguru's SBU functions (UART, I2C, SWD, GPIO) to a board without Donguru's SBU
   convention; sold with it or as an accessory. Labs `serial-console`, `i2c-on-the-plug`.
