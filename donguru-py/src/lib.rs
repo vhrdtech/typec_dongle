@@ -100,7 +100,7 @@ fn selector(sel: Option<&Bound<'_, PyAny>>) -> PyResult<Option<Selector>> {
 fn open(py: Python<'_>, selector: Option<&Bound<'_, PyAny>>) -> PyResult<PyDongle> {
     let selector = self::selector(selector)?;
     let dongle = block_on(py, async move { Dongle::open(selector.as_ref()).await })?;
-    Ok(PyDongle::new(dongle))
+    Ok(PyDongle::new(dongle, None))
 }
 
 /// A connected Donguru: the levels as attributes (`power`, `meter`, `usb`, `header`, `uart`, `settings`, `leds`).
@@ -109,16 +109,19 @@ fn open(py: Python<'_>, selector: Option<&Bound<'_, PyAny>>) -> PyResult<PyDongl
 pub(crate) struct PyDongle {
     shared: std::sync::Arc<Shared>,
     entry: DeviceInfo,
+    /// What the link needs alive besides the dongle: the `MockDevice` it was opened on.
+    _keep_alive: Option<Py<PyAny>>,
 }
 
 impl PyDongle {
-    pub(crate) fn new(dongle: Dongle) -> Self {
+    pub(crate) fn new(dongle: Dongle, keep_alive: Option<Py<PyAny>>) -> Self {
         let entry = DeviceInfo::from(dongle.entry());
         PyDongle {
             shared: std::sync::Arc::new(Shared {
                 dongle: RwLock::new(Some(dongle)),
             }),
             entry,
+            _keep_alive: keep_alive,
         }
     }
 }

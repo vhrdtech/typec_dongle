@@ -1,5 +1,7 @@
 """The `donguru` package against donguru-core's in-process mock dongle (a B153A Main at boot)."""
 
+import gc
+
 import pytest
 
 import donguru
@@ -198,3 +200,25 @@ def test_no_device():
 def test_bad_selector():
     with pytest.raises(donguru.Error):
         donguru.open("path:")
+
+
+def test_device_error(dg, mock):
+    mock.set_settings_fault(1)
+    with pytest.raises(donguru.DeviceError) as e:
+        dg.settings.button_action = "toggle_data"
+    assert e.value.kind == "fault"
+    assert e.value.item
+    mock.set_settings_fault(None)
+    dg.settings.button_action = "toggle_data"
+
+
+def test_unimplemented(dg):
+    # the mock models the header UART only, as a firmware without the plug UART would answer
+    with pytest.raises(donguru.Unimplemented):
+        dg.uart.plug.configure()
+
+
+def test_dongle_keeps_its_mock():
+    dg = MockDevice().open()
+    gc.collect()
+    assert dg.meter.read().voltage == pytest.approx(5.0)

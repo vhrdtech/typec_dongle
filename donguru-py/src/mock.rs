@@ -12,7 +12,8 @@ use ww_si::{Ampere, Coulomb, Joule, Prefix, Second, Volt};
 use crate::values::{PyVbusMode, milli};
 use crate::{PyDongle, block_on};
 
-/// A mock dongle in this process, running until garbage-collected. `open()` gives a `Dongle` on it.
+/// A mock dongle in this process, running until it and the dongles opened on it are garbage-collected. `open()`
+/// gives a `Dongle` on it.
 #[pyclass(
     name = "MockDevice",
     module = "donguru.mock",
@@ -46,9 +47,10 @@ impl MockDevice {
         }
     }
 
-    /// A `Dongle` on this mock.
-    fn open(&self, py: Python<'_>) -> PyResult<PyDongle> {
-        block_on(py, self.inner.open()).map(PyDongle::new)
+    /// A `Dongle` on this mock; it keeps the mock running while it is open.
+    fn open(slf: &Bound<'_, Self>) -> PyResult<PyDongle> {
+        let dongle = block_on(slf.py(), slf.get().inner.open())?;
+        Ok(PyDongle::new(dongle, Some(slf.clone().into_any().unbind())))
     }
 
     /// What the meter reads from now on: VBUS_IN in V, current in A.
@@ -76,6 +78,13 @@ impl MockDevice {
             since: Second::milli(milli(since, "since")?),
         };
         self.with(py, move |s| s.totals = totals)
+    }
+
+    /// Makes the next settings write (or `reset`) fail as the real store does: code 1 flash failure, 2 a newer
+    /// firmware's record, 3 a record too big; `None` clears it.
+    #[pyo3(signature = (code=None))]
+    fn set_settings_fault(&self, py: Python<'_>, code: Option<u32>) -> PyResult<()> {
+        self.with(py, move |s| s.settings_fault = code)
     }
 
     /// The plug VBUS mode the mock holds.

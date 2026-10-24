@@ -92,6 +92,17 @@ test *flags:
 [group: 'rust']
 test-all:
     cargo test --workspace --all-features --locked
+    {{just_executable()}} py-test
+
+# Python package `donguru` (donguru-py): build it with maturin and run pytest against the mock
+[group: 'python']
+py-test *ARGS:
+    uv run --project donguru-py pytest donguru-py/tests {{ARGS}}
+
+# Python wheel of `donguru` for this platform, into target/dist
+[group: 'python']
+py-build:
+    uv build --wheel --out-dir target/dist donguru-py
 
 # Firmware format check and clippy (warnings are errors): the default build, every feature, and rev B's (no default
 # features), so a feature-gated path can't rot unnoticed (FW-23)
