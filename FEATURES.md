@@ -939,11 +939,17 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `settings show`, `fw version` print plain text. Give every text renderer the theme and `theme::colour_enabled`
   (`--color`, `NO_COLOR`, TTY), keep json / jsonl plain. Colour in help, `--color` for clap's own output and the `fw
   update` bar already follow it.
-- ⬜ **CLI-52 Errors under `--format json`**: errors are one text line on stderr whatever the format; a script that
-  asked for json has no machine-readable error or exit-code name. Decide the shape with CLI-13 (exit codes).
+- ✅ **CLI-52 Errors under `--format json`** (`donguru-cli/src/output.rs`, `report_error` / `error_json`): text keeps
+  `donguru: error: ...`; json and jsonl write `{"error":{"exit","code","message","kind?"}}` as one line on stderr
+  (stdout stays data), `exit` the exit code's name (CLI-13), `kind` the dongle's error kind. Documented in
+  `docs/user/scripting.md` and `docs/design/cli/index.md` ("Errors under json"). Unit-tested; no hardware involved.
 - ⬜ **CLI-53 Progress for the other slow commands**: `fw update` has a bar, `swd memtest` a spinner; `power cycle
   --off` with a long off time, `device log --follow` and `device counters --watch` show nothing while they wait.
   Checked: nothing else takes more than a few seconds today.
+- 🐛 **CLI-54 Argument checks inside commands exit 1, not 2**: clap's usage errors exit 2 (`bad_args`), but a
+  value a command checks itself (`settings set ... auto` without `--trip`, `power watch -f json`, a bad `uart_plug`
+  value) bails with a plain anyhow error and exits 1 (`failure`). A typed usage error mapped to `ExitCode::BadArgs`
+  would fix it; it changes those exit codes, so it needs a CHANGELOG entry. `docs/user/scripting.md` says so for now.
 
 ## GUI (`GUI`)
 

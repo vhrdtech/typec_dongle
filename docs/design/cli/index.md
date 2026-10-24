@@ -315,3 +315,22 @@ the next free number; an existing one is never renumbered. The name is what an e
 
 A broken link (USB unplugged mid-command) is `1`, not a category of its own; should scripts need to tell it apart,
 it becomes `6`.
+
+## Errors under json
+
+`donguru-cli/src/output.rs` (`report_error`): under `--format text` an error is one line on stderr, `donguru: error:
+...`. Under `json` and `jsonl` it is one JSON object on one line, also on **stderr**:
+
+```json
+{"error":{"exit":"device_error","code":4,"message":"power meter: ...","kind":"refused"}}
+```
+
+`exit` is the exit code's name from the table above, `code` its number, `message` the error with its causes (for
+people, not parsed), `kind` the dongle's own error kind (`DeviceErrorKind::name`, or `unimplemented` /
+`incompatible`) and only when the dongle answered.
+
+Why stderr and not stdout: "stdout is data, stderr is diagnostics" holds for errors too. A script reading a `jsonl`
+stream then never has to tell a record from an error, a stream that fails halfway leaves only whole records on
+stdout, and `dg ... -f json | jq` fails on the exit code instead of feeding jq an object of another shape. A script
+that wants the error captures stderr (`2>err.json`). Usage errors from clap stay clap's text, before the format is
+known to apply. The user-facing description is `docs/user/scripting.md`.
