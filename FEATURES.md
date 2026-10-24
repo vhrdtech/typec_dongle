@@ -242,10 +242,12 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   P2534#14oct-1439): reads PA10 high → `BoardVariant::Main` on 2 cold power-cycles (true replug, J-Link VTref
   0.00 V between them) and 2 debugger-forced resets, hub attaching correctly every time. 🧪 because Plus is
   untested hardware.
-- 🐛 **FW-23 Firmware not clippy clean**: `cargo clippy --bins --examples -- -D warnings` in `fw/donguru` fails with
-  13 lints (doc list indentation in `hub.rs` / `swd.rs`, operator precedence in `led.rs`, an empty `loop {}` in
-  `main.rs`, unused `ChannelSet::Extended`, `adc::set_channels` and `Brightness::Dim`); `just clippy` covers only
-  the host workspace, so nothing catches them. Found 15 Oct 2026.
+- ✅ **FW-23 Firmware clippy clean**: `just lint` runs `just fw-lint` (`cargo fmt --check` and
+  `cargo clippy --bins --examples -D warnings` in `fw/donguru`, for the default features, `--all-features` and
+  `--no-default-features`), so a lint or a feature-gated path that stops building fails the lint. The 13 lints of
+  15 Oct 2026 were gone by 24 Oct but for the doc list indentation in `hub.rs` / `swd.rs` and `uart::replay` dead
+  without `uart-replay`; the `usb_serial` example follows embassy main's API (`Usbsel::Hsi48`, `Driver::new`
+  interrupt last). Fixed 24 Oct 2026.
 - 🚧 **FW-24 WireWeaver USB throughput** (P2534#15oct-1747): was ~30% of USB FS bulk (`ww usb-loopback`, 1 KB
   messages: 152 round trips/s, 373 kB/s host -> device, 316 kB/s device -> host). Done: flash prefetch on
   (`main.rs`, embassy-stm32 0.6 leaves it off on the G0), off again since FW-38 (ES0548); release `opt-level = 3` instead of "z" (~40% faster
@@ -452,6 +454,17 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 
 ## API (`API`)
 
+- 🧪 **FW-51 Firmware builds against the sibling checkouts, WireWeaver TR-15**: main stopped building (24 Oct 2026):
+  `bedrock_crash` came from embedded_bedrock's git (cargo read a templated `bedrock_template/Cargo.toml` there), and
+  `bedrock_led` / `bedrock_sync` brought WireWeaver a second time from its git, two `ww_indication` /
+  `shrink_wrap` (13 E0308 in `ww/leds.rs`, `ww/clock.rs`). Now `bedrock_crash` is a path dependency on
+  `../embedded_bedrock` like the other bedrock crates, and `fw/donguru/Cargo.toml` patches WireWeaver's git source
+  to the sibling checkout, as `bedrock_led`'s Cargo.toml asks. Built against wire_weaver 689b697a: TR-15 (random
+  setup token echoed in link setup, framer session reset; USB without prefix or checksum) comes in through
+  `ww_device` / `wire_weaver_usb_embassy` with no firmware code change, a wire break: this firmware needs a host
+  (CLI, `ww`) with TR-15 and the other way round. Dev and release build, not run on a board yet. To check on
+  B153A: `ww list` / `donguru info` connect with today's `ww` and CLI, a reconnect (CLI run twice, replug) gets no
+  stale reply, `uart[1].rx` and `device.log` stream as before.
 - 🧪 **FW-14 Switched VBUS on the header** (J101 pin 10, PD1 `5V_EN`, net to be renamed VBUS_SW): it is the computer's
   VBUS as it is, 5 V or up to 20 V after PD. Off at boot; `header.vbus_sw_mode` `ForceOn { max_voltage }` cuts it
   when the receptacle VBUS goes above the limit (API-11); `Auto` is refused, its current isn't measured (the shunt is

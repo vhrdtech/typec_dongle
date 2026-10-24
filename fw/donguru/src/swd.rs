@@ -6,6 +6,7 @@
 //! the driver works on the SBU side of the shifter, the only MCU pins wired straight to the plug:
 //! * SBU1 net (PA1): SWCLK in [`Orientation::Normal`], SWDIO in [`Orientation::Swapped`].
 //! * SBU2 net (PA0): SWDIO in `Normal`, SWCLK in `Swapped`.
+//!
 //! In this default bit-bang mode the `_VT` pins (PB6..PB11) stay inputs, so it also works on a board with the bypass
 //! fitted. The SPI mode (FW-21, [`SwdMode::Spi`], "SPI-driven SWD" below) is the other way round: SPI2 on the `_VT`
 //! side, through the shifter with `SBU_OE` high and PA0/PA1 Hi-Z. ⚠️ Not for a board with R211/R212 fitted: OE

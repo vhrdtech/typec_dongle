@@ -68,7 +68,6 @@ dependencies = [
 [[package]]
 name = "bedrock_crash"
 version = "0.1.0"
-source = "git+https://github.com/romixlab/embedded_bedrock#ec04ab476f8a0638ca97c513416577f2824ad589"
 dependencies = [
  "cortex-m",
  "cortex-m-rt",
@@ -2068,8 +2067,10 @@ dependencies = [
  "regex",
  "ron",
  "semver 1.0.28",
+ "serde",
  "shrink_wrap",
  "syn 3.0.6",
+ "toml",
  "wire_weaver_snapshots",
  "ww_global",
  "ww_numeric",

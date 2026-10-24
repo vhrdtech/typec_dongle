@@ -25,7 +25,7 @@ static_cell = "2.1"
 assign-resources = "0.5.0"
 cnt = "0.5" # 0.5: used words and format version, served as device.counters (ww_counters)
 # crash capture: HardFault / panic record kept across reset, reset cause (src/last_reset.rs); the panic handler
-bedrock_crash = { git = "https://github.com/romixlab/embedded_bedrock", features = ["cortex-m", "defmt"] }
+bedrock_crash = { path = "../../../embedded_bedrock/bedrock_crash", features = ["cortex-m", "defmt"] }
 # the LED animation and driver (src/led.rs) and the `leds` indication bookkeeping (src/ww/leds.rs), DEV-12; from the
 # embedded_bedrock checkout next to this repo, as its ww-indication feature takes WireWeaver from the checkout next to it
 bedrock_led = { path = "../../../embedded_bedrock/bedrock_led", features = ["embassy", "ww-indication", "defmt"] }
@@ -162,6 +162,18 @@ overflow-checks = false
 # For now the tree is romixlab/embassy `donguru-ring-copy`: upstream 262fdba plus one commit, the DMA ring buffer copying
 # out in up to two runs instead of a software division per byte (on the M0+ the header UART got 16 kB/s at 5.8 Mbaud
 # without it, FW-42). Back to embassy-rs once that fix is merged upstream.
+# bedrock_led and bedrock_sync take WireWeaver from its git (embedded_bedrock's workspace dependencies); this points that
+# source at the checkout next to this repo, so they and the firmware share one wire_weaver, ww_indication, ww_timebase
+# (two copies of a crate are two types: E0308 in ww/leds.rs and ww/clock.rs otherwise)
+[patch."https://github.com/vhrdtech/wire_weaver"]
+wire_weaver = { path = "../../../wire_weaver/wire_weaver" }
+ww_date_time = { path = "../../../wire_weaver/ww_stdlib/ww_date_time" }
+ww_dfu = { path = "../../../wire_weaver/ww_stdlib/ww_dfu" }
+ww_indication = { path = "../../../wire_weaver/ww_stdlib/ww_indication" }
+ww_si = { path = "../../../wire_weaver/ww_stdlib/ww_si" }
+ww_timebase = { path = "../../../wire_weaver/ww_stdlib/ww_timebase" }
+ww_version = { path = "../../../wire_weaver/ww_stdlib/ww_version" }
+
 [patch.crates-io]
 embassy-stm32 = { git = "https://github.com/romixlab/embassy", rev = "84ae135f91069d49c8dcb823a677e9f4b4a1e534" }
 embassy-usb = { git = "https://github.com/romixlab/embassy", rev = "84ae135f91069d49c8dcb823a677e9f4b4a1e534" }

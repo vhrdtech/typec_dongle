@@ -93,9 +93,19 @@ test *flags:
 test-all:
     cargo test --workspace --all-features --locked
 
-# Format check and clippy, the static part of verify
+# Firmware format check and clippy (warnings are errors): the default build, every feature, and rev B's (no default
+# features), so a feature-gated path can't rot unnoticed (FW-23)
+[group: 'fw']
+[working-directory('fw/donguru')]
+fw-lint:
+    cargo fmt --check
+    cargo clippy --locked --bins --examples -- -D warnings
+    cargo clippy --locked --bins --examples --all-features -- -D warnings
+    cargo clippy --locked --bins --examples --no-default-features -- -D warnings
+
+# Format check and clippy of the host workspace and the firmware, the static part of verify
 [group: 'rust']
-lint: format-check clippy
+lint: format-check clippy fw-lint
 
 # Format check, lint and test
 [group: 'rust']

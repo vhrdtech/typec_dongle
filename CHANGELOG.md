@@ -6,6 +6,16 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Changed
+
+- Firmware: built against WireWeaver with TR-15 (setup token in link setup, framer session reset), a wire break: firmware from here on talks only to hosts with TR-15 (wire_weaver 689b697a and the CLI built on it), older firmware not to them. No `donguru_api` change. Release FLASH 425.24 KiB of 504 KiB (84.4 %), RAM 89.83 KiB of 144 KiB; the last figure in this changelog was 407.04 KiB / 89.27 KiB (FW-44), main itself did not build to measure. Not run on a board yet (FW-51).
+- `just lint` also checks the firmware (`just fw-lint`: fmt check, clippy with default, all and no default features) (FW-23).
+
+### Fixed
+
+- The firmware builds again: `bedrock_crash` from the embedded_bedrock checkout next to this repo instead of its git, WireWeaver's git source patched to the checkout next to this repo so the bedrock crates and the firmware share one `ww_indication` (FW-51).
+- Firmware clippy clean (FW-23).
+
 ## [0.20.27] - 2026-10-22
 
 ### Added

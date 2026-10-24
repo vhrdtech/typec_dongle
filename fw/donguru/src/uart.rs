@@ -85,6 +85,7 @@ pub fn capture(which: donguru_api::ReplayCapture) -> Option<&'static [u8]> {
 
 /// Sends `data` on the line in a loop, by DMA straight from flash, until the next call; empty stops. Bytes of the
 /// `tx` sink wait in [TX] meanwhile.
+#[cfg(feature = "uart-replay")]
 pub fn replay(data: &'static [u8]) {
     REPLAY.signal(data);
 }

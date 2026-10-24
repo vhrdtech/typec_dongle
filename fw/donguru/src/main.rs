@@ -26,8 +26,8 @@ use cortex_m_rt::exception;
 use embassy_stm32::{
     Peri, bind_interrupts, dma, peripherals,
     rcc::{
-        AHBPrescaler, APBPrescaler, LsConfig, Hsi, Hsi48Config, HsiSysDiv, Pll, PllMul, PllPDiv, PllPreDiv,
-        PllRDiv, PllSource, Sysclk,
+        AHBPrescaler, APBPrescaler, Hsi, Hsi48Config, HsiSysDiv, LsConfig, Pll, PllMul, PllPDiv,
+        PllPreDiv, PllRDiv, PllSource, Sysclk,
         mux::{Adcsel, Usbsel},
     },
     usart, usb,

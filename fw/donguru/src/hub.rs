@@ -18,8 +18,8 @@
 //! powered but unconfigured and un-attached, and only redoing this bring-up gets it back. [`watchdog_task`]
 //! notices the loss two ways: `src/ww/mod.rs` calls [`request_recovery`] when the composite USB device (on hub port
 //! 1) drops out of the configured state after having reached it once — the hub's own reset bounces that port
-//! along with the rest of the chip, so this fires within a USB frame or two of the brown-out — and a periodic
-//! I2C probe backstops it for a brown-out that, for some reason, does not bounce the MCU's own port.
+//!    along with the rest of the chip, so this fires within a USB frame or two of the brown-out — and a periodic
+//!    I2C probe backstops it for a brown-out that, for some reason, does not bounce the MCU's own port.
 //!
 //! An MCU reset leaves the hub alone where the reset line lets it (FW-46): RTC_OUT1 holds it on rev A, a pull-up on
 //! rev B. [`bring_up`] then reads the hub's config back ([`donguru_board::hub::check`]) and keeps the hub when it
@@ -407,7 +407,11 @@ pub async fn bring_up(r: HubResources, warm: bool) -> Hub {
         variant,
         unverified: false,
     };
-    match if running { hub.keep().await } else { Keep::Reconfigure } {
+    match if running {
+        hub.keep().await
+    } else {
+        Keep::Reconfigure
+    } {
         Keep::Kept => {}
         Keep::Unverified => hub.unverified = true,
         Keep::Reconfigure => hub.reset_and_configure().await,
@@ -444,7 +448,9 @@ pub async fn watchdog_task(mut hub: Hub) {
                     kept();
                     continue;
                 }
-                Check::NoAnswer | Check::Unconfigured if attached_at.elapsed() < UNVERIFIED_LIMIT => {
+                Check::NoAnswer | Check::Unconfigured
+                    if attached_at.elapsed() < UNVERIFIED_LIMIT =>
+                {
                     continue;
                 }
                 found => {

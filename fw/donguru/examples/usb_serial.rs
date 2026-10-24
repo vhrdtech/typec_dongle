@@ -27,13 +27,13 @@ async fn main(_spawner: Spawner) {
         config.rcc.hsi48 = Some(Hsi48Config {
             sync_from_usb: true,
         });
-        config.rcc.mux.usbsel = mux::Usbsel::HSI48;
+        config.rcc.mux.usbsel = mux::Usbsel::Hsi48;
     }
     let p = embassy_stm32::init(config);
 
     info!("Hello World!");
 
-    let driver = Driver::new(p.USB, Irqs, p.PA12, p.PA11);
+    let driver = Driver::new(p.USB, p.PA12, p.PA11, Irqs);
     let mut led = Output::new(p.PF1, Level::Low, Speed::Low);
     let mut hub_nrst = Output::new(p.PC13, Level::Low, Speed::Low);
     let _hub_i2c_en = Output::new(p.PA4, Level::High, Speed::Low);

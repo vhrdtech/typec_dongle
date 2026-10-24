@@ -171,18 +171,18 @@ pub fn early() -> Start {
     FELL_BACK.store(next.fell_back, Ordering::Relaxed);
     match start {
         Start::App if next.fell_back => {
-            warn!("boot: the ROM bootloader took over after a boot loop before this firmware (FW-45)")
+            warn!(
+                "boot: the ROM bootloader took over after a boot loop before this firmware (FW-45)"
+            )
         }
         Start::App if next.unhealthy_boots > 1 => warn!(
             "boot: {=u8} in a row without a healthy mark, the ROM bootloader after {=u8} (FW-45)",
-            next.unhealthy_boots,
-            BOOT_LOOP_LIMIT
+            next.unhealthy_boots, BOOT_LOOP_LIMIT
         ),
         Start::App => {}
         Start::Rescue => error!(
             "boot loop: {=u8} boots without USB configured or {=u64} s up, the ROM bootloader takes over (FW-45)",
-            BOOT_LOOP_LIMIT,
-            HEALTHY_AFTER_S
+            BOOT_LOOP_LIMIT, HEALTHY_AFTER_S
         ),
     }
     start
@@ -200,12 +200,7 @@ pub fn usb_configured() {
 /// charges never sees a USB host): the boot-loop count starts over (FW-45).
 #[embassy_executor::task]
 pub async fn healthy_task() {
-    let why = match select(
-        USB_CONFIGURED.wait(),
-        Timer::after_secs(HEALTHY_AFTER_S),
-    )
-    .await
-    {
+    let why = match select(USB_CONFIGURED.wait(), Timer::after_secs(HEALTHY_AFTER_S)).await {
         Either::First(()) => "USB configured",
         Either::Second(()) => "up long enough",
     };
