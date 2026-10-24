@@ -682,7 +682,8 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 
 - ✅ **CORE-1 Device enumeration and selection** (`donguru-core/src/device.rs`): `list()` from the USB descriptors
   without opening (VID:PID `c0de:cafe` and API id `donguru_api`, sorted by path), `Selector` by index, serial (any
-  case, unique prefix) or USB path (`5-1.2`), auto-select when exactly one; `Dongle::open` with the version check.
+  case, unique prefix), USB path (`5-1.2`) or user label (`label:L`, or plain text no serial matches; any case),
+  auto-select when exactly one; `Dongle::open` with the version check.
   The generated `donguru_api` client (`client.rs`) and a typed facade per level (`levels.rs`: device, settings, leds,
   meter, plug, header, sbu, inputs, hub, swd, uart / i2c / gpio by `Side`, adc, debug) with `Error::{Device (kind +
   typed error), Unimplemented, Timeout, Incompatible, Link}`; the B153A net names (`nets.rs`, hw_b153a.md §11);

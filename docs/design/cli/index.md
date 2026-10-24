@@ -276,8 +276,9 @@ With multiple dongles connected, a single device is chosen by, in order (CORE-1,
 4. auto-selection when exactly one dongle is present.
 
 A *selector* is, without a prefix: a number below 1000 (an index into `device list`), `<bus>-<port>[.<port>...]`
-(a USB path, e.g. `3-1.2`), or anything else a serial number (any case, a unique prefix is enough). The prefixed
-forms `index:N`, `serial:S` and `path:P` pick one unambiguously, which is what `device select` writes (a serial,
+(a USB path, e.g. `3-1.2`), or anything else a serial number (any case, a unique prefix is enough) or, when no
+serial matches, a user label (`device label`, any case). The prefixed forms `index:N`, `serial:S`, `path:P` and
+`label:L` pick one unambiguously, which is what `device select` writes (a serial,
 since it survives a replug on a different port). If no selector resolves to exactly one device, the CLI errors
 (exit code 3) and asks the user to disambiguate; `device list` shows the choices.
 

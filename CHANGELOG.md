@@ -6,6 +6,10 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- Pick a dongle by its user label: `--device bench-1` (when no serial matches) or `--device label:bench-1`, any case; the "matches none" / "matches 2" errors list the labels (CORE-1, for CORE-4's `donguru.open("bench-1")`).
+
 ## [0.20.31] - 2026-10-25
 
 ### Added

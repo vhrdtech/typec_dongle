@@ -105,19 +105,22 @@ fn normalize_path(p: &str) -> String {
     }
 }
 
-/// Picks one dongle: by index in [list], serial number (or a unique prefix of it, any case) or USB path.
+/// Picks one dongle: by index in [list], serial number (or a unique prefix of it, any case), USB path or user
+/// label (any case).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Selector {
     Index(usize),
+    /// A serial, or a unique prefix of one; when no serial matches, a label equal to it (`bench-1`).
     Serial(String),
     Path(String),
+    Label(String),
 }
 
 impl FromStr for Selector {
     type Err = Error;
 
-    /// `index:N`, `serial:S`, `path:P`, or without a prefix: a number below 1000 is an index, `<bus>-<ports>` a
-    /// path, anything else a serial.
+    /// `index:N`, `serial:S`, `path:P`, `label:L`, or without a prefix: a number below 1000 is an index,
+    /// `<bus>-<ports>` a path, anything else a serial or, when no serial matches, a label.
     fn from_str(s: &str) -> Result<Self> {
         let s = s.trim();
         if let Some((kind, value)) = s.split_once(':') {
@@ -128,8 +131,9 @@ impl FromStr for Selector {
                     .map_err(|_| Error::NoDevice(format!("not an index: {value:?}"))),
                 "serial" => Ok(Selector::Serial(value.to_string())),
                 "path" => Ok(Selector::Path(value.to_string())),
+                "label" => Ok(Selector::Label(value.to_string())),
                 _ => Err(Error::NoDevice(format!(
-                    "unknown selector kind {kind:?}, expected index:, serial: or path:"
+                    "unknown selector kind {kind:?}, expected index:, serial:, path: or label:"
                 ))),
             };
         }
@@ -163,6 +167,7 @@ impl fmt::Display for Selector {
             Selector::Index(i) => write!(f, "index:{i}"),
             Selector::Serial(s) => write!(f, "serial:{s}"),
             Selector::Path(p) => write!(f, "path:{p}"),
+            Selector::Label(l) => write!(f, "label:{l}"),
         }
     }
 }
@@ -220,16 +225,24 @@ pub fn select<'e>(
                 .iter()
                 .filter(|e| e.serial.eq_ignore_ascii_case(s))
                 .collect();
-            if exact.is_empty() {
-                let s = s.to_ascii_uppercase();
-                entries
-                    .iter()
-                    .filter(|e| !s.is_empty() && e.serial.to_ascii_uppercase().starts_with(&s))
-                    .collect()
-            } else {
+            if !exact.is_empty() {
                 exact
+            } else {
+                let upper = s.to_ascii_uppercase();
+                let prefixed: Vec<_> = entries
+                    .iter()
+                    .filter(|e| {
+                        !upper.is_empty() && e.serial.to_ascii_uppercase().starts_with(&upper)
+                    })
+                    .collect();
+                if prefixed.is_empty() {
+                    by_label(entries, s)
+                } else {
+                    prefixed
+                }
             }
         }
+        Selector::Label(l) => by_label(entries, l),
     };
     match found.as_slice() {
         [one] => Ok(one),
@@ -248,10 +261,25 @@ pub fn select<'e>(
     }
 }
 
+/// Entries whose label is `label`, any case; an empty label matches none.
+fn by_label<'e>(entries: &'e [DeviceEntry], label: &str) -> Vec<&'e DeviceEntry> {
+    entries
+        .iter()
+        .filter(|e| !label.is_empty() && e.label.eq_ignore_ascii_case(label))
+        .collect()
+}
+
 fn describe(entries: &[DeviceEntry]) -> String {
     entries
         .iter()
-        .map(|e| format!("\n  {} {} serial {}", e.index, e.path, e.serial))
+        .map(|e| {
+            let label = if e.label.is_empty() {
+                String::new()
+            } else {
+                format!(" label {:?}", e.label)
+            };
+            format!("\n  {} {} serial {}{label}", e.index, e.path, e.serial)
+        })
         .collect()
 }
 
@@ -401,6 +429,29 @@ mod tests {
         assert!(matches!(select(&e, Some(&s)), Err(Error::NoDevice(m)) if m.contains("matches 2")));
         assert!(select(&e, Some(&Selector::Index(5))).is_err());
         assert!(select(&e, Some(&Selector::Path("9-9".into()))).is_err());
+    }
+
+    #[test]
+    fn select_by_label() {
+        let mut e = two();
+        e[1].label = "bench-1".into();
+        assert_eq!(
+            "label:bench-1".parse::<Selector>().unwrap(),
+            Selector::Label("bench-1".into())
+        );
+        let l = Selector::Label("Bench-1".into());
+        assert_eq!(select(&e, Some(&l)).unwrap().index, 1, "label in any case");
+        // without a prefix: a serial first, a label when no serial matches
+        let s: Selector = "bench-1".parse().unwrap();
+        assert_eq!(select(&e, Some(&s)).unwrap().index, 1);
+        e[0].label = "0049002A".into();
+        let s = Selector::Serial("0049002A".into());
+        assert!(
+            matches!(select(&e, Some(&s)), Err(Error::NoDevice(m)) if m.contains("matches 2")),
+            "a serial prefix wins over a label"
+        );
+        assert!(select(&e, Some(&Selector::Label(String::new()))).is_err());
+        assert!(select(&e, Some(&Selector::Label("nope".into()))).is_err());
     }
 
     fn info(vid: u16, gid: &str, serial: &str, ports: Vec<u8>) -> DeviceInfo {
