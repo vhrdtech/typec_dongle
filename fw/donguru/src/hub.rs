@@ -34,7 +34,7 @@ use cnt::cnt;
 use defmt::{debug, info, warn};
 use donguru_api::BoardVariant;
 use donguru_board::hub::{Check, board_variant_from_strap, check, hub_config};
-use embassy_futures::select::{Either, select};
+use embassy_futures::select::{Either3, select3};
 use embassy_stm32::Peri;
 use embassy_stm32::gpio::{Flex, Level, Output, Pull, Speed};
 use embassy_stm32::i2c::{I2c, Master};
@@ -45,7 +45,7 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::signal::Signal;
 use embassy_time::{Duration, Instant, Timer};
 use usb251xb::Usb251xb;
-use usb251xb::register::{REG_CONFIG_BYTE_1, REG_VENDOR_ID_LSB};
+use usb251xb::register::{DEVICE_ADDR, REG_CONFIG_BYTE_1, REG_VENDOR_ID_LSB};
 
 /// How long to wait after releasing the hub from reset before talking to it over I2C. 0: tried 0/5/100/1000 ms
 /// on a B153A (14 Oct 2026) and all four read [`Hub::read_power_on_defaults`] back as all-zero, so there is no
@@ -341,6 +341,96 @@ impl Hub {
     }
 }
 
+/// Most data bytes of one SMBus block read or write (`debug.hub_read` / `hub_write`).
+pub const SMBUS_BLOCK_MAX: usize = 32;
+
+/// A `debug.hub_read` / `hub_write` for [`watchdog_task`], which owns the bus (API-18).
+#[derive(Clone, Copy)]
+pub struct SmbusRequest {
+    pub seq: u8,
+    pub write: bool,
+    pub reg: u8,
+    /// Bytes to read, or the bytes in `data` to write.
+    pub len: u8,
+    pub data: [u8; SMBUS_BLOCK_MAX],
+}
+
+/// Why an SMBus request failed.
+#[derive(Clone, Copy, PartialEq, Eq, defmt::Format)]
+pub enum SmbusError {
+    /// The hub did not acknowledge: busy with the host, or gone.
+    Nack,
+    Timeout,
+    /// Arbitration, bus or overrun error.
+    Bus,
+}
+
+/// What [`watchdog_task`] answers to an [`SmbusRequest`] with the same `seq`.
+#[derive(Clone, Copy)]
+pub struct SmbusResponse {
+    pub seq: u8,
+    pub result: Result<[u8; SMBUS_BLOCK_MAX], SmbusError>,
+}
+
+static SMBUS_REQUEST: Signal<CriticalSectionRawMutex, SmbusRequest> = Signal::new();
+static SMBUS_RESPONSE: Signal<CriticalSectionRawMutex, SmbusResponse> = Signal::new();
+
+/// How long a `debug` SMBus request may wait for the bus and the hub: a recovery in progress takes a few ms.
+const SMBUS_TIMEOUT: Duration = Duration::from_millis(100);
+
+/// Runs `request` on the hub's bus in [`watchdog_task`] and waits for its answer: the read data, or for a write
+/// all-zero. `Timeout` when the task doesn't answer in [`SMBUS_TIMEOUT`].
+pub async fn smbus(request: SmbusRequest) -> Result<[u8; SMBUS_BLOCK_MAX], SmbusError> {
+    SMBUS_RESPONSE.reset();
+    SMBUS_REQUEST.signal(request);
+    let deadline = Instant::now() + SMBUS_TIMEOUT;
+    loop {
+        match embassy_time::with_deadline(deadline, SMBUS_RESPONSE.wait()).await {
+            Ok(r) if r.seq == request.seq => return r.result,
+            // the answer to an earlier request that timed out
+            Ok(_) => {
+                cnt!(hub_smbus_stale_answers: u32);
+            }
+            Err(_) => {
+                cnt!(hub_smbus_timeouts: u32);
+                return Err(SmbusError::Timeout);
+            }
+        }
+    }
+}
+
+fn smbus_error(e: embassy_stm32::i2c::Error) -> SmbusError {
+    match e {
+        embassy_stm32::i2c::Error::Nack => SmbusError::Nack,
+        embassy_stm32::i2c::Error::Timeout => SmbusError::Timeout,
+        _ => SmbusError::Bus,
+    }
+}
+
+impl Hub {
+    /// An SMBus block read (`[reg]`, then the count byte and `len` bytes) or block write (`[reg, len, data..]`).
+    fn smbus(&mut self, r: &SmbusRequest) -> Result<[u8; SMBUS_BLOCK_MAX], SmbusError> {
+        let len = (r.len as usize).min(SMBUS_BLOCK_MAX);
+        let mut out = [0u8; SMBUS_BLOCK_MAX];
+        if r.write {
+            let mut payload = [0u8; 2 + SMBUS_BLOCK_MAX];
+            payload[0] = r.reg;
+            payload[1] = len as u8;
+            payload[2..2 + len].copy_from_slice(&r.data[..len]);
+            self.i2c
+                .blocking_write(DEVICE_ADDR, &payload[..2 + len])
+                .map_err(smbus_error)?;
+        } else {
+            let mut buf = [0u8; 1 + SMBUS_BLOCK_MAX];
+            self.i2c
+                .blocking_write_read(DEVICE_ADDR, &[r.reg], &mut buf[..1 + len])
+                .map_err(smbus_error)?;
+            out[..len].copy_from_slice(&buf[1..1 + len]);
+        }
+        Ok(out)
+    }
+}
+
 /// A kept hub holds this firmware's config and is attached.
 fn kept() {
     cnt!(hub_kept: u32);
@@ -434,15 +524,25 @@ pub async fn watchdog_task(mut hub: Hub) {
     let mut unconfigured = 0u8;
     let mut attached_at = Instant::now(); // bring_up has just attached it, or kept it
     loop {
-        let why = match select(
+        let why = match select3(
             Timer::after_millis(POLL_INTERVAL_MS),
             RECOVERY_REQUEST.wait(),
+            SMBUS_REQUEST.wait(),
         )
         .await
         {
-            Either::First(()) if attached_at.elapsed() < ATTACH_GRACE => continue,
+            // `debug.hub_read` / `hub_write` (API-18): one block transfer, between two probes
+            Either3::Third(request) => {
+                let result = hub.smbus(&request);
+                SMBUS_RESPONSE.signal(SmbusResponse {
+                    seq: request.seq,
+                    result,
+                });
+                continue;
+            }
+            Either3::First(()) if attached_at.elapsed() < ATTACH_GRACE => continue,
             // kept through the reset, not read back yet (FW-46)
-            Either::First(()) if hub.unverified => match hub.check() {
+            Either3::First(()) if hub.unverified => match hub.check() {
                 Check::Kept => {
                     hub.unverified = false;
                     kept();
@@ -459,7 +559,7 @@ pub async fn watchdog_task(mut hub: Hub) {
                     "kept through the reset, not this firmware's config"
                 }
             },
-            Either::First(()) => {
+            Either3::First(()) => {
                 let probe = hub.probe();
                 if probe != last {
                     info!("hub probe: {}", probe);
@@ -476,8 +576,8 @@ pub async fn watchdog_task(mut hub: Hub) {
                 "ID registers read all-zero"
             }
             // our own hub reset bounced the MCU's port as well
-            Either::Second(()) if attached_at.elapsed() < OWN_RESET_ECHO => continue,
-            Either::Second(()) => "USB device left the configured state",
+            Either3::Second(()) if attached_at.elapsed() < OWN_RESET_ECHO => continue,
+            Either3::Second(()) => "USB device left the configured state",
         };
         hub.recover(why).await;
         hub.unverified = false;

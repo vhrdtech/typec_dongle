@@ -63,6 +63,8 @@ use embassy_sync::signal::Signal;
 use embassy_time::Delay;
 
 use crate::SwdResources;
+use crate::pins;
+use donguru_board::pins::Holder;
 
 const SYSCLK_HZ: u32 = 64_000_000;
 /// Floor on SWCLK: slow enough that bit-bang jitter (task scheduling, interrupts) cannot matter.
@@ -1122,12 +1124,33 @@ impl SwdHost {
         self.cc2.set_high();
     }
 
-    /// Hi-Z the SWD-host pins and the plug CC lines, independent of any CMSIS-DAP session. Idempotent.
+    /// A `DAP_Connect` went through: the session holds the SBU pins in the claim table (`src/pins.rs`, API-18), and
+    /// the plug CC lines too unless a UCPD2 role holds them; only then are they driven ([drive_cc](Self::drive_cc)).
+    pub fn connected(&mut self) {
+        if let Err(by) = pins::claim(Holder::Swd) {
+            cnt!(swd_claim_refused: u32, warn);
+            defmt::warn!("SWD session: pins held by {}", by);
+        }
+        match pins::claim(Holder::SwdCc) {
+            Ok(()) => self.drive_cc(),
+            Err(_) => {
+                cnt!(swd_cc_held: u32);
+            }
+        }
+    }
+
+    /// Hi-Z the SWD-host pins and the plug CC lines, independent of any CMSIS-DAP session, and give them back in
+    /// the claim table. Idempotent.
     pub fn release(&mut self) {
         // `suspend` ends in `high_impedance_mode`: SBU_OE low first, then all SWD pins Hi-Z
         self.dap.suspend();
         self.pu_en.set_low();
-        self.cc1.set_as_input(Pull::None);
-        self.cc2.set_as_input(Pull::None);
+        // the plug CC lines only when this session drove them: else a UCPD2 role holds them
+        if pins::holds(Holder::SwdCc) {
+            self.cc1.set_as_input(Pull::None);
+            self.cc2.set_as_input(Pull::None);
+        }
+        pins::release(Holder::SwdCc);
+        pins::release(Holder::Swd);
     }
 }

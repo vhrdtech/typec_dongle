@@ -11,11 +11,13 @@ mod init;
 mod last_reset;
 mod led;
 mod log;
+mod pins;
 mod power;
 mod settings;
 mod swd;
 mod sync;
 mod uart;
+mod ucpd;
 mod ww;
 
 use cnt::cnt; // cnt::bkp_cnt! for counters in backup registers
@@ -143,6 +145,8 @@ bind_interrupts!(pub struct Irqs {
 #[cortex_m_rt::entry]
 fn main() -> ! {
     log::init_rtt(); // before the first log line, so RTT has the whole boot log (src/log.rs)
+    // the GPIO registers as the reset left them, before anything sets a pin up (`debug.boot_pins`, API-18)
+    pins::capture_boot();
     // a ROM bootloader request or the ROM's leave: before clocks and embassy, from the reset state (FW-12); the
     // boot-loop count (FW-45)
     let start = boot::early();

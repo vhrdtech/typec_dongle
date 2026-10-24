@@ -117,6 +117,8 @@ pub struct ServerState {
     /// `clock`: the sync line's configuration (always `Off`, no line) and whether `time_map` is subscribed
     /// (API-57, FW-44). The shared clock itself is `crate::sync::SYNC`, read by the LED task too.
     clock: clock::ClockState,
+    /// `debug`: answer buffers and the SMBus request number (API-18).
+    debug: debug::DebugState,
 }
 
 impl ServerState {
@@ -163,6 +165,7 @@ impl ServerState {
             counters_page: [UVlq32(0); ww_counters::MAX_WORDS],
             leds: leds::LedsState::new(),
             clock: clock::ClockState::new(),
+            debug: debug::DebugState::new(),
             user,
             store,
             settings_maintain: false,
@@ -193,7 +196,7 @@ mod server_impl {
         // handlers that await (flash writes, ADC readings, the VBUS cycle, the log flood, clock.steer's time_map
         // push) are async, all others plain `fn`s (SRV-21): an `async fn` that never awaits still costs flash as a
         // state of the dispatcher
-        handler_model = "debug.log_flood|device.label.*|device.settings.*|sbu.release|adc.read|plug.vbus_cycle|meter.reading|meter.temperature|clock.steer=async, _=sync",
+        handler_model = "debug.log_flood|debug.hub_read|debug.hub_write|device.label.*|device.settings.*|sbu.release|adc.read|plug.vbus_cycle|meter.reading|meter.temperature|clock.steer=async, _=sync",
         method_model = "plug_vbus_cycle=deferred, _=immediate",
         property_model = "_=get_set",
         // rows of samples per batch: ~20 ms of meter.reading sequences

@@ -488,6 +488,7 @@ dependencies = [
  "cnt",
  "cortex-m",
  "cortex-m-rt",
+ "critical-section",
  "dap-rs",
  "defmt 1.1.1",
  "defmt-rtt",

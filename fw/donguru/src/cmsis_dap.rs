@@ -207,14 +207,19 @@ pub async fn dap_task(mut class: CmsisDapClass<'static, crate::ww::UsbDriver>, m
                     continue;
                 }
             };
+            let command = Command::try_from(request[0]);
+            // A connect starts from released pins: it undoes what `debug.pin_set` left on the SBU lines (API-18)
+            if let Ok(Command::DAP_Connect) = command {
+                host.release();
+            }
             let n_out = host
                 .dap
                 .process_command(&request[..n], &mut response, DapVersion::V2);
             // Stopgap plug CC drive (FW-17, P2534#12oct-1338b, `src/swd.rs` module doc): hardcoded to these two
             // command bytes rather than a real connect/disconnect callback through `dap_rs`. `response[1]` is
             // `ConnectPortResponse`, 0 = Failed.
-            match Command::try_from(request[0]) {
-                Ok(Command::DAP_Connect) if n_out >= 2 && response[1] != 0 => host.drive_cc(),
+            match command {
+                Ok(Command::DAP_Connect) if n_out >= 2 && response[1] != 0 => host.connected(),
                 Ok(Command::DAP_Disconnect) => host.release(),
                 _ => {}
             }
