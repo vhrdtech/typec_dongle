@@ -6,6 +6,10 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Changed
+
+- Exit codes settled as `src/exit.rs` has them, now the documented contract: 0 success, 1 failure, 2 bad arguments, 3 no device, 4 device error, 5 timeout; each has a stable name (`no_device`, ...). `developer-notes.md` and `docs/design/cli` no longer list a transport code; a broken link stays 1. No exit code changed (CLI-13).
+
 ## [0.20.30] - 2026-10-25
 
 ### Added

@@ -191,8 +191,8 @@ The CLI is built to be a good citizen in pipelines.
   stdout. Progress, warnings, and errors go to stderr, so `donguru … | jq`
   never sees log noise.
 - **Exit codes are meaningful.** `0` success; non-zero on failure with distinct
-  codes for categories (usage error, no device, transport error, device error,
-  timeout).
+  codes for categories (usage error, no device, device error, timeout), see
+  [Exit codes](#exit-codes).
 - **Output formats are selectable.** A global `--format`/`-f` flag chooses the
   representation:
     - `text` (default) — human-readable, aligned, possibly colourised when
@@ -300,13 +300,18 @@ developed, shipped, and versioned independently.
 
 ## Exit codes
 
-A public contract once shipped (`donguru-cli/src/exit.rs`): keep these stable and documented.
+A public contract once shipped (`donguru-cli/src/exit.rs`): keep these stable and documented. A new category takes
+the next free number; an existing one is never renumbered. The name is what an error under `--format json` carries
+(see [Errors under json](#errors-under-json)).
 
-| Code | Meaning                                                             |
-| ---- | -------------------------------------------------------------------- |
-| 0    | Success.                                                              |
-| 1    | Failure: no more specific category applies.                          |
-| 2    | Bad arguments: wrong or invalid argument or argument vector.          |
-| 3    | No device: none matched the selector, or the selection was ambiguous. |
-| 4    | Device error: the dongle answered with an error, or its firmware doesn't implement the item asked for. |
-| 5    | Timeout: the dongle didn't answer in time.                            |
+| Code | Name           | Meaning                                                                                       |
+| ---- | -------------- | --------------------------------------------------------------------------------------------- |
+| 0    | `success`      | Success.                                                                                      |
+| 1    | `failure`      | Failure: no more specific category applies (the link to the dongle broke, a file couldn't be read, or the command ran but the result isn't what was asked: VBUS tripped instead of turning on, a memtest mismatch). |
+| 2    | `bad_args`     | Bad arguments: wrong or invalid argument or argument vector (clap's usage errors).             |
+| 3    | `no_device`    | No device: none matched the selector, or the selection was ambiguous.                         |
+| 4    | `device_error` | Device error: the dongle answered with an error, its firmware doesn't implement the item asked for, or it speaks an API this CLI can't talk to. |
+| 5    | `timeout`      | Timeout: the dongle didn't answer in time.                                                    |
+
+A broken link (USB unplugged mid-command) is `1`, not a category of its own; should scripts need to tell it apart,
+it becomes `6`.

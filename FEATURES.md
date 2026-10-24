@@ -808,8 +808,10 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `docs/user/power.md` has it so far). Snapshot-tested against the mock and 16 Oct 2026 on B153A rev A: `vbus
   status/on/off` (the warning shows the real measured voltage), `relay status/on/off`. ^revB
 - 📋 **CLI-12 `i2c scan / read / write` and `uart`**: in the design doc, not in the command tree yet.
-- 🐛 **CLI-13 Exit codes differ from the notes**: `src/exit.rs` has device error = 4, timeout = 5 and no transport
-  code; `developer-notes.md` has transport = 4, device = 5, timeout = 6. Decide before anything ships.
+- ✅ **CLI-13 Exit codes settled** (`donguru-cli/src/exit.rs`, `ExitCode::code` / `name`, a test pins them): 0
+  success, 1 failure, 2 bad args, 3 no device, 4 device error, 5 timeout, as `docs/user` already promised;
+  `developer-notes.md` and `docs/design/cli/index.md` ("Exit codes") follow it. A broken link is 1; a transport code
+  would be 6 if scripts need it.
 - ✅ **CLI-14 `--version` with git SHA and build time** (`donguru-cli/build.rs`, no extra crates): `donguru 0.20.20
   (554cf91-dirty, built 21 Oct 2026 18:53 UTC)`; `SOURCE_DATE_EPOCH` honoured, `unknown` without git. Shows `donguru`
   also when run as `dg`.

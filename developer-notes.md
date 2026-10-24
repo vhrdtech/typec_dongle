@@ -27,20 +27,10 @@
 
 ## Error handling and exit codes
 
-- Core returns typed `thiserror` errors; the binary maps them to stable exit
-  codes so scripts can branch on failure category:
-
-| Code | Meaning                                   |
-| ---- | ----------------------------------------- |
-| 0    | Success                                   |
-| 1    | Generic/unexpected error                  |
-| 2    | Usage error (bad arguments) — `clap`      |
-| 3    | No matching device / ambiguous selection  |
-| 4    | Transport error (USB/RPC failure)         |
-| 5    | Device reported an error                  |
-| 6    | Timeout                                   |
-
-  (Exact numbers to be finalised, keep them documented and stable once shipped.)
+- Core returns typed `thiserror` errors; the binary maps them to stable exit codes so scripts can branch on the
+  failure category. The table and the mapping live in `donguru-cli/src/exit.rs`, documented in
+  `docs/design/cli/index.md` ("Exit codes") and `docs/user/scripting.md`; a new category gets the next free number,
+  an existing one is never renumbered.
 
 - User-facing error messages go to stderr and are concise, `-v` adds the error chain/backtrace.
 

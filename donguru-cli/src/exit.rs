@@ -1,3 +1,6 @@
+/// The exit status of `donguru`: a public contract, documented in `docs/design/cli/index.md` ("Exit codes") and
+/// `docs/user/scripting.md`. Never renumber one; a new category takes the next free number.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExitCode {
     /// The canonical ExitCode for successful termination on this platform.
     Success,
@@ -18,18 +21,35 @@ impl ExitCode {
     pub const NO_DEVICE: u8 = 3;
     pub const DEVICE_ERROR: u8 = 4;
     pub const TIMEOUT: u8 = 5;
+
+    /// The number the process exits with.
+    pub const fn code(self) -> u8 {
+        match self {
+            ExitCode::Success => 0,
+            ExitCode::Failure => 1,
+            ExitCode::BadArgs => Self::BAD_ARGS,
+            ExitCode::NoDevice => Self::NO_DEVICE,
+            ExitCode::DeviceError => Self::DEVICE_ERROR,
+            ExitCode::Timeout => Self::TIMEOUT,
+        }
+    }
+
+    /// The stable name of the category, as `--format json` errors carry it (`"exit": "no_device"`).
+    pub const fn name(self) -> &'static str {
+        match self {
+            ExitCode::Success => "success",
+            ExitCode::Failure => "failure",
+            ExitCode::BadArgs => "bad_args",
+            ExitCode::NoDevice => "no_device",
+            ExitCode::DeviceError => "device_error",
+            ExitCode::Timeout => "timeout",
+        }
+    }
 }
 
 impl From<&ExitCode> for std::process::ExitCode {
     fn from(value: &ExitCode) -> Self {
-        match value {
-            ExitCode::Success => std::process::ExitCode::SUCCESS,
-            ExitCode::Failure => std::process::ExitCode::FAILURE,
-            ExitCode::BadArgs => std::process::ExitCode::from(ExitCode::BAD_ARGS),
-            ExitCode::NoDevice => std::process::ExitCode::from(ExitCode::NO_DEVICE),
-            ExitCode::DeviceError => std::process::ExitCode::from(ExitCode::DEVICE_ERROR),
-            ExitCode::Timeout => std::process::ExitCode::from(ExitCode::TIMEOUT),
-        }
+        std::process::ExitCode::from(value.code())
     }
 }
 
@@ -66,6 +86,23 @@ pub fn is_broken_pipe(err: &anyhow::Error) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The numbers and names are what scripts branch on: this test is the contract, change it only with a CHANGELOG
+    /// entry.
+    #[test]
+    fn codes_and_names_are_stable() {
+        let all = [
+            (ExitCode::Success, 0, "success"),
+            (ExitCode::Failure, 1, "failure"),
+            (ExitCode::BadArgs, 2, "bad_args"),
+            (ExitCode::NoDevice, 3, "no_device"),
+            (ExitCode::DeviceError, 4, "device_error"),
+            (ExitCode::Timeout, 5, "timeout"),
+        ];
+        for (code, n, name) in all {
+            assert_eq!((code.code(), code.name()), (n, name));
+        }
+    }
 
     #[test]
     fn broken_pipe_is_found_under_context() {
