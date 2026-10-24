@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.28] - 2026-10-25
+
 ### Changed
 
 - Firmware: built against WireWeaver with TR-15 (setup token in link setup, framer session reset), a wire break: firmware from here on talks only to hosts with TR-15 (wire_weaver 689b697a and the CLI built on it), older firmware not to them. No `donguru_api` change. Release FLASH 425.24 KiB of 504 KiB (84.4 %), RAM 89.83 KiB of 144 KiB; the last figure in this changelog was 407.04 KiB / 89.27 KiB (FW-44), main itself did not build to measure. Not run on a board yet (FW-51).
