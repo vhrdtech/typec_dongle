@@ -1,0 +1,41 @@
+[build-system]
+requires = ["maturin>=1.9,<2"]
+build-backend = "maturin"
+
+[project]
+name = "donguru"
+description = "Drive a Donguru USB Type-C dongle from Python: power, meter, USB data, header, UART, settings"
+readme = "README.md"
+requires-python = ">=3.10"
+dynamic = ["version"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Rust",
+    "Topic :: System :: Hardware",
+]
+
+[project.urls]
+Documentation = "https://vhrdtech.github.io/typec_dongle/user/python/"
+Repository = "https://github.com/vhrdtech/typec_dongle"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.maturin]
+python-source = "python"
+module-name = "donguru._donguru"
+features = ["pyo3/extension-module", "mock"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.uv]
+# rebuild the extension when the Rust code changes, not only pyproject.toml
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "Cargo.toml" },
+    { file = "src/**/*.rs" },
+    { file = "../Cargo.lock" },
+    { file = "../donguru-core/src/**/*.rs" },
+    { file = "../donguru_api/src/**/*.rs" },
+]

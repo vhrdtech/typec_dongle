@@ -256,7 +256,10 @@ impl WatchState {
         let Some(observer) = self.observer.as_mut() else {
             return Ok(false);
         };
-        let event = match rt.block_on(tokio::time::timeout(SIGNAL_CHECK, observer.recv_event())) {
+        // the timer is made inside the runtime: it needs its time driver
+        let event = match rt
+            .block_on(async { tokio::time::timeout(SIGNAL_CHECK, observer.recv_event()).await })
+        {
             Err(_elapsed) => return Ok(true),
             Ok(event) => event,
         };
