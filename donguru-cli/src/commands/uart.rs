@@ -1,6 +1,8 @@
 //! `donguru uart` - the UARTs of `uart[]` (CLI-20). So far `uart configure`: the line of the header UART
 //! (`uart[1]`, IO7 TX / IO8 RX) until the dongle resets; the plug UART on SBU follows with API-14.
 
+use std::io::{self, Write};
+
 use clap::{Args, Subcommand, ValueEnum};
 use clap_complete::engine::ArgValueCandidates;
 use donguru_core::levels::Side;
@@ -8,10 +10,11 @@ use ww_si::{Baud, Prefix};
 use ww_uart::{Mode, UartConfig};
 
 use super::settings::{fmt_framing, parse_uart_value, uart_plug_json};
-use crate::cli::Format;
 use crate::completion;
 use crate::context::Context;
 use crate::exit::ExitCode;
+use crate::output::{Output, Render};
+use crate::theme::Theme;
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum Port {
@@ -73,7 +76,7 @@ fn configure(ctx: &Context, args: Configure) -> anyhow::Result<ExitCode> {
     };
     let side = Side::from(args.port);
     let got = super::with_dongle(ctx, async |dongle| dongle.uart(side).configure(asked).await)?;
-    print_configured(ctx, baud, &got);
+    Output::stdout(ctx).emit(&Configured { asked: baud, got })?;
     Ok(ExitCode::Success)
 }
 
@@ -82,16 +85,29 @@ fn error_pct(asked: u32, got: &UartConfig) -> f64 {
     (got.baud_rate.to_f64() / asked as f64 - 1.0) * 100.0
 }
 
-fn print_configured(ctx: &Context, asked: u32, got: &UartConfig) {
-    let err = error_pct(asked, got);
-    match ctx.format {
-        Format::Text => println!("{}  ({err:+.2} % from {asked})", fmt_framing(got)),
-        Format::Json | Format::Jsonl => {
-            let mut json = uart_plug_json(got);
-            json["baud_asked"] = asked.into();
-            json["baud_error_pct"] = ((err * 100.0).round() / 100.0).into();
-            println!("{json}");
-        }
+/// `uart configure`: the line settings the dongle set, and how far its rate is from the one asked for.
+struct Configured {
+    asked: u32,
+    got: UartConfig,
+}
+
+impl Render for Configured {
+    fn text(&self, out: &mut dyn Write, th: &Theme) -> io::Result<()> {
+        let err = error_pct(self.asked, &self.got);
+        writeln!(
+            out,
+            "{}  {}",
+            th.value(fmt_framing(&self.got)),
+            th.dim(format!("({err:+.2} % from {})", self.asked))
+        )
+    }
+
+    fn json(&self) -> serde_json::Value {
+        let err = error_pct(self.asked, &self.got);
+        let mut json = uart_plug_json(&self.got);
+        json["baud_asked"] = self.asked.into();
+        json["baud_error_pct"] = ((err * 100.0).round() / 100.0).into();
+        json
     }
 }
 
@@ -137,6 +153,12 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(fmt_framing(&got), "5818182 8N1");
+        let shown = Configured {
+            asked: 6_000_000,
+            got: got.clone(),
+        };
+        insta::assert_snapshot!(crate::output::render(crate::cli::Format::Text, &shown));
+        insta::assert_snapshot!(crate::output::render(crate::cli::Format::Json, &shown));
         let mut nine = asked;
         nine.data_bits = ww_uart::DataBits::Nine;
         assert!(dongle.uart(Side::Header).configure(nine).await.is_err());

@@ -1,0 +1,11 @@
+---
+source: donguru-cli/src/commands/power.rs
+expression: "crate::output::render(Format::Text, &s)"
+---
+plug    vbus   off
+        mode   off
+        data   connected
+header  vbus   off
+        mode   off
+        relay  open
+meter   5.000 V   0.0 mA   0.0 mW

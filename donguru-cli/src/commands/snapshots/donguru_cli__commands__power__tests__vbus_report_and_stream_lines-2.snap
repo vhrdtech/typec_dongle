@@ -1,0 +1,5 @@
+---
+source: donguru-cli/src/commands/power.rs
+expression: "crate::output::render(Format::Json, &tripped)"
+---
+{"label":"plug","vbus":{"tripped":"over_current"}}

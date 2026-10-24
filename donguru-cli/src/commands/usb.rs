@@ -1,8 +1,12 @@
 //! `donguru usb` - USB data to the device under test: the plug's data switch (U701, CLI-6). Power to the DUT is
 //! `donguru power`; the header's own switched VBUS and relay are `donguru header`.
 
+use std::io::{self, Write};
+
 use crate::context::Context;
 use crate::exit::ExitCode;
+use crate::output::{Output, Render};
+use crate::theme::Theme;
 use clap::Subcommand;
 use donguru_core::api::DataPath;
 
@@ -23,20 +27,32 @@ fn fmt_data(data: DataPath) -> &'static str {
     }
 }
 
-fn print_data(ctx: &Context, data: DataPath) {
-    match ctx.format {
-        crate::cli::Format::Text => println!("data: {}", fmt_data(data)),
-        crate::cli::Format::Json | crate::cli::Format::Jsonl => {
-            println!("{}", serde_json::json!({ "data": fmt_data(data) }))
+/// Whether USB data reaches the DUT.
+struct Data(DataPath);
+
+impl Render for Data {
+    fn text(&self, out: &mut dyn Write, th: &Theme) -> io::Result<()> {
+        let text = fmt_data(self.0);
+        match self.0 {
+            DataPath::Connected => writeln!(out, "{}: {}", th.key("data"), th.ok(text)),
+            DataPath::Cut => writeln!(out, "{}: {}", th.key("data"), th.value(text)),
         }
     }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({ "data": fmt_data(self.0) })
+    }
+}
+
+fn print_data(ctx: &Context, data: DataPath) -> anyhow::Result<()> {
+    Output::stdout(ctx).emit(&Data(data))
 }
 
 pub fn run(ctx: &Context, command: Usb) -> anyhow::Result<ExitCode> {
     match command {
         Usb::Status => {
             let data = super::with_dongle(ctx, async |dongle| dongle.plug().data().await)?;
-            print_data(ctx, data);
+            print_data(ctx, data)?;
             Ok(ExitCode::Success)
         }
         Usb::Connect => {
@@ -44,7 +60,7 @@ pub fn run(ctx: &Context, command: Usb) -> anyhow::Result<ExitCode> {
                 dongle.plug().set_data(DataPath::Connected).await?;
                 dongle.plug().data().await
             })?;
-            print_data(ctx, data);
+            print_data(ctx, data)?;
             Ok(if matches!(data, DataPath::Connected) {
                 ExitCode::Success
             } else {
@@ -56,7 +72,7 @@ pub fn run(ctx: &Context, command: Usb) -> anyhow::Result<ExitCode> {
                 dongle.plug().set_data(DataPath::Cut).await?;
                 dongle.plug().data().await
             })?;
-            print_data(ctx, data);
+            print_data(ctx, data)?;
             Ok(if matches!(data, DataPath::Cut) {
                 ExitCode::Success
             } else {
@@ -81,5 +97,16 @@ mod tests {
         dongle.plug().set_data(DataPath::Connected).await.unwrap();
         assert_eq!(dongle.plug().data().await.unwrap(), DataPath::Connected);
         dongle.close().await.unwrap();
+    }
+
+    #[test]
+    fn data_text_and_json() {
+        use crate::cli::Format;
+        use crate::output::render;
+        assert_eq!(render(Format::Text, &Data(DataPath::Cut)), "data: cut\n");
+        assert_eq!(
+            render(Format::Json, &Data(DataPath::Connected)),
+            "{\"data\":\"connected\"}\n"
+        );
     }
 }

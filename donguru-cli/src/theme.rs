@@ -122,6 +122,137 @@ pub fn fallback_style() -> Styles {
     (&FALLBACK_PALETTE).into()
 }
 
+/// The roles of text in command output (`--format text` on stdout), painted from the palette. Without colour
+/// every role prints the plain text, so a renderer looks the same piped as on a terminal, only without colour.
+#[derive(Debug, Clone, Copy)]
+pub struct Theme {
+    colour: bool,
+    truecolor: bool,
+}
+
+impl Theme {
+    /// Colour per `--color`, `NO_COLOR` and whether stdout is a terminal (see [colour_enabled]).
+    pub fn for_stdout(mode: ColorMode) -> Self {
+        use std::io::IsTerminal;
+        Self::new(colour_enabled(mode, std::io::stdout().is_terminal()))
+    }
+
+    /// `colour` on or off; the palette (24-bit or 16 colours) follows the terminal.
+    pub fn new(colour: bool) -> Self {
+        Theme {
+            colour,
+            truecolor: colour && truecolor(),
+        }
+    }
+
+    /// No colour at all: json, tests, snapshots.
+    pub const fn plain() -> Self {
+        Theme {
+            colour: false,
+            truecolor: false,
+        }
+    }
+
+    pub const fn colour(&self) -> bool {
+        self.colour
+    }
+
+    fn palette(&self) -> &'static Palette {
+        if self.truecolor {
+            &DEFAULT_PALETTE
+        } else {
+            &FALLBACK_PALETTE
+        }
+    }
+
+    fn paint<T: std::fmt::Display>(&self, style: Style, value: T) -> Painted<T> {
+        Painted {
+            style: self.colour.then_some(style),
+            value,
+        }
+    }
+
+    /// A row label of a key / value table (`vbus`, `serial`).
+    pub fn key<T: std::fmt::Display>(&self, value: T) -> Painted<T> {
+        self.paint(Style::new().fg_color(Some(self.palette().header())), value)
+    }
+
+    /// A section or a group of rows (`plug`, `▶ pass 1/1`).
+    pub fn heading<T: std::fmt::Display>(&self, value: T) -> Painted<T> {
+        self.paint(
+            Style::new()
+                .fg_color(Some(self.palette().header()))
+                .effects(Effects::BOLD),
+            value,
+        )
+    }
+
+    /// A good state: on, connected, passed.
+    pub fn ok<T: std::fmt::Display>(&self, value: T) -> Painted<T> {
+        self.paint(Style::new().fg_color(Some(self.palette().valid())), value)
+    }
+
+    /// A state worth a look but not a failure: a warning, a non-zero counter.
+    pub fn warn<T: std::fmt::Display>(&self, value: T) -> Painted<T> {
+        self.paint(Style::new().fg_color(Some(self.palette().literal())), value)
+    }
+
+    /// A bad state: tripped, fault, FAIL.
+    pub fn bad<T: std::fmt::Display>(&self, value: T) -> Painted<T> {
+        self.paint(
+            Style::new()
+                .fg_color(Some(self.palette().error()))
+                .effects(Effects::BOLD),
+            value,
+        )
+    }
+
+    /// A measured or configured value: volts, a serial number, a version.
+    pub fn value<T: std::fmt::Display>(&self, value: T) -> Painted<T> {
+        self.paint(Style::new().fg_color(Some(self.palette().usage())), value)
+    }
+
+    /// Something absent or secondary: "(not implemented by the device's firmware)", units, notes.
+    pub fn dim<T: std::fmt::Display>(&self, value: T) -> Painted<T> {
+        self.paint(Style::new().effects(Effects::DIMMED), value)
+    }
+}
+
+/// A value in a [Theme] role. Width, alignment and precision apply to the text itself (`{:<8}` pads the
+/// visible text, not the escape codes).
+pub struct Painted<T> {
+    style: Option<Style>,
+    value: T,
+}
+
+impl<T: std::fmt::Display> std::fmt::Display for Painted<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use std::fmt::{Alignment, Write};
+        let text = match f.precision() {
+            Some(p) => format!("{:.*}", p, self.value),
+            None => self.value.to_string(),
+        };
+        let gap = f.width().unwrap_or(0).saturating_sub(text.chars().count());
+        let (before, after) = match f.align() {
+            None | Some(Alignment::Left) => (0, gap),
+            Some(Alignment::Right) => (gap, 0),
+            Some(Alignment::Center) => (gap / 2, gap - gap / 2),
+        };
+        let fill = f.fill();
+        for _ in 0..before {
+            f.write_char(fill)?;
+        }
+        match self.style {
+            None => f.write_str(&text)?,
+            Some(style) => write!(f, "{style}{text}{style:#}")?,
+        }
+        for _ in 0..after {
+            f.write_char(fill)?;
+        }
+        Ok(())
+    }
+}
+
 /// Best-effort truecolor detection (`COLORTERM`, then known-good `TERM` values).
 fn truecolor() -> bool {
     if let Ok(colorterm) = std::env::var("COLORTERM")
@@ -202,6 +333,17 @@ mod tests {
             choice_from_args(args(&["dg", "--", "--color=never"])),
             ColorChoice::Auto
         );
+    }
+
+    #[test]
+    fn painted_pads_the_text_not_the_codes() {
+        let plain = Theme::plain();
+        assert_eq!(format!("[{:<5}]", plain.key("ab")), "[ab   ]");
+        assert_eq!(format!("[{:>6.2}]", plain.value(1.23456)), "[  1.23]");
+        let colour = Theme::new(true);
+        let s = format!("[{:<5}]", colour.ok("ab"));
+        assert!(s.starts_with("[\x1b["), "{s:?}");
+        assert!(s.ends_with("ab\x1b[0m   ]"), "{s:?}");
     }
 
     #[test]

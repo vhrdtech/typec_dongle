@@ -1,7 +1,7 @@
 //! `donguru power` - plug VBUS (U601), USB data stays with `donguru usb`, the power meter, and (CLI-11) a combined
 //! view of plug + header + meter. See `docs/user/power.md` for the VBUS modes and the guard the firmware keeps.
 
-use std::io::Write;
+use std::io::{self, Write};
 use std::time::Duration;
 
 use clap::{Args, Subcommand};
@@ -9,6 +9,8 @@ use clap::{Args, Subcommand};
 use crate::cli::Format;
 use crate::context::Context;
 use crate::exit::ExitCode;
+use crate::output::{Output, Render};
+use crate::theme::Theme;
 use donguru_core::api::{
     DataPath, GuardTrip, MeterReading, MeterTotals, Second, VbusMode, VbusState,
 };
@@ -104,6 +106,17 @@ pub(crate) fn fmt_vbus_state(state: VbusState) -> String {
     }
 }
 
+/// [fmt_vbus_state] in the colour of the state: on is good, a fault or a trip bad.
+pub(crate) fn vbus_state_text(theme: &Theme, state: VbusState) -> String {
+    let text = fmt_vbus_state(state);
+    match state {
+        VbusState::On => theme.ok(text).to_string(),
+        VbusState::Off => text,
+        VbusState::Fault | VbusState::Tripped(_) => theme.bad(text).to_string(),
+        VbusState::Unknown(_) => theme.warn(text).to_string(),
+    }
+}
+
 pub(crate) fn state_json(state: VbusState) -> serde_json::Value {
     match state {
         VbusState::Off => serde_json::json!("off"),
@@ -160,13 +173,26 @@ fn fmt_data(data: DataPath) -> &'static str {
     }
 }
 
-fn reading_text(r: &MeterReading) -> String {
+fn reading_text(theme: &Theme, r: &MeterReading) -> String {
     format!(
-        "{:.3} V   {:.1} mA   {:.1} mW",
-        r.vbus_in.to_f64(),
-        r.current.to_f64() * 1000.0,
-        donguru_core::reading_power_w(r) * 1000.0
+        "{} V   {} mA   {} mW",
+        theme.value(format!("{:.3}", r.vbus_in.to_f64())),
+        theme.value(format!("{:.1}", r.current.to_f64() * 1000.0)),
+        theme.value(format!("{:.1}", donguru_core::reading_power_w(r) * 1000.0))
     )
+}
+
+/// `power meter`: one reading.
+struct Reading(MeterReading);
+
+impl Render for Reading {
+    fn text(&self, out: &mut dyn Write, theme: &Theme) -> io::Result<()> {
+        writeln!(out, "{}", reading_text(theme, &self.0))
+    }
+
+    fn json(&self) -> serde_json::Value {
+        reading_json(&self.0)
+    }
 }
 
 fn reading_json(r: &MeterReading) -> serde_json::Value {
@@ -264,46 +290,80 @@ fn status(ctx: &Context) -> anyhow::Result<ExitCode> {
             meter: super::optional(dongle.meter().reading().await)?,
         })
     })?;
-    print_status(ctx.format, &s, &mut std::io::stdout().lock())?;
+    Output::stdout(ctx).emit(&s)?;
     Ok(ExitCode::Success)
 }
 
-fn print_status(format: Format, s: &Status, out: &mut impl Write) -> anyhow::Result<()> {
-    match format {
-        Format::Text => {
-            writeln!(out, "plug    vbus   {}", fmt_vbus_state(s.plug_vbus))?;
-            writeln!(out, "        mode   {}", fmt_vbus_mode(&s.plug_mode))?;
-            writeln!(out, "        data   {}", fmt_data(s.data))?;
-            writeln!(out, "header  vbus   {}", fmt_vbus_state(s.header_vbus))?;
-            writeln!(out, "        mode   {}", fmt_vbus_mode(&s.header_mode))?;
-            writeln!(
+impl Render for Status {
+    fn text(&self, out: &mut dyn Write, th: &Theme) -> io::Result<()> {
+        let s = self;
+        let row = |out: &mut dyn Write, group: &str, key: &str, value: &dyn std::fmt::Display| {
+            writeln!(out, "{:<8}{:<7}{value}", th.heading(group), th.key(key))
+        };
+        row(out, "plug", "vbus", &vbus_state_text(th, s.plug_vbus))?;
+        row(out, "", "mode", &th.value(fmt_vbus_mode(&s.plug_mode)))?;
+        let data = match s.data {
+            DataPath::Connected => th.ok(fmt_data(s.data)).to_string(),
+            DataPath::Cut => fmt_data(s.data).to_string(),
+        };
+        row(out, "", "data", &data)?;
+        row(out, "header", "vbus", &vbus_state_text(th, s.header_vbus))?;
+        row(out, "", "mode", &th.value(fmt_vbus_mode(&s.header_mode)))?;
+        row(
+            out,
+            "",
+            "relay",
+            &th.value(if s.relay { "closed" } else { "open" }),
+        )?;
+        match &s.meter {
+            Some(r) => writeln!(out, "{:<8}{}", th.heading("meter"), reading_text(th, r)),
+            None => writeln!(
                 out,
-                "        relay  {}",
-                if s.relay { "closed" } else { "open" }
-            )?;
-            match &s.meter {
-                Some(r) => writeln!(out, "meter   {}", reading_text(r))?,
-                None => writeln!(out, "meter   (not implemented by the device's firmware)")?,
-            }
-        }
-        Format::Json | Format::Jsonl => {
-            let v = serde_json::json!({
-                "plug": {
-                    "vbus": state_json(s.plug_vbus),
-                    "mode": mode_json(&s.plug_mode),
-                    "data": fmt_data(s.data),
-                },
-                "header": {
-                    "vbus": state_json(s.header_vbus),
-                    "mode": mode_json(&s.header_mode),
-                    "relay": s.relay,
-                },
-                "meter": s.meter.as_ref().map(reading_json),
-            });
-            writeln!(out, "{v}")?;
+                "{:<8}{}",
+                th.heading("meter"),
+                th.dim("(not implemented by the device's firmware)")
+            ),
         }
     }
-    Ok(())
+
+    fn json(&self) -> serde_json::Value {
+        let s = self;
+        serde_json::json!({
+            "plug": {
+                "vbus": state_json(s.plug_vbus),
+                "mode": mode_json(&s.plug_mode),
+                "data": fmt_data(s.data),
+            },
+            "header": {
+                "vbus": state_json(s.header_vbus),
+                "mode": mode_json(&s.header_mode),
+                "relay": s.relay,
+            },
+            "meter": s.meter.as_ref().map(reading_json),
+        })
+    }
+}
+
+/// The state a switch ended in after `on` / `off` / `cycle`: `plug vbus: on`.
+pub(crate) struct VbusReport<'a> {
+    pub label: &'a str,
+    pub state: VbusState,
+}
+
+impl Render for VbusReport<'_> {
+    fn text(&self, out: &mut dyn Write, th: &Theme) -> io::Result<()> {
+        writeln!(
+            out,
+            "{} {}: {}",
+            th.heading(self.label),
+            th.key("vbus"),
+            vbus_state_text(th, self.state)
+        )
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({ "label": self.label, "vbus": state_json(self.state) })
+    }
 }
 
 /// Prints the resulting state and turns it into an exit code: success only when VBUS actually ended up `On`
@@ -314,15 +374,7 @@ pub(crate) fn report_vbus_state(
     state: VbusState,
     want_on: bool,
 ) -> anyhow::Result<ExitCode> {
-    match ctx.format {
-        Format::Text => println!("{label} vbus: {}", fmt_vbus_state(state)),
-        Format::Json | Format::Jsonl => {
-            println!(
-                "{}",
-                serde_json::json!({ "label": label, "vbus": state_json(state) })
-            )
-        }
-    }
+    Output::stdout(ctx).emit(&VbusReport { label, state })?;
     let ok = if want_on {
         matches!(state, VbusState::On)
     } else {
@@ -363,30 +415,39 @@ fn cycle(ctx: &Context, off: Duration, release_sbu: bool) -> anyhow::Result<Exit
 
 fn meter(ctx: &Context) -> anyhow::Result<ExitCode> {
     let reading = super::with_dongle(ctx, async |dongle| dongle.meter().reading().await)?;
-    match ctx.format {
-        Format::Text => println!("{}", reading_text(&reading)),
-        Format::Json | Format::Jsonl => println!("{}", reading_json(&reading)),
-    }
+    Output::stdout(ctx).emit(&Reading(reading))?;
     Ok(ExitCode::Success)
 }
 
-fn totals_text(t: &MeterTotals) -> String {
-    format!(
-        "{:.2} mAh   {:.2} mWh   peak {:.1} mA   since {}",
-        t.charge.to_f64() / 3.6,
-        t.energy.to_f64() / 3.6,
-        t.peak_current.to_f64() * 1000.0,
-        humantime::format_duration(Duration::from_secs_f64(t.since.to_f64().max(0.0)))
-    )
-}
+/// `power totals`.
+struct Totals(MeterTotals);
 
-fn totals_json(t: &MeterTotals) -> serde_json::Value {
-    serde_json::json!({
-        "charge_mah": t.charge.to_f64() / 3.6,
-        "energy_mwh": t.energy.to_f64() / 3.6,
-        "peak_current_ma": t.peak_current.to_f64() * 1000.0,
-        "since_s": t.since.to_f64(),
-    })
+impl Render for Totals {
+    fn text(&self, out: &mut dyn Write, th: &Theme) -> io::Result<()> {
+        let t = &self.0;
+        writeln!(
+            out,
+            "{} mAh   {} mWh   {} {} mA   {} {}",
+            th.value(format!("{:.2}", t.charge.to_f64() / 3.6)),
+            th.value(format!("{:.2}", t.energy.to_f64() / 3.6)),
+            th.key("peak"),
+            th.value(format!("{:.1}", t.peak_current.to_f64() * 1000.0)),
+            th.key("since"),
+            th.value(humantime::format_duration(Duration::from_secs_f64(
+                t.since.to_f64().max(0.0)
+            )))
+        )
+    }
+
+    fn json(&self) -> serde_json::Value {
+        let t = &self.0;
+        serde_json::json!({
+            "charge_mah": t.charge.to_f64() / 3.6,
+            "energy_mwh": t.energy.to_f64() / 3.6,
+            "peak_current_ma": t.peak_current.to_f64() * 1000.0,
+            "since_s": t.since.to_f64(),
+        })
+    }
 }
 
 fn totals(ctx: &Context, reset: bool) -> anyhow::Result<ExitCode> {
@@ -397,10 +458,7 @@ fn totals(ctx: &Context, reset: bool) -> anyhow::Result<ExitCode> {
         }
         meter.totals().await
     })?;
-    match ctx.format {
-        Format::Text => println!("{}", totals_text(&totals)),
-        Format::Json | Format::Jsonl => println!("{}", totals_json(&totals)),
-    }
+    Output::stdout(ctx).emit(&Totals(totals))?;
     Ok(ExitCode::Success)
 }
 
@@ -413,7 +471,7 @@ fn watch(
     if matches!(ctx.format, Format::Json) {
         anyhow::bail!("`power watch` streams data: use `--format text` or `--format jsonl`");
     }
-    let text = matches!(ctx.format, Format::Text);
+    let mut out = Output::stdout(ctx);
     let selector = super::selector(ctx)?;
     super::runtime()?.block_on(async {
         let dongle = donguru_core::Dongle::open(selector.as_ref()).await?;
@@ -445,13 +503,15 @@ fn watch(
                                 {
                                     Ok(rows) => {
                                         for (r, t) in rows {
-                                            print_sample_line(text, t.as_ref().map(Second::to_f64), &r);
+                                            out.record(&SampleLine { t_s: t.as_ref().map(Second::to_f64), reading: r })?;
                                         }
                                     }
                                     Err(e) => eprintln!("donguru: malformed samples: {e}"),
                                 }
                             }
-                            Some(BatchedOwned::One(r)) => print_watch_line(text, started.elapsed(), &r),
+                            Some(BatchedOwned::One(r)) => {
+                                out.record(&WatchLine { elapsed: started.elapsed(), reading: r })?;
+                            }
                             None => {}
                         }
                     }
@@ -469,46 +529,62 @@ fn watch(
             }
         }
         dongle.close().await?;
-        Ok::<(), donguru_core::Error>(())
+        Ok::<(), anyhow::Error>(())
     })?;
     Ok(ExitCode::Success)
 }
 
 /// One sample of `--samples`: its device time (seconds since the dongle started) and the reading.
-fn print_sample_line(text: bool, t_s: Option<f64>, r: &MeterReading) {
-    if text {
-        match t_s {
-            Some(t) => println!("{t:>12.6}s  {}", reading_text(r)),
-            None => println!("{:>13}  {}", "?", reading_text(r)),
+struct SampleLine {
+    t_s: Option<f64>,
+    reading: MeterReading,
+}
+
+impl Render for SampleLine {
+    fn text(&self, out: &mut dyn Write, th: &Theme) -> io::Result<()> {
+        match self.t_s {
+            Some(t) => writeln!(
+                out,
+                "{}  {}",
+                th.dim(format!("{t:>12.6}s")),
+                reading_text(th, &self.reading)
+            ),
+            None => writeln!(
+                out,
+                "{}  {}",
+                th.dim(format!("{:>13}", "?")),
+                reading_text(th, &self.reading)
+            ),
         }
-    } else {
-        let mut line = serde_json::json!({ "device_t_s": t_s });
-        if let (serde_json::Value::Object(m), serde_json::Value::Object(r)) =
-            (&mut line, reading_json(r))
-        {
-            m.extend(r);
-        }
-        println!("{line}");
+    }
+
+    fn json(&self) -> serde_json::Value {
+        let mut line = reading_json(&self.reading);
+        line["device_t_s"] = serde_json::json!(self.t_s);
+        line
     }
 }
 
-fn print_watch_line(text: bool, elapsed: Duration, r: &MeterReading) {
-    if text {
-        println!("+{:>8.3}s  {}", elapsed.as_secs_f64(), reading_text(r));
-    } else {
-        println!(
-            "{}",
-            serde_json::json!({ "t_s": elapsed.as_secs_f64() })
-                .as_object()
-                .map(|m| {
-                    let mut m = m.clone();
-                    if let serde_json::Value::Object(r) = reading_json(r) {
-                        m.extend(r);
-                    }
-                    serde_json::Value::Object(m)
-                })
-                .unwrap()
-        );
+/// One reading of `power watch`, with the time since the command started.
+struct WatchLine {
+    elapsed: Duration,
+    reading: MeterReading,
+}
+
+impl Render for WatchLine {
+    fn text(&self, out: &mut dyn Write, th: &Theme) -> io::Result<()> {
+        writeln!(
+            out,
+            "{}  {}",
+            th.dim(format!("+{:>8.3}s", self.elapsed.as_secs_f64())),
+            reading_text(th, &self.reading)
+        )
+    }
+
+    fn json(&self) -> serde_json::Value {
+        let mut line = reading_json(&self.reading);
+        line["t_s"] = serde_json::json!(self.elapsed.as_secs_f64());
+        line
     }
 }
 
@@ -535,18 +611,54 @@ mod tests {
             relay: dongle.header().relay().await.unwrap(),
             meter: Some(dongle.meter().reading().await.unwrap()),
         };
-        let mut text = Vec::new();
-        print_status(Format::Text, &s, &mut text).unwrap();
-        let text = String::from_utf8(text).unwrap();
-        assert!(text.contains("plug    vbus   off"), "{text}");
-        assert!(text.contains("meter   5.000 V"), "{text}");
-
-        let mut json = Vec::new();
-        print_status(Format::Json, &s, &mut json).unwrap();
-        let json: serde_json::Value = serde_json::from_slice(&json).unwrap();
-        assert_eq!(json["plug"]["vbus"], "off");
-        assert_eq!(json["plug"]["data"], "connected");
+        insta::assert_snapshot!(crate::output::render(Format::Text, &s));
+        insta::assert_snapshot!(crate::output::render(Format::Json, &s));
+        let r = Reading(s.meter.clone().unwrap());
+        insta::assert_snapshot!(crate::output::render(Format::Text, &r));
+        insta::assert_snapshot!(crate::output::render(Format::Json, &r));
+        let totals = Totals(dongle.meter().totals().await.unwrap());
+        insta::assert_snapshot!(crate::output::render(Format::Text, &totals));
+        insta::assert_snapshot!(crate::output::render(Format::Json, &totals));
         dongle.close().await.unwrap();
+    }
+
+    #[test]
+    fn vbus_report_and_stream_lines() {
+        let tripped = VbusReport {
+            label: "plug",
+            state: VbusState::Tripped(GuardTrip::OverCurrent),
+        };
+        insta::assert_snapshot!(crate::output::render(Format::Text, &tripped));
+        insta::assert_snapshot!(crate::output::render(Format::Json, &tripped));
+        let reading = MeterReading {
+            vbus_in: mv(5_012),
+            current: donguru_core::api::Ampere::milli(250),
+        };
+        let line = WatchLine {
+            elapsed: Duration::from_millis(1_250),
+            reading: reading.clone(),
+        };
+        insta::assert_snapshot!(crate::output::render(Format::Text, &line));
+        insta::assert_snapshot!(crate::output::render(Format::Jsonl, &line));
+        let sample = SampleLine {
+            t_s: Some(12.5),
+            reading,
+        };
+        insta::assert_snapshot!(crate::output::render(Format::Text, &sample));
+        insta::assert_snapshot!(crate::output::render(Format::Jsonl, &sample));
+    }
+
+    #[test]
+    fn colour_only_with_a_theme_that_has_it() {
+        let s = VbusReport {
+            label: "plug",
+            state: VbusState::On,
+        };
+        let mut out = crate::output::Output::new(Format::Text, Theme::new(true), Vec::new());
+        out.emit(&s).unwrap();
+        let coloured = String::from_utf8(out.into_inner()).unwrap();
+        assert!(coloured.contains('\x1b'), "{coloured:?}");
+        assert_eq!(crate::output::render(Format::Text, &s), "plug vbus: on\n");
     }
 
     #[test]

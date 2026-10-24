@@ -1,0 +1,5 @@
+---
+source: donguru-cli/src/commands/power.rs
+expression: "crate::output::render(Format::Json, &totals)"
+---
+{"charge_mah":0.0,"energy_mwh":0.0,"peak_current_ma":0.0,"since_s":0.0}

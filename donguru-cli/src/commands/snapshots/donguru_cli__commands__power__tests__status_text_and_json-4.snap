@@ -1,0 +1,5 @@
+---
+source: donguru-cli/src/commands/power.rs
+expression: "crate::output::render(Format::Json, &r)"
+---
+{"current_ma":0.0,"power_mw":0.0,"vbus_in_v":5.0}

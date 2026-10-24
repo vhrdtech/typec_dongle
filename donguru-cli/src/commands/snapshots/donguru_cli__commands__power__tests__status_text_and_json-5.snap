@@ -1,0 +1,5 @@
+---
+source: donguru-cli/src/commands/power.rs
+expression: "crate::output::render(Format::Text, &totals)"
+---
+0.00 mAh   0.00 mWh   peak 0.0 mA   since 0s

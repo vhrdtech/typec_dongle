@@ -9,5 +9,6 @@ pub mod commands;
 pub mod completion;
 pub mod context;
 pub mod exit;
+pub mod output;
 pub mod project_config;
 pub mod theme;

@@ -1,0 +1,5 @@
+---
+source: donguru-cli/src/commands/uart.rs
+expression: "crate::output::render(crate::cli::Format::Json, &shown)"
+---
+{"baud":5818182,"baud_asked":6000000,"baud_error_pct":-3.03,"data_bits":"8","idle_chars":1,"io_level_v":null,"mode":"async","parity":"N","prevent_back_feed":false,"stop_bits":"1"}

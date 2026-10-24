@@ -98,6 +98,23 @@ pub enum DeviceErrorKind {
 }
 
 impl DeviceErrorKind {
+    /// Stable snake_case name, e.g. `in_use`, `refused`.
+    pub const fn name(self) -> &'static str {
+        match self {
+            DeviceErrorKind::Unsupported => "unsupported",
+            DeviceErrorKind::InvalidArgument => "invalid_argument",
+            DeviceErrorKind::InUse => "in_use",
+            DeviceErrorKind::Busy => "busy",
+            DeviceErrorKind::WrongState => "wrong_state",
+            DeviceErrorKind::NoPower => "no_power",
+            DeviceErrorKind::Refused => "refused",
+            DeviceErrorKind::Timeout => "timeout",
+            DeviceErrorKind::Fault => "fault",
+            DeviceErrorKind::Specific => "specific",
+            DeviceErrorKind::Other => "other",
+        }
+    }
+
     fn of(common: Option<&CommonErrorOwned>) -> Self {
         match common {
             None => DeviceErrorKind::Specific,
@@ -146,6 +163,18 @@ impl Error {
     pub fn device_kind(&self) -> Option<DeviceErrorKind> {
         match self {
             Error::Device { error, .. } => Some(error.kind),
+            _ => None,
+        }
+    }
+
+    /// A stable snake_case name of what the dongle answered: the [DeviceErrorKind] of a device error,
+    /// `unimplemented` or `incompatible`; `None` for an error that isn't the dongle's answer (no device, timeout,
+    /// link). Scripts see it as `kind` in the CLI's json errors.
+    pub fn kind_name(&self) -> Option<&'static str> {
+        match self {
+            Error::Device { error, .. } => Some(error.kind.name()),
+            Error::Unimplemented { .. } => Some("unimplemented"),
+            Error::Incompatible(_) => Some("incompatible"),
             _ => None,
         }
     }

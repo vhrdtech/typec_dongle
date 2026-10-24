@@ -815,8 +815,9 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - ✅ **CLI-14 `--version` with git SHA and build time** (`donguru-cli/build.rs`, no extra crates): `donguru 0.20.20
   (554cf91-dirty, built 21 Oct 2026 18:53 UTC)`; `SOURCE_DATE_EPOCH` honoured, `unknown` without git. Shows `donguru`
   also when run as `dg`.
-- 📋 **CLI-15 Output renderer**: commands return typed values, one renderer for text / json / jsonl
-  (`developer-notes.md`).
+- 🚧 **CLI-15 Output renderer** (`donguru-cli/src/output.rs`): commands build a typed value that implements
+  `Render` (text with the theme, json, jsonl records) and hand it to `Output`, which writes the selected format;
+  streams use `Output::record`. Ported: `power`, `header`, `usb`, `uart`; the rest still print by hand.
 - ⬜ **CLI-17 `swd orientation / release`**: arguments parsed, prints "not implemented" (`src/commands/swd.rs`),
   same as the other device commands: needs CORE-1, API-4. CMSIS-DAP itself (FW-15) is not a `donguru` subcommand,
   probe-rs talks to it directly over USB.

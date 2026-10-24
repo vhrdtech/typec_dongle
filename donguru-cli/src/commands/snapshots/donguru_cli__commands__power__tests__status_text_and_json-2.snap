@@ -1,0 +1,5 @@
+---
+source: donguru-cli/src/commands/power.rs
+expression: "crate::output::render(Format::Json, &s)"
+---
+{"header":{"mode":{"mode":"force_off"},"relay":false,"vbus":"off"},"meter":{"current_ma":0.0,"power_mw":0.0,"vbus_in_v":5.0},"plug":{"data":"connected","mode":{"mode":"force_off"},"vbus":"off"}}

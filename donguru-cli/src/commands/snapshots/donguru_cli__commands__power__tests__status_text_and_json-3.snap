@@ -1,0 +1,5 @@
+---
+source: donguru-cli/src/commands/power.rs
+expression: "crate::output::render(Format::Text, &r)"
+---
+5.000 V   0.0 mA   0.0 mW
