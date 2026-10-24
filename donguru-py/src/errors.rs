@@ -6,7 +6,12 @@ use pyo3::create_exception;
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 
-create_exception!(donguru, DonguruError, PyException, "Any error of a Donguru call.");
+create_exception!(
+    donguru,
+    DonguruError,
+    PyException,
+    "Any error of a Donguru call."
+);
 create_exception!(
     donguru,
     NoDevice,

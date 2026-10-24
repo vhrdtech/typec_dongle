@@ -139,9 +139,7 @@ impl PyDongle {
 
     /// Variant, board, firmware, UID, label and last reset in one read.
     fn info(&self, py: Python<'_>) -> PyResult<Info> {
-        let summary = self
-            .shared
-            .run(py, async |d| d.device().summary().await)?;
+        let summary = self.shared.run(py, async |d| d.device().summary().await)?;
         Ok(Info::from(&summary))
     }
 
@@ -208,7 +206,11 @@ impl PyDongle {
     /// Closes the link; the object can't be used afterwards. Closing twice is fine.
     fn close(&self, py: Python<'_>) -> PyResult<()> {
         let dongle = {
-            let mut guard = self.shared.dongle.write().unwrap_or_else(|e| e.into_inner());
+            let mut guard = self
+                .shared
+                .dongle
+                .write()
+                .unwrap_or_else(|e| e.into_inner());
             guard.take()
         };
         match dongle {
