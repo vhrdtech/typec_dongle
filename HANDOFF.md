@@ -1,6 +1,6 @@
 # Handoff: cli-output (CLI-13/15/51/52/53)
 
-Paused by the user on 24 Oct 2026 at a consistent point (builds, clippy clean, tests green).
+Paused 24 Oct, resumed 25 Oct and rebased onto main 0.20.28 (`tpm work rebase`, clean), then handed off for context size. State: builds, clippy clean, tests green as of the pause.
 
 ## Done
 - CLI-13 exit codes: exit.rs is the contract (0..5), `ExitCode::code()` / `name()`, a test pins them; developer-notes.md and docs/design/cli/index.md follow it. ✅ in FEATURES.
@@ -16,6 +16,8 @@ Paused by the user on 24 Oct 2026 at a consistent point (builds, clippy clean, t
 5. Rebase onto main (FEATURES/CHANGELOG conflicts: keep both), `just test --changed`, `just lint`, `git rm HANDOFF.md`, `tpm work ready`, `tpm work say parent`.
 
 ## Gotchas
+- In this shell `cargo` may not be on PATH after a resume: use `~/.cargo/bin/cargo` (or prepend it to PATH).
+- When ready: the user's queue says `tpm work ready` + `tpm work say parent`, then `tpm work resume cli-plumbing@omarchy-m1`, then end.
 - `Painted` defaults to left alignment (also for numbers): write `{:>8}` explicitly.
 - serde_json has no preserve_order: key order is sorted, so building json differently doesn't change output.
 - `on_reports_a_trip_as_failure` test prints a line to stdout (old behaviour, harmless).
