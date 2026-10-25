@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.30] - 2026-10-25
+
 ### Added
 
 - `just package` builds `.deb` and `.rpm` packages of `donguru`/`dg`: man pages for every command (`clap_mangen`),
