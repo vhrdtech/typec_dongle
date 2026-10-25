@@ -2,7 +2,6 @@
 //! a bench (CLI-21, API-9). Items an older firmware doesn't have answer `Unimplemented`: "firmware does not support
 //! this yet", exit code 4.
 
-use crate::cli::Format;
 use crate::commands::power::parse_quantity;
 use crate::context::Context;
 use crate::exit::ExitCode;
@@ -127,18 +126,15 @@ async fn brightness_on(
     dongle.leds().brightness().await
 }
 
-fn print_value(ctx: &Context, key: &str, value: &str) {
-    match ctx.format {
-        Format::Text => println!("{key}: {value}"),
-        Format::Json | Format::Jsonl => println!("{}", serde_json::json!({ key: value })),
-    }
+fn print_value(ctx: &Context, key: &str, value: &str) -> anyhow::Result<()> {
+    crate::output::Output::stdout(ctx).emit(&crate::output::KeyValue(key, value))
 }
 
 pub fn run(ctx: &Context, command: Led) -> anyhow::Result<ExitCode> {
     match command {
         Led::Mode { mode } => {
             let now = super::with_dongle(ctx, async |dongle| mode_on(dongle, mode).await)?;
-            print_value(ctx, "mode", fmt_mode(now));
+            print_value(ctx, "mode", fmt_mode(now))?;
             Ok(match mode {
                 Some(w) if Mode::from(w) != now => ExitCode::Failure,
                 _ => ExitCode::Success,
@@ -146,7 +142,7 @@ pub fn run(ctx: &Context, command: Led) -> anyhow::Result<ExitCode> {
         }
         Led::Brightness { level } => {
             let now = super::with_dongle(ctx, async |dongle| brightness_on(dongle, level).await)?;
-            print_value(ctx, "brightness", fmt_brightness(now));
+            print_value(ctx, "brightness", fmt_brightness(now))?;
             Ok(match level {
                 Some(w) if Brightness::from(w) != now => ExitCode::Failure,
                 _ => ExitCode::Success,
@@ -156,7 +152,7 @@ pub fn run(ctx: &Context, command: Led) -> anyhow::Result<ExitCode> {
             super::with_dongle(ctx, async |dongle| {
                 dongle.leds().identify_secs(duration).await
             })?;
-            print_value(ctx, "identify", &format!("{duration} s"));
+            print_value(ctx, "identify", &format!("{duration} s"))?;
             Ok(ExitCode::Success)
         }
     }

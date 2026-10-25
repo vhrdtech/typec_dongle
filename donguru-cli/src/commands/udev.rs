@@ -5,7 +5,6 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::cli::Format;
 use crate::{context::Context, exit::ExitCode};
 use clap::{Args, Subcommand, ValueEnum, builder::ArgPredicate};
 use donguru_core::udev;
@@ -394,12 +393,21 @@ fn status_json(status: &udev::Status) -> serde_json::Value {
     })
 }
 
+struct StatusView<'a>(&'a udev::Status);
+
+impl crate::output::Render for StatusView<'_> {
+    fn text(&self, out: &mut dyn std::io::Write, _: &crate::theme::Theme) -> std::io::Result<()> {
+        write!(out, "{}", describe(self.0))
+    }
+
+    fn json(&self) -> serde_json::Value {
+        status_json(self.0)
+    }
+}
+
 fn status(ctx: &Context, path: &Path) -> anyhow::Result<ExitCode> {
     let status = udev::status_here(path);
-    match ctx.format {
-        Format::Text => print!("{}", describe(&status)),
-        Format::Json | Format::Jsonl => println!("{}", status_json(&status)),
-    }
+    crate::output::Output::stdout(ctx).emit(&StatusView(&status))?;
     Ok(if status.ok() {
         ExitCode::Success
     } else {

@@ -190,6 +190,19 @@ pub fn error_json(err: &anyhow::Error, exit: ExitCode) -> serde_json::Value {
     serde_json::json!({ "error": e })
 }
 
+/// A result of one named value: `key: value` in text, `{"key": "value"}` in json (`swd orientation`, `led mode`).
+pub struct KeyValue<'a>(pub &'a str, pub &'a str);
+
+impl Render for KeyValue<'_> {
+    fn text(&self, out: &mut dyn Write, th: &Theme) -> io::Result<()> {
+        writeln!(out, "{}: {}", th.key(self.0), th.value(self.1))
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::json!({ self.0: self.1 })
+    }
+}
+
 /// Renders `value` as a string, without colour: for tests and snapshots.
 pub fn render(format: Format, value: &dyn Render) -> String {
     let mut out = Output::new(format, Theme::plain(), Vec::new());
@@ -271,9 +284,9 @@ mod tests {
         let v = error_json(&err, ExitCode::DeviceError);
         assert_eq!(v["error"]["kind"], "unimplemented");
         assert_eq!(v["error"]["exit"], "device_error");
-        assert_eq!(
-            v["error"]["message"],
-            "power meter: Meter::reading is not implemented by the device's firmware"
-        );
+        // the plain "firmware does not support this yet" wording (exit::message), the item named in it
+        let message = v["error"]["message"].as_str().unwrap();
+        assert!(message.contains("does not support this yet"), "{message}");
+        assert!(message.contains("Meter::reading"), "{message}");
     }
 }

@@ -6,11 +6,12 @@
 use crate::cli::Format;
 use crate::context::Context;
 use crate::exit::ExitCode;
-use crate::output::{Output, Render, Spinner};
+use crate::output::{KeyValue, Output, Render, Spinner};
 use crate::theme::Theme;
 use clap::{Args, Subcommand, ValueEnum};
 use donguru_core::swd_memtest::probe::{DONGURU_PROBE, Target};
 use donguru_core::swd_memtest::{Pattern, PatternResult, Region};
+use donguru_core::{Dongle, api};
 use std::io::{self, Write};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -145,15 +146,7 @@ pub fn run(ctx: &Context, cmd: Swd) -> anyhow::Result<ExitCode> {
 /// Shows, or sets and reads back, `plug.orientation`: the one orientation of everything on the plug SBU lines.
 fn orientation_cmd(ctx: &Context, wanted: Option<Orientation>) -> anyhow::Result<ExitCode> {
     let now = super::with_dongle(ctx, async |dongle| orientation_on(dongle, wanted).await)?;
-    match ctx.format {
-        Format::Text => println!("orientation: {}", fmt_orientation(now)),
-        Format::Json | Format::Jsonl => {
-            println!(
-                "{}",
-                serde_json::json!({ "orientation": fmt_orientation(now) })
-            )
-        }
-    }
+    Output::stdout(ctx).emit(&KeyValue("orientation", fmt_orientation(now)))?;
     Ok(match wanted {
         Some(w) if api::Orientation::from(w) != now => ExitCode::Failure,
         _ => ExitCode::Success,
@@ -191,12 +184,7 @@ fn fmt_function(f: api::SbuFunction) -> &'static str {
 /// `sbu.release`, then reads back who owns SBU: anything but `off` is a failure.
 fn release(ctx: &Context) -> anyhow::Result<ExitCode> {
     let function = super::with_dongle(ctx, async |dongle| release_on(dongle).await)?;
-    match ctx.format {
-        Format::Text => println!("sbu: {}", fmt_function(function)),
-        Format::Json | Format::Jsonl => {
-            println!("{}", serde_json::json!({ "sbu": fmt_function(function) }))
-        }
-    }
+    Output::stdout(ctx).emit(&KeyValue("sbu", fmt_function(function)))?;
     Ok(if matches!(function, api::SbuFunction::Off) {
         ExitCode::Success
     } else {
@@ -455,8 +443,8 @@ fn parse_size(s: &str) -> Result<u64, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use donguru_core::mock::MockDevice;
     use crate::output::render;
+    use donguru_core::mock::MockDevice;
     use donguru_core::swd_memtest::Mismatch;
     use std::time::Duration;
 

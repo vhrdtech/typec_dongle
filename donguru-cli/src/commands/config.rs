@@ -12,9 +12,12 @@ use std::path::PathBuf;
 use crate::cli::Format;
 use crate::context::Context;
 use crate::exit::ExitCode;
+use crate::output::{Output, Render};
+use crate::theme::Theme;
 use anyhow::Context as _;
 use clap::{Subcommand, ValueEnum};
 use donguru_core::config::{self, Layer};
+use std::io::{self, Write};
 
 /// One of the configuration files in the search path.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -158,6 +161,82 @@ fn generate(output: Option<PathBuf>, force: bool) -> anyhow::Result<ExitCode> {
     Ok(ExitCode::Success)
 }
 
+struct Shown<'a> {
+    entries: &'a [config::Entry],
+    origin: bool,
+}
+
+impl Render for Shown<'_> {
+    fn text(&self, out: &mut dyn Write, th: &Theme) -> io::Result<()> {
+        let width = config::KEYS.iter().map(|k| k.name.len()).max().unwrap_or(0);
+        for e in self.entries {
+            let value = e
+                .value
+                .as_deref()
+                .map_or("<unset>".to_string(), |v| format!("{v:?}"));
+            write!(
+                out,
+                "{} = {}",
+                th.key(format!("{:width$}", e.key.name)),
+                th.value(value)
+            )?;
+            if self.origin {
+                write!(out, "  {}", th.dim(format!("# {}", e.layer)))?;
+            }
+            writeln!(out)?;
+        }
+        Ok(())
+    }
+
+    fn json(&self) -> serde_json::Value {
+        let obj: serde_json::Map<_, _> = self
+            .entries
+            .iter()
+            .map(|e| {
+                let v = if self.origin {
+                    serde_json::json!({"value": e.value, "origin": e.layer.to_string()})
+                } else {
+                    serde_json::json!(e.value)
+                };
+                (e.key.name.to_string(), v)
+            })
+            .collect();
+        serde_json::Value::Object(obj)
+    }
+}
+
+struct Paths<'a>(&'a [(Scope, PathBuf)]);
+
+impl Render for Paths<'_> {
+    fn text(&self, out: &mut dyn Write, th: &Theme) -> io::Result<()> {
+        for (scope, p) in self.0 {
+            let mark = if p.is_file() {
+                th.ok("exists ")
+            } else {
+                th.dim("missing")
+            };
+            writeln!(
+                out,
+                "{} {mark} {}",
+                th.key(format!("{:8}", fmt_enum(scope))),
+                p.display()
+            )?;
+        }
+        Ok(())
+    }
+
+    fn json(&self) -> serde_json::Value {
+        serde_json::Value::Array(
+            self.0
+                .iter()
+                .map(|(scope, p)| {
+                    serde_json::json!({"scope": fmt_enum(scope), "path": p, "exists": p.is_file()})
+                })
+                .collect(),
+        )
+    }
+}
+
 fn show(ctx: &Context, key: Option<String>, origin: bool) -> anyhow::Result<ExitCode> {
     if let Some(name) = key {
         let Some(entry) = ctx.config.iter().find(|e| e.key.name == name) else {
@@ -184,37 +263,10 @@ fn show(ctx: &Context, key: Option<String>, origin: bool) -> anyhow::Result<Exit
             (None, _) => ExitCode::Failure,
         });
     }
-    match ctx.format {
-        Format::Text => {
-            let width = config::KEYS.iter().map(|k| k.name.len()).max().unwrap_or(0);
-            for e in &ctx.config {
-                let value = e
-                    .value
-                    .as_deref()
-                    .map_or("<unset>".to_string(), |v| format!("{v:?}"));
-                if origin {
-                    println!("{:width$} = {value}  # {}", e.key.name, e.layer);
-                } else {
-                    println!("{:width$} = {value}", e.key.name);
-                }
-            }
-        }
-        Format::Json | Format::Jsonl => {
-            let obj: serde_json::Map<_, _> = ctx
-                .config
-                .iter()
-                .map(|e| {
-                    let v = if origin {
-                        serde_json::json!({"value": e.value, "origin": e.layer.to_string()})
-                    } else {
-                        serde_json::json!(e.value)
-                    };
-                    (e.key.name.to_string(), v)
-                })
-                .collect();
-            println!("{}", serde_json::Value::Object(obj));
-        }
-    }
+    Output::stdout(ctx).emit(&Shown {
+        entries: &ctx.config,
+        origin,
+    })?;
     Ok(ExitCode::Success)
 }
 
@@ -231,23 +283,7 @@ fn path(ctx: &Context, scope: Option<Scope>) -> anyhow::Result<ExitCode> {
         );
         return Ok(ExitCode::Failure);
     }
-    match ctx.format {
-        Format::Text => {
-            for (scope, p) in &all {
-                let mark = if p.is_file() { "exists" } else { "missing" };
-                println!("{:8} {mark:8} {}", fmt_enum(scope), p.display());
-            }
-        }
-        Format::Json | Format::Jsonl => {
-            let list: Vec<_> = all
-                .iter()
-                .map(|(scope, p)| {
-                    serde_json::json!({"scope": fmt_enum(scope), "path": p, "exists": p.is_file()})
-                })
-                .collect();
-            println!("{}", serde_json::Value::Array(list));
-        }
-    }
+    Output::stdout(ctx).emit(&Paths(&all))?;
     Ok(ExitCode::Success)
 }
 
