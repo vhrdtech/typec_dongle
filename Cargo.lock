@@ -759,6 +759,7 @@ dependencies = [
  "tempfile",
  "thiserror",
  "tokio",
+ "toml 0.9.12+spec-1.1.0",
  "wire_weaver",
  "wire_weaver_client",
  "ww_adc",
