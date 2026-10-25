@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.32] - 2026-10-25
+
 ### Added
 
 - Python package `donguru` (`donguru-py/`, PyO3 + maturin): `donguru.list()`, `donguru.open("bench-1")`, power, meter (read, `watch()` as an iterator, totals), USB data, header, UART configure, settings, LEDs, firmware version and info, as a blocking API with SI floats; exceptions per error category; `donguru.mock.MockDevice` to test scripts without a dongle; type hints. `just py-test` runs pytest against the mock (also part of `just test`), `just py-build` builds the wheel. Tested against the mock only, not on a board yet (CORE-4).
