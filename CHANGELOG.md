@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.31] - 2026-10-25
+
 ### Added
 
 - A spinner on stderr while `power cycle --off` (1 s or more, counting down), `device log --follow` and `device counters --watch` wait; hidden with `-q` or when stderr is not a terminal, stdout unchanged. Not run on a board yet (CLI-53).
