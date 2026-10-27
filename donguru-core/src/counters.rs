@@ -43,7 +43,7 @@ async fn read_buffer(
 ) -> Result<Vec<u32>> {
     let mut words = Vec::with_capacity(used_words as usize);
     while (words.len() as u16) < used_words {
-        let mut counters = client.counters();
+        let counters = client.counters();
         let page = call::<_, ww_counters::CountersErrorOwned>(
             "Counters::read",
             counters.read(buffer, words.len() as u16),

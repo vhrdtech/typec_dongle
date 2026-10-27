@@ -49,8 +49,7 @@ impl ServerState {
         off: ww_si::Second,
         release_sbu: bool,
     ) -> RpcResult<Result<donguru_api::VbusState, PowerError<'_>>> {
-        let seq = cx.reply_to().map(|r| r.seq).unwrap_or(0);
-        match power::start_cycle(&off, release_sbu, seq).await {
+        match power::start_cycle(&off, release_sbu, cx.reply_to()).await {
             Ok(()) => {
                 self.mark_changed_plug_vbus();
                 Deferred

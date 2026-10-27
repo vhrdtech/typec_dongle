@@ -449,11 +449,11 @@ async fn server_task(mut server: UsbServer<'static, UsbDriver>, state: &'static 
             }
             Either5::Third(()) => {
                 while let Some(done) = power::take_cycle_done() {
-                    if done.seq != 0
+                    if let Some(reply_to) = done.reply_to
                         && server.is_up()
                         && ServerState::plug_vbus_cycle_send_return(
                             &mut server.sink(),
-                            done.seq,
+                            reply_to,
                             plug::cycle_result(done.result),
                         )
                         .await

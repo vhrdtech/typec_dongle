@@ -245,7 +245,7 @@ async fn closed(
     args: &Args,
     capture: ReplayCapture,
 ) -> Result<(Option<f64>, Vec<(String, u64)>)> {
-    let mut debug = dongle.client().debug();
+    let debug = dongle.client().debug();
     debug.uart_replay(capture).call().await?;
     tokio::time::sleep(Duration::from_millis(500)).await;
     let start = Instant::now();

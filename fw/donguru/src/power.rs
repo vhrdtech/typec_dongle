@@ -23,6 +23,7 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
 use embassy_sync::signal::Signal;
 use embassy_time::{Duration, Instant, Timer};
+use wire_weaver::ReplyTo;
 use ww_si::Second;
 
 use crate::{PwrResources, adc, swd};
@@ -77,14 +78,14 @@ static CYCLE_DONE: Channel<CriticalSectionRawMutex, CycleDone, 2> = Channel::new
 struct CycleRequest {
     off_ms: u32,
     token: u32,
-    seq: u32,
+    reply_to: Option<ReplyTo>,
     started: Instant,
 }
 
 /// The deferred answer of a `plug.vbus_cycle`.
 pub struct CycleDone {
-    /// Request seq from `cx.reply_to()`, 0 when the host expects no answer.
-    pub seq: u32,
+    /// From `cx.reply_to()`, `None` when the host expects no answer.
+    pub reply_to: Option<ReplyTo>,
     pub result: Result<VbusState, ModeError>,
 }
 
@@ -179,8 +180,12 @@ pub fn on_adc() {
 }
 
 /// Starts `plug.vbus_cycle`: optionally SBU to Hi-Z first, then plug VBUS off; [`power_task`] switches it back on
-/// after `off` and hands the answer for `seq` to the server ([`take_cycle_done`]).
-pub async fn start_cycle(off: &Second, release_sbu: bool, seq: u32) -> Result<(), CycleError> {
+/// after `off` and hands the answer for `reply_to` to the server ([`take_cycle_done`]).
+pub async fn start_cycle(
+    off: &Second,
+    release_sbu: bool,
+    reply_to: Option<ReplyTo>,
+) -> Result<(), CycleError> {
     if release_sbu {
         // before VBUS goes: nothing on SBU may back-power the DUT while it is off
         swd::release().await;
@@ -195,7 +200,7 @@ pub async fn start_cycle(off: &Second, release_sbu: bool, seq: u32) -> Result<()
     CYCLE.signal(CycleRequest {
         off_ms,
         token,
-        seq,
+        reply_to,
         started: Instant::now(),
     });
     Ok(())
@@ -240,7 +245,7 @@ fn finish(req: CycleRequest) {
     );
     if CYCLE_DONE
         .try_send(CycleDone {
-            seq: req.seq,
+            reply_to: req.reply_to,
             result,
         })
         .is_err()
