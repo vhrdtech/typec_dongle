@@ -451,6 +451,15 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   again once the firmware runs (the hub itself stays, FW-46). PA10 (SBU_TO_USB, U901 S) is USART1_RX there, in
   the same way. Nothing the firmware can do; for rev B: DATA_CUT (and SBU_TO_USB) on pins the ROM leaves alone
   (AN2606, STM32G0B1 bootloader pins), `hw/b153_typec_serial/change/change_b153b.md`.
+- 📋 **FW-52 Hub in its default mode (rev B)**: rev B lets the hub boot by itself (`hw/b153_typec_serial/change/
+  change_b153b.md`, "Hub boots by itself"): straight D+/D- lanes, SCL pull-up switched by PA4 with a pull-down, so the
+  hub latches CFG_SEL = 00 (default configuration, same as our SMBus config but the port swap) whenever the MCU does
+  not drive PA4, and the ROM DFU reaches the host with the firmware dead. Firmware: early in boot (pre-init) hold
+  PC13 low, decide default mode or SMBus (PA4 high, then release RESET_N and configure as now); FW-6's port swap off
+  on rev B; FW-46 keeps a hub in default mode that answers nothing on I2C instead of resetting it after 5 s (the
+  firmware's own USB reaching the configured state is the proof it works); FW-18's I2C probe only in SMBus mode, a
+  default-mode hub recovers from a brown-out by itself. Needs the board revision at runtime (FW-22 strap or an ID
+  divider) to pick the rev A or rev B path.
 
 ## API (`API`)
 
