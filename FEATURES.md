@@ -701,16 +701,18 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `plug.pd.messages`, a counted stream of raw records (every message both ways with GoodCRC, the transmit outcome,
   attach, detach, VBUS, hard resets, device time in µs), from a 48-record ring that counts what it drops. usbpd
   3.0.0's source policy engine through embassy's UCPD driver (`fw/donguru/src/pd.rs`), the decisions host-tested in
-  `donguru_board::pd` (offer checks, Rp, guard limits, Request answer, ring). Rp and PD on CC1 only: the plug's one CC contact is A5 (PD0), PD2 is its VCONN contact B5 (hw_b153a.md §5), so
-  CC2's PHY stays off and `cc` reads `Cc1`. While it runs it holds the plug CC
-  (`InUse` for an SWD session's CC drive and `debug.ucpd_role`) and plug VBUS (`plug.vbus_mode` and `vbus_cycle`
-  refused): VBUS on only after a debounced Rd, in `Auto` mode at vSafe5V's 5.5 V and the offer plus 25 %, off at the
-  detach, during a hard reset and for tSrcRecover before the next attach (rev A cannot read plug VBUS, so vSafe0V is
-  waited for, FW-35). `sender_response` stretches usbpd's 30 ms timers (SenderResponseTimer and tPSHardReset) as a
-  logged, out-of-spec test knob for a slow sink. Built, not run on a board yet: the first check is the stock ZY12PDN
-  on the plug; Rd as `Low` in source mode is from RM0444 table 237 and embassy's UCPD test, to be confirmed there. Not
-  yet: more PDOs, renegotiation, scripted scenarios, PD 3.0 collision avoidance (FW-54), `dg pd` (CLI-44 and its
-  sibling). Labs `pd-both-sides`, `pd-edge-cases`.
+  `donguru_board::pd` (offer checks, Rp, guard limits, Request answer, ring). Rp and PD on CC1 only: the plug's one CC
+  contact is A5 (PD0), PD2 is its VCONN contact B5 (hw_b153a.md §5), so CC2's PHY stays off and `cc` reads `Cc1`.
+  While it runs it holds the plug CC (`InUse` for an SWD session's CC drive and `debug.ucpd_role`) and plug VBUS
+  (`plug.vbus_mode` and `vbus_cycle` refused): VBUS on only after a debounced Rd, in `Auto` mode at vSafe5V's 5.5 V
+  and the offer plus 25 %, off at the detach, during a hard reset and for tSrcRecover before the next attach (rev A
+  cannot read plug VBUS, so vSafe0V is waited for, FW-35). `sender_response` stretches usbpd's 30 ms timers
+  (SenderResponseTimer and tPSHardReset) as a logged, out-of-spec test knob for a slow sink. Built, not run on a board
+  yet: the first check is the stock ZY12PDN on the plug; Rd as `Low` in source mode is from RM0444 table 237 and
+  embassy's UCPD test, to be confirmed there. Host: `donguru pd source on|off` and `pd status`
+  (`donguru-cli/src/commands/pd.rs`, the `Plug` facade in `donguru-core`); the mock answers Unimplemented. Not yet:
+  more PDOs, renegotiation, scripted scenarios, PD 3.0 collision avoidance (FW-54), `dg pd log`, CLI-44. Labs
+  `pd-both-sides`, `pd-edge-cases`.
 - 💡 **API-31 CAN levels**: `can[]` as `ww_can_bus::Can` (0 = SBU / FDCAN1, 1 = A2B2 / FDCAN2): bitrate, FD data
   rate, frames as a stream with timestamps, send. Lab `can-on-the-plug`.
 - 💡 **API-32 Receptacle as a source**: Rp and a PD source on UCPD1 towards the computer, so a power bank on the plug
