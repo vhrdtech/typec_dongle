@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.34] - 2026-11-02
+
 ### Added
 
 - Firmware: a USB PD source on the plug CC, `plug.pd` (API-30, `donguru_api` 0.5.2, a patch bump: wire-compatible, old CLIs keep connecting and don't see the level). `plug.pd.source` offers one 5 V PDO at a chosen current (100 mA to 3 A) with the matching Rp, `plug.pd.state` says attach / contract / no PD / failed, `plug.pd.messages` streams every message both ways raw with the device time in µs, plus attach, detach, VBUS and hard-reset events. usbpd 3.0.0's source policy engine on UCPD2; plug VBUS on only after a debounced Rd, guarded at 5.5 V and the offer plus 25 %, off at the detach and in a hard reset. `sender_response` is an out-of-spec test knob for slow sinks. While the source runs, `plug.vbus_mode`, `vbus_cycle` and `debug.ucpd_role` on UCPD2 are refused. Tested on B153A with the ZY12PDN's FUSB302B driven by hand over rePort I2C, no load: contract at the spec's timers, Reject for a bad Request, detach and re-attach with USB up, `NoPd` for a sink without PD, hard reset from the sink. The stock ZY firmware acknowledges Source_Capabilities but sends no Request (API-30 stays open for that check).
