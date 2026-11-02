@@ -310,12 +310,17 @@ fn log(
             ..
         } = &source
         {
-            eprintln!(
+            // `writeln!`, not `eprintln!`: a closed stderr is no reason to stop the capture
+            let _ = writeln!(
+                io::stderr(),
                 "donguru: SenderResponseTimer overridden to {:.0} ms (out of spec)",
                 t.to_f64() * 1000.0
             );
         }
         let mut decoder = pd_log::Decoder::new();
+        // With a file the capture is what counts: a screen that goes away (`| head`) ends the screen output, not the
+        // capture (FW-56).
+        let mut screen = true;
         let end = for_s.map(|s| tokio::time::Instant::now() + Duration::from_secs_f64(s));
         loop {
             let event = async {
@@ -334,10 +339,15 @@ fn log(
                         if let (Some(file), Some(line)) = (&mut file, &to_write) {
                             pd_log::write_line(file, line)?;
                         }
-                        text_out.record(&item)?;
+                        if screen && let Err(e) = text_out.record(&item) {
+                            if file.is_none() || !crate::exit::is_broken_pipe(&e) {
+                                return Err(e);
+                            }
+                            screen = false;
+                        }
                     }
                     Some(Ok(StreamEvent::Gap { units, .. })) => {
-                        eprintln!("donguru: {units} record(s) lost");
+                        let _ = writeln!(io::stderr(), "donguru: {units} record(s) lost");
                     }
                     Some(Ok(StreamEvent::Closed | StreamEvent::Disconnected)) => break,
                     Some(Ok(_)) => {}

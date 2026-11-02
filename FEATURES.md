@@ -94,17 +94,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `ww dfu stm32 flash`. That old `ww` starts a hub of its version: stop it with the same binary, or the current `ww`
   gets the same error from the hub. Done this way on B153A, 2 Nov 2026. Belongs fixed in wire_weaver: the promise of
   `ww dfu` is any device whatever its API version.
-- 🐛 **FW-56 `pd log --restart` with a `sender_response` override loses the first contract**: `dg pd source on
-  --sender-response-ms 60` then `dg pd log --restart --for 2.2 -o X` wrote an empty log 3 runs in a row, and the
-  sink's Request after that restart got no GoodCRC (`RetryFail`, then the sink hard-reset). Without the override,
-  the same `--restart` logs fine (75 runs); plain `pd source off` + `pd source on` as two separate commands with the
-  override also works (4/4 contracts, a 25 ms late Request). `--restart`'s `Off` then `Source` writes go back to
-  back with no wait between them (`donguru-cli/src/commands/pd.rs`); two separate CLI invocations leave the device
-  longer between them by how long starting a second process takes. `sender_response` also stretches usbpd's
-  tPSHardReset (API-30's doc), so the suspicion is the policy engine's teardown after `Off` needs more of that
-  stretched time to finish before a `Source` write lands cleanly; not yet reproduced by hand or looked at in
-  `fw/donguru/src/pd.rs`. Found by pd-m1 (gpd-omarchy, M1 bench session) testing `donguru-pd-log`'s branch, 2 Nov
-  2026; not fixed here (out of this session's scope).
+- ✅ **FW-56 `pd log` keeps capturing when its screen goes away**: in M1 (2 Nov 2026) `dg pd log --restart --for 2.2 -o X 2>&1 | head -1` with a `sender_response` override wrote empty logs, and the sink's Request after a restart got no GoodCRC. Cause, reproduced on B153A (3 Nov 2026, gpd-omarchy, firmware 0.1.1 at a388fa4, rePort 027 with the ZY12PDN): the override note on stderr was the first line, so `head` took it and closed the pipe. The next screen line hit a broken pipe, and the CLI ended there as for any `dg ... | head`, 40-190 ms after its restart, before any record reached the file. Without the override the first line was a record, and the run that showed the bug was the only one piped into `head`. So the loop's three `--restart`s came back to back. Each one's `Off` drops UCPD2 at once, and one of them landed while the sink's 25 ms late Request was on the wire: no GoodCRC. The firmware does what it should: a restart while the last one is still in tSrcRecover or the Rd debounce restarts that wait, so three quick restarts can make one negotiation. Fix in the CLI: with `-o`, a broken pipe on the screen stops the screen output and the capture runs its `--for`; stderr notes are written with `writeln!` (no `eprintln!` panic on a closed stderr). After the fix the same line gives three logs of 8 records each, and the sink four contracts at a 25 ms late Request with SenderResponseTimer 60 ms. The sink's no-attach after its hard reset in that run is pd_bench SINK-3.
 - ✅ **FW-13 HardFault handling for production**: `HardFault` and the panic handler save a `bedrock_crash` record
   (cause, registers, 32 stack words, message, uptime, build id) in `.uninit` RAM and reset instead of looping
   (`fw/donguru/src/main.rs`, `src/last_reset.rs`); the next boot logs it and serves it as `device.last_reset`

@@ -6,6 +6,10 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Fixed
+
+- CLI: `donguru pd log -o FILE` keeps capturing for its `--for` when the screen output is closed (`| head`); it used to end at the first screen line and leave the file empty. In M1 that made a loop's `--restart`s come back to back, so a sink's Request got no GoodCRC (FW-56).
+
 ## [0.20.36] - 2026-11-03
 
 ### Added
