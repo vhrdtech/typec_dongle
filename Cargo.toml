@@ -24,3 +24,8 @@ serde_json = "1"
 [profile.deploy]
 inherits = "release"
 incremental = true
+
+# exact_units (ww_si's units) takes shrink_wrap from WireWeaver's git: the checkout's instead, or its derives and the
+# API's are two types (E0277 on every quantity)
+[patch."https://github.com/vhrdtech/wire_weaver"]
+shrink_wrap = { path = "../wire_weaver/shrink_wrap/shrink_wrap" }

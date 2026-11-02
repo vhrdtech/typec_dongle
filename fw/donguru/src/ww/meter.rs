@@ -97,7 +97,8 @@ pub(super) async fn readings() -> Option<Readings> {
 /// A value of any integer encoding in units of `prefix`, `None` for what an integer can't hold.
 fn to_prefixed(value: &NumericValue, from: Prefix, to: Prefix) -> Option<i32> {
     let v = i32::try_from(value.to_i128()?).ok()?;
-    let (from, to): (i8, i8) = (from.into(), to.into());
+    // a binary or full-scale prefix is no power of ten: not a meter unit
+    let (from, to) = (from.pow10()?, to.pow10()?);
     let mut v = v;
     for _ in 0..(from - to).max(0) {
         v = v.checked_mul(10)?;

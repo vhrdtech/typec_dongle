@@ -168,6 +168,8 @@ overflow-checks = false
 # (two copies of a crate are two types: E0308 in ww/leds.rs and ww/clock.rs otherwise)
 [patch."https://github.com/vhrdtech/wire_weaver"]
 wire_weaver = { path = "../../../wire_weaver/wire_weaver" }
+# exact_units (ww_si's units) takes shrink_wrap from WireWeaver's git: the checkout's, or its derives are two types
+shrink_wrap = { path = "../../../wire_weaver/shrink_wrap/shrink_wrap" }
 ww_date_time = { path = "../../../wire_weaver/ww_stdlib/ww_date_time" }
 ww_dfu = { path = "../../../wire_weaver/ww_stdlib/ww_dfu" }
 ww_indication = { path = "../../../wire_weaver/ww_stdlib/ww_indication" }

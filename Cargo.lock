@@ -582,7 +582,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c54e03a951783e8b327515db3f2a2fd0e3bed362a96b066f341ce66ed49b4ead"
 dependencies = [
  "data-encoding",
- "syn 3.0.5",
+ "syn 2.0.119",
 ]
 
 [[package]]
@@ -795,7 +795,7 @@ dependencies = [
 
 [[package]]
 name = "donguru_api"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "defmt",
  "wire_weaver",
@@ -881,6 +881,15 @@ checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "exact_units"
+version = "0.1.0"
+source = "git+https://github.com/romixlab/exact_units#d28ec8669ffff648280439d9d1140d05556130b4"
+dependencies = [
+ "serde",
+ "shrink_wrap",
 ]
 
 [[package]]
@@ -2811,6 +2820,7 @@ dependencies = [
  "anyhow",
  "cargo_toml",
  "convert_case",
+ "exact_units",
  "hex",
  "pest",
  "pest_derive",
@@ -2849,6 +2859,7 @@ dependencies = [
 name = "wire_weaver_evolution"
 version = "0.5.0"
 dependencies = [
+ "exact_units",
  "ron",
  "serde",
  "shrink_wrap",
@@ -3047,6 +3058,7 @@ name = "ww_self"
 version = "0.3.0"
 dependencies = [
  "anyhow",
+ "exact_units",
  "quote",
  "serde",
  "sha2",
@@ -3060,6 +3072,7 @@ dependencies = [
 name = "ww_si"
 version = "0.2.0"
 dependencies = [
+ "exact_units",
  "shrink_wrap",
  "ww_numeric",
 ]
