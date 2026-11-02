@@ -197,10 +197,12 @@ pub enum Holder {
     Ucpd1,
     /// UCPD2 with a CC role: the plug CC pins.
     Ucpd2,
+    /// The PD source on the plug (`plug.pd`, API-30): the plug CC pins, as [`Holder::Ucpd2`].
+    PdSource,
 }
 
 impl Holder {
-    const ALL: [Holder; 9] = [
+    const ALL: [Holder; 10] = [
         Holder::Leds,
         Holder::Meter,
         Holder::Button,
@@ -210,6 +212,7 @@ impl Holder {
         Holder::SwdCc,
         Holder::Ucpd1,
         Holder::Ucpd2,
+        Holder::PdSource,
     ];
 
     /// The name in `InUse { by }` (32 bytes at most).
@@ -224,6 +227,7 @@ impl Holder {
             Holder::SwdCc => "an SWD session (plug CC)",
             Holder::Ucpd1 => "UCPD1 (ucpd_role)",
             Holder::Ucpd2 => "UCPD2 (ucpd_role)",
+            Holder::PdSource => "the PD source (plug.pd)",
         }
     }
 
@@ -256,7 +260,7 @@ impl Holder {
             Holder::Swd => SWD,
             Holder::SwdCc => SWD_CC,
             Holder::Ucpd1 => UCPD1,
-            Holder::Ucpd2 => UCPD2,
+            Holder::Ucpd2 | Holder::PdSource => UCPD2,
         }
     }
 
@@ -846,6 +850,18 @@ mod tests {
         assert_eq!(c.holder(pin(D, 0)), Some(Holder::Ucpd2));
         c.claim(Holder::Ucpd1).unwrap();
         assert_eq!(c.holder(pin(B, 15)), Some(Holder::Ucpd1));
+    }
+
+    #[test]
+    fn pd_source_and_the_other_cc_users_exclude_each_other() {
+        let mut c = Claims::new();
+        c.claim(Holder::PdSource).unwrap();
+        assert_eq!(c.claim(Holder::Ucpd2), Err(Holder::PdSource));
+        assert_eq!(c.claim(Holder::SwdCc), Err(Holder::PdSource));
+        c.release(Holder::PdSource);
+        c.claim(Holder::Ucpd2).unwrap();
+        assert_eq!(c.claim(Holder::PdSource), Err(Holder::Ucpd2));
+        assert!(Holder::PdSource.name().len() <= 32);
     }
 
     #[test]

@@ -8,7 +8,7 @@
 
 use crate::pins;
 use donguru_api::{CcRole, UcpdPort, UcpdState};
-use donguru_board::pins::Denied;
+use donguru_board::pins::{Denied, Holder};
 use donguru_board::ucpd::{holder, role_fields};
 use embassy_stm32::pac;
 use embassy_stm32::pac::ucpd::Ucpd;
@@ -52,6 +52,10 @@ pub fn state(port: UcpdPort) -> UcpdState {
 /// Gives `port` the CC `role`, when this board allows it and nothing else holds its CC pins.
 pub fn set_role(port: UcpdPort, role: CcRole) -> Result<UcpdState, Denied> {
     let fields = role_fields(port, role, cfg!(feature = "rev_a"))?;
+    // the PD source (`plug.pd`) runs UCPD2 through embassy's driver: no role of ours on top, not even `Off`
+    if port == UcpdPort::Ucpd2 && pins::holds(Holder::PdSource) {
+        return Err(Denied::InUse(Holder::PdSource));
+    }
     let r = regs(port);
     if !fields.enabled {
         if clock_on(port) {

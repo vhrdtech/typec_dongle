@@ -4,12 +4,15 @@ use super::ServerState;
 use super::UsbDriver;
 use crate::uart;
 use embassy_time::Instant;
+#[cfg(feature = "header-uart")]
 use static_cell::StaticCell;
 use wire_weaver::prelude::*;
 use wire_weaver::shrink_wrap::Error as SwError;
 use wire_weaver_usb_embassy::UsbServer;
 use ww_client_server::stream::{StreamCodec, StreamCodecs, StreamStatus};
-use ww_stream::codec::{Compressed, CountedState};
+#[cfg(feature = "header-uart")]
+use ww_stream::codec::Compressed;
+use ww_stream::codec::CountedState;
 use ww_stream::tx::Counted;
 use ww_stream::{Opened, ResumeError, StreamCursor, StreamHead};
 use ww_uart::{RxChunk, UART_CHUNK_MAX};
@@ -32,13 +35,16 @@ pub(super) const COUNT: usize = 2;
 
 /// `uart[1].rx` with its LZ4 encoder (WireWeaver API-55, FW-42): 4096 hash entries (8 KiB) and 12 KiB of history and
 /// input, 4 KiB of it kept when the buffer slides. Compresses for hosts that offer LZ4, sends as is to the others.
+#[cfg(feature = "header-uart")]
 type HeaderRx = Compressed<ww_lz4::Encoder<4096, 12288>>;
 /// Set up in place: as a const it would keep its 20 KiB as an initializer in flash.
+#[cfg(feature = "header-uart")]
 static HEADER_RX: StaticCell<HeaderRx> = StaticCell::new();
 
 /// State of a `uart[].rx`: the header's compressed stream, or a plain one never opened (the plug UART, API-14).
 pub(super) enum RxState {
     Unopened(Counted),
+    #[cfg(feature = "header-uart")]
     Header(&'static mut HeaderRx),
 }
 
@@ -47,9 +53,12 @@ impl RxState {
     pub(super) fn new() -> [RxState; COUNT] {
         [
             RxState::Unopened(Counted::new()),
+            #[cfg(feature = "header-uart")]
             RxState::Header(Compressed::init(HEADER_RX.uninit(), |c| {
                 ww_lz4::Encoder::init(c, 4096)
             })),
+            #[cfg(not(feature = "header-uart"))]
+            RxState::Unopened(Counted::new()),
         ]
     }
 }
@@ -58,6 +67,7 @@ impl CountedState for RxState {
     fn counted(&mut self) -> &mut Counted {
         match self {
             RxState::Unopened(s) => s,
+            #[cfg(feature = "header-uart")]
             RxState::Header(s) => s.counted(),
         }
     }
@@ -69,6 +79,7 @@ impl CountedState for RxState {
     ) -> (Opened, Option<StreamCodec>) {
         match self {
             RxState::Unopened(s) => s.open_offered(session, codecs),
+            #[cfg(feature = "header-uart")]
             RxState::Header(s) => s.open_offered(session, codecs),
         }
     }
@@ -80,6 +91,7 @@ impl CountedState for RxState {
     ) -> Result<(Opened, Option<StreamCodec>), ResumeError<()>> {
         match self {
             RxState::Unopened(s) => s.resume_offered(cursor, codecs),
+            #[cfg(feature = "header-uart")]
             RxState::Header(s) => s.resume_offered(cursor, codecs),
         }
     }
@@ -87,6 +99,7 @@ impl CountedState for RxState {
     fn detach(&mut self) {
         match self {
             RxState::Unopened(s) => CountedState::detach(s),
+            #[cfg(feature = "header-uart")]
             RxState::Header(s) => s.detach(),
         }
     }
@@ -94,6 +107,7 @@ impl CountedState for RxState {
     fn status(&mut self) -> StreamStatus {
         match self {
             RxState::Unopened(s) => CountedState::status(s),
+            #[cfg(feature = "header-uart")]
             RxState::Header(s) => s.status(),
         }
     }
@@ -101,6 +115,7 @@ impl CountedState for RxState {
     fn head(&mut self, units: u64, t: Option<ww_si::Second>) -> Option<StreamHead> {
         match self {
             RxState::Unopened(s) => CountedState::head(s, units, t),
+            #[cfg(feature = "header-uart")]
             RxState::Header(s) => s.head(units, t),
         }
     }
@@ -112,6 +127,7 @@ impl CountedState for RxState {
     ) -> Result<usize, SwError> {
         match self {
             RxState::Unopened(s) => s.write_item(buf, item),
+            #[cfg(feature = "header-uart")]
             RxState::Header(s) => s.write_item(buf, item),
         }
     }
@@ -119,6 +135,7 @@ impl CountedState for RxState {
     fn unsent(&mut self, head: &StreamHead) {
         match self {
             RxState::Unopened(s) => CountedState::unsent(s, head),
+            #[cfg(feature = "header-uart")]
             RxState::Header(s) => s.unsent(head),
         }
     }
@@ -127,7 +144,14 @@ impl CountedState for RxState {
 impl ServerState {
     // Both indices of the plan are there, their items answer Unimplemented until API-14.
     pub(super) fn valid_indices_root_uart(&mut self) -> ValidIndices<'_> {
-        ValidIndices::range_u32(0..COUNT as u32)
+        // without the header UART (feature `header-uart`) its index is gone: nothing reaches its handlers
+        ValidIndices::range_u32(
+            0..if cfg!(feature = "header-uart") {
+                COUNT
+            } else {
+                HEADER
+            } as u32,
+        )
     }
 
     // ww_uart::Uart at uart[]

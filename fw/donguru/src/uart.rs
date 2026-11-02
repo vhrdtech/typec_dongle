@@ -12,6 +12,8 @@
 //!
 //! A new line setting ([configure]) waits until `tx_task` has sent what it took out of [TX] (bytes the host sent
 //! before `configure` go out at the old rate); then `rx_task` stops the receiver, sets the USART up and starts it again.
+// without the feature only the API-facing helpers are used (`ww/uart.rs`), the tasks are not built in
+#![cfg_attr(not(feature = "header-uart"), allow(dead_code))]
 
 use core::cell::UnsafeCell;
 use core::sync::atomic::Ordering;

@@ -80,26 +80,46 @@ wire_weaver_usb_embassy = { path = "../../../wire_weaver/mcu/wire_weaver_usb_emb
 ww_settings = { path = "../../../wire_weaver/ww_settings/ww_settings", features = ["defmt"] }
 ww_ecc_flash = { path = "../../../wire_weaver/mcu/ww_ecc_flash", features = ["nmi-handler", "defmt"] }
 usb251xb = { version = "0.1.0", default-features = false, features = ["async", "defmt"] }
+# the PD source on the plug CC (API-30, src/pd.rs): usbpd's source policy engine, embassy's UCPD driver below it.
+# Without its "defmt" feature: its trace lines would cost flash, the log ring records every message anyway.
+usbpd = { version = "3.0.0", default-features = false }
+usbpd-traits = { version = "2.0.0", default-features = false }
 
 [features]
-default = ["rev_a", "debug-button", "debug-api"]
+# Off by default since the PD source (API-30) came in: with them the image doesn't fit the 504 KiB (FW-53). Each is a
+# build choice, not a removal: `just fw-lint` builds with all features, and one image can still take any of them
+# while it fits (`cargo build --release --features swd-host`, `just fw-size` shows the room).
+default = ["rev_a", "debug-button"]
 # B153A, the boards built so far: the workarounds for its known bugs (hw/b153_typec_serial/doc/hw_b153a.md §0,
 # change/change_b153b.md), FW-47. A release firmware for rev B is built without it; the first boards keep it for
 # testing and jigs. Without it the firmware follows rev B's schematic where it is known, `TODO(ID)` where not.
 rev_a = []
 # the `debug` level of the API (bring-up and production test, API-18); without it the level answers Unimplemented,
-# the API stays the same (decision D2). Can be cut if flash gets scarce.
+# the API stays the same (decision D2). 12.4 KiB of flash.
 debug-api = []
+# SWD-host on the plug SBU lines and its CMSIS-DAP v2 USB interface (FW-15, FW-17, FW-20, FW-21). Without it there
+# is no CMSIS-DAP interface; `swd.mode` and `sbu.release` still answer, the SBU pins keep their safe boot state.
+# 14.2 KiB.
+swd-host = []
+# `uart[1]`, the header UART on IO7 / IO8 with LZ4 for its RX stream (API-14, FW-42). Without it `uart[]` has index 0
+# only and IO7 / IO8 stay in their reset state. 10.8 KiB of flash, 31 KiB of RAM.
+header-uart = []
+# The API's doc comments in `ww introspect` (WireWeaver introspection `with_docs`); without them the tree and types
+# are there, the texts not. 13.4 KiB.
+api-docs = []
+# `meter.reading` observed in `Samples` mode: every ADC sequence as a row, batched (API-39). Without it hosts observe
+# the readings as before API-39, one value per change.
+meter-samples = []
 # periodic ADC readings in the debug log
 debug-adc = []
 # switch / button state changes in the debug log
 debug-button = []
 # `debug.uart_replay`: text captures in flash (`replay/`, 96 KiB) sent out of the header UART in a loop, a full-rate
 # source for `uart[1].rx` (FW-42); without it the method answers Unsupported
-uart-replay = []
+uart-replay = ["header-uart"]
 # SWD-host starts in SPI mode (FW-21, SPI2 through the SBU level shifter) instead of bit-bang; the mode can still be
 # changed at run time with `DonguruApi::swd_mode`
-swd-spi = []
+swd-spi = ["swd-host"]
 # a test image that panics at every start before USB is up, to check the boot-loop fallback into the ROM bootloader
 # (FW-45); never for a release
 crash-loop-test = []

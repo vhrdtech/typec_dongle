@@ -94,6 +94,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   (PC set to 0xFFFFFFF0 through gdb): reset, `Fault` with pc and a symbolized stack in `ww report`. A panic is not
   tested on hardware; `exc_return` reads 0 on the M0+ (bedrock_crash's best effort, the frame is still right).
 - ✅ **FW-15 SWD-host over the plug SBU lines**: CMSIS-DAP v2 (bulk, `src/cmsis_dap.rs`) on a composite USB device
+  Feature `swd-host`, off in the default build since FW-53.
   alongside WireWeaver (`src/ww/`), carrying `dap_rs`'s command processor over a GPIO bit-bang SWD driver
   (`src/swd.rs`: SWCLK/SWDIO on PA1/PA0, the SBU side of the TXS0102 level shifter, orientation-swappable, SWCLK
   clamped 10 kHz..4 MHz since FW-20, default 400 kHz). R211/R212 (the shifter bypass to PB8/PB6) are not fitted on B153A, so
@@ -355,6 +356,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   probe reads VID/PID and only all-zero counts (FW-18); a boot hit by (1) stays off USB until the next reset
   instead of looping.
 - 🚧 **FW-42 UART RX compression**: `uart[1].rx` is a WireWeaver compressed counted stream (API-55,
+  Feature `header-uart`, off in the default build since FW-53.
   `ww_stream::codec::Compressed` around `ww_lz4::Encoder<4096, 12288>`, h12 with 12 KiB history and 4 KiB kept,
   set up in place, encoder in RAM through ww_lz4's `ram`; `fw/donguru/src/ww/uart.rs` `RxState`): hosts that offer
   LZ4 get LZ4 blocks, older hosts (no offer) the chunks as before. The receive path behind it: `rx_task` reads the
@@ -461,6 +463,23 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   default-mode hub recovers from a brown-out by itself. Needs the board revision at runtime (FW-22 strap or an ID
   divider) to pick the rev A or rev B path.
 
+- 🧪 **FW-53 Flash budget: features off by default**: built against today's WireWeaver the release image was 500.2 KiB
+  of 504 KiB before the PD source (API-30, +68.9 KiB), so five features are cargo features off in the default build,
+  chosen as what the PD bench doesn't use (2 Nov 2026, the user's call). Each is a build choice: the code stays, `just
+  fw-lint` builds with all features and without the default ones, and an image can still take any of them that fits.
+  Savings, measured one after the other on the release build: `debug-api` (API-18) 12.4 KiB, `swd-host` (SWD-host and
+  the CMSIS-DAP interface, FW-15/FW-17/FW-21) 14.2 KiB, `header-uart` (`uart[1]` with LZ4, API-14/FW-42) 10.8 KiB and
+  31 KiB of RAM, `api-docs` (doc comments in `ww introspect`) 13.4 KiB, `meter-samples` (`meter.reading` in `Samples`
+  mode, API-39) 13.0 KiB. Default release with the PD source: FLASH 501.8 KiB of 504 KiB (99.6 %), RAM 63.7 KiB of 144
+  KiB. Measured, not tried: usbpd's `epr` gate (on its main, not released) would save 9.1 KiB more. Open: 2.4 KiB of
+  room is too little to work in; the next candidate is the settings store (API-19, about 15-20 KiB by the symbols);
+  the dev build overflows by 18 KiB (overflow checks and debug assertions; the baseline release was already near full,
+  so dev likely overflowed before the PD source too, not checked).
+- 📋 **FW-54 PD 3.0 collision avoidance on the plug**: the PD source keeps one Rp; PD 3.0 wants SinkTxNG (1.5 A Rp)
+  while the source starts an AMS and SinkTxOk (3 A Rp) otherwise, so a sink that starts an AMS of its own may collide
+  with one of ours. usbpd starts none after the contract, so M1 doesn't need it; renegotiation from the source side
+  (API-30) does.
+
 ## API (`API`)
 
 - 🧪 **FW-51 Firmware builds against the sibling checkouts, WireWeaver TR-15**: main stopped building (24 Oct 2026):
@@ -559,6 +578,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `Busy` until the SBU level (API-14) owns PA0 / PA1; `window` is 0.9 .. 14.9 ms (one sequence up to one half DMA buffer of
   sequences), longer needs averaging across updates. A read of `io7` / `io9` / `io10` switches the ADC to the
   extended set and stays there (meter keeps working, sequence 0.62 -> 0.90 ms). With FW-3. ^revB
+  Samples: feature `meter-samples`, off in the default build since FW-53.
   🧪 Samples (19 Oct 2026, `donguru_api` 0.3.0): `meter.reading` is `ro+observe+batched` (WireWeaver API-39);
   observed in `Samples` mode it sends every ADC sequence (622 µs, 32x oversampled, not averaged over `window`) with
   its own device time, as compressed `Series` batches of 32 rows. The ADC task writes the rows into observe cells
@@ -599,6 +619,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 📋 **API-17 Hub and SWD state**: observable hub state and recoveries, `hub.recover`, observable SWD session; FW-18's
   spurious recoveries after a cold boot fixed. ^revB
 - 🧪 **API-18 Bring-up API**: MCU pins by port and number (refused list, no memory write), boot-time pin snapshot,
+  Feature `debug-api`, off in the default build since FW-53.
   hub SMBus registers, UCPD1/2 state and role, raw LEDs, peripheral register reads (P2534#14oct-1014). ^revB
   Done: rules in `donguru_board::pins` (refused list, the pin claim table `Claims` with its holders: LEDs, meter,
   button, header UART, V_SBU select from boot, an SWD session and its plug CC drive, a UCPD role; the electrical
@@ -673,9 +694,22 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   empty in the official firmware), versioned apart from the rest, so a fork adds methods without changing
   `donguru_api`'s version and the official `dg` keeps working. `dg info` shows a firmware with an `ext` as custom.
   Lab `own-api-method`.
-- 💡 **API-30 PD source on the plug**: UCPD2 as a PD source towards the DUT: offer a PDO list (from the receptacle's
-  contract when bridging, or a scripted scenario), record the DUT's requests and timings, renegotiate, hard reset.
-  Spec-conformant messages only. Labs `pd-both-sides`, `pd-edge-cases`.
+- 🧪 **API-30 PD source on the plug**: UCPD2 as a PD source towards the DUT. First subset (`donguru_api` 0.5.2,
+  P2534#20oct-1421): `plug.pd.source` = `Off` / `Source { max_current, sender_response }` offers one fixed PDO, 5 V at
+  `max_current` (100 mA to 3 A, rounded down to 10 mA), with the Rp that never offers more (default USB below 1.5 A,
+  1.5 A, 3 A); `plug.pd.state` (`Off`, `Unattached`, `Attached`, `Contract` with the request, `NoPd`, `Failed`);
+  `plug.pd.messages`, a counted stream of raw records (every message both ways with GoodCRC, the transmit outcome,
+  attach, detach, VBUS, hard resets, device time in µs), from a 48-record ring that counts what it drops. usbpd
+  3.0.0's source policy engine through embassy's UCPD driver (`fw/donguru/src/pd.rs`), the decisions host-tested in
+  `donguru_board::pd` (offer checks, Rp, guard limits, Request answer, ring). While it runs it holds the plug CC
+  (`InUse` for an SWD session's CC drive and `debug.ucpd_role`) and plug VBUS (`plug.vbus_mode` and `vbus_cycle`
+  refused): VBUS on only after a debounced Rd, in `Auto` mode at vSafe5V's 5.5 V and the offer plus 25 %, off at the
+  detach, during a hard reset and for tSrcRecover before the next attach (rev A cannot read plug VBUS, so vSafe0V is
+  waited for, FW-35). `sender_response` stretches usbpd's 30 ms timers (SenderResponseTimer and tPSHardReset) as a
+  logged, out-of-spec test knob for a slow sink. Built, not run on a board yet: the first check is the stock ZY12PDN
+  on the plug; Rd as `Low` in source mode is from RM0444 table 237 and embassy's UCPD test, to be confirmed there. Not
+  yet: more PDOs, renegotiation, scripted scenarios, PD 3.0 collision avoidance (FW-54), `dg pd` (CLI-44 and its
+  sibling). Labs `pd-both-sides`, `pd-edge-cases`.
 - 💡 **API-31 CAN levels**: `can[]` as `ww_can_bus::Can` (0 = SBU / FDCAN1, 1 = A2B2 / FDCAN2): bitrate, FD data
   rate, frames as a stream with timestamps, send. Lab `can-on-the-plug`.
 - 💡 **API-32 Receptacle as a source**: Rp and a PD source on UCPD1 towards the computer, so a power bank on the plug

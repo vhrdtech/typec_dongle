@@ -777,6 +777,40 @@ impl MockServer {
         Value(self.state.cc)
     }
 
+    // ---- donguru_api::PlugPd at plug.pd (API-30): not modelled ----
+
+    async fn set_plug_pd_source(
+        &mut self,
+        _cx: &mut Context<'_, impl EventOut>,
+        _value: donguru_api::PdSource,
+    ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
+        Unimplemented.into()
+    }
+
+    async fn get_plug_pd_source(
+        &mut self,
+        _cx: &mut Context<'_, impl EventOut>,
+    ) -> GetResult<donguru_api::PdSource, wire_weaver::ww_error::CommonError<'_>> {
+        Unimplemented.into()
+    }
+
+    async fn get_plug_pd_state(
+        &mut self,
+        _cx: &mut Context<'_, impl EventOut>,
+    ) -> GetResult<donguru_api::PdState, ()> {
+        Unimplemented.into()
+    }
+
+    async fn plug_pd_messages(&mut self, _cx: &mut Context<'_, impl EventOut>) -> RpcResult<()> {
+        RpcResult::Unimplemented
+    }
+
+    async fn close_plug_pd_messages(&mut self, _cx: &mut Context<'_, impl EventOut>) {}
+
+    async fn stream_plug_pd_messages(&mut self) -> &mut ww_stream::tx::Counted {
+        &mut self.unopened
+    }
+
     // ---- donguru_api::Header at header ----
 
     async fn get_header_vbus_sw(

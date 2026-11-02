@@ -231,6 +231,7 @@ impl ServerState {
             // the CC pins of a running function: an SWD session's stopgap CC drive (FW-17)
             Denied::InUse(holder) => denied(Denied::Refused(match holder {
                 donguru_board::pins::Holder::SwdCc => "CC pins in use by an SWD session",
+                donguru_board::pins::Holder::PdSource => "CC pins in use by the PD source",
                 _ => "CC pins in use",
             })),
             d => denied(d),

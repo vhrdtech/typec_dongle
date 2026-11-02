@@ -4,6 +4,7 @@
 mod adc;
 mod boot;
 mod button;
+#[cfg(feature = "swd-host")]
 mod cmsis_dap;
 mod cpu;
 mod hub;
@@ -11,6 +12,7 @@ mod init;
 mod last_reset;
 mod led;
 mod log;
+mod pd;
 mod pins;
 mod power;
 mod settings;
@@ -32,7 +34,7 @@ use embassy_stm32::{
         PllPreDiv, PllRDiv, PllSource, Sysclk,
         mux::{Adcsel, Usbsel},
     },
-    usart, usb,
+    ucpd as ucpd_drv, usart, usb,
 };
 
 assign_resources! {
@@ -129,6 +131,14 @@ assign_resources! {
         /// Must match the DMA interrupt bound in Irqs
         rx_dma: DMA1_CH3,
     }
+    pd: PdResources {
+        /// The plug CC PHY: the PD source (`src/pd.rs`, API-30). Its pins PD0 / PD2 are the SWD host's above, shared
+        /// through the claim table (`Holder::PdSource`).
+        ucpd2: UCPD2,
+        /// Must match the DMA interrupt bound in Irqs
+        rx_dma: DMA1_CH4,
+        tx_dma: DMA1_CH5,
+    }
     settings: SettingsResources {
         /// The ww_settings store in the last 4 pages of bank 2 (`SETTINGS` in memory.x, API-19).
         flash: FLASH,
@@ -139,7 +149,8 @@ bind_interrupts!(pub struct Irqs {
     DMA1_CHANNEL1 => dma::InterruptHandler<peripherals::DMA1_CH1>;
     DMA1_CHANNEL2_3 => dma::InterruptHandler<peripherals::DMA1_CH2>, dma::InterruptHandler<peripherals::DMA1_CH3>;
     USART3_4_5_6_LPUART1 => usart::InterruptHandler<peripherals::USART5>;
-    USB_UCPD1_2 => usb::InterruptHandler<peripherals::USB>;
+    DMA1_CH4_7_DMA2_CH1_5_DMAMUX1_OVR => dma::InterruptHandler<peripherals::DMA1_CH4>, dma::InterruptHandler<peripherals::DMA1_CH5>;
+    USB_UCPD1_2 => usb::InterruptHandler<peripherals::USB>, ucpd_drv::InterruptHandler<peripherals::UCPD2>;
 });
 
 #[cortex_m_rt::entry]
@@ -237,7 +248,13 @@ async fn boot(spawner: embassy_executor::Spawner, start: boot::Start) {
     let swd_host = swd::SwdHost::new(r.swd);
     // device.settings and the label (API-19): their boot values are applied by ww::start
     let settings = settings::open(r.settings.flash).await;
+    #[cfg(feature = "header-uart")]
     uart::init(spawner, r.uart);
+    // IO7 / IO8 stay in their reset state (analog)
+    #[cfg(not(feature = "header-uart"))]
+    let _ = r.uart;
+    // off until a host sets `plug.pd.source`
+    spawner.spawn(unwrap!(pd::pd_task(r.pd)));
     ww::start(spawner, usb_driver, swd_host, last_reset, settings).await;
 
     info!("init done");

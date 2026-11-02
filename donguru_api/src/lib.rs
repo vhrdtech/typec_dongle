@@ -18,6 +18,8 @@
 //!
 //! 0.5.1 adds `device.boot` (`ww_dfu::BootControl`) and `device.dfu.node` (API-58): firmware updates through the
 //! STM32 ROM bootloader (FW-12). Wire-compatible: older hosts and devices keep connecting.
+//!
+//! 0.5.2 adds `plug.pd` (API-30): the PD source on the plug CC with its message log. Wire-compatible.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use wire_weaver::prelude::*;
@@ -237,6 +239,133 @@ pub trait Plug {
     property!(rw+observe orientation: Orientation);
     /// Detected CC polarity and pull, `Unknown` until UCPD2 is used.
     property!(ro+observe cc: CcState);
+    /// USB Power Delivery on the plug CC (UCPD2): Donguru as the source towards the DUT, with every message logged
+    /// (API-30).
+    #[since = "0.5.2"]
+    ww_impl!(pd: PlugPd);
+}
+
+/// USB PD on the plug CC lines (UCPD2), Donguru as the source (API-30). The source offers one PDO, vSafe5V from the
+/// receptacle VBUS, and runs the usbpd source policy engine; `messages` carries every message both ways, raw, with
+/// the device time, for logs that are merged with the sink's side.
+#[ww_trait]
+pub trait PlugPd {
+    /// `Off`, or the source with its offer. Starting it takes the plug CC (`InUse` while an SWD session or
+    /// `debug.ucpd_role` holds the lines) and plug VBUS: while it runs, `plug.vbus_mode` is refused, and VBUS is on
+    /// only between an attach (Rd seen) and the detach, off during a hard reset. `Off` turns VBUS off and the CC
+    /// lines open. A current above what the receptacle side can give, or a sender-response time out of range, is
+    /// `InvalidArgument`.
+    #[errors(InvalidArgument, Refused, InUse)]
+    property!(rw+observe source: PdSource, CommonError<'i>);
+    /// Where the source stands: attach, contract, a sink without PD.
+    property!(ro+observe state: PdState);
+    /// Every message sent and received on the plug CC, raw, and the attach, VBUS and hard-reset events between them,
+    /// with the device time. Unit: one record.
+    #[counted]
+    stream!(messages: PdRecord<'i>);
+}
+
+/// What `plug.pd.source` is set to. A setting from a newer host is refused.
+#[derive_shrink_wrap(borrowed, owned(feature = "std"), derive(Clone, Debug, PartialEq), ww_repr = nib)]
+pub enum PdSource {
+    /// No source: CC open, plug VBUS off.
+    Off,
+    /// Rp on the CC lines and PD towards the DUT. One fixed PDO: 5 V at `max_current`, which also picks the Rp
+    /// (default USB up to 0.9 A, 1.5 A, 3.0 A above).
+    Source {
+        max_current: Ampere,
+        /// SenderResponseTimer, `None` for the spec's (usbpd's 30 ms). A longer one is a test knob, out of spec: it
+        /// gives a slow sink (one driven from a computer) time to answer Source_Capabilities, so its margin can be
+        /// measured. It stretches usbpd's tPSHardReset too (the same 30 ms). 24 ms to 1 s.
+        sender_response: Option<Second>,
+    },
+}
+
+/// Where the PD source stands, see [`PlugPd::state`].
+#[derive_shrink_wrap(borrowed, owned(feature = "std"), derive(Clone, Debug, PartialEq), ww_repr = nib)]
+pub enum PdState {
+    /// The source is off.
+    Off,
+    /// Rp on, waiting for a sink's Rd.
+    Unattached,
+    /// Rd seen on `cc`: VBUS on, capabilities going out.
+    Attached { cc: CcPolarity },
+    /// A contract: the sink's request, accepted, and PS_RDY sent.
+    Contract {
+        cc: CcPolarity,
+        contract: PdContract,
+    },
+    /// The sink never answered the capabilities (nCapsCount): a Type-C sink without PD, VBUS stays at 5 V.
+    NoPd { cc: CcPolarity },
+    /// The policy engine stopped (no answer after hard resets, a protocol error): VBUS off until the sink detaches
+    /// and attaches again.
+    Failed { cc: CcPolarity },
+}
+
+/// A PD contract: what the sink asked for and got.
+#[derive_shrink_wrap(borrowed, owned(feature = "std"), derive(Clone, Debug, PartialEq))]
+pub struct PdContract {
+    /// The PDO the sink chose, 1-based.
+    pub object_position: u8,
+    pub voltage: Volt,
+    pub operating_current: Ampere,
+    pub max_current: Ampere,
+}
+
+/// One record of `plug.pd.messages`.
+#[derive_shrink_wrap(borrowed, owned(feature = "std"), derive(Clone, Debug, PartialEq))]
+pub struct PdRecord<'i> {
+    /// Device time (`clock`) in µs, 32 bits: when a message was received or its transmission ended, when an event
+    /// happened. Wraps every 71.6 min: a host unwraps it against when it received the record.
+    pub time: Second,
+    pub event: PdEvent<'i>,
+}
+
+/// What a [`PdRecord`] records. A host reads an event of a newer firmware as `Unknown`.
+#[derive_shrink_wrap(borrowed, owned(feature = "std"), derive(Clone, Debug, PartialEq), ww_repr = nib)]
+pub enum PdEvent<'i> {
+    /// The sink's Rd on `cc`, debounced.
+    Attached { cc: CcPolarity },
+    /// Both CC lines open again.
+    Detached,
+    /// Plug VBUS switched by the source.
+    Vbus { on: bool },
+    /// A message received with a good CRC: header and data objects as on the wire (little endian), GoodCRC included.
+    Rx {
+        sop: PdSop,
+        bytes: MaxLen<RefVec<'i, u8>, 30>,
+    },
+    /// A message sent, as on the wire, and how the transmission ended.
+    Tx {
+        sop: PdSop,
+        outcome: PdTxOutcome,
+        bytes: MaxLen<RefVec<'i, u8>, 30>,
+    },
+    /// A received message dropped by the PHY (CRC error, overrun).
+    RxDiscarded,
+    /// A hard reset received from the sink.
+    HardResetRx,
+    /// A hard reset sent by the source.
+    HardResetTx,
+}
+
+/// Which start of packet a message came with.
+#[derive_shrink_wrap(borrowed, owned(feature = "std"), derive(Copy, Clone, Debug, PartialEq, Eq), ww_repr = nib, future_version = Other)]
+pub enum PdSop {
+    Sop,
+    SopPrime,
+    SopDoublePrime,
+}
+
+/// How a transmission ended.
+#[derive_shrink_wrap(borrowed, owned(feature = "std"), derive(Copy, Clone, Debug, PartialEq, Eq), ww_repr = nib, future_version = Other)]
+pub enum PdTxOutcome {
+    /// On the wire; the GoodCRC, when it comes, is an `Rx` of its own.
+    Sent,
+    /// Not sent: the line was busy (a message coming in).
+    Discarded,
+    /// Cut short by a hard reset.
+    HardReset,
 }
 
 /// Header J101: the VBUS_SW output and the photo-MOS relay.

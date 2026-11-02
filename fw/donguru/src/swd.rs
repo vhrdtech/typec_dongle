@@ -39,6 +39,8 @@
 //! back-feeds an unpowered DUT through the comparator inputs otherwise. Hardcoded to the CMSIS-DAP v2 command
 //! bytes in `src/cmsis_dap.rs` rather than a real connect/disconnect callback through `dap_rs`; see the tpm task
 //! for the follow-up (UCPD2 driving CC properly, with Rp/Rd and fault handling).
+// without the feature the pins are set up and parked, the SWD-host itself is not used (`ww::start`)
+#![cfg_attr(not(feature = "swd-host"), allow(dead_code))]
 
 use core::arch::asm;
 use core::ptr::write_volatile;
@@ -119,6 +121,10 @@ static RELEASE_DONE: Signal<CriticalSectionRawMutex, ()> = Signal::new();
 /// Waits for `src/cmsis_dap.rs`'s task to have actually done it, so a caller about to cut the DUT's power can
 /// rely on it.
 pub async fn release() {
+    if cfg!(not(feature = "swd-host")) {
+        // no SWD-host (and no task to ask): nothing drives the SBU lines
+        return;
+    }
     RELEASE_REQUEST.signal(());
     RELEASE_DONE.wait().await;
 }

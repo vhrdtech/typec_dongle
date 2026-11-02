@@ -506,6 +506,8 @@ dependencies = [
  "rtt-target",
  "static_cell",
  "usb251xb",
+ "usbpd",
+ "usbpd-traits",
  "wire_weaver",
  "wire_weaver_usb_embassy",
  "ww_adc",
@@ -533,7 +535,7 @@ dependencies = [
 
 [[package]]
 name = "donguru_api"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "defmt 1.1.1",
  "wire_weaver",
@@ -560,6 +562,7 @@ dependencies = [
  "defmt 1.1.1",
  "donguru_api",
  "usb251xb",
+ "wire_weaver",
  "ww_si",
 ]
 
@@ -1208,6 +1211,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "num-integer"
+version = "0.1.47"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ce2d95d4b3734dc35aa2f45e1aa22cd416814592a4f9d9205e11affd5b8e10b"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
+name = "num-rational"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f83d14da390562dca69fc84082e73e548e1ad308d24accdedd2720017cb37824"
+dependencies = [
+ "num-integer",
+ "num-traits",
+]
+
+[[package]]
 name = "num-traits"
 version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1327,6 +1349,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05c8b63e8d9609db387f0324918f81d68fe27748f084ef092fb35954d0539a85"
 dependencies = [
  "critical-section",
+]
+
+[[package]]
+name = "proc-bitfield"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb5041a3f8b230c2078ab917516d352f40625245d4c953472eacbe075051c4b7"
+dependencies = [
+ "proc-bitfield-macros",
+ "static_assertions",
+]
+
+[[package]]
+name = "proc-bitfield-macros"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b34b74711e53c2ff9c879e7a22c6c8dbac847ef2b11c2d69296a890e12a243a"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
 ]
 
 [[package]]
@@ -1914,6 +1957,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "uom-ng"
+version = "0.39.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "89827adcb6aecdf6f0aac496a3fbe938e59d1bf3477156c5652524e93bbcac3e"
+dependencies = [
+ "num-rational",
+ "num-traits",
+ "typenum",
+]
+
+[[package]]
 name = "usb-device"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1969,6 +2023,27 @@ dependencies = [
  "syn 3.0.6",
  "usbd-hid-descriptors",
 ]
+
+[[package]]
+name = "usbpd"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab76b9a432fcae45dae197be21f9b22b16a7eae224c05e667415ff7d92e47620"
+dependencies = [
+ "byteorder",
+ "embassy-futures",
+ "heapless 0.9.3",
+ "proc-bitfield",
+ "thiserror",
+ "uom-ng",
+ "usbpd-traits",
+]
+
+[[package]]
+name = "usbpd-traits"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eb833a30f3065623f4f7150f61dceb698b8a5f3b93ccfe7b7c69ed479f63bcd6"
 
 [[package]]
 name = "valuable"

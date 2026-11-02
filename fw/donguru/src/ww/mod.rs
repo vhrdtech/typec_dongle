@@ -27,7 +27,9 @@ mod uart;
 
 pub use meter::{MeterMarks, MeterSamples};
 
-use crate::{cmsis_dap, hub as hub_ctl, power, settings, swd as swd_host};
+#[cfg(feature = "swd-host")]
+use crate::cmsis_dap;
+use crate::{hub as hub_ctl, power, settings, swd as swd_host};
 use cnt::cnt;
 use defmt::{info, unwrap};
 use embassy_executor::Spawner;
@@ -55,24 +57,31 @@ const MAX_MESSAGE_LEN: usize = 1024;
 /// table in the design). WireWeaver's bulk endpoints are double-buffered, each takes a whole register.
 const EP_WW_OUT: usize = 1;
 const EP_WW_IN: usize = 2;
+#[cfg(feature = "swd-host")]
 const EP_CMSIS_DAP: usize = 3;
 
 /// Biggest `PropertyUpdate` event the link carries; a batch of samples is sealed before it outgrows one.
 const OBSERVE_BUF_LEN: usize = 512;
 /// Rows of `meter.reading` samples the ADC task can commit between two `poll_properties` (API-39): a DMA half
 /// buffer brings 24 at once, so 64 rides out a few late turns of the server task.
+#[cfg(feature = "meter-samples")]
 const METER_SAMPLES_RING: usize = 64;
 
 /// Observe cells of `meter.reading` (API-39, `observe_cells` in `ww_codegen!`): the ADC task writes one row per
 /// sequence through [MeterSamples], `poll_properties` encodes them for hosts observing in `Samples` mode.
+#[cfg(feature = "meter-samples")]
 static METER_SAMPLES: server_impl::RootMeterCells<METER_SAMPLES_RING> =
     server_impl::RootMeterCells::new();
 /// Changes to observed properties made outside the server state (`src/power.rs`, the ADC task's meter readings),
 /// and the wake of the server task (WireWeaver SRV-25): `OBSERVE.mark_changed_<name>()` from any task or interrupt.
 pub(crate) static OBSERVE: server_impl::ObserveSignal = server_impl::ObserveSignal::new();
-type ObserveState = server_impl::ObserveState<&'static mut server_impl::ObserveBatches<'static>>;
+#[cfg(feature = "meter-samples")]
+type Batches = server_impl::ObserveBatches<'static>;
+#[cfg(not(feature = "meter-samples"))]
+type Batches = server_impl::ObserveBatches;
+type ObserveState = server_impl::ObserveState<&'static mut Batches>;
 // built in place: by value they would take several times their size of stack
-static OBSERVE_BATCHES: StaticCell<server_impl::ObserveBatches<'static>> = StaticCell::new();
+static OBSERVE_BATCHES: StaticCell<Batches> = StaticCell::new();
 static OBSERVE_STATE: StaticCell<ObserveState> = StaticCell::new();
 /// One column of a batch while it is encoded: the biggest is `meter.reading`'s.
 const OBSERVE_SCRATCH: usize =
@@ -101,6 +110,8 @@ pub struct ServerState {
     /// `uart[].rx`, the counted receive streams: `uart[1]`'s compresses for hosts that decode LZ4 (FW-42),
     /// `uart[0]` has none yet.
     uart_rx: [uart::RxState; uart::COUNT],
+    /// `plug.pd.messages`: the PD source's log (API-30, `src/pd.rs`).
+    pd_messages: Counted,
     /// `device.uid.IDS`: the STM32 96-bit UID.
     uid: [UniqueId<'static>; 1],
     /// `device.last_reset`: reset cause and crash record read at boot (`src/last_reset.rs`).
@@ -137,6 +148,7 @@ impl ServerState {
             server_impl::ObserveBatches::init(
                 OBSERVE_BATCHES.uninit(),
                 ww_stream::batch::DEFAULT_POLICY,
+                #[cfg(feature = "meter-samples")]
                 unwrap!(METER_SAMPLES.reader()),
             ),
         );
@@ -156,6 +168,7 @@ impl ServerState {
                 ),
             ],
             uart_rx: uart::RxState::new(),
+            pd_messages: Counted::new(),
             uid: [UniqueId {
                 kind: UidKind::ChipUnique,
                 source: UidSource::InternalIc,
@@ -190,25 +203,39 @@ mod server_impl {
     // To see the generated code, add: debug_to_file = "./target/ww_server.rs"
     // `const_model`: the board record and the chip ids are read at boot, the build id and the counter buffers are
     // known at link time, the defmt encoding at run time (`device.rs`). The optional build record (`bedrock_build_info`) is left out.
-    wire_weaver::ww_codegen!(
-        donguru_api :: DonguruApi for super::ServerState,
-        server = true, no_alloc = true, use_async = true,
-        // handlers that await (flash writes, ADC readings, the VBUS cycle, the log flood, clock.steer's time_map
-        // push) are async, all others plain `fn`s (SRV-21): an `async fn` that never awaits still costs flash as a
-        // state of the dispatcher
-        handler_model = "debug.log_flood|debug.hub_read|debug.hub_write|device.label.*|device.settings.*|sbu.release|adc.read|plug.vbus_cycle|meter.reading|meter.temperature|clock.steer=async, _=sync",
-        method_model = "plug_vbus_cycle=deferred, _=immediate",
-        property_model = "_=get_set",
-        // rows of samples per batch: ~20 ms of meter.reading sequences
-        observe_batch = 32,
-        observe_outbox = 1024,
-        observe_cells = "root_meter",
-        const_model = "BOARD|IDS|INFO|BUILD_ID|DEFMT=fn",
-        // no I2C slave mode on Donguru (ww_i2c STD-35): the group answers Unimplemented, clients see it omitted;
-        // the board's reworks list (ww_board_info STD-24) isn't served yet
-        omit = ["device.board.REWORKS", "device.firmware.BUILD_RECORD", "i2c.slave"],
-        introspect = "with_docs",
-    );
+    // one invocation: the introspection with or without the API's doc comments (feature `api-docs`, 13.4 KiB),
+    macro_rules! server {
+        ($introspect:tt, $($cells:tt)*) => {
+            wire_weaver::ww_codegen!(
+                donguru_api :: DonguruApi for super::ServerState,
+                server = true, no_alloc = true, use_async = true,
+                // handlers that await (flash writes, ADC readings, the VBUS cycle, the log flood, clock.steer's time_map
+                // push) are async, all others plain `fn`s (SRV-21): an `async fn` that never awaits still costs flash as a
+                // state of the dispatcher
+                handler_model = "debug.log_flood|debug.hub_read|debug.hub_write|device.label.*|device.settings.*|sbu.release|adc.read|plug.vbus_cycle|meter.reading|meter.temperature|clock.steer=async, _=sync",
+                method_model = "plug_vbus_cycle=deferred, _=immediate",
+                property_model = "_=get_set",
+                // rows of samples per batch: ~20 ms of meter.reading sequences
+                observe_batch = 32,
+                observe_outbox = 1024,
+                $($cells)*
+                const_model = "BOARD|IDS|INFO|BUILD_ID|DEFMT=fn",
+                // no I2C slave mode on Donguru (ww_i2c STD-35): the group answers Unimplemented, clients see it omitted;
+                // the board's reworks list (ww_board_info STD-24) isn't served yet
+                omit = ["device.board.REWORKS", "device.firmware.BUILD_RECORD", "i2c.slave"],
+                introspect = $introspect,
+            );
+        };
+    }
+    // and with or without the observe cells of `meter.reading`'s samples (feature `meter-samples`, API-39)
+    #[cfg(all(feature = "api-docs", feature = "meter-samples"))]
+    server!("with_docs", observe_cells = "root_meter",);
+    #[cfg(all(feature = "api-docs", not(feature = "meter-samples")))]
+    server!("with_docs",);
+    #[cfg(all(not(feature = "api-docs"), feature = "meter-samples"))]
+    server!("no_docs", observe_cells = "root_meter",);
+    #[cfg(all(not(feature = "api-docs"), not(feature = "meter-samples")))]
+    server!("no_docs",);
 }
 
 impl WireWeaverAsyncApiBackend for ServerState {
@@ -288,6 +315,7 @@ struct UsbBuffers {
     msos_descriptor: [u8; 330],
     control: [u8; 256],
     ww_state: WwState,
+    #[cfg(feature = "swd-host")]
     dap_state: cmsis_dap::State,
     hub_watch: HubWatchHandler,
     server: ServerBuffers<MAX_USB_PACKET_LEN, MAX_MESSAGE_LEN>,
@@ -301,6 +329,7 @@ impl Default for UsbBuffers {
             msos_descriptor: [0; 330],
             control: [0; 256],
             ww_state: WwState::new(),
+            #[cfg(feature = "swd-host")]
             dap_state: cmsis_dap::State::new(),
             hub_watch: HubWatchHandler::new(),
             server: ServerBuffers::default(),
@@ -383,6 +412,7 @@ pub async fn start(
             )
         },
     );
+    #[cfg(feature = "swd-host")]
     let dap_class = cmsis_dap::CmsisDapClass::new(
         &mut builder,
         &mut buffers.dap_state,
@@ -395,7 +425,12 @@ pub async fn start(
 
     spawner.spawn(unwrap!(usb_task(usb)));
     spawner.spawn(unwrap!(server_task(server, state)));
+    #[cfg(feature = "swd-host")]
     spawner.spawn(unwrap!(cmsis_dap::dap_task(dap_class, swd_host)));
+    // no CMSIS-DAP task to own it: the pins keep the safe state `SwdHost::new` set (V_SBU 3.3 V, shifter and
+    // pull-ups off, SBU and CC Hi-Z); dropping it would hand them back to their reset state
+    #[cfg(not(feature = "swd-host"))]
+    core::mem::forget(swd_host);
 }
 
 #[embassy_executor::task]
@@ -440,6 +475,7 @@ async fn server_task(mut server: UsbServer<'static, UsbDriver>, state: &'static 
                         for rx in &mut state.uart_rx {
                             ww_stream::codec::CountedState::detach(rx);
                         }
+                        state.pd_messages.detach();
                     }
                 }
             }
@@ -468,6 +504,8 @@ async fn server_task(mut server: UsbServer<'static, UsbDriver>, state: &'static 
             Either5::Fifth(()) => state.uart_pump(&mut server).await,
         }
         crate::log::pump(&mut state.log_frames).await;
+        // the PD source's records (woken through OBSERVE): sent, or counted as lost while no host is there
+        state.pd_pump(&mut server).await;
         if server.is_up() {
             let now_us = Instant::now().as_micros();
             if state

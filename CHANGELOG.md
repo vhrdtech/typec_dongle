@@ -6,6 +6,15 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- Firmware: a USB PD source on the plug CC, `plug.pd` (API-30, `donguru_api` 0.5.2, a patch bump: wire-compatible, old CLIs keep connecting and don't see the level). `plug.pd.source` offers one 5 V PDO at a chosen current (100 mA to 3 A) with the matching Rp, `plug.pd.state` says attach / contract / no PD / failed, `plug.pd.messages` streams every message both ways raw with the device time in µs, plus attach, detach, VBUS and hard-reset events. usbpd 3.0.0's source policy engine on UCPD2; plug VBUS on only after a debounced Rd, guarded at 5.5 V and the offer plus 25 %, off at the detach and in a hard reset. `sender_response` is an out-of-spec test knob for slow sinks. While the source runs, `plug.vbus_mode`, `vbus_cycle` and `debug.ucpd_role` on UCPD2 are refused. Built, not run on a board yet.
+
+### Changed
+
+- Firmware: five features are cargo features, off in the default build, so the PD source fits in flash (FW-53): `debug-api` (12.4 KiB), `swd-host` (SWD-host and the CMSIS-DAP interface, 14.2 KiB), `header-uart` (`uart[1]`, 10.8 KiB), `api-docs` (doc comments in `ww introspect`, 13.4 KiB) and `meter-samples` (`meter.reading` in `Samples` mode, 13.0 KiB). A default image has no CMSIS-DAP interface and no header UART, `debug` answers Unimplemented. Release FLASH 500.20 -> 501.79 KiB of 504 KiB with the PD source in (569.13 KiB with it and all five), RAM 91.02 -> 63.66 KiB of 144 KiB. Build with `--features swd-host` (or any other) for an image that needs one.
+- Build: the root workspace and the firmware patch `shrink_wrap` to the WireWeaver checkout and pin exact_units to WireWeaver's own rev, so both build against today's checkout again.
+
 ## [0.20.33] - 2026-10-25
 
 ### Added

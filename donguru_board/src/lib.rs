@@ -5,6 +5,7 @@
 //! - [`boot`]: the early boot: ROM bootloader request, boot-loop count, start after a jump, the hub hold on RTC_OUT1 (rev A), the
 //!   USB serial number the ROM reports.
 //! - [`hub`]: the USB hub U301, board variant from its strap and the per-variant hub configuration.
+//! - [`pd`]: the PD source on the plug CC: the offer, the answer to a Request, the message log ring.
 //! - [`pins`]: the MCU pins of the `debug` level: refused pins, the pin claim table (MCU pin -> holding function),
 //!   the electrical rules of a pin change.
 //! - [`power`]: the VBUS switches, their modes and the guard.
@@ -13,6 +14,7 @@
 
 pub mod boot;
 pub mod hub;
+pub mod pd;
 pub mod pins;
 pub mod power;
 pub mod ucpd;

@@ -822,6 +822,7 @@ dependencies = [
  "defmt",
  "donguru_api",
  "usb251xb",
+ "wire_weaver",
  "ww_si",
 ]
 

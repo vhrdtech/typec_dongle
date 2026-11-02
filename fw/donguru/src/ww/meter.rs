@@ -265,12 +265,21 @@ fn totals_of(t: &adc::Totals) -> MeterTotals {
 
 /// Feeds `meter.reading` samples (API-39) from the ADC task: one row per ADC sequence into the observe cells
 /// `poll_properties` reads (`METER_SAMPLES` in `ww/mod.rs`).
+/// Without the feature `meter-samples` there are no cells: never taken, so no host is ever sampling.
 pub struct MeterSamples(
+    #[cfg(feature = "meter-samples")]
     super::server_impl::RootMeterWriter<'static, { super::METER_SAMPLES_RING }>,
 );
 
 impl MeterSamples {
     /// The one writer of the cells, `None` once taken.
+    #[cfg(not(feature = "meter-samples"))]
+    pub fn take() -> Option<Self> {
+        None
+    }
+
+    /// The one writer of the cells, `None` once taken.
+    #[cfg(feature = "meter-samples")]
     pub fn take() -> Option<Self> {
         super::METER_SAMPLES
             .writer()
@@ -279,12 +288,19 @@ impl MeterSamples {
 
     /// Whether a host observes `meter.reading` in `Samples` mode: without one, rows aren't worth computing.
     pub fn is_sampling(&self) -> bool {
-        self.0.is_sampling()
+        #[cfg(feature = "meter-samples")]
+        return self.0.is_sampling();
+        #[cfg(not(feature = "meter-samples"))]
+        false
     }
 
     /// One sequence's VBUS_IN and current, taken at `t_us` (the device's µs clock, wrapping).
+    #[cfg_attr(not(feature = "meter-samples"), allow(unused_variables))]
     pub fn push(&mut self, t_us: u32, mv: i32, ma: i32) {
-        self.0.reading(reading_from(mv, ma));
-        self.0.commit(Second::micro(t_us));
+        #[cfg(feature = "meter-samples")]
+        {
+            self.0.reading(reading_from(mv, ma));
+            self.0.commit(Second::micro(t_us));
+        }
     }
 }
