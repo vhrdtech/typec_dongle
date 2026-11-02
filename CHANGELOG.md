@@ -6,6 +6,12 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Changed
+
+- `device.board.set_reworks` (`ww_board_info` 0.3.0, STD-98) added to `omit` next to `device.board.REWORKS` in the
+  firmware (`fw/donguru/src/ww/mod.rs`) and the host mock server (`donguru-core/src/mock/server.rs`): reworks aren't
+  served yet (STD-24); keeps building once STD-98 lands on wire_weaver main.
+
 ## [0.20.34] - 2026-11-02
 
 ### Added

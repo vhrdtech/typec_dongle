@@ -1703,7 +1703,7 @@ pub mod api_impl {
         property_model = "_=get_set",
         const_model = "BOARD|IDS|INFO=fn",
         // as the firmware: no I2C slave mode (ww_i2c STD-35), its group answers Unimplemented; no board reworks list
-        omit = ["device.board.REWORKS", "i2c.slave"],
+        omit = ["device.board.REWORKS", "device.board.set_reworks", "i2c.slave"],
         introspect = "with_docs",
     );
 }
