@@ -727,6 +727,7 @@ dependencies = [
  "humantime",
  "indicatif",
  "insta",
+ "pd_log",
  "serde",
  "serde_json",
  "tempfile",
@@ -751,6 +752,7 @@ dependencies = [
  "donguru_api",
  "donguru_board",
  "object 0.36.7",
+ "pd_log",
  "probe-rs",
  "semver",
  "serde",
@@ -1039,6 +1041,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "25ba4bd83f9415b58b4ed8dc5714c76e626a105be4646c02630ad730ad3b5aa4"
 dependencies = [
  "hash32",
+ "serde_core",
  "stable_deref_trait",
 ]
 
@@ -1449,6 +1452,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "num-rational"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f83d14da390562dca69fc84082e73e548e1ad308d24accdedd2720017cb37824"
+dependencies = [
+ "num-integer",
+ "num-traits",
+]
+
+[[package]]
 name = "num-traits"
 version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1561,6 +1574,20 @@ checksum = "da983bc5e582ab17179c190b4b66c7d76c5943a69c6d34df2a2b6bf8a2977b05"
 dependencies = [
  "anyhow",
  "libc",
+]
+
+[[package]]
+name = "pd_log"
+version = "0.2.0"
+dependencies = [
+ "anstream",
+ "anstyle",
+ "anyhow",
+ "clap",
+ "clap_complete",
+ "serde",
+ "serde_json",
+ "usbpd",
 ]
 
 [[package]]
@@ -1723,6 +1750,27 @@ dependencies = [
  "serde",
  "serde_with",
  "yaml_serde",
+]
+
+[[package]]
+name = "proc-bitfield"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb5041a3f8b230c2078ab917516d352f40625245d4c953472eacbe075051c4b7"
+dependencies = [
+ "proc-bitfield-macros",
+ "static_assertions",
+]
+
+[[package]]
+name = "proc-bitfield-macros"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b34b74711e53c2ff9c879e7a22c6c8dbac847ef2b11c2d69296a890e12a243a"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
 ]
 
 [[package]]
@@ -2494,6 +2542,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6d49784317cd0d1ee7ec5c716dd598ec5b4483ea832a2dced265471cc0f690ae"
 
 [[package]]
+name = "uom-ng"
+version = "0.39.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "89827adcb6aecdf6f0aac496a3fbe938e59d1bf3477156c5652524e93bbcac3e"
+dependencies = [
+ "num-rational",
+ "num-traits",
+ "typenum",
+]
+
+[[package]]
 name = "usb251xb"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2503,6 +2562,28 @@ dependencies = [
  "modular-bitfield",
  "thiserror",
 ]
+
+[[package]]
+name = "usbpd"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab76b9a432fcae45dae197be21f9b22b16a7eae224c05e667415ff7d92e47620"
+dependencies = [
+ "byteorder",
+ "embassy-futures",
+ "heapless",
+ "proc-bitfield",
+ "serde",
+ "thiserror",
+ "uom-ng",
+ "usbpd-traits",
+]
+
+[[package]]
+name = "usbpd-traits"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eb833a30f3065623f4f7150f61dceb698b8a5f3b93ccfe7b7c69ed479f63bcd6"
 
 [[package]]
 name = "utf8parse"

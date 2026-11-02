@@ -1,7 +1,10 @@
-//! `donguru pd` - the USB PD source on the plug (`plug.pd`, API-30): start and stop it, show where it stands, follow
-//! its message log (`plug.pd.messages`).
+//! `donguru pd` - the USB PD source on the plug (`plug.pd`, API-30): start and stop it, show where it stands, log
+//! its messages (`plug.pd.messages`) as `pd_log` JSON lines (LOG-1), decoded on screen the same way `pd-log print`
+//! does.
 
-use std::io::{self, Write};
+use std::fs::File;
+use std::io::{self, BufWriter, Write};
+use std::path::PathBuf;
 
 use crate::cli::Format;
 use crate::context::Context;
@@ -9,9 +12,7 @@ use crate::exit::ExitCode;
 use crate::output::{Output, Render};
 use crate::theme::Theme;
 use clap::Subcommand;
-use donguru_core::api::{
-    CcPolarity, PdEventOwned, PdRecordOwned, PdSop, PdSource, PdState, PdTxOutcome,
-};
+use donguru_core::api::{CcPolarity, PdEventOwned, PdRecordOwned, PdSource, PdState};
 use donguru_core::client::observe::StreamEvent;
 use std::time::Duration;
 use ww_si::{Ampere, Second};
@@ -23,8 +24,15 @@ pub enum Pd {
     /// Start or stop the PD source on the plug
     #[command(subcommand)]
     Source(SourceCmd),
-    /// Follow the source's messages and events until interrupted (Ctrl-C), device time in seconds
+    /// Log the source's messages as `pd_log` JSON lines (LOG-1), decoded on screen the same way `pd-log print`
+    /// does; `pd-log merge` lines this up with a rePort sink's log by host time
     Log {
+        /// Keep logging until interrupted (Ctrl-C), instead of stopping after `--for`
+        #[arg(long)]
+        follow: bool,
+        /// Write `pd_log` JSON lines to this file as they come in, in addition to the screen
+        #[arg(short = 'o', long, value_name = "FILE")]
+        out: Option<PathBuf>,
         /// Stop the running source and start it again, to see a negotiation from the attach on
         #[arg(long)]
         restart: bool,
@@ -168,104 +176,146 @@ impl Render for Status {
     }
 }
 
-struct Line(PdRecordOwned);
-
-fn sop(s: PdSop) -> &'static str {
-    match s {
-        PdSop::Sop => "SOP",
-        PdSop::SopPrime => "SOP'",
-        PdSop::SopDoublePrime => "SOP''",
-        _ => "SOP?",
-    }
-}
-
 fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 
-impl Line {
-    /// What happened, with its details and the raw bytes of a message.
-    fn parts(&self) -> (&'static str, String, Option<&[u8]>) {
-        let named = |bytes: &[u8]| donguru_core::pd::describe(bytes).unwrap_or_default();
-        match &self.0.event {
-            PdEventOwned::Attached { cc: c } => ("attached", cc(*c).into(), None),
-            PdEventOwned::Detached => ("detached", String::new(), None),
-            PdEventOwned::Vbus { on } => ("vbus", if *on { "on" } else { "off" }.to_string(), None),
-            PdEventOwned::Rx { sop: s, bytes } => (
-                "rx",
-                format!("{} {}", sop(*s), named(bytes.as_slice())),
-                Some(bytes.as_slice()),
-            ),
-            PdEventOwned::Tx {
-                sop: s,
-                outcome,
-                bytes,
-            } => {
-                let end = match outcome {
-                    PdTxOutcome::Sent => "",
-                    PdTxOutcome::Discarded => " (discarded)",
-                    PdTxOutcome::HardReset => " (cut by a hard reset)",
-                    _ => " (unknown outcome)",
-                };
-                (
-                    "tx",
-                    format!("{} {}{end}", sop(*s), named(bytes.as_slice())),
-                    Some(bytes.as_slice()),
-                )
-            }
-            PdEventOwned::RxDiscarded => ("rx-discarded", String::new(), None),
-            PdEventOwned::HardResetRx => ("hard-reset-rx", String::new(), None),
-            PdEventOwned::HardResetTx => ("hard-reset-tx", String::new(), None),
-            _ => ("unknown", String::new(), None),
-        }
-    }
+/// One `plug.pd.messages` record, as logged: a [`pd_log::Line`] for an actual PD message (decoded the same way
+/// `pd-log print` does), or the plain event text for attach, detach and VBUS switching, which `pd_log` doesn't
+/// model.
+enum LogItem {
+    Message(pd_log::Line),
+    Event {
+        time_s: f64,
+        label: &'static str,
+        detail: String,
+    },
 }
 
-impl Render for Line {
+/// `record` as a [`LogItem`]: a [`pd_log::Line`] when it's a PD message (also returned, for `-o FILE`), decoded
+/// with `decoder`; `None` of that for an attach/detach/VBUS event.
+fn log_item(
+    record: PdRecordOwned,
+    host_time_us: u64,
+    decoder: &mut pd_log::Decoder,
+) -> (LogItem, Option<pd_log::Line>) {
+    if let Some(log_record) = donguru_core::pd::log_record(host_time_us, &record) {
+        let line = pd_log::Line::decode(log_record, decoder);
+        return (LogItem::Message(line.clone()), Some(line));
+    }
+    let time_s = record.time.to_f64();
+    let (label, detail) = match record.event {
+        PdEventOwned::Attached { cc: c } => ("attached", cc(c).to_string()),
+        PdEventOwned::Detached => ("detached", String::new()),
+        PdEventOwned::Vbus { on } => ("vbus", if on { "on" } else { "off" }.to_string()),
+        _ => ("unknown", String::new()),
+    };
+    (
+        LogItem::Event {
+            time_s,
+            label,
+            detail,
+        },
+        None,
+    )
+}
+
+impl Render for LogItem {
     fn text(&self, out: &mut dyn Write, th: &Theme) -> io::Result<()> {
-        let (event, detail, bytes) = self.parts();
-        write!(
-            out,
-            "{:12.6}  {:<13} {}",
-            self.0.time.to_f64(),
-            th.value(event),
-            detail
-        )?;
-        match bytes {
-            Some(b) => writeln!(out, "  [{}]", hex(b)),
-            None => writeln!(out),
+        match self {
+            LogItem::Event {
+                time_s,
+                label,
+                detail,
+            } => writeln!(out, "{:12.6}  {:<13} {}", time_s, th.value(label), detail),
+            LogItem::Message(line) => {
+                let r = &line.record;
+                let dir = match r.direction {
+                    pd_log::Direction::Rx => "rx",
+                    pd_log::Direction::Tx => "tx",
+                };
+                let outcome = format!("{:?}", r.outcome);
+                let outcome = match r.outcome {
+                    pd_log::Outcome::Ok => th.value(outcome),
+                    pd_log::Outcome::Discarded => th.warn(outcome),
+                    pd_log::Outcome::RetryFail | pd_log::Outcome::HardReset => th.bad(outcome),
+                };
+                let what = match &line.message {
+                    Some(m) => format!("{:?}", m.header.message_type()),
+                    None => "undecoded".to_string(),
+                };
+                let device_s = r.device_time_us.map(|us| us as f64 / 1e6).unwrap_or(0.0);
+                write!(
+                    out,
+                    "{device_s:12.6}  {:<9} {dir:<2} {outcome:<12} {what}",
+                    th.value(r.source)
+                )?;
+                match r.raw.as_slice() {
+                    [] => writeln!(out),
+                    bytes => writeln!(out, "  [{}]", hex(bytes)),
+                }
+            }
         }
     }
 
     fn json(&self) -> serde_json::Value {
-        let (event, detail, bytes) = self.parts();
-        serde_json::json!({
-            "t_s": self.0.time.to_f64(),
-            "event": event,
-            "detail": detail,
-            "bytes": bytes.map(hex),
-        })
+        match self {
+            LogItem::Event {
+                time_s,
+                label,
+                detail,
+            } => serde_json::json!({ "t_s": time_s, "event": label, "detail": detail }),
+            LogItem::Message(line) => serde_json::to_value(line).unwrap_or_default(),
+        }
     }
 }
 
-fn log(ctx: &Context, restart: bool, for_s: Option<f64>) -> anyhow::Result<ExitCode> {
+fn log(
+    ctx: &Context,
+    follow: bool,
+    out: Option<PathBuf>,
+    restart: bool,
+    for_s: Option<f64>,
+) -> anyhow::Result<ExitCode> {
     if matches!(ctx.format, Format::Json) {
         anyhow::bail!("`pd log` streams data: use `--format text` or `--format jsonl`");
     }
-    let mut out = Output::stdout(ctx);
+    if !follow && for_s.is_none() {
+        anyhow::bail!("`pd log` needs `--follow` (until Ctrl-C) or `--for SECONDS`");
+    }
+    let mut file = out
+        .as_deref()
+        .map(|path| -> anyhow::Result<_> {
+            Ok(BufWriter::new(File::create(path).map_err(|e| {
+                anyhow::anyhow!("creating {}: {e}", path.display())
+            })?))
+        })
+        .transpose()?;
+    let mut text_out = Output::stdout(ctx);
     let selector = super::selector(ctx)?;
     super::runtime()?.block_on(async {
         let dongle = donguru_core::Dongle::open(selector.as_ref()).await?;
         let plug = dongle.plug();
         let mut messages = plug.pd_messages().await?;
+        let source = plug.pd_source().await?;
         if restart {
-            let source = plug.pd_source().await?;
             if matches!(source, PdSource::Off) {
                 anyhow::bail!("the PD source is off: `donguru pd source on` first");
             }
             plug.set_pd_source(PdSource::Off).await?;
-            plug.set_pd_source(source).await?;
+            plug.set_pd_source(source.clone()).await?;
         }
+        if let PdSource::Source {
+            sender_response: Some(t),
+            ..
+        } = &source
+        {
+            eprintln!(
+                "donguru: SenderResponseTimer overridden to {:.0} ms (out of spec)",
+                t.to_f64() * 1000.0
+            );
+        }
+        let mut decoder = pd_log::Decoder::new();
         let end = for_s.map(|s| tokio::time::Instant::now() + Duration::from_secs_f64(s));
         loop {
             let event = async {
@@ -279,7 +329,13 @@ fn log(ctx: &Context, restart: bool, for_s: Option<f64>) -> anyhow::Result<ExitC
             tokio::select! {
                 event = event => match event {
                     None => break,
-                    Some(Ok(StreamEvent::Item { value, .. })) => out.record(&Line(value))?,
+                    Some(Ok(StreamEvent::Item { value, .. })) => {
+                        let (item, to_write) = log_item(value, donguru_core::pd::host_time_us(), &mut decoder);
+                        if let (Some(file), Some(line)) = (&mut file, &to_write) {
+                            pd_log::write_line(file, line)?;
+                        }
+                        text_out.record(&item)?;
+                    }
                     Some(Ok(StreamEvent::Gap { units, .. })) => {
                         eprintln!("donguru: {units} record(s) lost");
                     }
@@ -290,14 +346,23 @@ fn log(ctx: &Context, restart: bool, for_s: Option<f64>) -> anyhow::Result<ExitC
                 _ = tokio::signal::ctrl_c() => break,
             }
         }
+        if let Some(mut file) = file {
+            file.flush()?;
+        }
         dongle.close().await?;
         Ok(ExitCode::Success)
     })
 }
 
 pub fn run(ctx: &Context, command: Pd) -> anyhow::Result<ExitCode> {
-    if let Pd::Log { restart, for_s } = command {
-        return log(ctx, restart, for_s);
+    if let Pd::Log {
+        follow,
+        out,
+        restart,
+        for_s,
+    } = command
+    {
+        return log(ctx, follow, out, restart, for_s);
     }
     let status = super::with_dongle(ctx, async |dongle| {
         let plug = dongle.plug();
@@ -345,31 +410,52 @@ mod tests {
         dongle.close().await.unwrap();
     }
 
-    fn line(event: PdEventOwned) -> Line {
-        Line(PdRecordOwned {
+    fn record(event: PdEventOwned) -> PdRecordOwned {
+        PdRecordOwned {
             time: Second::micro(1_500_000),
             event,
-        })
+        }
     }
 
     #[test]
-    fn log_lines_name_the_messages() {
-        let tx = line(PdEventOwned::Tx {
-            sop: PdSop::Sop,
-            outcome: PdTxOutcome::Sent,
-            bytes: wire_weaver::prelude::MaxLen::new(vec![0x63, 0x03]).unwrap(),
-        });
-        assert_eq!(tx.json()["detail"], "SOP Accept id 1");
-        assert_eq!(tx.json()["bytes"], "6303");
-        assert_eq!(tx.json()["t_s"], 1.5);
-        let mut text = Vec::new();
-        tx.text(&mut text, &Theme::plain()).unwrap();
-        assert_eq!(
-            String::from_utf8(text).unwrap(),
-            "    1.500000  tx            SOP Accept id 1  [6303]\n"
+    fn messages_decode_like_pd_log_print() {
+        let mut decoder = pd_log::Decoder::new();
+        let (item, to_write) = log_item(
+            record(PdEventOwned::Tx {
+                sop: donguru_core::api::PdSop::Sop,
+                outcome: donguru_core::api::PdTxOutcome::Sent,
+                bytes: wire_weaver::prelude::MaxLen::new(vec![0x63, 0x03]).unwrap(),
+            }),
+            42,
+            &mut decoder,
         );
-        let vbus = line(PdEventOwned::Vbus { on: true });
-        assert_eq!(vbus.json()["event"], "vbus");
-        assert_eq!(vbus.json()["detail"], "on");
+        let json = item.json();
+        assert_eq!(json["direction"], "tx");
+        assert_eq!(json["sop"], "sop");
+        assert_eq!(json["outcome"], "ok");
+        assert_eq!(json["raw"], "6303");
+        assert_eq!(json["device_time_us"], 1_500_000);
+        assert_eq!(json["host_time_us"], 42);
+        // decoded with usbpd's real parser, not a guess: `None` only when the bytes don't parse
+        assert!(!json["message"].is_null());
+        let line = to_write.expect("a PD message writes a pd_log line");
+        assert_eq!(line.record.host_time_us, 42);
+        let mut text = Vec::new();
+        item.text(&mut text, &Theme::plain()).unwrap();
+        let text = String::from_utf8(text).unwrap();
+        assert!(text.contains("tx"), "{text:?}");
+        assert!(text.contains("Accept"), "{text:?}");
+        assert!(text.contains("6303"), "{text:?}");
+    }
+
+    #[test]
+    fn non_protocol_events_are_not_written_to_the_log() {
+        let mut decoder = pd_log::Decoder::new();
+        let (item, to_write) = log_item(record(PdEventOwned::Vbus { on: true }), 42, &mut decoder);
+        assert!(to_write.is_none());
+        let json = item.json();
+        assert_eq!(json["event"], "vbus");
+        assert_eq!(json["detail"], "on");
+        assert_eq!(json["t_s"], 1.5);
     }
 }

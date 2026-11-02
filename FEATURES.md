@@ -743,8 +743,8 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   and the offer plus 25 %, off at the detach, during a hard reset and for tSrcRecover before the next attach (rev A
   cannot read plug VBUS, so vSafe0V is waited for, FW-35). `sender_response` stretches usbpd's 30 ms timers
   (SenderResponseTimer and tPSHardReset) as a logged, out-of-spec test knob for a slow sink. Host: `donguru pd source
-  on|off`, `pd status` and `pd log [--restart] [--for S]` (`donguru-cli/src/commands/pd.rs`, the `Plug` facade in
-  `donguru-core`, message names in `donguru_core::pd::describe`); the mock models the setting and the state, no sink.
+  on|off`, `pd status` and `pd log [--follow] [-o FILE] [--restart] [--for S]` as `pd_log` JSON lines, decode and the
+  sender-response override noted on start (CLI-55); the mock models the setting and the state, no sink.
   Tested on B153A (2 Nov 2026, gpd-omarchy, firmware a388fa4) with the ZY12PDN's FUSB302B as the sink, no load on its
   output: Rd reads as `Low` on CC1; a hand-driven sink over rePort 027's I2C (F030 in reset) got a contract at the
   spec's timers, Request 7-9 ms after the GoodCRC of Source_Capabilities, Accept 1.3 ms and PS_RDY 2.5 ms after the
@@ -1094,6 +1094,17 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   value a command checks itself (`settings set ... auto` without `--trip`, `power watch -f json`, a bad `uart_plug`
   value) bails with a plain anyhow error and exits 1 (`failure`). A typed usage error mapped to `ExitCode::BadArgs`
   would fix it; it changes those exit codes, so it needs a CHANGELOG entry. `docs/user/scripting.md` says so for now.
+- ✅ **CLI-55 `dg pd log` as `pd_log` JSON lines (LOG-1, API-30)**: `pd log [--follow] [-o FILE] [--restart]
+  [--for S]` turns `plug.pd.messages` into `pd_log::Record`s (source `donguru`, direction, SOP, device time µs,
+  host UTC at the moment the CLI logs it, outcome, raw bytes) and writes them as JSON lines to `-o FILE` when
+  given; attach, detach and VBUS switching aren't PD messages, so they print on screen but don't go to the file.
+  Either `--follow` or `--for` is required, so the command always says when it stops. On screen the same decode as
+  `pd-log print` (`donguru-core::pd::log_record`, `pd_log::Decoder`, path dependency on `pd_bench`'s LOG-1), not the
+  old header-guessing `donguru_core::pd::describe` (dropped). An active `sender_response` override is noted on
+  stderr once at the start. Unit- and mock-tested (`donguru-cli/src/commands/pd.rs`, `donguru-core/src/pd.rs`).
+  Tested on B153A (2 Nov 2026, gpd-omarchy, firmware a388fa4): `dg pd log --for 5 -o donguru.jsonl` against the
+  ZY12PDN decoded `Source_Capabilities` retries live and wrote a file `pd-log print` reads back; `pd-log merge` of
+  that file with a synthetic rePort-style log lines both up by host time. Not yet: `CLI-44`'s scenarios.
 
 ## GUI (`GUI`)
 

@@ -547,7 +547,8 @@ impl Plug<'_> {
         read("PlugPd::state", self.c.plug().pd().read_state()).await
     }
 
-    /// The PD source's message log (`plug.pd.messages`): records from now on, [`crate::pd::describe`] names them.
+    /// The PD source's message log (`plug.pd.messages`): records from now on, [`crate::pd::log_record`] turns them
+    /// into `pd_log::Record`s.
     pub async fn pd_messages(
         &self,
     ) -> Result<wire_weaver_client::PositionedStream<donguru_api::PdRecordOwned>> {

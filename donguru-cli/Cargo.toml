@@ -33,6 +33,8 @@ ww_si = { path = "../../wire_weaver/ww_stdlib/ww_si", features = ["std", "time",
 ww_uart = { path = "../../wire_weaver/ww_stdlib/ww_uart", features = ["std"] }
 # runs the WireWeaver client's event loop; "signal" for Ctrl-C in `power watch`
 tokio = { version = "1", features = ["rt-multi-thread", "signal"] }
+# `dg pd log`'s JSON lines and screen decode (pd_bench LOG-1), the same types `donguru-core::pd` builds
+pd_log = { path = "../../pd_bench/pd_log", features = ["std"] }
 
 [dev-dependencies]
 donguru-core = { workspace = true, features = ["probe-rs", "mock"] }
