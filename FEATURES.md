@@ -94,6 +94,17 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `ww dfu stm32 flash`. That old `ww` starts a hub of its version: stop it with the same binary, or the current `ww`
   gets the same error from the hub. Done this way on B153A, 2 Nov 2026. Belongs fixed in wire_weaver: the promise of
   `ww dfu` is any device whatever its API version.
+- 🐛 **FW-56 `pd log --restart` with a `sender_response` override loses the first contract**: `dg pd source on
+  --sender-response-ms 60` then `dg pd log --restart --for 2.2 -o X` wrote an empty log 3 runs in a row, and the
+  sink's Request after that restart got no GoodCRC (`RetryFail`, then the sink hard-reset). Without the override,
+  the same `--restart` logs fine (75 runs); plain `pd source off` + `pd source on` as two separate commands with the
+  override also works (4/4 contracts, a 25 ms late Request). `--restart`'s `Off` then `Source` writes go back to
+  back with no wait between them (`donguru-cli/src/commands/pd.rs`); two separate CLI invocations leave the device
+  longer between them by how long starting a second process takes. `sender_response` also stretches usbpd's
+  tPSHardReset (API-30's doc), so the suspicion is the policy engine's teardown after `Off` needs more of that
+  stretched time to finish before a `Source` write lands cleanly; not yet reproduced by hand or looked at in
+  `fw/donguru/src/pd.rs`. Found by pd-m1 (gpd-omarchy, M1 bench session) testing `donguru-pd-log`'s branch, 2 Nov
+  2026; not fixed here (out of this session's scope).
 - ✅ **FW-13 HardFault handling for production**: `HardFault` and the panic handler save a `bedrock_crash` record
   (cause, registers, 32 stack words, message, uptime, build id) in `.uninit` RAM and reset instead of looping
   (`fw/donguru/src/main.rs`, `src/last_reset.rs`); the next boot logs it and serves it as `device.last_reset`
