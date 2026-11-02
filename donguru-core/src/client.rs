@@ -49,6 +49,7 @@ pub mod observe {
     pub use super::generated::donguru_api_donguru_api::donguru_api_swd::{
         SwdLatest, SwdObserve, SwdUpdate,
     };
+    pub use wire_weaver_client::StreamEvent;
     pub use wire_weaver_client::observe::{
         ObserveEvent, ObserveMode, Observed, Observer, PreparedObserve, on_change,
         on_change_or_beat, periodic, samples,

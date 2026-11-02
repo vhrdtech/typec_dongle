@@ -136,6 +136,8 @@ pub struct MockState {
     pub plug_data: DataPath,
     pub orientation: Orientation,
     pub cc: CcState,
+    /// `plug.pd.source`; the mock has no sink, so a running source stays `Unattached`.
+    pub pd_source: donguru_api::PdSource,
     pub header_vbus: VbusState,
     pub header_vbus_mode: VbusMode,
     pub relay: bool,
@@ -209,6 +211,7 @@ impl Default for MockState {
                 polarity: CcPolarity::Unknown,
                 pull: CcPull::Unknown,
             },
+            pd_source: donguru_api::PdSource::Off,
             header_vbus: VbusState::Off,
             header_vbus_mode: VbusMode::ForceOff,
             relay: false,

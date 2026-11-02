@@ -154,6 +154,10 @@ dg input status | watch                   # button, switch, events (CLI-22)
 dg hub status | recover                   # (CLI-22)
 dg led mode all-off|essential|normal | brightness LEVEL | identify [5s]   (CLI-21)
 dg swd status | mode | release(-> sbu release) | memtest   (CLI-17, CLI-18)
+dg pd source on [--current A] [--sender-response-ms N]
+dg pd source off
+dg pd status
+dg pd log [--restart] [--for SECONDS]
 dg fw version | update                    # CLI-10
 dg debug pin get|set|af NAME              # net names from hw_b153a.md: dg debug pin set RELAY_EN high (CLI-23)
 dg debug pins [--boot] [--diff]           # dump, diff against the expected reset state

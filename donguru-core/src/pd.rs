@@ -13,9 +13,73 @@ pub fn source(max_current_a: f64, sender_response_ms: Option<u32>) -> PdSource {
     }
 }
 
+/// Name of a PD message from its 16-bit header (little endian on the wire), for a log line: the message type (USB PD
+/// 3.1 tables 6-5 and 6-6), `MessageID` and the number of data objects. `None` when `bytes` is shorter than a header.
+pub fn describe(bytes: &[u8]) -> Option<String> {
+    let [low, high, ..] = *bytes else {
+        return None;
+    };
+    let header = u16::from_le_bytes([low, high]);
+    let kind = (header & 0x1f) as u8;
+    let objects = (header >> 12) & 7;
+    let id = (header >> 9) & 7;
+    let name = if objects == 0 {
+        match kind {
+            1 => "GoodCRC",
+            2 => "GotoMin",
+            3 => "Accept",
+            4 => "Reject",
+            5 => "Ping",
+            6 => "PS_RDY",
+            7 => "Get_Source_Cap",
+            8 => "Get_Sink_Cap",
+            9 => "DR_Swap",
+            10 => "PR_Swap",
+            11 => "VCONN_Swap",
+            12 => "Wait",
+            13 => "Soft_Reset",
+            16 => "Not_Supported",
+            17 => "Get_Source_Cap_Extended",
+            18 => "Get_Status",
+            19 => "FR_Swap",
+            20 => "Get_PPS_Status",
+            _ => return Some(format!("control {kind} id {id}")),
+        }
+    } else {
+        match kind {
+            1 => "Source_Capabilities",
+            2 => "Request",
+            3 => "BIST",
+            4 => "Sink_Capabilities",
+            5 => "Battery_Status",
+            6 => "Alert",
+            7 => "Get_Country_Info",
+            15 => "Vendor_Defined",
+            _ => return Some(format!("data {kind} id {id}, {objects} objects")),
+        }
+    };
+    Some(if objects == 0 {
+        format!("{name} id {id}")
+    } else {
+        format!("{name} id {id}, {objects} objects")
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn describes_messages_by_header() {
+        // Source_Capabilities, one object, id 2: NumDO 1, id 2, type 1
+        assert_eq!(
+            describe(&[0x01, 0x14, 0, 0, 0, 0]).unwrap(),
+            "Source_Capabilities id 2, 1 objects"
+        );
+        assert_eq!(describe(&[0x41, 0x02]).unwrap(), "GoodCRC id 1");
+        assert_eq!(describe(&[0x1f, 0x00]).unwrap(), "control 31 id 0");
+        assert_eq!(describe(&[0x01]), None);
+    }
 
     #[test]
     fn builds_in_milli_units() {

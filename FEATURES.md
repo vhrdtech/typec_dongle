@@ -87,6 +87,13 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   under 0.5 s -> `ww dfu stm32 flash --wait 10 --follow` 415 KB written and verified in 42.5-42.9 s -> firmware back,
   5 times in a row, no power cycle; `reboot --into app` too. Not covered: a firmware that does not start (FW-45),
   BOOT0 (nBOOT_SEL = 1 on B153A, change_b153b.md). ^v1.0
+- 🐛 **FW-55 Firmware built before 27 Oct 2026 can't be updated with today's `ww` or `dg`**: wire_weaver 129c277e put
+  a priority nibble into `Request` without a link version bump. An older firmware fails to parse every request and
+  answers the generic `ResponseSerFailed`, also `ww dfu reboot`, `ww info` and `donguru fw update`; introspection and
+  `ww list` still work. Way out: a `ww` built from wire_weaver f87dc39a (the commit before) does the reboot, then any
+  `ww dfu stm32 flash`. That old `ww` starts a hub of its version: stop it with the same binary, or the current `ww`
+  gets the same error from the hub. Done this way on B153A, 2 Nov 2026. Belongs fixed in wire_weaver: the promise of
+  `ww dfu` is any device whatever its API version.
 - ✅ **FW-13 HardFault handling for production**: `HardFault` and the panic handler save a `bedrock_crash` record
   (cause, registers, 32 stack words, message, uptime, build id) in `.uninit` RAM and reset instead of looping
   (`fw/donguru/src/main.rs`, `src/last_reset.rs`); the next boot logs it and serves it as `device.last_reset`
@@ -694,7 +701,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   empty in the official firmware), versioned apart from the rest, so a fork adds methods without changing
   `donguru_api`'s version and the official `dg` keeps working. `dg info` shows a firmware with an `ext` as custom.
   Lab `own-api-method`.
-- 🧪 **API-30 PD source on the plug**: UCPD2 as a PD source towards the DUT. First subset (`donguru_api` 0.5.2,
+- 🚧 **API-30 PD source on the plug**: UCPD2 as a PD source towards the DUT. First subset (`donguru_api` 0.5.2,
   P2534#20oct-1421): `plug.pd.source` = `Off` / `Source { max_current, sender_response }` offers one fixed PDO, 5 V at
   `max_current` (100 mA to 3 A, rounded down to 10 mA), with the Rp that never offers more (default USB below 1.5 A,
   1.5 A, 3 A); `plug.pd.state` (`Off`, `Unattached`, `Attached`, `Contract` with the request, `NoPd`, `Failed`);
@@ -707,12 +714,20 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   (`plug.vbus_mode` and `vbus_cycle` refused): VBUS on only after a debounced Rd, in `Auto` mode at vSafe5V's 5.5 V
   and the offer plus 25 %, off at the detach, during a hard reset and for tSrcRecover before the next attach (rev A
   cannot read plug VBUS, so vSafe0V is waited for, FW-35). `sender_response` stretches usbpd's 30 ms timers
-  (SenderResponseTimer and tPSHardReset) as a logged, out-of-spec test knob for a slow sink. Built, not run on a board
-  yet: the first check is the stock ZY12PDN on the plug; Rd as `Low` in source mode is from RM0444 table 237 and
-  embassy's UCPD test, to be confirmed there. Host: `donguru pd source on|off` and `pd status`
-  (`donguru-cli/src/commands/pd.rs`, the `Plug` facade in `donguru-core`); the mock answers Unimplemented. Not yet:
-  more PDOs, renegotiation, scripted scenarios, PD 3.0 collision avoidance (FW-54), `dg pd log`, CLI-44. Labs
-  `pd-both-sides`, `pd-edge-cases`.
+  (SenderResponseTimer and tPSHardReset) as a logged, out-of-spec test knob for a slow sink. Host: `donguru pd source
+  on|off`, `pd status` and `pd log [--restart] [--for S]` (`donguru-cli/src/commands/pd.rs`, the `Plug` facade in
+  `donguru-core`, message names in `donguru_core::pd::describe`); the mock models the setting and the state, no sink.
+  Tested on B153A (2 Nov 2026, gpd-omarchy, firmware a388fa4) with the ZY12PDN's FUSB302B as the sink, no load on its
+  output: Rd reads as `Low` on CC1; a hand-driven sink over rePort 027's I2C (F030 in reset) got a contract at the
+  spec's timers, Request 7-9 ms after the GoodCRC of Source_Capabilities, Accept 1.3 ms and PS_RDY 2.5 ms after the
+  Request, `pd status` shows it; an invalid object position gets Reject (`pd_requests_rejected`); Rd removed: `Detached`
+  and VBUS off, Rd back after 1.5 s: attached and a new contract, USB up throughout, so the `USB_UCPD1_2` re-enable holds; Rd
+  without PD: `NoPd` after 51 rounds of Source_Capabilities (153 sends with the retries), VBUS stays on; a hard reset
+  from the sink: VBUS off, on again after tSrcRecover. Not tested: current under a contract, the guard's trip under
+  PD, a real DUT. The stock ZY12PDN firmware answers GoodCRC but never sends a Request and hard-resets after 800 ms,
+  at 0.5 A and at 3 A, so the plan's stock-sink check did not pass; likely its stored voltage is not 5 V (it is set
+  by the ZY's button): to check by hand, then ✅. Not yet: more PDOs, renegotiation, scripted scenarios, PD 3.0
+  collision avoidance (FW-54), CLI-44. Labs `pd-both-sides`, `pd-edge-cases`.
 - 💡 **API-31 CAN levels**: `can[]` as `ww_can_bus::Can` (0 = SBU / FDCAN1, 1 = A2B2 / FDCAN2): bitrate, FD data
   rate, frames as a stream with timestamps, send. Lab `can-on-the-plug`.
 - 💡 **API-32 Receptacle as a source**: Rp and a PD source on UCPD1 towards the computer, so a power bank on the plug

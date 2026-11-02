@@ -8,13 +8,18 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ### Added
 
-- Firmware: a USB PD source on the plug CC, `plug.pd` (API-30, `donguru_api` 0.5.2, a patch bump: wire-compatible, old CLIs keep connecting and don't see the level). `plug.pd.source` offers one 5 V PDO at a chosen current (100 mA to 3 A) with the matching Rp, `plug.pd.state` says attach / contract / no PD / failed, `plug.pd.messages` streams every message both ways raw with the device time in µs, plus attach, detach, VBUS and hard-reset events. usbpd 3.0.0's source policy engine on UCPD2; plug VBUS on only after a debounced Rd, guarded at 5.5 V and the offer plus 25 %, off at the detach and in a hard reset. `sender_response` is an out-of-spec test knob for slow sinks. While the source runs, `plug.vbus_mode`, `vbus_cycle` and `debug.ucpd_role` on UCPD2 are refused. Built, not run on a board yet.
-- CLI: `donguru pd source on [--current A] [--sender-response-ms N]`, `pd source off` and `pd status` drive the PD source (API-30); exit 4 on a firmware without `plug.pd`. Library: `Plug::pd_source`, `set_pd_source`, `pd_state` and `donguru_core::pd::source`. Not tested against the mock (it doesn't model `plug.pd`) nor on a board yet.
+- Firmware: a USB PD source on the plug CC, `plug.pd` (API-30, `donguru_api` 0.5.2, a patch bump: wire-compatible, old CLIs keep connecting and don't see the level). `plug.pd.source` offers one 5 V PDO at a chosen current (100 mA to 3 A) with the matching Rp, `plug.pd.state` says attach / contract / no PD / failed, `plug.pd.messages` streams every message both ways raw with the device time in µs, plus attach, detach, VBUS and hard-reset events. usbpd 3.0.0's source policy engine on UCPD2; plug VBUS on only after a debounced Rd, guarded at 5.5 V and the offer plus 25 %, off at the detach and in a hard reset. `sender_response` is an out-of-spec test knob for slow sinks. While the source runs, `plug.vbus_mode`, `vbus_cycle` and `debug.ucpd_role` on UCPD2 are refused. Tested on B153A with the ZY12PDN's FUSB302B driven by hand over rePort I2C, no load: contract at the spec's timers, Reject for a bad Request, detach and re-attach with USB up, `NoPd` for a sink without PD, hard reset from the sink. The stock ZY firmware acknowledges Source_Capabilities but sends no Request (API-30 stays open for that check).
+- CLI: `donguru pd source on [--current A] [--sender-response-ms N]`, `pd source off` and `pd status` drive the PD source (API-30); exit 4 on a firmware without `plug.pd`. Library: `Plug::pd_source`, `set_pd_source`, `pd_state` and `donguru_core::pd::source`. The mock models the setting and the state.
+- CLI: `donguru pd log [--restart] [--for SECONDS]` follows `plug.pd.messages` with device time and message names, `--format jsonl` for scripts; `--restart` restarts the source to show a negotiation from the attach on (API-30).
 
 ### Changed
 
 - Firmware: five features are cargo features, off in the default build, so the PD source fits in flash (FW-53): `debug-api` (12.4 KiB), `swd-host` (SWD-host and the CMSIS-DAP interface, 14.2 KiB), `header-uart` (`uart[1]`, 10.8 KiB), `api-docs` (doc comments in `ww introspect`, 13.4 KiB) and `meter-samples` (`meter.reading` in `Samples` mode, 13.0 KiB). A default image has no CMSIS-DAP interface and no header UART, `debug` answers Unimplemented. Release FLASH 500.20 -> 501.79 KiB of 504 KiB with the PD source in (569.13 KiB with it and all five), RAM 91.02 -> 63.66 KiB of 144 KiB. Build with `--features swd-host` (or any other) for an image that needs one.
 - Build: the root workspace and the firmware patch `shrink_wrap` to the WireWeaver checkout and pin exact_units to WireWeaver's own rev, so both build against today's checkout again.
+
+### Fixed
+
+- Bug recorded, not fixed: firmware built before 27 Oct 2026 can't be reached by today's `ww` or `dg`, so `just update` fails on it; the way out is in FW-55.
 
 ## [0.20.33] - 2026-10-25
 

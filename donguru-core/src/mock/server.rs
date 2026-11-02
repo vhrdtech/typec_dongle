@@ -777,28 +777,32 @@ impl MockServer {
         Value(self.state.cc)
     }
 
-    // ---- donguru_api::PlugPd at plug.pd (API-30): not modelled ----
+    // ---- donguru_api::PlugPd at plug.pd (API-30): the setting and its state, no sink and no messages ----
 
     async fn set_plug_pd_source(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _value: donguru_api::PdSource,
+        value: donguru_api::PdSource,
     ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
-        Unimplemented.into()
+        self.state.pd_source = value;
+        Set
     }
 
     async fn get_plug_pd_source(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<donguru_api::PdSource, wire_weaver::ww_error::CommonError<'_>> {
-        Unimplemented.into()
+        Value(self.state.pd_source.clone())
     }
 
     async fn get_plug_pd_state(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
     ) -> GetResult<donguru_api::PdState, ()> {
-        Unimplemented.into()
+        Value(match self.state.pd_source {
+            donguru_api::PdSource::Off => donguru_api::PdState::Off,
+            _ => donguru_api::PdState::Unattached,
+        })
     }
 
     async fn plug_pd_messages(&mut self, _cx: &mut Context<'_, impl EventOut>) -> RpcResult<()> {

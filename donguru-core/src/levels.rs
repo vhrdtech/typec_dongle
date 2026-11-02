@@ -546,6 +546,19 @@ impl Plug<'_> {
     pub async fn pd_state(&self) -> Result<donguru_api::PdState> {
         read("PlugPd::state", self.c.plug().pd().read_state()).await
     }
+
+    /// The PD source's message log (`plug.pd.messages`): records from now on, [`crate::pd::describe`] names them.
+    pub async fn pd_messages(
+        &self,
+    ) -> Result<wire_weaver_client::PositionedStream<donguru_api::PdRecordOwned>> {
+        self.c
+            .plug()
+            .pd()
+            .messages()
+            .call()
+            .await
+            .map_err(|e| Error::client("PlugPd::messages", e))
+    }
 }
 
 /// Timeout of a call on top of the time it takes on purpose (`vbus_cycle`).
