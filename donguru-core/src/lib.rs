@@ -13,6 +13,7 @@ pub mod log;
 #[cfg(feature = "mock")]
 pub mod mock;
 pub mod nets;
+pub mod pd;
 pub mod swd_memtest;
 pub mod udev;
 pub mod update;

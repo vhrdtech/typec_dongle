@@ -8,6 +8,7 @@ pub mod gpio;
 pub mod header;
 pub mod info;
 pub mod led;
+pub mod pd;
 pub mod power;
 pub mod settings;
 pub mod swd;
@@ -25,6 +26,7 @@ pub fn dispatch(ctx: &Context, command: Command) -> anyhow::Result<ExitCode> {
         Command::Info => info::run(ctx),
         Command::Device(cmd) => device::run(ctx, cmd),
         Command::Usb(cmd) => usb::run(ctx, cmd),
+        Command::Pd(cmd) => pd::run(ctx, cmd),
         Command::Power(cmd) => power::run(ctx, cmd),
         Command::Header(cmd) => header::run(ctx, cmd),
         Command::Gpio(cmd) => gpio::run(ctx, cmd),

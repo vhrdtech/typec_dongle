@@ -176,6 +176,10 @@ pub enum Command {
     #[command(subcommand, display_order = 10)]
     Power(crate::commands::power::Power),
 
+    /// USB PD source on the plug: offer 5 V to the DUT and show the contract
+    #[command(subcommand, display_order = 10)]
+    Pd(crate::commands::pd::Pd),
+
     /// Header J101: switched VBUS and the relay
     #[command(subcommand, display_order = 11)]
     Header(crate::commands::header::Header),

@@ -530,6 +530,22 @@ impl Plug<'_> {
     pub async fn observe(&self, cfg: PlugObserve) -> Result<Observer<PlugUpdate>> {
         subscribe("Plug", self.c.plug().observe(cfg)).await
     }
+
+    /// The PD source's setting (`plug.pd.source`, API-30).
+    pub async fn pd_source(&self) -> Result<donguru_api::PdSource> {
+        read("PlugPd::source", self.c.plug().pd().read_source()).await
+    }
+
+    /// Starts, changes or stops the PD source; build one with [`crate::pd::source`]. While it runs the firmware
+    /// refuses `vbus_mode` and `vbus_cycle`.
+    pub async fn set_pd_source(&self, source: donguru_api::PdSource) -> Result<()> {
+        write("PlugPd::source", self.c.plug().pd().write_source(source)).await
+    }
+
+    /// Where the PD source stands: attach, contract, a sink without PD.
+    pub async fn pd_state(&self) -> Result<donguru_api::PdState> {
+        read("PlugPd::state", self.c.plug().pd().read_state()).await
+    }
 }
 
 /// Timeout of a call on top of the time it takes on purpose (`vbus_cycle`).
