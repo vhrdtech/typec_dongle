@@ -6,6 +6,18 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- CLI: `donguru pd log [--follow] [-o FILE] [--restart] [--for SECONDS]` turns `plug.pd.messages` into `pd_log::Record`s (pd_bench LOG-1, path dependency) and writes them as JSON lines with the host time to `-o FILE`. On screen it prints the same decode as `pd-log print` (usbpd's real parser through `pd_log::Decoder`). `pd-log print` and `pd-log merge` read the file and line a Donguru log up with a rePort sink's by host time (CLI-55, API-30). Tested on B153A against the ZY12PDN.
+
+### Changed
+
+- CLI: `donguru pd log` needs `--follow` or `--for SECONDS` (it used to follow forever), and `--format jsonl` is replaced by `-o FILE` with `pd_log` records. An active `sender_response` override is noted once on stderr. The header-guessing `donguru_core::pd::describe` is removed (CLI-55).
+
+### Known bugs
+
+- `pd log --restart` with a `sender_response` override loses the first contract: the log is empty and the sink's Request gets no GoodCRC. Recorded, not fixed (FW-56).
+
 ## [0.20.35] - 2026-11-03
 
 ### Changed
@@ -26,7 +38,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 - Firmware: a USB PD source on the plug CC, `plug.pd` (API-30, `donguru_api` 0.5.2, a patch bump: wire-compatible, old CLIs keep connecting and don't see the level). `plug.pd.source` offers one 5 V PDO at a chosen current (100 mA to 3 A) with the matching Rp, `plug.pd.state` says attach / contract / no PD / failed, `plug.pd.messages` streams every message both ways raw with the device time in µs, plus attach, detach, VBUS and hard-reset events. usbpd 3.0.0's source policy engine on UCPD2; plug VBUS on only after a debounced Rd, guarded at 5.5 V and the offer plus 25 %, off at the detach and in a hard reset. `sender_response` is an out-of-spec test knob for slow sinks. While the source runs, `plug.vbus_mode`, `vbus_cycle` and `debug.ucpd_role` on UCPD2 are refused. Tested on B153A with the ZY12PDN's FUSB302B driven by hand over rePort I2C, no load: contract at the spec's timers, Reject for a bad Request, detach and re-attach with USB up, `NoPd` for a sink without PD, hard reset from the sink. The stock ZY firmware acknowledges Source_Capabilities but sends no Request (API-30 stays open for that check).
 - CLI: `donguru pd source on [--current A] [--sender-response-ms N]`, `pd source off` and `pd status` drive the PD source (API-30); exit 4 on a firmware without `plug.pd`. Library: `Plug::pd_source`, `set_pd_source`, `pd_state` and `donguru_core::pd::source`. The mock models the setting and the state.
-- CLI: `donguru pd log [--follow] [-o FILE] [--restart] [--for SECONDS]` turns `plug.pd.messages` into `pd_log::Record`s (pd_bench LOG-1, path dependency) and writes them as JSON lines to `-o FILE`; on screen the same decode as `pd-log print` (usbpd's real parser through `pd_log::Decoder`, not the old header-guessing `donguru_core::pd::describe`, now dropped). Either `--follow` or `--for` is required. An active `sender_response` override is noted on stderr once at the start. `pd-log print` / `pd-log merge` (pd_bench's own `pd-log` binary) read the file, lining a Donguru log up with a rePort sink's by host time (CLI-55, API-30).
+- CLI: `donguru pd log [--restart] [--for SECONDS]` follows `plug.pd.messages` with device time and message names, `--format jsonl` for scripts; `--restart` restarts the source to show a negotiation from the attach on (API-30).
 
 ### Changed
 
