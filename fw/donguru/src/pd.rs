@@ -6,8 +6,10 @@
 //! and `debug.ucpd_role` stay off them) and hands the offer to [`pd_task`]; `Off` goes the same way and the task gives
 //! the pins back once UCPD2 is off. Per attach the task:
 //!
-//! 1. presents the offer's Rp and waits for one CC line to read Rd (`Low` in source mode, RM0444 table 237; embassy's
-//!    UCPD test waits for the same) for tCCDebounce; Ra on the other line is fine, no VCONN is given;
+//! 1. presents the offer's Rp on CC1 and waits for it to read Rd (`Low` in source mode, RM0444 table 237; embassy's
+//!    UCPD test waits for the same) for tCCDebounce. CC1 only: the plug has one CC contact, A5 (PD0); PD2 is its
+//!    VCONN contact B5 (hw_b153a.md §5), so CC2's PHY stays off and no VCONN is given. The flip is the DUT's to see,
+//!    in its receptacle;
 //! 2. turns plug VBUS on in the guarded mode of the offer (`Offer::vbus_mode`) and runs the policy engine until the
 //!    sink detaches (the attached line leaves Rd for tPDDebounce) or the setting changes;
 //! 3. turns VBUS off and holds it off for tSrcRecover before the next attach, as rev A cannot read plug VBUS to see
@@ -201,16 +203,19 @@ async fn run_attach(r: &mut PdResources, offer: &Offer) {
         Rp::A1_5 => CcPull::Source1_5A,
         Rp::A3_0 => CcPull::Source3_0A,
     });
+    // embassy enables both PHYs: CC2 is the plug's VCONN contact, off (a sink's Rd on its other receptacle pin
+    // would otherwise read as a debug accessory)
+    embassy_stm32::pac::UCPD2
+        .cr()
+        .modify(|w| w.set_ccenable(embassy_stm32::pac::ucpd::vals::Ccenable::Cc1));
     set_phase(Phase::Unattached);
-    let cc2 = wait_attached(ucpd.cc_phy()).await;
+    wait_attached(ucpd.cc_phy()).await;
+    // the plug's CC is always its CC1 (A5)
+    let cc2 = false;
     log_event(Kind::Attached { cc2 });
     set_phase(Phase::Attached { cc2 });
-    let (mut cc_phy, pd_phy) = ucpd.split_pd_phy(
-        r.rx_dma.reborrow(),
-        r.tx_dma.reborrow(),
-        Irqs,
-        if cc2 { CcSel::Cc2 } else { CcSel::Cc1 },
-    );
+    let (mut cc_phy, pd_phy) =
+        ucpd.split_pd_phy(r.rx_dma.reborrow(), r.tx_dma.reborrow(), Irqs, CcSel::Cc1);
     vbus(Some(offer));
     let driver = LoggingDriver {
         phy: pd_phy,
@@ -223,7 +228,7 @@ async fn run_attach(r: &mut PdResources, offer: &Offer) {
         request: None,
     };
     let mut source: Source<_, PdTimer, _> = Source::new(driver, dpm, false);
-    match select(source.run(), wait_detached(&mut cc_phy, cc2)).await {
+    match select(source.run(), wait_detached(&mut cc_phy)).await {
         Either::First(Ok(_)) => {
             // a role swap: usbpd answers swaps with Reject here (the DPM's defaults), so this doesn't come
             cnt!(pd_unexpected_exit: u32, warn);
@@ -234,26 +239,25 @@ async fn run_attach(r: &mut PdResources, offer: &Offer) {
             cnt!(pd_engine_failed: u32, warn);
             set_phase(Phase::Failed { cc2 });
             vbus(None);
-            wait_detached(&mut cc_phy, cc2).await;
+            wait_detached(&mut cc_phy).await;
         }
         Either::Second(()) => {}
     }
     log_event(Kind::Detached);
 }
 
-/// Rd on one line for tCCDebounce; `true` when it is CC2. Rd on both is a debug accessory, not a sink: waited out.
-async fn wait_attached(cc: &mut CcPhy<'_, peripherals::UCPD2>) -> bool {
+/// A sink's Rd on CC1.
+fn rd(cc: &CcPhy<'_, peripherals::UCPD2>) -> bool {
+    cc.vstate().0 == CcVState::Low
+}
+
+/// Rd on CC1 for tCCDebounce.
+async fn wait_attached(cc: &mut CcPhy<'_, peripherals::UCPD2>) {
     loop {
-        let (cc1, cc2) = cc.vstate();
-        let sink = match (cc1 == CcVState::Low, cc2 == CcVState::Low) {
-            (true, false) => Some(false),
-            (false, true) => Some(true),
-            _ => None,
-        };
-        let Some(on_cc2) = sink else {
+        if !rd(cc) {
             cc.wait_for_vstate_change().await;
             continue;
-        };
+        }
         // stable for tCCDebounce, or start over
         if with_timeout(
             Duration::from_millis(CC_DEBOUNCE_MS),
@@ -262,17 +266,13 @@ async fn wait_attached(cc: &mut CcPhy<'_, peripherals::UCPD2>) -> bool {
         .await
         .is_err()
         {
-            return on_cc2;
+            return;
         }
     }
 }
 
-/// The attached line off Rd for tPDDebounce.
-async fn wait_detached(cc: &mut CcPhy<'_, peripherals::UCPD2>, on_cc2: bool) {
-    let rd = |cc: &CcPhy<'_, peripherals::UCPD2>| {
-        let (cc1, cc2) = cc.vstate();
-        (if on_cc2 { cc2 } else { cc1 }) == CcVState::Low
-    };
+/// CC1 off Rd for tPDDebounce.
+async fn wait_detached(cc: &mut CcPhy<'_, peripherals::UCPD2>) {
     loop {
         if rd(cc) {
             cc.wait_for_vstate_change().await;

@@ -701,7 +701,8 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `plug.pd.messages`, a counted stream of raw records (every message both ways with GoodCRC, the transmit outcome,
   attach, detach, VBUS, hard resets, device time in µs), from a 48-record ring that counts what it drops. usbpd
   3.0.0's source policy engine through embassy's UCPD driver (`fw/donguru/src/pd.rs`), the decisions host-tested in
-  `donguru_board::pd` (offer checks, Rp, guard limits, Request answer, ring). While it runs it holds the plug CC
+  `donguru_board::pd` (offer checks, Rp, guard limits, Request answer, ring). Rp and PD on CC1 only: the plug's one CC contact is A5 (PD0), PD2 is its VCONN contact B5 (hw_b153a.md §5), so
+  CC2's PHY stays off and `cc` reads `Cc1`. While it runs it holds the plug CC
   (`InUse` for an SWD session's CC drive and `debug.ucpd_role`) and plug VBUS (`plug.vbus_mode` and `vbus_cycle`
   refused): VBUS on only after a debounced Rd, in `Auto` mode at vSafe5V's 5.5 V and the offer plus 25 %, off at the
   detach, during a hard reset and for tSrcRecover before the next attach (rev A cannot read plug VBUS, so vSafe0V is
