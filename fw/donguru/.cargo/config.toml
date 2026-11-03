@@ -20,3 +20,7 @@ rustflags = ["-Zlocation-detail=none"]
 
 [unstable]
 profile-rustflags = true
+# core built with the firmware (opt-level z, inside fat LTO) instead of the prebuilt one, with its size-first code
+# paths (FW-63)
+build-std = ["core"]
+build-std-features = ["optimize_for_size"]

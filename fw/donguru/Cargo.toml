@@ -161,6 +161,14 @@ trim-paths = "all"
 opt-level = "z"         # size (FW-57): 322 KiB against 502 KiB at 3; USB throughput measured at both, see FEATURES FW-57
 overflow-checks = false
 
+# core is built with the firmware (build-std, FW-63): in dev at the release's size, without debug assertions, or the
+# dev image doesn't fit the 504 KiB (14.5 KB over with the dev profile's opt-level 3 and assertions). Cargo warns that the spec
+# matches no package (core is not in the resolved graph), but the build-std core takes it.
+[profile.dev.package.core]
+opt-level = "z"
+debug-assertions = false
+overflow-checks = false
+
 # Do not optimize build scripts / proc-macros: faster clean builds
 [profile.dev.build-override]
 codegen-units = 8
