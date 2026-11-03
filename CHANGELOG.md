@@ -6,6 +6,12 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.40] - 2026-11-03
+
+### Added
+
+- CLI: `donguru device reset-cause` prints a crash's call chain as `file:line` frames, the panic site first, decoded with the firmware's ELF found by the record's build id or given with `--elf FILE` (`--force` to use one whose build id differs); `--format json` has it as `call_chain` (`null` without addresses, `{"error": ...}` when not decoded). Library: `donguru_core::crash::frames` over wire_weaver's `ww_report::crash` (CLT-59), `Error::Elf`. Tested on B153A with a panicking test image (FW-63).
+
 ### Changed
 
 - Firmware built against wire_weaver master 61c095a with SRV-53 (global trait paths by hash; was 512f59e): release flash (text + data) 314,356 B → 311,940 B (−2,416 B). No source or `Cargo.lock` changes (FW-63).
@@ -13,10 +19,6 @@ IDs refer to [FEATURES.md](FEATURES.md).
 - No home or registry paths in the firmware's flash (FW-63): `trim-paths = "all"` in the dev and release profiles of `fw/donguru/Cargo.toml`. Panic locations name `src/...`, `/cargo/deps/<crate>-<version>/src/...`, `/cargo/git/<hash>/<rev>/<crate>/src/...` and `/cargo/registry/<hash>/<crate>-<version>/src/...`; only debug info (`.debug_str`, not flashed) still names the embedded_bedrock checkout. Release flash 317,824 B → 314,904 B (−2,920 B); the dev build fits again, 514,748 B of 516,096 B.
 - Release firmware without panic locations (FW-63): `-Zlocation-detail=none` for the release profile only (`[profile.release] rustflags` with `[unstable] profile-rustflags` in `fw/donguru/.cargo/config.toml`); dev builds keep them. Release flash 314,904 B → 293,912 B (−20,992 B). A panic message now reads `panicked at <redacted>:0:0`; the crash record's return addresses (embedded_bedrock ROB-13) name the site through the ELF instead.
 - `core` built with the firmware (FW-63): `build-std = ["core"]` with `build-std-features = ["optimize_for_size"]` in `fw/donguru/.cargo/config.toml`, so core is compiled at opt-level z inside fat LTO instead of the prebuilt one at O3. Release flash 293,912 B → 289,780 B (−4,132 B). The default dev build no longer fits: it overflows FLASH by about 17.6 KB with core at the dev profile's opt-level 3 and debug assertions, and turning features off does not help (all off: 17.3 KB over). Only the release has to fit; `CARGO_PROFILE_DEV_OPT_LEVEL=s cargo run` builds a dev image that does (444,864 B, assertions and overflow checks kept), see `fw/donguru/README.md`.
-
-### Added
-
-- CLI: `donguru device reset-cause` prints a crash's call chain as `file:line` frames, the panic site first, decoded with the firmware's ELF found by the record's build id or given with `--elf FILE` (`--force` to use one whose build id differs); `--format json` has it as `call_chain` (`null` without addresses, `{"error": ...}` when not decoded). Library: `donguru_core::crash::frames` over wire_weaver's `ww_report::crash` (CLT-59), `Error::Elf`. Tested on B153A with a panicking test image (FW-63).
 
 ## [0.20.39] - 2026-11-03
 
