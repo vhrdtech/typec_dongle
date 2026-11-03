@@ -8,7 +8,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ### Changed
 
-- Built against WireWeaver master f5f88ea (was c440491). No source changes needed: meter.rs already used `Prefix::pow10()` (STD-59), and the board's reworks stay omitted in `ww_codegen!` (STD-101). Release firmware text+data grows from 316,884 B to 331,572 B (+14,688 B). The early flash diet steps (SW-69, SRV-54, SW-70, SW-71/72) saved 12,252 B against 241ff78, but SRV-51 adds 14,220 B on this firmware: its shared reply helpers are instantiated once per reply type (26.0 KiB) and remove only 18.9 KiB from the dispatcher. Dev build at opt-level 3 now overflows FLASH by 18.3 KiB, was 4.8 KiB (FW-53, FW-57). Not run on a board.
+- Built against WireWeaver master 512f59e (was c440491). No source changes needed: meter.rs already used `Prefix::pow10()` (STD-59), and the board's reworks stay omitted in `ww_codegen!` (STD-101). Release firmware text+data is 314,088 B, down from 316,884 B (−2,796 B), and 15,048 B below 241ff78 from before the flash diet (329,136 B). SRV-51 alone had added 14,220 B (f5f88ea: 331,572 B); SRV-55's shared reply paths take that back. Per crate: donguru −17,715 B and ww_device −410 B, ww_client_server +14,029 B (the shared dispatch now lives there). Not run on a board.
 
 ## [0.20.37] - 2026-11-03
 

@@ -503,7 +503,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
     2026): the full PD stack (FW-58) needs the room, s would leave none. The loopback is the only check done; the header
     UART LZ4 and the meter samples were not measured at either level (no device on the header UART, no meter
     stream command yet). Open: those two, then the FW-53 features back on. P2534#3nov-0000b.
-  Against WireWeaver f5f88ea (3 Nov 2026): text+data 331,572 B, +14,688 B over c440491, mostly SRV-51's per-type reply helpers; see CHANGELOG [Unreleased].
+  Against WireWeaver 512f59e (3 Nov 2026): text+data 314,088 B, −2,796 B against c440491 after SRV-55; see CHANGELOG [Unreleased].
 - 📋 **FW-58 One PD runtime for both UCPDs**: a port-erased PHY so usbpd's engines and the DPMs are compiled once for
   UCPD1 and UCPD2; the driver splits SOP (to the engine) from SOP' / SOP'' (cable role) and taps every message and
   event into one two-port log of raw records (decoded on the host, CORE-14); the PD safety rules in `donguru_board`
