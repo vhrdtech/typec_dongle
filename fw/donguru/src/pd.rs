@@ -21,6 +21,12 @@
 //! ES0548 2.17.1 (TXHRST at a TX underflow corrupts the next CRC, all revisions): embassy's driver transmits by DMA,
 //! the workaround the errata gives. 2.17.2 and 2.17.3 have none and need none here.
 //!
+//! The task runs on an interrupt executor of its own, above the thread-mode tasks and below every interrupt ([start]):
+//! embassy's driver arms the RX DMA only in `receive`, so the GoodCRC of a message we sent is lost when `receive` comes
+//! too late after the end of the TX. The FUSB302B's GoodCRC starts about 100 us after our EOP, and its first bytes
+//! are in RXDR about 300 us later; on the thread-mode executor a turn of the server task (`pd_pump`) took longer than
+//! that about once in 30 messages (FW-62). Its statics are all behind critical sections, as for any interrupt.
+//!
 //! Not done: PD 3.0 collision avoidance (SinkTxOk / SinkTxNG by Rp, the source keeps one Rp), so a sink that starts
 //! an AMS of its own may collide with one of ours; usbpd starts none after the contract.
 
@@ -33,7 +39,9 @@ use donguru_board::pd::{
     CC_DEBOUNCE_MS, Kind, Offer, OfferError, Phase, Record, Ring, Rp, SRC_RECOVER_MS, TxOutcome,
 };
 use donguru_board::pins::Holder;
+use embassy_executor::InterruptExecutor;
 use embassy_futures::select::{Either, select};
+use embassy_stm32::interrupt::{InterruptExt, Priority};
 use embassy_stm32::ucpd::{self, CcPhy, CcPull, CcSel, CcVState, PdPhy, Ucpd};
 use embassy_stm32::{interrupt, peripherals};
 use embassy_sync::blocking_mutex::Mutex;
@@ -152,9 +160,27 @@ fn vbus(on: Option<&Offer>) {
     }
 }
 
+static EXECUTOR: InterruptExecutor = InterruptExecutor::new();
+
+/// TIM7's vector, otherwise unused, for [EXECUTOR].
+#[interrupt]
+unsafe fn TIM7_LPTIM2() {
+    // Safety: the vector of this executor, which `start` started
+    unsafe { EXECUTOR.on_interrupt() }
+}
+
+/// Starts [pd_task] on its own executor: P1, so USB, UCPD, DMA and the time driver (P0, embassy's default on this
+/// firmware) still come first, and the thread-mode tasks can't hold it up.
+pub fn start(r: PdResources) {
+    interrupt::TIM7_LPTIM2.set_priority(Priority::P1);
+    EXECUTOR
+        .start(interrupt::TIM7_LPTIM2)
+        .spawn(defmt::unwrap!(pd_task(r)));
+}
+
 /// UCPD2 and its DMA channels, taken by [pd_task].
 #[embassy_executor::task]
-pub async fn pd_task(mut r: PdResources) {
+async fn pd_task(mut r: PdResources) {
     let mut offer: Option<Offer> = None;
     loop {
         let Some(o) = offer else {
@@ -337,7 +363,15 @@ impl Driver for LoggingDriver<'_> {
                 ));
                 Ok(n)
             }
-            Err(ucpd::RxError::Crc | ucpd::RxError::Overrun) => {
+            Err(e @ (ucpd::RxError::Crc | ucpd::RxError::Overrun)) => {
+                match e {
+                    ucpd::RxError::Crc => {
+                        cnt!(pd_rx_crc: u32);
+                    }
+                    _ => {
+                        cnt!(pd_rx_overrun: u32);
+                    }
+                }
                 log_event(Kind::RxDiscarded);
                 Err(DriverRxError::Discarded)
             }

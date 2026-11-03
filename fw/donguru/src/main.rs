@@ -254,7 +254,7 @@ async fn boot(spawner: embassy_executor::Spawner, start: boot::Start) {
     #[cfg(not(feature = "header-uart"))]
     let _ = r.uart;
     // off until a host sets `plug.pd.source`
-    spawner.spawn(unwrap!(pd::pd_task(r.pd)));
+    pd::start(r.pd);
     ww::start(spawner, usb_driver, swd_host, last_reset, settings).await;
 
     info!("init done");
