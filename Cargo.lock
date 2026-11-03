@@ -582,7 +582,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c54e03a951783e8b327515db3f2a2fd0e3bed362a96b066f341ce66ed49b4ead"
 dependencies = [
  "data-encoding",
- "syn 2.0.119",
+ "syn 3.0.5",
 ]
 
 [[package]]
@@ -849,6 +849,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "361a90feb7004eca4019fb28352a9465666b24f840f5c3cddf0ff13920590b89"
 
 [[package]]
+name = "embedded-storage"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c815b3ed4213d85d6cfd274b871f430c0681084e28dfd4a537877f47f844ec83"
+
+[[package]]
+name = "embedded-storage-async"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69aa7787b8ba0cf4e626c95839f811d853b75e24a0f7312a1eef324fedc13b21"
+dependencies = [
+ "embedded-storage",
+]
+
+[[package]]
 name = "encode_unicode"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -887,7 +902,7 @@ dependencies = [
 [[package]]
 name = "exact_units"
 version = "0.1.0"
-source = "git+https://github.com/romixlab/exact_units#d28ec8669ffff648280439d9d1140d05556130b4"
+source = "git+https://github.com/romixlab/exact_units?rev=e89f64edb1fd7522d8a53f4f26f67550c4c8d8f9#e89f64edb1fd7522d8a53f4f26f67550c4c8d8f9"
 dependencies = [
  "serde",
  "shrink_wrap",
@@ -2901,8 +2916,11 @@ dependencies = [
 name = "ww_board_info"
 version = "0.3.0"
 dependencies = [
+ "embedded-storage-async",
  "wire_weaver",
  "ww_date_time",
+ "ww_error",
+ "ww_settings",
 ]
 
 [[package]]
@@ -3067,6 +3085,25 @@ dependencies = [
  "syn 3.0.5",
  "ww_numeric",
  "ww_version",
+]
+
+[[package]]
+name = "ww_settings"
+version = "0.5.0"
+dependencies = [
+ "crc",
+ "embedded-storage-async",
+ "shrink_wrap",
+ "ww_settings_derive",
+]
+
+[[package]]
+name = "ww_settings_derive"
+version = "0.5.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.5",
 ]
 
 [[package]]
