@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.42] - 2026-11-03
+
 ### Changed
 
 - Firmware without the feature `meter-samples` (the default image) takes no samples at all (FW-65, WireWeaver SRV-56 `observe_samples = false`): no batcher, outbox or `Series` encoder. Release flash (text + data) 289,580 → 266,404 B (−23,176 B), RAM −3,392 B. `donguru_api` and the wire don't change: `meter.reading` stays `+batched`, a host sees the same API, and its other modes send the same bytes. Images with `meter-samples` keep the same sizes. Not run on a board.
