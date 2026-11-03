@@ -1,6 +1,6 @@
 // donguru_api 0.6.0 traits and types, saved by `ww api save`.
 // Do not edit, bump the crate version and save a new snapshot instead.
-// shrink_wrap sha256: 49dfdd8e6c610f00ab9159ee2e1c7d30fbebf5d233bd7602709a9523dc5c1419
+// shrink_wrap sha256: a17b54a47695e432368a48e53eeeb56af58ac7e35ab0b4213544d63808d00c0c
 (magic: 2837124336, ww_self_version: (major: 0, minor: 3, patch: 0), root: (docs: [
     "WireWeaver API of the donguru firmware (`donguru_api/` in the repo root), served by `fw/donguru/src/ww/`.",
     "",
@@ -814,14 +814,14 @@
         85,
     ]),
     SkippedFullVersion(crate_idx: 4, trait_name: "BoardInfo", signature: [
-        36,
-        178,
-        155,
-        167,
-        2,
-        224,
-        165,
-        240,
+        141,
+        19,
+        235,
+        72,
+        135,
+        254,
+        88,
+        166,
     ]),
     SkippedFullVersion(crate_idx: 6, trait_name: "Uid", signature: [
         248,
