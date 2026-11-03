@@ -626,6 +626,28 @@ async fn observe_plug_and_meter() {
     assert!(got.is_ok(), "no meter.reading update");
 }
 
+/// A firmware without `meter-samples` says so when a host connects: asking for samples fails before sending, by the
+/// feature's name, and the other modes work.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn meter_samples_on_an_image_without_them() {
+    let mock = MockDevice::start_without_samples("core/meter-no-samples");
+    let dongle = mock.open().await.expect("open the mock");
+    let Err(e) = dongle
+        .meter()
+        .observe_samples(Duration::from_millis(20))
+        .await
+    else {
+        panic!("samples on an image without them");
+    };
+    assert!(e.is_unimplemented(), "{e:?}");
+    assert!(e.to_string().contains("meter-samples"), "{e}");
+    dongle
+        .meter()
+        .observe(Default::default())
+        .await
+        .expect("observe the meter");
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn meter_reading_samples() {
     // the mock takes one sample per tick of its loop (1 ms), as the firmware takes one per ADC sequence

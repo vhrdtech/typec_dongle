@@ -10,6 +10,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 - Firmware without the feature `meter-samples` (the default image) takes no samples at all (FW-65, WireWeaver SRV-56 `observe_samples = false`): no batcher, outbox or `Series` encoder. Release flash (text + data) 289,580 → 266,404 B (−23,176 B), RAM −3,392 B. `donguru_api` and the wire don't change: `meter.reading` stays `+batched`, a host sees the same API, and its other modes send the same bytes. Images with `meter-samples` keep the same sizes. Not run on a board.
 - `Samples` of `meter.reading` on such a firmware is refused with `ModeNotSupported`, where it used to be granted with no rows ever sent. `PowerMeter::observe_samples` answers `Error::Unimplemented`, so `dg power watch --samples` and Python's `samples=True` fail with a clear message instead of waiting forever.
+- The firmware says it takes no samples when a host connects (WireWeaver `ImageFacts`, SRV-56), so `PowerMeter::observe_samples` fails without asking the device. The refusal stays the answer for a host that doesn't read it. The image with `meter-samples` grows by 256 B of flash for it, and the same-base numbers are in FW-65.
 
 ## [0.20.41] - 2026-11-03
 

@@ -537,6 +537,22 @@ impl MockDevice {
 
     /// Starts a mock in `state`, on a thread of its own.
     pub fn start_with(path: &str, state: MockState) -> MockDevice {
+        MockDevice::start_as(path, state, server::api_impl::image_facts())
+    }
+
+    /// Starts a mock that says what a firmware built without the feature `meter-samples` says when a host connects.
+    pub fn start_without_samples(path: &str) -> MockDevice {
+        let facts = wire_weaver::ww_version::ImageFacts {
+            no_observe_samples: true,
+        };
+        MockDevice::start_as(path, MockState::default(), facts)
+    }
+
+    fn start_as(
+        path: &str,
+        state: MockState,
+        image_facts: wire_weaver::ww_version::ImageFacts,
+    ) -> MockDevice {
         let (jobs, mut job_rx) = mpsc::unbounded_channel::<Job>();
         let drop_requests = Arc::new(AtomicBool::new(false));
         // registered before the thread runs, so a connect right after start finds it
@@ -562,6 +578,7 @@ impl MockDevice {
                 let config = ww_device::LinkConfig::new(
                     DONGURU_API_FULL_GID,
                     server::api_impl::api_hash(),
+                    image_facts,
                     ww_client_server::COMPACT_VERSION,
                 );
                 let clock = TokioClock::new();

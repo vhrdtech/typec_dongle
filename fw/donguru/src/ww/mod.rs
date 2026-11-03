@@ -272,6 +272,7 @@ fn link_config() -> LinkConfig<'static> {
     LinkConfig::new(
         donguru_api::DONGURU_API_FULL_GID,
         server_impl::api_hash(),
+        server_impl::image_facts(),
         ww_client_server::COMPACT_VERSION,
     )
 }

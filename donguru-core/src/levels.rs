@@ -461,22 +461,25 @@ impl Meter<'_> {
 
     /// Observes every `reading` sample (one per ADC sequence, ~1.6 kHz, API-39) in batches at most `max_age` old,
     /// with the budget they need: the device's default level budget (2 kB/s) carries about a third of them. A firmware
-    /// built without the feature `meter-samples` takes no samples: [Error::Unimplemented].
+    /// built without the feature `meter-samples` takes no samples and says so when connecting: [Error::Unimplemented],
+    /// with nothing sent.
     pub async fn observe_samples(&self, max_age: Duration) -> Result<Observer<PowerMeterUpdate>> {
         let cfg = PowerMeterObserve::default().reading(samples(max_age));
         let p = self.c.meter().observe(cfg).budget(METER_SAMPLES_BUDGET);
-        let observer = subscribe("PowerMeter", p).await?;
+        let observer = subscribe(METER_SAMPLES_ITEM, p).await?;
         samples_granted(observer.granted().as_ref())?;
         Ok(observer)
     }
 }
 
-/// Whether the device took the `Samples` mode: it refuses it entry by entry, and an observer of a refused property
-/// would wait for samples that never come.
+const METER_SAMPLES_ITEM: &str = "PowerMeter::reading samples (firmware feature meter-samples)";
+
+/// Whether the device took the `Samples` mode: firmware built before it said so in its image facts refuses it entry
+/// by entry, and an observer of a refused property would wait for samples that never come.
 fn samples_granted(granted: Option<&Granted<PowerMeterObserve>>) -> Result<()> {
     if granted.is_some_and(|g| !g.refused.is_empty()) {
         return Err(Error::Unimplemented {
-            item: "PowerMeter::reading samples (firmware feature meter-samples)".into(),
+            item: METER_SAMPLES_ITEM.into(),
         });
     }
     Ok(())
