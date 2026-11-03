@@ -460,11 +460,54 @@ impl Meter<'_> {
     }
 
     /// Observes every `reading` sample (one per ADC sequence, ~1.6 kHz, API-39) in batches at most `max_age` old,
-    /// with the budget they need: the device's default level budget (2 kB/s) carries about a third of them.
+    /// with the budget they need: the device's default level budget (2 kB/s) carries about a third of them. A firmware
+    /// built without the feature `meter-samples` takes no samples: [Error::Unimplemented].
     pub async fn observe_samples(&self, max_age: Duration) -> Result<Observer<PowerMeterUpdate>> {
         let cfg = PowerMeterObserve::default().reading(samples(max_age));
         let p = self.c.meter().observe(cfg).budget(METER_SAMPLES_BUDGET);
-        subscribe("PowerMeter", p).await
+        let observer = subscribe("PowerMeter", p).await?;
+        samples_granted(observer.granted().as_ref())?;
+        Ok(observer)
+    }
+}
+
+/// Whether the device took the `Samples` mode: it refuses it entry by entry, and an observer of a refused property
+/// would wait for samples that never come.
+fn samples_granted(granted: Option<&Granted<PowerMeterObserve>>) -> Result<()> {
+    if granted.is_some_and(|g| !g.refused.is_empty()) {
+        return Err(Error::Unimplemented {
+            item: "PowerMeter::reading samples (firmware feature meter-samples)".into(),
+        });
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod samples_tests {
+    use super::*;
+    use wire_weaver::shrink_wrap::UNib32;
+    use wire_weaver_client::observe::{ObserveRefusal, ObserveRefused};
+
+    fn granted(refused: Vec<ObserveRefused>) -> Granted<PowerMeterObserve> {
+        Granted {
+            modes: PowerMeterObserve::default(),
+            budget: 0,
+            refused,
+        }
+    }
+
+    /// A firmware without `meter-samples` refuses the mode: `Unimplemented`, never an observer that waits forever.
+    #[test]
+    fn refused_samples_are_unimplemented() {
+        let refused = granted(vec![ObserveRefused {
+            index: UNib32(0),
+            reason: ObserveRefusal::ModeNotSupported,
+        }]);
+        assert!(matches!(
+            samples_granted(Some(&refused)),
+            Err(Error::Unimplemented { .. })
+        ));
+        assert!(samples_granted(Some(&granted(vec![]))).is_ok());
     }
 }
 

@@ -51,7 +51,7 @@ pub mod observe {
     };
     pub use wire_weaver_client::StreamEvent;
     pub use wire_weaver_client::observe::{
-        ObserveEvent, ObserveMode, Observed, Observer, PreparedObserve, on_change,
+        Granted, ObserveEvent, ObserveMode, Observed, Observer, PreparedObserve, on_change,
         on_change_or_beat, periodic, samples,
     };
     /// A `+batched` property's slot in an update: one value, or every sample since the last update (API-39).

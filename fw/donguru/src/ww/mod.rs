@@ -77,15 +77,19 @@ static METER_SAMPLES: server_impl::RootMeterCells<METER_SAMPLES_RING> =
 pub(crate) static OBSERVE: server_impl::ObserveSignal = server_impl::ObserveSignal::new();
 #[cfg(feature = "meter-samples")]
 type Batches = server_impl::ObserveBatches<'static>;
-#[cfg(not(feature = "meter-samples"))]
-type Batches = server_impl::ObserveBatches;
+#[cfg(feature = "meter-samples")]
 type ObserveState = server_impl::ObserveState<&'static mut Batches>;
+#[cfg(not(feature = "meter-samples"))]
+type ObserveState = server_impl::ObserveState;
 // built in place: by value they would take several times their size of stack
+#[cfg(feature = "meter-samples")]
 static OBSERVE_BATCHES: StaticCell<Batches> = StaticCell::new();
 static OBSERVE_STATE: StaticCell<ObserveState> = StaticCell::new();
 /// One column of a batch while it is encoded: the biggest is `meter.reading`'s.
+#[cfg(feature = "meter-samples")]
 const OBSERVE_SCRATCH: usize =
     ww_stream::batch::scratch_bytes::<donguru_api::MeterReading>(server_impl::OBSERVE_BATCH);
+#[cfg(feature = "meter-samples")]
 static SCRATCH: StaticCell<ww_stream::batch::Scratch<OBSERVE_SCRATCH>> = StaticCell::new();
 /// Biggest item of a reliable stream: `device.log.frames`' `DefmtFrames` (512 B of frames and its length).
 const STREAM_BUF_LEN: usize = ww_log::MAX_FRAMES_LEN + 16;
@@ -145,10 +149,10 @@ impl ServerState {
         let observe = ObserveState::init(
             OBSERVE_STATE.uninit(),
             ObserveLimits::DEFAULT,
+            #[cfg(feature = "meter-samples")]
             server_impl::ObserveBatches::init(
                 OBSERVE_BATCHES.uninit(),
                 ww_stream::batch::DEFAULT_POLICY,
-                #[cfg(feature = "meter-samples")]
                 unwrap!(METER_SAMPLES.reader()),
             ),
         );
@@ -215,9 +219,6 @@ mod server_impl {
                 handler_model = "debug.log_flood|debug.hub_read|debug.hub_write|device.label.*|device.settings.*|sbu.release|adc.read|plug.vbus_cycle|meter.reading|meter.temperature|clock.steer=async, _=sync",
                 method_model = "plug_vbus_cycle=deferred, _=immediate",
                 property_model = "_=get_set",
-                // rows of samples per batch: ~20 ms of meter.reading sequences
-                observe_batch = 32,
-                observe_outbox = 1024,
                 $($cells)*
                 const_model = "BOARD|IDS|INFO|BUILD_ID|DEFMT=fn",
                 // no I2C slave mode on Donguru (ww_i2c STD-35): the group answers Unimplemented, clients see it omitted;
@@ -227,15 +228,26 @@ mod server_impl {
             );
         };
     }
-    // and with or without the observe cells of `meter.reading`'s samples (feature `meter-samples`, API-39)
+    // and with the observe cells of `meter.reading`'s samples (feature `meter-samples`, API-39), rows of samples per
+    // batch: ~20 ms of its sequences; or without any: no batcher, outbox or encoder, `Samples` refused (SRV-56)
     #[cfg(all(feature = "api-docs", feature = "meter-samples"))]
-    server!("with_docs", observe_cells = "root_meter",);
+    server!(
+        "with_docs",
+        observe_cells = "root_meter",
+        observe_batch = 32,
+        observe_outbox = 1024,
+    );
     #[cfg(all(feature = "api-docs", not(feature = "meter-samples")))]
-    server!("with_docs",);
+    server!("with_docs", observe_samples = false,);
     #[cfg(all(not(feature = "api-docs"), feature = "meter-samples"))]
-    server!("no_docs", observe_cells = "root_meter",);
+    server!(
+        "no_docs",
+        observe_cells = "root_meter",
+        observe_batch = 32,
+        observe_outbox = 1024,
+    );
     #[cfg(all(not(feature = "api-docs"), not(feature = "meter-samples")))]
-    server!("no_docs",);
+    server!("no_docs", observe_samples = false,);
 }
 
 impl WireWeaverAsyncApiBackend for ServerState {
@@ -447,6 +459,7 @@ async fn usb_task(mut usb: UsbDevice<'static, UsbDriver>) {
 #[embassy_executor::task]
 async fn server_task(mut server: UsbServer<'static, UsbDriver>, state: &'static mut ServerState) {
     let mut buf = [0u8; OBSERVE_BUF_LEN];
+    #[cfg(feature = "meter-samples")]
     let scratch = SCRATCH.init(ww_stream::batch::Scratch::new());
     let mut stream_buf = [0u8; STREAM_BUF_LEN];
     let mut next_pump = Instant::now() + crate::log::PUMP_PERIOD;
@@ -513,7 +526,14 @@ async fn server_task(mut server: UsbServer<'static, UsbDriver>, state: &'static 
                 .next_wake(now_us)
                 .is_some_and(|at| at <= now_us)
                 && state
-                    .poll_properties(&mut server.sink(), (), now_us, &mut buf, scratch)
+                    .poll_properties(
+                        &mut server.sink(),
+                        (),
+                        now_us,
+                        &mut buf,
+                        #[cfg(feature = "meter-samples")]
+                        scratch,
+                    )
                     .await
                     .is_err()
             {
