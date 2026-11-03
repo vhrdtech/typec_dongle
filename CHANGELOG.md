@@ -10,6 +10,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 - Firmware built against wire_weaver master 61c095a with SRV-53 (global trait paths by hash; was 512f59e): release flash (text + data) 314,356 B → 311,940 B (−2,416 B). No source or `Cargo.lock` changes (FW-63).
 - Firmware on the pinned nightly `nightly-2026-11-02` (FW-63, embedded_bedrock TPL-81, the same as donguru_template): `fw/donguru/rust-toolchain.toml` with rustfmt, clippy, rust-src and the target. Release flash 311,940 B → 317,824 B (+5,884 B, the nightly's prebuilt `core`: std 15.7 → 18.6 KiB in cargo bloat), won back by the next steps. The dev build overflows FLASH by 408 B on it.
+- No home or registry paths in the firmware's flash (FW-63): `trim-paths = "all"` in the dev and release profiles of `fw/donguru/Cargo.toml`. Panic locations name `src/...`, `/cargo/deps/<crate>-<version>/src/...`, `/cargo/git/<hash>/<rev>/<crate>/src/...` and `/cargo/registry/<hash>/<crate>-<version>/src/...`; only debug info (`.debug_str`, not flashed) still names the embedded_bedrock checkout. Release flash 317,824 B → 314,904 B (−2,920 B); the dev build fits again, 514,748 B of 516,096 B.
 
 ## [0.20.39] - 2026-11-03
 

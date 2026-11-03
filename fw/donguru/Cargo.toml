@@ -149,6 +149,7 @@ debug-assertions = true
 incremental = false
 opt-level = 3           # embedded dev builds are usually unusable at opt-level 0
 overflow-checks = true
+trim-paths = "all"      # no home or registry paths in the binary (panic locations, debug info), FW-63
 
 [profile.release]
 codegen-units = 1
@@ -156,6 +157,7 @@ debug = 2               # debug info does not end up in flash
 debug-assertions = false
 incremental = false
 lto = "fat"
+trim-paths = "all"
 opt-level = "z"         # size (FW-57): 322 KiB against 502 KiB at 3; USB throughput measured at both, see FEATURES FW-57
 overflow-checks = false
 
