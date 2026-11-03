@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.41] - 2026-11-03
+
 ### Changed
 
 - Firmware: the `plug.pd` message log ring (`donguru::pd::LOG`) moved from `.data` to `.bss` by giving its unused
