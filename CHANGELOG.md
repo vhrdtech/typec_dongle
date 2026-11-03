@@ -11,6 +11,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
 - `device.board.set_reworks` (`ww_board_info` 0.3.0, STD-98) added to `omit` next to `device.board.REWORKS` in the
   firmware (`fw/donguru/src/ww/mod.rs`) and the host mock server (`donguru-core/src/mock/server.rs`): reworks aren't
   served yet (STD-24); keeps building once STD-98 lands on wire_weaver main.
+- Built against wire_weaver master 084f9e9 with its rework guard (STD-101), which has no API items any more: the guard runs in a firmware's `main` before any init and refuses a board with a rework the image doesn't know. Donguru keeps no reworks list (STD-24), so its firmware doesn't run the guard: nothing to omit beyond `device.board.REWORKS` and `set_reworks`.
 - `donguru_api` bumped 0.5.2 → 0.6.0 (Breaking): wire_weaver STD-98 changed `ww_board_info::Rework`'s `id` from a
   string to a number, which changes `Device::board`'s wire signature even though `device.board.REWORKS` is
   omitted here — a device built against 0.6.0 doesn't talk to a host built against 0.5.x or older, and the other
