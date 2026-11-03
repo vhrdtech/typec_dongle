@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.36] - 2026-11-03
+
 ### Added
 
 - CLI: `donguru pd log [--follow] [-o FILE] [--restart] [--for SECONDS]` turns `plug.pd.messages` into `pd_log::Record`s (pd_bench LOG-1, path dependency) and writes them as JSON lines with the host time to `-o FILE`. On screen it prints the same decode as `pd-log print` (usbpd's real parser through `pd_log::Decoder`). `pd-log print` and `pd-log merge` read the file and line a Donguru log up with a rePort sink's by host time (CLI-55, API-30). Tested on B153A against the ZY12PDN.

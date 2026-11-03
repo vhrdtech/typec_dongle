@@ -717,7 +717,7 @@ dependencies = [
 
 [[package]]
 name = "donguru-cli"
-version = "0.20.35"
+version = "0.20.36"
 dependencies = [
  "anstream",
  "anyhow",
@@ -742,7 +742,7 @@ dependencies = [
 
 [[package]]
 name = "donguru-core"
-version = "0.20.35"
+version = "0.20.36"
 dependencies = [
  "anyhow",
  "clap",
@@ -786,7 +786,7 @@ dependencies = [
 
 [[package]]
 name = "donguru-py"
-version = "0.20.35"
+version = "0.20.36"
 dependencies = [
  "donguru-core",
  "pyo3",
@@ -819,7 +819,7 @@ dependencies = [
 
 [[package]]
 name = "donguru_board"
-version = "0.20.35"
+version = "0.20.36"
 dependencies = [
  "defmt",
  "donguru_api",
@@ -830,7 +830,7 @@ dependencies = [
 
 [[package]]
 name = "donguru_dap"
-version = "0.20.35"
+version = "0.20.36"
 
 [[package]]
 name = "either"
@@ -3280,7 +3280,7 @@ dependencies = [
 
 [[package]]
 name = "xtask"
-version = "0.20.35"
+version = "0.20.36"
 dependencies = [
  "anyhow",
  "clap",
