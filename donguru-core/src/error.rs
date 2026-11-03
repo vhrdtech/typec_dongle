@@ -44,6 +44,10 @@ pub enum Error {
     /// The link to the dongle failed: USB, disconnect, protocol.
     #[error("link to the device failed: {0}")]
     Link(String),
+
+    /// The firmware's ELF wasn't found or couldn't be read, to decode what the device recorded.
+    #[error("firmware ELF: {0}")]
+    Elf(String),
 }
 
 /// An error the dongle answered with: its category and the typed error of the API.

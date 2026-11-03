@@ -11,6 +11,11 @@ IDs refer to [FEATURES.md](FEATURES.md).
 - Firmware built against wire_weaver master 61c095a with SRV-53 (global trait paths by hash; was 512f59e): release flash (text + data) 314,356 B → 311,940 B (−2,416 B). No source or `Cargo.lock` changes (FW-63).
 - Firmware on the pinned nightly `nightly-2026-11-02` (FW-63, embedded_bedrock TPL-81, the same as donguru_template): `fw/donguru/rust-toolchain.toml` with rustfmt, clippy, rust-src and the target. Release flash 311,940 B → 317,824 B (+5,884 B, the nightly's prebuilt `core`: std 15.7 → 18.6 KiB in cargo bloat), won back by the next steps. The dev build overflows FLASH by 408 B on it.
 - No home or registry paths in the firmware's flash (FW-63): `trim-paths = "all"` in the dev and release profiles of `fw/donguru/Cargo.toml`. Panic locations name `src/...`, `/cargo/deps/<crate>-<version>/src/...`, `/cargo/git/<hash>/<rev>/<crate>/src/...` and `/cargo/registry/<hash>/<crate>-<version>/src/...`; only debug info (`.debug_str`, not flashed) still names the embedded_bedrock checkout. Release flash 317,824 B → 314,904 B (−2,920 B); the dev build fits again, 514,748 B of 516,096 B.
+- Release firmware without panic locations (FW-63): `-Zlocation-detail=none` for the release profile only (`[profile.release] rustflags` with `[unstable] profile-rustflags` in `fw/donguru/.cargo/config.toml`); dev builds keep them. Release flash 314,904 B → 293,912 B (−20,992 B). A panic message now reads `panicked at <redacted>:0:0`; the crash record's return addresses (embedded_bedrock ROB-13) name the site through the ELF instead.
+
+### Added
+
+- CLI: `donguru device reset-cause` prints a crash's call chain as `file:line` frames, the panic site first, decoded with the firmware's ELF found by the record's build id or given with `--elf FILE` (`--force` to use one whose build id differs); `--format json` has it as `call_chain` (`null` without addresses, `{"error": ...}` when not decoded). Library: `donguru_core::crash::frames` over wire_weaver's `ww_report::crash` (CLT-59), `Error::Elf`. Tested on B153A with a panicking test image (FW-63).
 
 ## [0.20.39] - 2026-11-03
 

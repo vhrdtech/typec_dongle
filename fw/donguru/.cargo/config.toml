@@ -13,6 +13,10 @@ DEFMT_LOG = "debug,donguru=debug"
 CNT_RAM_BUFFER_SIZE_WORDS = "64"
 CNT_BKP_BUFFER_SIZE_WORDS = "4" # must fit into BKPSRAM in memory.x (the fifth register is the boot word, FW-12)
 
-# [unstable]
-# build-std = ["core"]                              # smaller binaries (nightly + rust-src)
-# build-std-features = ["panic_immediate_abort"]   # even smaller, panics become aborts
+# Release firmware without panic locations (file, line and column of every panic site, FW-63): a panic record keeps
+# the return addresses instead (bedrock_crash), and `donguru device reset-cause` names the site from the ELF
+[profile.release]
+rustflags = ["-Zlocation-detail=none"]
+
+[unstable]
+profile-rustflags = true

@@ -1,5 +1,6 @@
 ---
 source: donguru-cli/src/commands/device/reset_cause.rs
-expression: "String::from_utf8(json).unwrap()"
+assertion_line: 227
+expression: "render(Format::Json, &shown)"
 ---
-{"boot_count":4,"boots_since_crash":0,"build_id":"abcd","cause":"Watchdog","fault":null,"message":"stuck in a loop","stack":[],"uptime_s":null}
+{"boot_count":4,"boots_since_crash":0,"build_id":"abcd","call_chain":null,"cause":"Watchdog","fault":null,"message":"stuck in a loop","stack":[],"uptime_s":null}

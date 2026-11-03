@@ -45,6 +45,8 @@ probe-rs = { version = "0.32", optional = true, default-features = false, featur
 pd_log = { path = "../../pd_bench/pd_log", features = ["std"] }
 # `device.counters` and `device.log` decoded with the firmware's ELF, found by its build id (CLI-19)
 cnt_core = "0.5.1"
+# a crash record's call chain as file:line frames (CLT-59), src/crash.rs
+ww_report = { path = "../../wire_weaver/ww_report" }
 defmt-decoder = "1.1"
 
 [features]

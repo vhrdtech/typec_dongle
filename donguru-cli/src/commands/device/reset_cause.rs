@@ -1,9 +1,15 @@
-//! `donguru device reset-cause` - why the device last reset, and the crash record if there is one (CLI-19, API-9).
+//! `donguru device reset-cause` - why the device last reset, and the crash record if there is one (CLI-19, API-9),
+//! with its call chain as `file:line` frames decoded with the firmware's ELF (FW-63).
 
 use std::io::{self, Write};
+use std::path::PathBuf;
 
 use clap::Args;
+use clap_complete::engine::ArgValueCompleter;
+use donguru_core::crash::Decoded;
 use ww_firmware_info::ResetRecordOwned;
+
+use crate::completion;
 
 use crate::cli::Format;
 use crate::context::Context;
@@ -13,6 +19,14 @@ use crate::theme::Theme;
 
 #[derive(Debug, Args)]
 pub struct ResetCause {
+    /// Firmware ELF to decode the call chain with, instead of the one found by the record's build id
+    #[arg(long, value_name = "FILE", add = ArgValueCompleter::new(completion::elf_files))]
+    elf: Option<PathBuf>,
+
+    /// Use the ELF although its build id differs from the record's
+    #[arg(long)]
+    force: bool,
+
     /// Forget the crash record and zero the boot counter, after printing them
     #[arg(long)]
     clear: bool,
@@ -24,9 +38,19 @@ pub fn run(ctx: &Context, args: ResetCause) -> anyhow::Result<ExitCode> {
         let device = dongle.device();
         let record = device.last_reset().await?;
         let boot_count = device.boot_count().await?;
+        let call_chain = donguru_core::crash::frames(&record, args.elf.as_deref(), args.force)
+            .map_err(|e| e.to_string());
+        if let Ok(Some(Decoded {
+            warning: Some(w), ..
+        })) = &call_chain
+            && !ctx.quiet
+        {
+            eprintln!("donguru: {w}");
+        }
         Output::stdout(ctx).emit(&Shown {
             record: &record,
             boot_count,
+            call_chain: call_chain.map(|d| d.map(|d| d.frames)),
         })?;
         if args.clear {
             device.clear_last_reset().await?;
@@ -47,6 +71,8 @@ fn hex(bytes: &[u8]) -> String {
 struct Shown<'a> {
     record: &'a ResetRecordOwned,
     boot_count: u32,
+    /// The crash's call chain; `Ok(None)` when the record holds no addresses, `Err` why it wasn't decoded
+    call_chain: Result<Option<donguru_core::crash::CrashFrames>, String>,
 }
 
 impl Render for Shown<'_> {
@@ -120,6 +146,24 @@ impl Render for Shown<'_> {
                 .collect();
             writeln!(out, "{:<W$}{}", th.key("stack"), th.value(words.join(" ")))?;
         }
+        match &self.call_chain {
+            Ok(None) => {}
+            Ok(Some(frames)) => {
+                if let Some(summary) = frames.summary() {
+                    writeln!(out, "{:<W$}{}", th.key("site"), th.bad(summary))?;
+                }
+                writeln!(out, "{}", th.key("call chain"))?;
+                for line in frames.render_lines() {
+                    writeln!(out, "  {line}")?;
+                }
+            }
+            Err(e) => writeln!(
+                out,
+                "{:<W$}{}",
+                th.key("call chain"),
+                th.dim(format!("not decoded: {e}"))
+            )?,
+        }
         Ok(())
     }
 
@@ -134,6 +178,10 @@ impl Render for Shown<'_> {
             "message": record.message.as_str(),
             "fault": record.fault.as_ref().map(|f| format!("{f:?}")),
             "stack": record.stack.as_slice(),
+            "call_chain": match &self.call_chain {
+                Ok(frames) => serde_json::to_value(frames).unwrap_or(serde_json::Value::Null),
+                Err(e) => serde_json::json!({ "error": e }),
+            },
         })
     }
 }
@@ -163,6 +211,7 @@ mod tests {
         let shown = Shown {
             record: &record,
             boot_count: 1,
+            call_chain: Ok(None),
         };
         insta::assert_snapshot!(render(Format::Text, &shown));
     }
@@ -173,6 +222,7 @@ mod tests {
         let shown = Shown {
             record: &record,
             boot_count: 4,
+            call_chain: Ok(None),
         };
         insta::assert_snapshot!(render(Format::Json, &shown));
     }

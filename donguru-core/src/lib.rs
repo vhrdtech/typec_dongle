@@ -5,6 +5,7 @@
 pub mod client;
 pub mod config;
 pub mod counters;
+pub mod crash;
 pub mod debug;
 pub mod device;
 pub mod error;

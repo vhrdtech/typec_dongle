@@ -131,7 +131,7 @@ dg device list | info | select            # enumeration, identity, pin a default
 dg device label [NAME] [--notes ..]       # the user_info name and free-text notes (CLI-19)
 dg device log [--follow]                  # stored defmt log, decoded with the ELF found by its build id (CLI-19)
 dg device counters [--watch]              # cnt counters, decoded with the ELF found by its build id (CLI-19)
-dg device reset-cause [--clear]           # cause of the last reset, crash record if there is one (CLI-19)
+dg device reset-cause [--clear] [--elf F] # cause of the last reset, crash record and its call chain (CLI-19, FW-63)
 dg power status                           # plug VBUS + header VBUS_SW + meter in one table (CLI-11)
 dg power on|off [--allow-voltage 20V] [--trip 2A]
 dg power cycle [--off 500ms] [--release-sbu]
