@@ -45,3 +45,7 @@ ww_timebase = { path = "../../wire_weaver/ww_stdlib/ww_timebase", default-featur
 ww_uart = { path = "../../wire_weaver/ww_stdlib/ww_uart", default-features = false }
 ww_uid = { path = "../../wire_weaver/ww_stdlib/ww_uid", default-features = false }
 ww_user_info = { path = "../../wire_weaver/ww_stdlib/ww_user_info", default-features = false }
+
+[dev-dependencies]
+# the evolution check (tests/evolution.rs): this crate compared with its snapshots in api_snapshots/
+wire_weaver_evolution = { path = "../../wire_weaver/wire_weaver_evolution" }

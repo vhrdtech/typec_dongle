@@ -94,6 +94,18 @@ test-all:
     cargo test --workspace --all-features --locked
     {{just_executable()}} py-test
 
+# Compare donguru_api with its snapshots (api_snapshots/): fails without the current version's snapshot, or on a
+# change without the version bump it needs (docs/evolution/checker_tool.md in wire_weaver)
+[group: 'rust']
+api-check:
+    cargo test -p donguru_api --test evolution
+
+# Save (or refresh) donguru_api's current version snapshot; refuses a version not bumped enough. Commit
+# donguru_api/api_snapshots/ with it
+[group: 'rust']
+api-save:
+    WW_API_SAVE=1 cargo test -p donguru_api --test evolution -- --nocapture
+
 # Python package `donguru` (donguru-py): build it with maturin and run pytest against the mock
 [group: 'python']
 py-test *ARGS:

@@ -698,6 +698,11 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `reboot(App / Updater)` (the reply goes out, the reset 50 ms later), `boot_state` always `Confirmed`, `confirm`
   `Ok`, `revert` `Unsupported`; `node` says `Profile::InPlace`, unsealed, `boot_control` only. `Updater` is the
   STM32 ROM bootloader (FW-12). Code: `fw/donguru/src/ww/boot.rs`. `ww dfu reboot` tested on B153A 21 Oct 2026.
+- ✅ **API-63 Evolution snapshot test**: `donguru_api` gets WireWeaver's evolution check (P2401#3nov-0059b): a
+  dev-dependency on `wire_weaver_evolution` and `donguru_api/tests/evolution.rs` compare the crate with its
+  snapshot in `donguru_api/api_snapshots/`, run by `just test` / `just api-check`; `just api-save` saves the
+  current version's snapshot. Caught by hand before (STD-98's wire break), now part of `cargo test --workspace`.
+  Snapshot of 0.5.2 saved.
 
 - 📋 **API-20 SBU UART as CDC-ACM**: the SBU USART also as `/dev/ttyACM*`; one owner at a time (ACM while the tty is
   open, else WireWeaver), the owner shown in `sbu.function`, WireWeaver gets `InUse`, `sbu.release` overrides. With

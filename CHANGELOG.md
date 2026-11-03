@@ -6,6 +6,13 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Added
+
+- `donguru_api` gets WireWeaver's evolution snapshot test (API-63, P2401#3nov-0059b): `just test` / `just api-check`
+  now catch an API change that needs a bigger version bump than it got, the way `donguru_api`'s break during
+  STD-98 was found only by hand. `just api-save` saves a version's snapshot; 0.6.0's is the first, committed in
+  `donguru_api/api_snapshots/`.
+
 ## [0.20.38] - 2026-11-03
 
 ### Changed
