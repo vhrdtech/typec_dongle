@@ -6,15 +6,17 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
-### Known bugs
-
-- A reserved message type from the sink gets Not_Supported without a GoodCRC first: usbpd 3.0.0 drops it before the acknowledgement (FW-61).
+## [0.20.37] - 2026-11-03
 
 ### Fixed
 
 - Firmware: the PD source no longer misses a sink's GoodCRC while the USB server is busy, which made it send about 1 message in 30 twice with `pd log` streaming. Its task runs on an interrupt executor of its own (FW-62).
 - Firmware: after a hard reset the PD source waits its VBUS settle time again before Source_Capabilities; they went out 3 ms after VBUS came on (FW-60).
 - CLI: `donguru pd log -o FILE` keeps capturing for its `--for` when the screen output is closed (`| head`); it used to end at the first screen line and leave the file empty. In M1 that made a loop's `--restart`s come back to back, so a sink's Request got no GoodCRC (FW-56).
+
+### Known bugs
+
+- A reserved message type from the sink gets Not_Supported without a GoodCRC first: usbpd 3.0.0 drops it before the acknowledgement (FW-61).
 
 ## [0.20.36] - 2026-11-03
 
