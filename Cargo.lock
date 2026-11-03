@@ -1578,7 +1578,7 @@ dependencies = [
 
 [[package]]
 name = "pd_log"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anstream",
  "anstyle",
