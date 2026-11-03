@@ -6,6 +6,13 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Changed
+
+- Firmware: the `plug.pd` message log ring (`donguru::pd::LOG`) moved from `.data` to `.bss` by giving its unused
+  slots a dedicated zero-tag `Kind::Empty` instead of a real event, so the ring's static initializer is all-zero
+  (FW-64). Release text+data 289,780 B → 287,508 B (−2,272 B); `.data` 3,052 B → 724 B. No wire change (`Kind` is
+  firmware-internal). Tested on B153A: `dg fw update`, then `dg pd log` over a real negotiation.
+
 ## [0.20.40] - 2026-11-03
 
 ### Added

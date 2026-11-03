@@ -221,11 +221,20 @@ impl Phase {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Kind {
-    Attached { cc2: bool },
+    /// An unset ring slot: [`Record::EMPTY`]'s tag, so the all-zero record lands in `.bss`, not `.data`. Never
+    /// pushed, never read back: [`Ring::pop`] only returns slots a [`Ring::push`] has written.
+    Empty,
+    Attached {
+        cc2: bool,
+    },
     Detached,
-    Vbus { on: bool },
+    Vbus {
+        on: bool,
+    },
     Rx,
-    Tx { outcome: TxOutcome },
+    Tx {
+        outcome: TxOutcome,
+    },
     RxDiscarded,
     HardResetRx,
     HardResetTx,
@@ -254,7 +263,7 @@ pub struct Record {
 impl Record {
     pub const EMPTY: Record = Record {
         time_us: 0,
-        kind: Kind::Detached,
+        kind: Kind::Empty,
         len: 0,
         bytes: [0; MAX_MESSAGE],
     };
@@ -286,6 +295,8 @@ impl Record {
     pub fn to_api(&self) -> PdRecord<'_> {
         let bytes = || MaxLen::new_unchecked(RefVec::new_bytes(self.data()));
         let event = match self.kind {
+            // `Ring::pop` never returns a slot that wasn't `push`ed, so this never runs.
+            Kind::Empty => unreachable!("an unset ring slot is never read"),
             Kind::Attached { cc2 } => PdEvent::Attached {
                 cc: if cc2 {
                     CcPolarity::Cc2
