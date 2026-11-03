@@ -16,6 +16,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
   string to a number, which changes `Device::board`'s wire signature even though `device.board.REWORKS` is
   omitted here — a device built against 0.6.0 doesn't talk to a host built against 0.5.x or older, and the other
   way around.
+- Firmware: the release build is at `opt-level = "z"` (FW-57): 322.0 KiB of FLASH instead of 501.7 KiB, to leave room for the full PD stack. USB loopback on B153A is 10-25 % slower than at opt 3 (1 KB: 253 round trips/s, 662 / 550 kB/s each way; opt 3: 296, 830 / 555); no API change. Header UART LZ4 and the meter were not measured.
 
 ## [0.20.34] - 2026-11-02
 

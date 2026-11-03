@@ -259,7 +259,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 🚧 **FW-24 WireWeaver USB throughput** (P2534#15oct-1747): was ~30% of USB FS bulk (`ww usb-loopback`, 1 KB
   messages: 152 round trips/s, 373 kB/s host -> device, 316 kB/s device -> host). Done: flash prefetch on
   (`main.rs`, embassy-stm32 0.6 leaves it off on the G0), off again since FW-38 (ES0548); release `opt-level = 3` instead of "z" (~40% faster
-  here); WireWeaver TR-12 (U2Head byte fast path, replies flushed when no request waits); double-buffered bulk
+  here; back to "z" in FW-57); WireWeaver TR-12 (U2Head byte fast path, replies flushed when no request waits); double-buffered bulk
   endpoints (`src/ww/mod.rs`, `WireWeaverClass::with_endpoints`) from embassy-rs/embassy#7275, merged; embassy from
   upstream main at a pinned rev (`fw/donguru/Cargo.toml` `[patch.crates-io]`, 19 Oct 2026; before: the romixlab/embassy
   `donguru-0.6-double-buffer` fork). Release
@@ -486,10 +486,18 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   while the source starts an AMS and SinkTxOk (3 A Rp) otherwise, so a sink that starts an AMS of its own may collide
   with one of ours. usbpd starts none after the contract, so M1 doesn't need it; renegotiation from the source side
   (API-30) does.
-- 📋 **FW-57 Release build at opt-level z**: the same code is 321.8 KiB at z against 501.7 KiB at opt 3 (s: 350.3; z
-  with all five FW-53 features on: 368.4), measured 2 Nov 2026 on 0.20.34. Opt 3 on the USB and LZ4 crates inside a
-  z build changed nothing (fat LTO). Open: the throughput FW-24 chose opt 3 for (USB loopback, header UART LZ4, meter
-  samples) measured on B153A at both levels before the switch; then the FW-53 features back on. P2534#3nov-0000b.
+- 🧪 **FW-57 Release build at opt-level z**: the release profile is `opt-level = "z"` (`fw/donguru/Cargo.toml`): FLASH
+  322.0 KiB against 501.7 KiB at opt 3 (s: 351.2; z with all five FW-53 features on: 368.4, measured 2 Nov 2026 on
+  0.20.34). Opt 3 on the USB and LZ4 crates inside a z build changed nothing (fat LTO). USB throughput measured on
+  B153A on 3 Nov 2026 with `ww usb-loopback --duration-sec 6`, same code, only the profile changed:
+  - 1 KB messages, opt 3 / s / z: round trips 296 / 295 / 253 per s, host -> device 830 / 822 / 662 kB/s, device ->
+    host 555 / 555 / 550 kB/s.
+  - 64 B messages, opt 3 / s / z: round trips 727 / 723 / 664 per s, host -> device 406 / 409 / 300 kB/s, device ->
+    host 541 / 541 / 458 kB/s.
+  - So z costs 10-25 % on the loopback (one run each, noisy); s equals opt 3 at +29 KiB over z. Roman chose z (3 Nov
+    2026): the full PD stack (FW-58) needs the room, s would leave none. The loopback is the only check done; the header
+    UART LZ4 and the meter samples were not measured at either level (no device on the header UART, no meter
+    stream command yet). Open: those two, then the FW-53 features back on. P2534#3nov-0000b.
 - 📋 **FW-58 One PD runtime for both UCPDs**: a port-erased PHY so usbpd's engines and the DPMs are compiled once for
   UCPD1 and UCPD2; the driver splits SOP (to the engine) from SOP' / SOP'' (cable role) and taps every message and
   event into one two-port log of raw records (decoded on the host, CORE-14); the PD safety rules in `donguru_board`
