@@ -487,7 +487,8 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   with one of ours. usbpd starts none after the contract, so M1 doesn't need it; renegotiation from the source side
   (API-30) does.
 - 🧪 **FW-57 Release build at opt-level z**: the release profile is `opt-level = "z"` (`fw/donguru/Cargo.toml`): FLASH
-  322.0 KiB against 501.7 KiB at opt 3 (s: 351.2; z with all five FW-53 features on: 368.4, measured 2 Nov 2026 on
+  322.0 KiB (322.4 KiB against wire_weaver 084f9e9, where opt 3 no longer fits: 64 B over, +2.2 KiB from exact_units'
+  `sqrt_f64` now on core's u128 `isqrt`, reached only through `ww_si::ops::compare_slow`'s f64 fallback) against 501.7 KiB at opt 3 (s: 351.2; z with all five FW-53 features on: 368.4, measured 2 Nov 2026 on
   0.20.34). Opt 3 on the USB and LZ4 crates inside a z build changed nothing (fat LTO). USB throughput measured on
   B153A on 3 Nov 2026 with `ww usb-loopback --duration-sec 6`, same code, only the profile changed:
   - 1 KB messages, opt 3 / s / z: round trips 296 / 295 / 253 per s, host -> device 830 / 822 / 662 kB/s, device ->
