@@ -315,9 +315,13 @@ struct LoggingDriver<'d> {
 
 impl Driver for LoggingDriver<'_> {
     async fn wait_for_vbus(&mut self) {
-        // VBUS came on at the attach, and after a hard reset in `Dpm::hard_reset`: on in any case, then settle once
+        // PE_SRC_Transition_to_default -> PE_SRC_Startup only at vSafe5V (USB PD 3.2 8.3.3.2.9): rev A cannot read
+        // plug VBUS (FW-35), so every switch-on gets the settle time. VBUS came on at the attach (`run_attach`); after
+        // a hard reset `Dpm::hard_reset` left it off, and without the settle the capabilities went out 3 ms after
+        // the switch-on, before U601's soft start was through (FW-60).
+        let was_off = power::mode(power::Which::Plug) == VbusMode::ForceOff;
         vbus(Some(&self.offer));
-        if !self.vbus_settled {
+        if was_off || !self.vbus_settled {
             Timer::after_millis(VBUS_SETTLE_MS).await;
             self.vbus_settled = true;
         }
