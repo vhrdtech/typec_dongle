@@ -515,9 +515,11 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   event into one two-port log of raw records (decoded on the host, CORE-14); the PD safety rules in `donguru_board`
   (never request above 20 V, U601 open while both sides may source, offers never above the receptacle's). The API-30
   source moves onto it. P2534#3nov-0001b.
-- 📋 **FW-59 usbpd branch of our own**: through `[patch.crates-io]` like embassy: the SOP type in
-  `usbpd_traits::Driver` and a MessageID per SOP, VDMs to the DPM in both engines, VDM decoding without `panic!` on
-  unknown values (host input), a detach error, chunked transmit. Upstreaming is decided per piece. P2534#3nov-0001.
+- 📋 **FW-59 usbpd fork of our own**: private romixlab/usbpd through `[patch.crates-io]` like embassy, with no
+  regard for upstream (Roman, 3 Nov 2026): its API changes freely, and if it drifts too far it becomes our own crate.
+  The SOP type in the driver trait and a MessageID per SOP, VDMs to the DPM in both engines, VDM decoding without
+  `panic!` on unknown values (host input), a detach error, chunked transmit, observation hooks and per-timer
+  overrides. P2534#3nov-0001.
 
 ## API (`API`)
 
