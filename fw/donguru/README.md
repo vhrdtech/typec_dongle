@@ -17,6 +17,18 @@ cargo run            # dev profile
 cargo run --release
 ```
 
+Only the release image has to fit the 504 KiB. The dev profile (opt-level 3, debug assertions and overflow checks,
+also in `core` since it is built with the firmware) overflows FLASH by about 17.6 KB, and turning features off does
+not close that: with no features at all it is still 17.3 KB over, and `DEFMT_LOG=warn` still 13.6 KB. A dev image
+that fits keeps its checks and builds for size instead (measured 3 Nov 2026, FW-63):
+
+```
+CARGO_PROFILE_DEV_OPT_LEVEL=s cargo run   # 444,864 B of 516,096 B, assertions and overflow checks kept
+```
+
+`CARGO_PROFILE_DEV_DEBUG_ASSERTIONS=false` at opt-level 3 fits too (482,680 B) but drops the assertions;
+`CARGO_PROFILE_DEV_OVERFLOW_CHECKS=false` alone is still 1.6 KB over.
+
 ## WireWeaver API
 
 The device serves a [WireWeaver](https://github.com/vhrdtech/wire_weaver) API over USB (VID:PID `c0de:cafe`).
