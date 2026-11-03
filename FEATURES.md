@@ -486,6 +486,18 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   while the source starts an AMS and SinkTxOk (3 A Rp) otherwise, so a sink that starts an AMS of its own may collide
   with one of ours. usbpd starts none after the contract, so M1 doesn't need it; renegotiation from the source side
   (API-30) does.
+- 📋 **FW-57 Release build at opt-level z**: the same code is 321.8 KiB at z against 501.7 KiB at opt 3 (s: 350.3; z
+  with all five FW-53 features on: 368.4), measured 2 Nov 2026 on 0.20.34. Opt 3 on the USB and LZ4 crates inside a
+  z build changed nothing (fat LTO). Open: the throughput FW-24 chose opt 3 for (USB loopback, header UART LZ4, meter
+  samples) measured on B153A at both levels before the switch; then the FW-53 features back on. P2534#3nov-0000b.
+- 📋 **FW-58 One PD runtime for both UCPDs**: a port-erased PHY so usbpd's engines and the DPMs are compiled once for
+  UCPD1 and UCPD2; the driver splits SOP (to the engine) from SOP' / SOP'' (cable role) and taps every message and
+  event into one two-port log of raw records (decoded on the host, CORE-14); the PD safety rules in `donguru_board`
+  (never request above 20 V, U601 open while both sides may source, offers never above the receptacle's). The API-30
+  source moves onto it. P2534#3nov-0001b.
+- 📋 **FW-59 usbpd branch of our own**: through `[patch.crates-io]` like embassy: the SOP type in
+  `usbpd_traits::Driver` and a MessageID per SOP, VDMs to the DPM in both engines, VDM decoding without `panic!` on
+  unknown values (host input), a detach error, chunked transmit. Upstreaming is decided per piece. P2534#3nov-0001.
 
 ## API (`API`)
 
@@ -682,11 +694,15 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 💡 **API-23 Receptacle side as its own level (`host`)**: the computer / charger side has no level today (only
   `meter.vbus_in`). `host.cc` (who sources, Type-C current from Rp), `host.pd`: PD sink on UCPD1 with
   `source_caps` (PDOs incl. PPS), `request(pdo, voltage, current)`, the current contract, `last_source` (kept for
-  FW-28) and a `messages` stream of decoded PD messages. Lab `charger-inspector`, `pd-sniffing`.
+  FW-28) and a `messages` stream of decoded PD messages. Lab `charger-inspector`, `pd-sniffing`. 📋 planned (2 Nov
+  2026, P2534#3nov-0001d): on the FW-58 runtime, caps incl. PPS / AVS / EPR (EPR entered only to read caps, never a
+  request above 20 V: the VBUS path is 20 V), PPS keep-alive, extended and status messages; rev A only out of spec
+  (the fixed 5K1, hw_b153a.md §0).
 - 💡 **API-24 Plug CC role**: `plug.cc_role` = `Off` / `Sink` (Rd) / `Source { current }` (Rp 0.9 / 1.5 / 3 A) /
   `Auto` (follow the computer side, the default), replacing FW-17's hardcoded drive. Lets a DUT be a source (power
   bank, phone with reverse charging) and is what back-feeding needs: the guard opens the switch while both sides
-  source. Lab `who-feeds-whom`.
+  source. Lab `who-feeds-whom`. 📋 planned (P2534#3nov-0002): with `Drp` (toggling in firmware) and a PD sink on
+  the plug against a charger DUT, U601 open; rev A cannot read plug VBUS (rev B ask, P2534#3nov-0000).
 - 💡 **API-25 Meter zero and averages with uncertainty**: `meter.zero()` learns the current offset while the plug is
   off (the INA181's offset is worth tens of mA on a 5 mΩ shunt), `meter.average(window)` returns mean / min / max and
   a one-sigma error. One ADC step is ~3 mA: the docs say what the meter can and can't resolve. Lab `standby-current`.
@@ -694,7 +710,10 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   trigger (power on, a current level, now) and read out as a stream (`ww_adc::AdcStream` or own); the regular
   sequence pauses while it runs. Lab `inrush`.
 - 💡 **API-27 Cable e-marker**: read the e-marker of the cable on the receptacle with SOP' (needs VCONN from
-  Donguru's side or a source that supplies it): current, voltage, speed, length, vendor. Lab `cable-check`.
+  Donguru's side or a source that supplies it): current, voltage, speed, length, vendor. Lab `cable-check`. 📋
+  planned (P2534#3nov-0002d): first passive, SOP' / SOP'' received on UCPD1 without our GoodCRC while the computer
+  discovers the cable (embassy reports a Cable Reset as a Hard Reset: fix in our fork); e-marker emulation on the
+  plug once rev B has a switched Ra on B5.
 - 💡 **API-28 UART over TCP on NCM**: with API-21, the SBU UART as a raw TCP port (2323, like ser2net), one more
   owner next to WireWeaver and ACM under the same one-owner rule. Lab `network-over-usb`.
 - 💡 **API-29 `ext` level for user code**: a level in `DonguruApi` reserved for firmware forks (`ww_impl!(ext: Ext)`,
@@ -738,6 +757,18 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   logs and events say who switched what; functions one client must drive alone (UART TX, an SWD session, a capture)
   are leased to one client and others get "held by X" instead of interfering; a lease ends with its client. Lab
   `many-clients`.
+- 📋 **API-60 Structured VDMs and alt-mode awareness**: on the FW-59 DPM hook, as initiator (Discover Identity /
+  SVIDs / Modes, Enter / Exit Mode, Attention logged) and responder (Donguru's identity, configurable; modes NAKed or
+  emulated) on both ports; unstructured VDMs raw. A mode that puts signals on SBU (DisplayPort AUX) needs
+  `sbu.release` first or is refused while SBU is in use. `dg pd identity | svids | modes | enter | exit`, decoded on
+  the host (CORE-14). P2534#3nov-0002c.
+- 📋 **API-61 PD role swaps**: PR_Swap on the plug with U601 opened before the DUT sources (never both sides
+  sourcing), DR_Swap accepted as a test knob (the hub stays the host, the data path doesn't change), VCONN_Swap
+  rejected (no VCONN source). Receptacle swaps wait for rev B (API-32). P2534#3nov-0002b.
+- 📋 **API-62 PD proxy**: Donguru in line between a charger (receptacle, API-23) and a DUT (plug, API-24): offers
+  the charger's PDOs downstream, requests upstream what the DUT asks, VBUS through U601 without glitches; both sides
+  in one log on one clock; fault injection (drop GoodCRC, delay, mutate, refuse). CC is not passed through, so a
+  passive sniffer is impossible; this is the next best. P2534#3nov-0002f.
 
 ## Host library (`CORE`)
 
@@ -818,6 +849,10 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   (optional extra), `dg.inputs.events()` iterator (button, switch), `dg.usb.cycle(wait_for=...)`, `measure()`
   helpers, the GPIO / I2C / ADC levels as their API items land, an asyncio API beside the blocking one, wheels per
   platform on PyPI (`uv add donguru`). ^v1.0
+- 📋 **CORE-14 PD decoder**: the firmware's raw PD records (FW-58) decoded in donguru-core: every control, data
+  and extended message, VDM headers and VDOs (ID header, cert, product, cable, AMA / VPD, DisplayPort, TBT3, USB4
+  modes), SOP*, resets; `dg pd log` for both ports and every SOP, text and jsonl. Shared with pd_bench `pd_log`
+  where it fits. P2534#3nov-0001c.
 
 ## CLI (`CLI`)
 
