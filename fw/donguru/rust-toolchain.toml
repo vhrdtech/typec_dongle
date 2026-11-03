@@ -1,4 +1,6 @@
 [toolchain]
-channel = "stable"
-components = ["rustfmt"]
+# pinned nightly (FW-12 of donguru_template, embedded_bedrock TPL-81): trim-paths, -Zlocation-detail and build-std
+# core for a smaller firmware; the same nightly as donguru_template, moved on purpose and measured with `just fw-size`
+channel = "nightly-2026-11-02"
+components = ["rustfmt", "clippy", "rust-src"]
 targets = ["thumbv6m-none-eabi"]

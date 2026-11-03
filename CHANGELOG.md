@@ -6,6 +6,11 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Changed
+
+- Firmware built against wire_weaver master 61c095a with SRV-53 (global trait paths by hash; was 512f59e): release flash (text + data) 314,356 B → 311,940 B (−2,416 B). No source or `Cargo.lock` changes (FW-63).
+- Firmware on the pinned nightly `nightly-2026-11-02` (FW-63, embedded_bedrock TPL-81, the same as donguru_template): `fw/donguru/rust-toolchain.toml` with rustfmt, clippy, rust-src and the target. Release flash 311,940 B → 317,824 B (+5,884 B, the nightly's prebuilt `core`: std 15.7 → 18.6 KiB in cargo bloat), won back by the next steps. The dev build overflows FLASH by 408 B on it.
+
 ## [0.20.39] - 2026-11-03
 
 ### Added
