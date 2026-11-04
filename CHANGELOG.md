@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.44] - 2026-11-04
+
 ### Changed
 
 - wire_weaver STD-102 (`ww_si` on the `exact_units` integer kernel, no floats on the device): the firmware's UART baud rate and IO level, the mock UART and the PD log time read quantities with `to_in::<u32>(prefix, Truncate, Checked)` instead of `to_u32_in`. Donguru release flash (text) 258,340 → 246,780 B (−11,560 B), data 724 B unchanged, same embassy fork commit and `opt-level` in both builds (`llvm-size`). Not run on a board.
