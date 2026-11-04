@@ -6,6 +6,11 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Changed
+
+- wire_weaver STD-102 (`ww_si` on the `exact_units` integer kernel, no floats on the device): the firmware's UART baud rate and IO level, the mock UART and the PD log time read quantities with `to_in::<u32>(prefix, Truncate, Checked)` instead of `to_u32_in`. Donguru release flash (text) 258,340 → 246,780 B (−11,560 B), data 724 B unchanged, same embassy fork commit and `opt-level` in both builds (`llvm-size`). Not run on a board.
+- `Cargo.lock` of the workspace and `fw/donguru` on wire_weaver 0c18ed2 and exact_units 1819d9f, `fw/donguru` on the embedded_bedrock commit with the same API change (`cargo update -p bedrock_sync -p bedrock_led -p bedrock_crash` again once embedded_bedrock is on main) and a newer `embassy-stm32` of the fork branch.
+
 ## [0.20.43] - 2026-11-04
 
 - `fw/donguru`: the romixlab/embassy fork dependencies and patches take `branch = "donguru-ring-copy"` instead of `rev = 84ae135...`; Cargo.lock pins the commit, and `cargo update -p embassy-stm32` stays on the patched line. The next build needs that update in `fw/donguru`

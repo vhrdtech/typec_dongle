@@ -3,7 +3,7 @@
 //! `dg pd log`'s JSON lines file and its screen decode, shared with rePort's sink log.
 
 use donguru_api::{PdEventOwned, PdRecordOwned, PdSop, PdSource, PdTxOutcome};
-use ww_si::{Ampere, Prefix, Second};
+use ww_si::{Ampere, Overflow, Prefix, Rounding, Second};
 
 /// This device's label in a `pd_log` record ([`pd_log::Source`]).
 pub const LOG_SOURCE: &str = "donguru";
@@ -12,7 +12,7 @@ pub const LOG_SOURCE: &str = "donguru";
 /// pass-through of the firmware's own counter, not unwrapped (one log file is one capture, not a stream spanning a
 /// wrap).
 fn device_time_us(time: Second) -> u64 {
-    time.to_u32_in(Prefix::Micro).unwrap_or(0) as u64
+    time.to_in::<u32>(Prefix::Micro, Rounding::Truncate, Overflow::Checked).unwrap_or(0) as u64
 }
 
 fn log_sop(sop: PdSop) -> pd_log::Sop {

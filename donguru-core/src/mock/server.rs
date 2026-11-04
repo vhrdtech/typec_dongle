@@ -1095,7 +1095,7 @@ impl MockServer {
             return Unimplemented.into();
         }
         // the firmware's divider on 64 MHz, 8 Mbaud at most, 8N1-style framings only
-        let Some(baud) = config.baud_rate.to_u32_in(ww_si::Prefix::Unit) else {
+        let Some(baud) = config.baud_rate.to_in::<u32>(ww_si::Prefix::Unit, ww_si::Rounding::Truncate, ww_si::Overflow::Checked) else {
             return Ready(Err(ww_uart::UartError::Common(CommonError::Unsupported)));
         };
         let div = (64_000_000 + baud / 2) / baud.max(1);
