@@ -185,6 +185,7 @@ overflow-checks = false
 # For now the tree is romixlab/embassy `donguru-ring-copy`: upstream 262fdba plus one commit, the DMA ring buffer copying
 # out in up to two runs instead of a software division per byte (on the M0+ the header UART got 16 kB/s at 5.8 Mbaud
 # without it, FW-42). Back to embassy-rs once that fix is merged upstream.
+# The branch keeps `cargo update -p embassy-stm32` on this patched line; Cargo.lock pins the commit (it was 84ae135).
 # wire_weaver and embedded_bedrock are git dependencies, pinned by Cargo.lock. bedrock_led and bedrock_sync take
 # WireWeaver from the same git URL (embedded_bedrock's workspace dependencies), so they and the firmware share one
 # wire_weaver, ww_indication, ww_timebase and shrink_wrap (two copies of a crate are two types: E0308 in ww/leds.rs and
@@ -206,18 +207,18 @@ overflow-checks = false
 # bedrock_sync = { path = "../../../embedded_bedrock/bedrock_sync" }
 
 [patch.crates-io]
-embassy-stm32 = { git = "https://github.com/romixlab/embassy", rev = "84ae135f91069d49c8dcb823a677e9f4b4a1e534" }
-embassy-usb = { git = "https://github.com/romixlab/embassy", rev = "84ae135f91069d49c8dcb823a677e9f4b4a1e534" }
-embassy-usb-driver = { git = "https://github.com/romixlab/embassy", rev = "84ae135f91069d49c8dcb823a677e9f4b4a1e534" }
-embassy-hal-internal = { git = "https://github.com/romixlab/embassy", rev = "84ae135f91069d49c8dcb823a677e9f4b4a1e534" }
-embassy-embedded-hal = { git = "https://github.com/romixlab/embassy", rev = "84ae135f91069d49c8dcb823a677e9f4b4a1e534" }
-embassy-sync = { git = "https://github.com/romixlab/embassy", rev = "84ae135f91069d49c8dcb823a677e9f4b4a1e534" }
-embassy-time = { git = "https://github.com/romixlab/embassy", rev = "84ae135f91069d49c8dcb823a677e9f4b4a1e534" }
-embassy-time-driver = { git = "https://github.com/romixlab/embassy", rev = "84ae135f91069d49c8dcb823a677e9f4b4a1e534" }
-embassy-time-queue-utils = { git = "https://github.com/romixlab/embassy", rev = "84ae135f91069d49c8dcb823a677e9f4b4a1e534" }
-embassy-executor = { git = "https://github.com/romixlab/embassy", rev = "84ae135f91069d49c8dcb823a677e9f4b4a1e534" }
-embassy-executor-macros = { git = "https://github.com/romixlab/embassy", rev = "84ae135f91069d49c8dcb823a677e9f4b4a1e534" }
-embassy-executor-timer-queue = { git = "https://github.com/romixlab/embassy", rev = "84ae135f91069d49c8dcb823a677e9f4b4a1e534" }
-embassy-futures = { git = "https://github.com/romixlab/embassy", rev = "84ae135f91069d49c8dcb823a677e9f4b4a1e534" }
-embassy-net-driver-channel = { git = "https://github.com/romixlab/embassy", rev = "84ae135f91069d49c8dcb823a677e9f4b4a1e534" }
-embassy-usb-synopsys-otg = { git = "https://github.com/romixlab/embassy", rev = "84ae135f91069d49c8dcb823a677e9f4b4a1e534" }
+embassy-stm32 = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
+embassy-usb = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
+embassy-usb-driver = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
+embassy-hal-internal = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
+embassy-embedded-hal = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
+embassy-sync = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
+embassy-time = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
+embassy-time-driver = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
+embassy-time-queue-utils = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
+embassy-executor = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
+embassy-executor-macros = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
+embassy-executor-timer-queue = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
+embassy-futures = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
+embassy-net-driver-channel = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
+embassy-usb-synopsys-otg = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
