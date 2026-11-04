@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.43] - 2026-11-04
+
 - `fw/donguru`: the romixlab/embassy fork dependencies and patches take `branch = "donguru-ring-copy"` instead of `rev = 84ae135...`; Cargo.lock pins the commit, and `cargo update -p embassy-stm32` stays on the patched line. The next build needs that update in `fw/donguru`
 
 ### Changed
