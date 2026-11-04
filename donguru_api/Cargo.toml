@@ -29,23 +29,23 @@ defmt = ["wire_weaver/defmt", "dep:defmt"]
 [dependencies]
 defmt = { version = "1.1", optional = true }
 # local checkout next to this repo (~/git/wire_weaver)
-wire_weaver = { path = "../../wire_weaver/wire_weaver", default-features = false }
-ww_si = { path = "../../wire_weaver/ww_stdlib/ww_si", default-features = false, features = ["time", "electrical", "mechanical", "thermal"] }
+wire_weaver = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+ww_si = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false, features = ["time", "electrical", "mechanical", "thermal"] }
 # stdlib traits implemented by the API (device contract, indication, IO family)
-ww_adc = { path = "../../wire_weaver/ww_stdlib/ww_adc", default-features = false }
-ww_board_info = { path = "../../wire_weaver/ww_stdlib/ww_board_info", default-features = false }
-ww_counters = { path = "../../wire_weaver/ww_stdlib/ww_counters", default-features = false }
-ww_dfu = { path = "../../wire_weaver/ww_stdlib/ww_dfu", default-features = false }
-ww_firmware_info = { path = "../../wire_weaver/ww_stdlib/ww_firmware_info", default-features = false }
-ww_gpio = { path = "../../wire_weaver/ww_stdlib/ww_gpio", default-features = false }
-ww_i2c = { path = "../../wire_weaver/ww_stdlib/ww_i2c", default-features = false }
-ww_indication = { path = "../../wire_weaver/ww_stdlib/ww_indication", default-features = false }
-ww_log = { path = "../../wire_weaver/ww_stdlib/ww_log", default-features = false }
-ww_timebase = { path = "../../wire_weaver/ww_stdlib/ww_timebase", default-features = false }
-ww_uart = { path = "../../wire_weaver/ww_stdlib/ww_uart", default-features = false }
-ww_uid = { path = "../../wire_weaver/ww_stdlib/ww_uid", default-features = false }
-ww_user_info = { path = "../../wire_weaver/ww_stdlib/ww_user_info", default-features = false }
+ww_adc = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+ww_board_info = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+ww_counters = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+ww_dfu = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+ww_firmware_info = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+ww_gpio = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+ww_i2c = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+ww_indication = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+ww_log = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+ww_timebase = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+ww_uart = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+ww_uid = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+ww_user_info = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
 
 [dev-dependencies]
 # the evolution check (tests/evolution.rs): this crate compared with its snapshots in api_snapshots/
-wire_weaver_evolution = { path = "../../wire_weaver/wire_weaver_evolution" }
+wire_weaver_evolution = { git = "https://github.com/vhrdtech/wire_weaver" }

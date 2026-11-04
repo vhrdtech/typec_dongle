@@ -6,6 +6,10 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Changed
+
+- Dependencies on sibling repos (wire_weaver, embedded_bedrock, pd_bench) are git dependencies without rev, pinned by `Cargo.lock`, instead of `../` paths; the `[patch]` blocks pointing at sibling checkouts are commented out in `Cargo.toml` and `fw/donguru/Cargo.toml` (uncomment for local development). The next build needs `cargo update -p wire_weaver` (and `-p embedded_bedrock`, `-p pd_bench`) in the root and in `fw/donguru`.
+
 ## [0.20.42] - 2026-11-03
 
 ### Changed

@@ -17,7 +17,7 @@ WireWeaver layout (`<api>/` + `firmware/` side by side), this repo keeps:
   (`ww_codegen!` in `src/ww/mod.rs`, one handler module per level of the API tree) and runs the USB server. The
   USB driver is created in `src/main.rs` and handed to `ww::start`.
 
-WireWeaver crates come from the local checkout next to this repo (`~/git/wire_weaver`, relative path deps).
+WireWeaver crates come from git (`vhrdtech/wire_weaver`, pinned by Cargo.lock; `cargo update -p wire_weaver` moves it). To build against the checkout next to this repo, uncomment the `[patch]` block in Cargo.toml.
 Its `AGENTS.md` and `docs/` explain the API DSL (methods, properties, streams) and the wire format.
 
 The trait, `ServerState` and the method implementations were blinky stubs; they are this firmware's own code now.

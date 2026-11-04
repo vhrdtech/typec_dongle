@@ -10,7 +10,7 @@ edition = "2024"
 defmt = "1.1"
 # defmt's global logger (API-10): every frame into device.log over WireWeaver, teed to the RTT channel "defmt" that
 # probe-rs / cnt run show as before (src/log.rs)
-ww_defmt_logger = { path = "../../../wire_weaver/ww_defmt_logger", features = ["rtt"] }
+ww_defmt_logger = { git = "https://github.com/vhrdtech/wire_weaver", features = ["rtt"] }
 rtt-target = "0.6"
 cortex-m = { version = "0.7", features = ["critical-section-single-core"] }
 cortex-m-rt = "0.7"
@@ -26,14 +26,14 @@ static_cell = "2.1"
 assign-resources = "0.5.0"
 cnt = "0.5" # 0.5: used words and format version, served as device.counters (ww_counters)
 # crash capture: HardFault / panic record kept across reset, reset cause (src/last_reset.rs); the panic handler
-bedrock_crash = { path = "../../../embedded_bedrock/bedrock_crash", features = ["cortex-m", "defmt"] }
+bedrock_crash = { git = "https://github.com/romixlab/embedded_bedrock", features = ["cortex-m", "defmt"] }
 # the LED animation and driver (src/led.rs) and the `leds` indication bookkeeping (src/ww/leds.rs), DEV-12; from the
-# embedded_bedrock checkout next to this repo, as its ww-indication feature takes WireWeaver from the checkout next to it
-bedrock_led = { path = "../../../embedded_bedrock/bedrock_led", features = ["embassy", "ww-indication", "defmt"] }
+# embedded_bedrock git repository, as its ww-indication feature takes WireWeaver from git too
+bedrock_led = { git = "https://github.com/romixlab/embedded_bedrock", features = ["embassy", "ww-indication", "defmt"] }
 # the shared clock (DEV-13, FW-44): host steer points onto UTC, LEDs run on it (bedrock_led's `align`). No oscillator
 # backend here (HSI trim too coarse for Donguru, decided 21 Oct 2026) and no sync line, so `ww-timebase` is the only
 # feature besides `embassy`.
-bedrock_sync = { path = "../../../embedded_bedrock/bedrock_sync", features = ["embassy", "ww-timebase", "defmt"] }
+bedrock_sync = { git = "https://github.com/romixlab/embedded_bedrock", features = ["embassy", "ww-timebase", "defmt"] }
 # CMSIS-DAP command processing (SWD/JTAG state machine), transport written ourselves against embassy-usb: its own
 # `usb` module targets the separate `usb-device` crate, incompatible with the embassy-usb stack used here.
 # Its own "defmt" feature pulls defmt 0.3, a different major version than ours (1.1): left off, nothing here needs
@@ -47,38 +47,38 @@ donguru_dap = { path = "../../donguru_dap" }
 # board logic, no_std, unit-tested on the host: hub (U301) variant detection and per-variant config, VBUS modes and
 # the guard
 donguru_board = { path = "../../donguru_board", features = ["defmt"] }
-# WireWeaver: API crate in the repo root, served by src/ww.rs. wire_weaver from the local checkout next to this repo
+# WireWeaver: API crate in the repo root, served by src/ww.rs. wire_weaver from git
 donguru_api = { path = "../../donguru_api", features = ["defmt"] }
-wire_weaver = { path = "../../../wire_weaver/wire_weaver", default-features = false, features = ["defmt"] }
-ww_client_server = { path = "../../../wire_weaver/ww_stdlib/ww_client_server", default-features = false }
+wire_weaver = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false, features = ["defmt"] }
+ww_client_server = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
 # observe tables and stream states of the generated server (SRV-18, counted and reliable streams)
 # persistent-ram: device.log's store in .uninit RAM, kept across a crash and reset (API-10)
 # lz4: `uart[1].rx` compressed for hosts that decode it (WireWeaver API-55, FW-42)
-ww_stream = { path = "../../../wire_weaver/ww_stream", default-features = false, features = ["persistent-ram", "lz4"] }
+ww_stream = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false, features = ["persistent-ram", "lz4"] }
 # the encoder of `uart[1].rx`; ram: its hot functions run from SRAM, ~30 % fewer cycles than from flash (FW-42)
-ww_lz4 = { path = "../../../wire_weaver/ww_lz4", features = ["ram"] }
+ww_lz4 = { git = "https://github.com/vhrdtech/wire_weaver", features = ["ram"] }
 # stdlib traits the API implements (`donguru_api` depends on them too): types in the handler signatures
-ww_si = { path = "../../../wire_weaver/ww_stdlib/ww_si", default-features = false, features = ["time", "electrical", "mechanical", "thermal", "i32", "u32"] }
-ww_adc = { path = "../../../wire_weaver/ww_stdlib/ww_adc", default-features = false }
-ww_board_info = { path = "../../../wire_weaver/ww_stdlib/ww_board_info", default-features = false }
-ww_counters = { path = "../../../wire_weaver/ww_stdlib/ww_counters", default-features = false }
-ww_dfu = { path = "../../../wire_weaver/ww_stdlib/ww_dfu", default-features = false, features = ["defmt"] }
-ww_firmware_info = { path = "../../../wire_weaver/ww_stdlib/ww_firmware_info", default-features = false, features = ["build-id", "cortex-m", "defmt"] }
-ww_gpio = { path = "../../../wire_weaver/ww_stdlib/ww_gpio", default-features = false }
-ww_i2c = { path = "../../../wire_weaver/ww_stdlib/ww_i2c", default-features = false }
-ww_indication = { path = "../../../wire_weaver/ww_stdlib/ww_indication", default-features = false }
-ww_log = { path = "../../../wire_weaver/ww_stdlib/ww_log", default-features = false }
-ww_timebase = { path = "../../../wire_weaver/ww_stdlib/ww_timebase", default-features = false }
-ww_date_time = { path = "../../../wire_weaver/ww_stdlib/ww_date_time", default-features = false }
-ww_uart = { path = "../../../wire_weaver/ww_stdlib/ww_uart", default-features = false }
-ww_uid = { path = "../../../wire_weaver/ww_stdlib/ww_uid", default-features = false }
-ww_user_info = { path = "../../../wire_weaver/ww_stdlib/ww_user_info", default-features = false }
-wire_weaver_usb_embassy = { path = "../../../wire_weaver/mcu/wire_weaver_usb_embassy" }
+ww_si = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false, features = ["time", "electrical", "mechanical", "thermal", "i32", "u32"] }
+ww_adc = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+ww_board_info = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+ww_counters = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+ww_dfu = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false, features = ["defmt"] }
+ww_firmware_info = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false, features = ["build-id", "cortex-m", "defmt"] }
+ww_gpio = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+ww_i2c = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+ww_indication = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+ww_log = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+ww_timebase = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+ww_date_time = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+ww_uart = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+ww_uid = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+ww_user_info = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+wire_weaver_usb_embassy = { git = "https://github.com/vhrdtech/wire_weaver" }
 # device.settings and device.label kept in flash (API-19, src/settings.rs): the settings store, reading the flash
 # through the ECC-safe wrapper so a word cut by a power loss reads as zeros instead of an NMI on every boot
 # (nmi-handler: its NMI handler, panicking on any other NMI, so the crash record catches it)
-ww_settings = { path = "../../../wire_weaver/ww_settings/ww_settings", features = ["defmt"] }
-ww_ecc_flash = { path = "../../../wire_weaver/mcu/ww_ecc_flash", features = ["nmi-handler", "defmt"] }
+ww_settings = { git = "https://github.com/vhrdtech/wire_weaver", features = ["defmt"] }
+ww_ecc_flash = { git = "https://github.com/vhrdtech/wire_weaver", features = ["nmi-handler", "defmt"] }
 usb251xb = { version = "0.1.0", default-features = false, features = ["async", "defmt"] }
 # the PD source on the plug CC (API-30, src/pd.rs): usbpd's source policy engine, embassy's UCPD driver below it.
 # Without its "defmt" feature: its trace lines would cost flash, the log ring records every message anyway.
@@ -125,7 +125,7 @@ swd-spi = ["swd-host"]
 crash-loop-test = []
 
 [build-dependencies]
-ww_firmware_info = { path = "../../../wire_weaver/ww_stdlib/ww_firmware_info", features = ["build"] } # FirmwareInfo facts (build.rs)
+ww_firmware_info = { git = "https://github.com/vhrdtech/wire_weaver", features = ["build"] } # FirmwareInfo facts (build.rs)
 
 [dev-dependencies]
 # the examples' logger; the firmware has its own (src/log.rs)
@@ -185,19 +185,25 @@ overflow-checks = false
 # For now the tree is romixlab/embassy `donguru-ring-copy`: upstream 262fdba plus one commit, the DMA ring buffer copying
 # out in up to two runs instead of a software division per byte (on the M0+ the header UART got 16 kB/s at 5.8 Mbaud
 # without it, FW-42). Back to embassy-rs once that fix is merged upstream.
-# bedrock_led and bedrock_sync take WireWeaver from its git (embedded_bedrock's workspace dependencies); this points that
-# source at the checkout next to this repo, so they and the firmware share one wire_weaver, ww_indication, ww_timebase
-# (two copies of a crate are two types: E0308 in ww/leds.rs and ww/clock.rs otherwise)
-[patch."https://github.com/vhrdtech/wire_weaver"]
-wire_weaver = { path = "../../../wire_weaver/wire_weaver" }
-# exact_units (ww_si's units) takes shrink_wrap from WireWeaver's git: the checkout's, or its derives are two types
-shrink_wrap = { path = "../../../wire_weaver/shrink_wrap/shrink_wrap" }
-ww_date_time = { path = "../../../wire_weaver/ww_stdlib/ww_date_time" }
-ww_dfu = { path = "../../../wire_weaver/ww_stdlib/ww_dfu" }
-ww_indication = { path = "../../../wire_weaver/ww_stdlib/ww_indication" }
-ww_si = { path = "../../../wire_weaver/ww_stdlib/ww_si" }
-ww_timebase = { path = "../../../wire_weaver/ww_stdlib/ww_timebase" }
-ww_version = { path = "../../../wire_weaver/ww_stdlib/ww_version" }
+# wire_weaver and embedded_bedrock are git dependencies, pinned by Cargo.lock. bedrock_led and bedrock_sync take
+# WireWeaver from the same git URL (embedded_bedrock's workspace dependencies), so they and the firmware share one
+# wire_weaver, ww_indication, ww_timebase and shrink_wrap (two copies of a crate are two types: E0308 in ww/leds.rs and
+# ww/clock.rs otherwise) without a patch. Local development against the sibling checkouts: uncomment these two blocks
+# (cargo update -p wire_weaver afterwards).
+# [patch."https://github.com/vhrdtech/wire_weaver"]
+# wire_weaver = { path = "../../../wire_weaver/wire_weaver" }
+# # exact_units (ww_si's units) takes shrink_wrap from WireWeaver's git: the checkout's, or its derives are two types
+# shrink_wrap = { path = "../../../wire_weaver/shrink_wrap/shrink_wrap" }
+# ww_date_time = { path = "../../../wire_weaver/ww_stdlib/ww_date_time" }
+# ww_dfu = { path = "../../../wire_weaver/ww_stdlib/ww_dfu" }
+# ww_indication = { path = "../../../wire_weaver/ww_stdlib/ww_indication" }
+# ww_si = { path = "../../../wire_weaver/ww_stdlib/ww_si" }
+# ww_timebase = { path = "../../../wire_weaver/ww_stdlib/ww_timebase" }
+# ww_version = { path = "../../../wire_weaver/ww_stdlib/ww_version" }
+# [patch."https://github.com/romixlab/embedded_bedrock"]
+# bedrock_crash = { path = "../../../embedded_bedrock/bedrock_crash" }
+# bedrock_led = { path = "../../../embedded_bedrock/bedrock_led" }
+# bedrock_sync = { path = "../../../embedded_bedrock/bedrock_sync" }
 
 [patch.crates-io]
 embassy-stm32 = { git = "https://github.com/romixlab/embassy", rev = "84ae135f91069d49c8dcb823a677e9f4b4a1e534" }

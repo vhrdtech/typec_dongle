@@ -16,37 +16,37 @@ donguru_api.workspace = true
 donguru_board = { path = "../donguru_board" }
 tokio = { version = "1", features = ["rt", "time", "sync", "macros"] }
 # local checkout next to this repo (~/git/wire_weaver), like donguru_api
-wire_weaver = { path = "../../wire_weaver/wire_weaver", features = ["std"] }
-wire_weaver_client = { path = "../../wire_weaver/wire_weaver_client", features = ["stm32_dfu"] }
-ww_device = { path = "../../wire_weaver/ww_device", optional = true }
+wire_weaver = { git = "https://github.com/vhrdtech/wire_weaver", features = ["std"] }
+wire_weaver_client = { git = "https://github.com/vhrdtech/wire_weaver", features = ["stm32_dfu"] }
+ww_device = { git = "https://github.com/vhrdtech/wire_weaver", optional = true }
 # the generated client names its observe types (BatchedOwned of `+batched` properties)
-ww_client_server = { path = "../../wire_weaver/ww_stdlib/ww_client_server", features = ["std"] }
-ww_si = { path = "../../wire_weaver/ww_stdlib/ww_si", features = ["std", "time", "electrical", "mechanical", "thermal"] }
-ww_stream = { path = "../../wire_weaver/ww_stream", features = ["std"], optional = true }
+ww_client_server = { git = "https://github.com/vhrdtech/wire_weaver", features = ["std"] }
+ww_si = { git = "https://github.com/vhrdtech/wire_weaver", features = ["std", "time", "electrical", "mechanical", "thermal"] }
+ww_stream = { git = "https://github.com/vhrdtech/wire_weaver", features = ["std"], optional = true }
 # stdlib traits of the API tree: the generated client names their types
-ww_adc = { path = "../../wire_weaver/ww_stdlib/ww_adc", features = ["std"] }
-ww_board_info = { path = "../../wire_weaver/ww_stdlib/ww_board_info", features = ["std"] }
-ww_counters = { path = "../../wire_weaver/ww_stdlib/ww_counters", features = ["std", "host"] }
-ww_dfu = { path = "../../wire_weaver/ww_stdlib/ww_dfu", features = ["std"] }
-ww_date_time = { path = "../../wire_weaver/ww_stdlib/ww_date_time", features = ["std"] }
-ww_firmware_info = { path = "../../wire_weaver/ww_stdlib/ww_firmware_info", features = ["std"] }
-ww_gpio = { path = "../../wire_weaver/ww_stdlib/ww_gpio", features = ["std"] }
-ww_i2c = { path = "../../wire_weaver/ww_stdlib/ww_i2c", features = ["std"] }
-ww_indication = { path = "../../wire_weaver/ww_stdlib/ww_indication", features = ["std"] }
-ww_log = { path = "../../wire_weaver/ww_stdlib/ww_log", features = ["std"] }
-ww_timebase = { path = "../../wire_weaver/ww_stdlib/ww_timebase", features = ["std"] }
-ww_uart = { path = "../../wire_weaver/ww_stdlib/ww_uart", features = ["std"] }
-ww_uid = { path = "../../wire_weaver/ww_stdlib/ww_uid", features = ["std"] }
-ww_user_info = { path = "../../wire_weaver/ww_stdlib/ww_user_info", features = ["std"] }
+ww_adc = { git = "https://github.com/vhrdtech/wire_weaver", features = ["std"] }
+ww_board_info = { git = "https://github.com/vhrdtech/wire_weaver", features = ["std"] }
+ww_counters = { git = "https://github.com/vhrdtech/wire_weaver", features = ["std", "host"] }
+ww_dfu = { git = "https://github.com/vhrdtech/wire_weaver", features = ["std"] }
+ww_date_time = { git = "https://github.com/vhrdtech/wire_weaver", features = ["std"] }
+ww_firmware_info = { git = "https://github.com/vhrdtech/wire_weaver", features = ["std"] }
+ww_gpio = { git = "https://github.com/vhrdtech/wire_weaver", features = ["std"] }
+ww_i2c = { git = "https://github.com/vhrdtech/wire_weaver", features = ["std"] }
+ww_indication = { git = "https://github.com/vhrdtech/wire_weaver", features = ["std"] }
+ww_log = { git = "https://github.com/vhrdtech/wire_weaver", features = ["std"] }
+ww_timebase = { git = "https://github.com/vhrdtech/wire_weaver", features = ["std"] }
+ww_uart = { git = "https://github.com/vhrdtech/wire_weaver", features = ["std"] }
+ww_uid = { git = "https://github.com/vhrdtech/wire_weaver", features = ["std"] }
+ww_user_info = { git = "https://github.com/vhrdtech/wire_weaver", features = ["std"] }
 # CMSIS-DAP v2 only: the default cmsisdap_v1 pulls in hidapi (C)
 probe-rs = { version = "0.32", optional = true, default-features = false, features = ["builtin-targets"] }
 # PD message record, decode and JSON lines, shared with rePort's sink log (pd_bench LOG-1); local checkout next to
 # this repo (~/git/pd_bench), like wire_weaver
-pd_log = { path = "../../pd_bench/pd_log", features = ["std"] }
+pd_log = { git = "https://github.com/romixlab/pd_bench", features = ["std"] }
 # `device.counters` and `device.log` decoded with the firmware's ELF, found by its build id (CLI-19)
 cnt_core = "0.5.1"
 # a crash record's call chain as file:line frames (CLT-59), src/crash.rs
-ww_report = { path = "../../wire_weaver/ww_report" }
+ww_report = { git = "https://github.com/vhrdtech/wire_weaver" }
 defmt-decoder = "1.1"
 
 [features]
@@ -58,7 +58,7 @@ mock = ["wire_weaver_client/in_process", "dep:ww_device", "dep:ww_stream"]
 [dev-dependencies]
 tempfile = "3"
 semver = "1"
-ww_stm32_dfu = { package = "stm32_dfu_host", path = "../../wire_weaver/stm32_dfu_host", features = ["sim"] }
+ww_stm32_dfu = { package = "stm32_dfu_host", git = "https://github.com/vhrdtech/wire_weaver", features = ["sim"] }
 donguru-core = { path = ".", features = ["mock"] }
 tokio = { version = "1", features = ["rt-multi-thread", "process"] }
 # examples/uart_resume.rs: the state its two processes hand over

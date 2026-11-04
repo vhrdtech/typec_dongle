@@ -222,7 +222,7 @@ deploy:
     donguru --version | grep -qF "($(git rev-parse --short HEAD),"
     donguru --version
 
-# Fast-forward the sibling checkouts this repo builds against by path (wire_weaver, embedded_bedrock)
+# Fast-forward the sibling checkouts (wire_weaver, embedded_bedrock): only matters when the [patch] blocks in Cargo.toml are uncommented
 [group: 'rust']
 deps-pull:
     git -C ../wire_weaver pull --ff-only

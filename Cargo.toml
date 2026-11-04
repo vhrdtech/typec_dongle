@@ -25,7 +25,34 @@ serde_json = "1"
 inherits = "release"
 incremental = true
 
-# exact_units (ww_si's units) takes shrink_wrap from WireWeaver's git: the checkout's instead, or its derives and the
-# API's are two types (E0277 on every quantity)
-[patch."https://github.com/vhrdtech/wire_weaver"]
-shrink_wrap = { path = "../wire_weaver/shrink_wrap/shrink_wrap" }
+# wire_weaver and pd_bench are git dependencies (members' manifests), pinned by Cargo.lock. exact_units (ww_si's units)
+# takes shrink_wrap from the same WireWeaver git URL, so there is one shrink_wrap without a patch. Local development
+# against the sibling checkouts: uncomment these blocks (cargo update -p wire_weaver afterwards). stm32_dfu_host is the
+# package behind the `ww_stm32_dfu` alias in donguru-core.
+# [patch."https://github.com/vhrdtech/wire_weaver"]
+# shrink_wrap = { path = "../wire_weaver/shrink_wrap/shrink_wrap" }
+# wire_weaver = { path = "../wire_weaver/wire_weaver" }
+# wire_weaver_client = { path = "../wire_weaver/wire_weaver_client" }
+# wire_weaver_evolution = { path = "../wire_weaver/wire_weaver_evolution" }
+# stm32_dfu_host = { path = "../wire_weaver/stm32_dfu_host" }
+# ww_adc = { path = "../wire_weaver/ww_stdlib/ww_adc" }
+# ww_board_info = { path = "../wire_weaver/ww_stdlib/ww_board_info" }
+# ww_client_server = { path = "../wire_weaver/ww_stdlib/ww_client_server" }
+# ww_counters = { path = "../wire_weaver/ww_stdlib/ww_counters" }
+# ww_date_time = { path = "../wire_weaver/ww_stdlib/ww_date_time" }
+# ww_device = { path = "../wire_weaver/ww_device" }
+# ww_dfu = { path = "../wire_weaver/ww_stdlib/ww_dfu" }
+# ww_firmware_info = { path = "../wire_weaver/ww_stdlib/ww_firmware_info" }
+# ww_gpio = { path = "../wire_weaver/ww_stdlib/ww_gpio" }
+# ww_i2c = { path = "../wire_weaver/ww_stdlib/ww_i2c" }
+# ww_indication = { path = "../wire_weaver/ww_stdlib/ww_indication" }
+# ww_log = { path = "../wire_weaver/ww_stdlib/ww_log" }
+# ww_report = { path = "../wire_weaver/ww_report" }
+# ww_si = { path = "../wire_weaver/ww_stdlib/ww_si" }
+# ww_stream = { path = "../wire_weaver/ww_stream" }
+# ww_timebase = { path = "../wire_weaver/ww_stdlib/ww_timebase" }
+# ww_uart = { path = "../wire_weaver/ww_stdlib/ww_uart" }
+# ww_uid = { path = "../wire_weaver/ww_stdlib/ww_uid" }
+# ww_user_info = { path = "../wire_weaver/ww_stdlib/ww_user_info" }
+# [patch."https://github.com/romixlab/pd_bench"]
+# pd_log = { path = "../pd_bench/pd_log" }
