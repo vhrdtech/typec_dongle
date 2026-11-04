@@ -12,7 +12,8 @@ pub const LOG_SOURCE: &str = "donguru";
 /// pass-through of the firmware's own counter, not unwrapped (one log file is one capture, not a stream spanning a
 /// wrap).
 fn device_time_us(time: Second) -> u64 {
-    time.to_in::<u32>(Prefix::Micro, Rounding::Truncate, Overflow::Checked).unwrap_or(0) as u64
+    time.to_in::<u32>(Prefix::Micro, Rounding::Truncate, Overflow::Checked)
+        .unwrap_or(0) as u64
 }
 
 fn log_sop(sop: PdSop) -> pd_log::Sop {

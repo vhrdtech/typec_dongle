@@ -380,13 +380,21 @@ impl ServerState {
 fn line_config(config: &ww_uart::UartConfig) -> Option<(uart::LineConfig, u32)> {
     use embassy_stm32::usart;
     use ww_uart::{DataBits, Mode, Parity, StopBits};
-    let baud = config.baud_rate.to_in::<u32>(ww_si::Prefix::Unit, ww_si::Rounding::Truncate, ww_si::Overflow::Checked)?;
+    let baud = config.baud_rate.to_in::<u32>(
+        ww_si::Prefix::Unit,
+        ww_si::Rounding::Truncate,
+        ww_si::Overflow::Checked,
+    )?;
     let rate = uart::rate_for(baud)?;
     if config.mode != Mode::Asynchronous || config.prevent_back_feed {
         return None;
     }
     if let Some(level) = &config.io_level
-        && level.to_in::<u32>(ww_si::Prefix::Milli, ww_si::Rounding::Truncate, ww_si::Overflow::Checked) != Some(3300)
+        && level.to_in::<u32>(
+            ww_si::Prefix::Milli,
+            ww_si::Rounding::Truncate,
+            ww_si::Overflow::Checked,
+        ) != Some(3300)
     {
         return None;
     }
