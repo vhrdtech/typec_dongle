@@ -41,7 +41,7 @@ nav = [
       { "Markdown" = "reference/markdown.md" },
   ]
   },
-  { "Vhrd.Tech" = "https://vhrd.tech" },
+  { "VHRD" = "https://vhrd.tech" },
 ]
 
 # extra_css = ["stylesheets/extra.css"]

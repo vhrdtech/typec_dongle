@@ -4,7 +4,7 @@
 //! `src/led.rs` holds `LEDS` for the indication.
 //!
 //! No sync line (nothing to lock to on this board) and no oscillator backend: Donguru's HSI16 trim is too coarse to
-//! steer without wobbling UART / PWM, decided 21 Oct 2026 (P2528 design/clock-sync.md).
+//! steer without wobbling UART / PWM, decided 21 Oct 2026 (see our internal design notes).
 
 /// The board's shared clock, read by the LED task every tick and steered from `clock.steer` (`src/ww/clock.rs`).
 pub static SYNC: bedrock_sync::Sync = bedrock_sync::Sync::new(bedrock_sync::Config::DEFAULT);

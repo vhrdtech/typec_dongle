@@ -109,7 +109,7 @@ assign_resources! {
         pc15: PC15,
         /// PD2_CC1 (UCPD2 CC1, plug): B153A has no DPO2036 (`hw_b153a.md` §0), so this pin reaches the plug
         /// CC1 directly. Stopgap-driven push-pull high while a CMSIS-DAP session is connected, Hi-Z otherwise
-        /// (P2534#12oct-1338b, `src/swd.rs`).
+        /// (see `src/swd.rs`).
         pd0: PD0,
         /// PD2_CC2 (UCPD2 CC2, plug): same story as PD0 above, for CC2.
         pd2: PD2,
@@ -239,7 +239,7 @@ async fn boot(spawner: embassy_executor::Spawner, start: boot::Start) {
 
     // The MCU's USB is on hub port 1: nothing enumerates until the hub is configured and attached; a hub that ran
     // through the reset with this config stays as it is, with the DUT on its other ports (FW-46). The watchdog
-    // (FW-18) redoes this after a brown-out resets the hub without resetting the MCU (P2534#12oct-1819).
+    // (FW-18) redoes this after a brown-out resets the hub without resetting the MCU.
     let hub = hub::bring_up(r.hub, warm).await;
     spawner.spawn(unwrap!(hub::watchdog_task(hub)));
 

@@ -66,7 +66,7 @@ authoring content.
 The dongle's firmware now hosts SWD over the plug SBU lines (CMSIS-DAP v2, `fw/donguru/src/swd.rs` and
 `src/cmsis_dap.rs`): built and `cargo build`-checked, **not yet run on hardware**. This is the checklist for the
 first bring-up, once a board is on the bench. Target: a B129 CANnify Micro (STM32G0B1CET, same family as
-Donguru's own MCU) wired through a USB-C breakout to Donguru's plug, as the DUT for the P2625 chunky-ota
+Donguru's own MCU) wired through a USB-C breakout to Donguru's plug, as the DUT for the chunky-ota
 power-cut bench.
 
 ### Wiring
@@ -98,7 +98,7 @@ connect/program cycle relies on the target's own power-on or a software reset, n
 6. **`DAP_Disconnect` / Hi-Z**: after a `probe-rs` session, confirm with the scope or a multimeter that SWCLK and
    SWDIO float (no driven level) once probe-rs disconnects, and again after `swd_release` (once CLI-17 or `ww`
    raw calls can trigger it) — this is what the power-cut bench relies on.
-7. **Power-cut bench dry run (P2625)**: with the DUT connected only through Donguru's switched VBUS (Q102) and
+7. **Power-cut bench dry run**: with the DUT connected only through Donguru's switched VBUS (Q102) and
    SWD as above: start a `probe-rs` session, call `swd_release`, then cut VBUS, and confirm on the scope that
    SWCLK/SWDIO stay released (no back-powering the DUT through them) through the cut.
 8. **Plug CC drive (FW-17, stopgap)**: with a multimeter or scope on the plug's CC1/CC2 (PD0/PD2), confirm both

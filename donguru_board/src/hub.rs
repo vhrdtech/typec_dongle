@@ -1,6 +1,6 @@
 //! USB hub (U301) per-variant configuration for the donguru firmware (`fw/donguru/src/hub.rs`, FW-6).
 //!
-//! Two board variants share this hub bring-up: Main (2-port USB2512B) and Plus (4-port USB2514B, P2534 #12,
+//! Two board variants share this hub bring-up: Main (2-port USB2512B) and Plus (4-port USB2514B,
 //! not decided/built yet). Which one is fitted was first going to be read from the hub's own power-on-default
 //! PID register (HUB-5), but on the one board tested that register reads back as zero regardless of delay (see
 //! `fw/donguru/src/hub.rs`'s `Hub::read_power_on_defaults` doc) — in this hub's SMBus-slave strap, the register

@@ -120,7 +120,7 @@ mechanism.
 
 ## Command tree
 
-The following is the full v1 surface (design `prj/P2534-donguru/design/api-v1.md`), built up one piece at a time;
+The following is the full v1 surface (design kept in our internal design notes), built up one piece at a time;
 FEATURES.md's `CLI-*` ids say which of it exists today. `dg` is the short alias for `donguru`. Every command accepts
 `--format text|json|jsonl`; a `watch`-style command polls at `--interval` until WireWeaver's observe lands on the
 host side (CLT-28), then switches to observe with no change to its output.

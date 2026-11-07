@@ -1,5 +1,5 @@
 //! SWD host over the plug SBU lines (FW-15), for probe-rs over CMSIS-DAP v2 (`src/cmsis_dap.rs` carries the USB
-//! side) and for the Hi-Z [`release`] used by bench power-cut tests (first use: P2625).
+//! side) and for the Hi-Z [`release`] used by bench power-cut tests (first use: the power-cut bench).
 //!
 //! Wiring (`hw/b153_typec_serial/doc/hw_b153a.md` §8, "SWD as host"): R211/R212, the 0 Ω bypass of the TXS0102
 //! level shifter, are not fitted on B153A (checked on the bench 12 Oct 2026: PB8/PB6 don't reach PA1/PA0), so
@@ -31,13 +31,13 @@
 //! test target (`fw/donguru/Cargo.toml`, like the rest of the firmware): the timing arithmetic is unit-tested in
 //! `donguru_dap::swclk`, the real clock can only be checked with a scope or logic analyzer on hardware.
 //!
-//! **Plug CC drive, stopgap (FW-17, P2534#12oct-1338b)**: a downstream board such as B129A gates its SBU->SWD
+//! **Plug CC drive, stopgap (FW-17)**: a downstream board such as B129A gates its SBU->SWD
 //! mux on CC voltage (comparators on both CC lines, switching a 74LVC1G08 `SWD_SEL`), so without a driven CC it
 //! never routes the plug SBU lines to its own MCU. [`SwdHost::drive_cc`] / [`SwdHost::release`] drive PD0/PD2
 //! (UCPD2_CC1/CC2, reaching the plug CC directly since B153A has no DPO2036, hw_b153a.md §0) push-pull high
 //! only while a CMSIS-DAP session is connected, Hi-Z together with SWCLK/SWDIO everywhere else: driven CC
 //! back-feeds an unpowered DUT through the comparator inputs otherwise. Hardcoded to the CMSIS-DAP v2 command
-//! bytes in `src/cmsis_dap.rs` rather than a real connect/disconnect callback through `dap_rs`; see the tpm task
+//! bytes in `src/cmsis_dap.rs` rather than a real connect/disconnect callback through `dap_rs`; tracked separately
 //! for the follow-up (UCPD2 driving CC properly, with Rp/Rd and fault handling).
 // without the feature the pins are set up and parked, the SWD-host itself is not used (`ww::start`)
 #![cfg_attr(not(feature = "swd-host"), allow(dead_code))]
@@ -108,8 +108,7 @@ pub fn orientation() -> Orientation {
     }
 }
 
-/// The SBU lines are swapped: [`Orientation::Swapped`]. `Auto` acts as `Normal` until CC detection is used
-/// (P2534#12oct-1338b).
+/// The SBU lines are swapped: [`Orientation::Swapped`]. `Auto` acts as `Normal` until CC detection is used.
 fn swapped() -> bool {
     ORIENTATION.load(Ordering::Relaxed) == 2
 }

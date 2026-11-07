@@ -5,7 +5,7 @@ what is planned, for humans and AI agents alike. [CHANGELOG.md](CHANGELOG.md) re
 [design docs](docs/design/index.md) say how things should work; this file records the current state.
 
 Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the design docs, `developer-notes.md`,
-`bedrock_fw.json` and the B153A bring-up notes in tpm (P2534).
+`bedrock_fw.json` and the B153A bring-up notes in our internal tracker.
 
 ## How to use this file
 
@@ -55,7 +55,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   bring-up, plus the port 2 and port 4 D+/D- polarity swap (`PortSwap`, `hw_b153a.md` §6) that the FW-5 bring-up
   never wrote, and a VID/PID readback logged right after configuring, using the crate's SMBus block-read framing
   (register address, then count + data) instead of the plain register read that used to come back as 0.
-  Tested 14 Oct 2026 on B153A (J-Link via omarchy-m1, P2534#14oct-1402): HUB-1 (config/attach) and HUB-5
+  Tested 14 Oct 2026 on B153A (J-Link via a dev PC): HUB-1 (config/attach) and HUB-5
   (VID/PID readback, now `0424/2512` instead of 0) confirmed, `hw/b153_typec_serial/test/verify_b153a.md`.
   HUB-7 (the port swap itself, needs a device on the plug) not yet done — landing as is, HUB-7 later.
   21 Oct 2026 (FW-46): B129A on the plug enumerated at full speed behind the port 2 swap, so the swap is right on
@@ -83,7 +83,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   reset. Since FW-46 the bring-up keeps a hub that held through the reset instead of pulsing it. The USB
   serial is the ROM's form for this chip (`donguru_board::boot::rom_serial`), so `ww` follows the board into the
   ROM and back. Pure logic in `donguru_board::boot` (host tests). `just update SERIAL`, user page
-  `docs/user/firmware-update.md`. Tested on B153A (omarchy-m1, 21 Oct 2026): reboot -> 0483:df11 behind the hub in
+  `docs/user/firmware-update.md`. Tested on B153A (a dev PC, 21 Oct 2026): reboot -> 0483:df11 behind the hub in
   under 0.5 s -> `ww dfu stm32 flash --wait 10 --follow` 415 KB written and verified in 42.5-42.9 s -> firmware back,
   5 times in a row, no power cycle; `reboot --into app` too. Not covered: a firmware that does not start (FW-45),
   BOOT0 (nBOOT_SEL = 1 on B153A, change_b153b.md). ^v1.0
@@ -94,13 +94,13 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `ww dfu stm32 flash`. That old `ww` starts a hub of its version: stop it with the same binary, or the current `ww`
   gets the same error from the hub. Done this way on B153A, 2 Nov 2026. Belongs fixed in wire_weaver: the promise of
   `ww dfu` is any device whatever its API version.
-- 🧪 **FW-60 VBUS settle after a hard reset**: the PD source (API-30) waited its 50 ms VBUS settle only once per attach. After a hard reset VBUS came on again and Source_Capabilities went out 3 ms later, before U601's soft start was through, though PE_SRC_Transition_to_default goes on to PE_SRC_Startup only at vSafe5V (USB PD 3.2 §8.3.3.2.9) and rev A cannot read plug VBUS (FW-35). Now every switch-on in `wait_for_vbus` gets the settle. Seen and checked with rePort 027's `pd_probe --case hard-reset` (3 Nov 2026, gpd-omarchy): Source_Capabilities 51 ms after VBUS on, was 3 ms. Built at opt-level z for the test: this branch at opt-level 3 overflows FLASH by 384 bytes (FW-53).
+- 🧪 **FW-60 VBUS settle after a hard reset**: the PD source (API-30) waited its 50 ms VBUS settle only once per attach. After a hard reset VBUS came on again and Source_Capabilities went out 3 ms later, before U601's soft start was through, though PE_SRC_Transition_to_default goes on to PE_SRC_Startup only at vSafe5V (USB PD 3.2 §8.3.3.2.9) and rev A cannot read plug VBUS (FW-35). Now every switch-on in `wait_for_vbus` gets the settle. Seen and checked with rePort 027's `pd_probe --case hard-reset` (3 Nov 2026, a dev PC): Source_Capabilities 51 ms after VBUS on, was 3 ms. Built at opt-level z for the test: this branch at opt-level 3 overflows FLASH by 384 bytes (FW-53).
 - ✅ **FW-65 No observe encoder without `meter-samples`**: an image without the feature calls no sampler, yet linked the batcher, outbox and `Series` encoder of `meter.reading`. It now builds with WireWeaver's `observe_samples = false` (SRV-56). Measured with `llvm-size`, release at opt-level z, default features, the same checkout path: 289,580 B → 266,404 B text+data (−23,176 B), data+bss 65,388 B → 61,996 B (−3,392 B). No `series::` or `ww_stream::batch::` symbol is left. With `meter-samples` the image keeps its sizes, 293,780 B text+data and 66,076 B data+bss, and doesn't use the switch. `donguru_api` doesn't change. `Samples` on such an image is refused with `ModeNotSupported`, and `PowerMeter::observe_samples` turns that into `Error::Unimplemented`. Not run on a board. The firmware also says so when a host connects (WireWeaver `ImageFacts`), so a new host fails without asking (mock test `meter_samples_on_an_image_without_them`). With that, on typec_dongle 7c97d27 and wire_weaver 0543991, same checkout path: off 287,316 B → 264,404 B text+data (−22,912 B), data+bss 65,396 B → 62,004 B (−3,392 B); on 291,508 B → 291,764 B text+data (+256 B), data+bss 66,084 B, unchanged.
-- ✅ **FW-62 PD task on its own interrupt executor**: the PD source (API-30) ran on the thread-mode executor with the USB server, and embassy's UCPD driver arms the RX DMA only inside `receive`. A server turn across the end of a TX delayed that, so the first GoodCRC bytes overran RXDR: `rx discarded` (RXOVR, `pd_rx_overrun`), or no record at all, and usbpd sent the message again. M1 counted this as a missing or garbled GoodCRC from the sink's FUSB302B, 5 of 155. Cause, measured on B153A with rePort 027 and the ZY12PDN's FUSB302B (3 Nov 2026, gpd-omarchy, opt z): the sink received every attempt with a good CRC (each retry shows the same MessageID twice), 400 Get_Sink_Cap per run gave 3.5% retries with `pd log` streaming (44/1244) and 0.5% without (6/1206), and the counters read 25 overruns and 0 CRC errors. A retried message's TX record is about 575 us late (1200 us after the previous record, 625 us when normal), and its discard comes 63 us later. I2C load on the sink changed nothing: reading its FIFO or plain registers without pause during the replies left 3.7-4.6% against 3.5% (pd_probe's `hammer` case, usb_io_fw HOST-7). Now `pd_task` runs on an interrupt executor at P1 on TIM7's unused vector, above thread mode and below the interrupts at P0. With it: 0 retries in 2000 Not_Supported with and without the log, 0 of 600 in 200 negotiations (7 of 307 per 100 before), 0 of 150 in the M1 rerun, 0 overruns. Hard Reset, Soft_Reset and a late Request behave as before. +144 bytes of flash. PD's poll now comes on top of the deepest thread-mode stack: not measured; the stack has about 79 KB and flip-link makes an overflow fault. Counters `pd_rx_overrun` and `pd_rx_crc` tell the two discards apart.
-- ✅ **FW-63 Flash diet of 3 Nov 2026**: the recipe of donguru_template FW-12 and embedded_bedrock TPL-81, one step at a time, release text+data measured with `llvm-size` after each at opt-level z (`fw/donguru/Cargo.toml` release profile), default features. Baseline 314,356 B (wire_weaver 04979e1). (1) wire_weaver 61c095a with SRV-53: 311,940 B. (2) pinned `nightly-2026-11-02` (`fw/donguru/rust-toolchain.toml`): 317,824 B; the dev build no longer fits (FLASH overflowed by 408 B, it had 2,216 B left on stable). (3) `trim-paths = "all"` in the dev and release profiles: 314,904 B; no `/home/`, `.cargo/registry` or `.cargo/git` in the flash sections (`.vector_table`, `.text`, `.rodata`, `.data`), only `.debug_str` still names the embedded_bedrock checkout; the dev build fits again (514,748 B of 516,096 B). (4) `-Zlocation-detail=none` for release only (`fw/donguru/.cargo/config.toml`, `[profile.release] rustflags`): 293,912 B; panic messages say `<redacted>:0:0`, and `donguru device reset-cause [--elf F] [--force]` decodes the record's return addresses (embedded_bedrock ROB-13) as `file:line` frames through `ww_report::crash` (wire_weaver CLT-59), `donguru_core::crash`. Checked on B153A (3 Nov 2026, gpd-omarchy) with a one-shot test image panicking on an out-of-bounds index 15 s after boot: the chain names `donguru::crash_test_index at src/main.rs:306:5` and its callers down to `Reset`. ww_report's `<- panic site` marker picked a stale word above `panic_fmt` (`button.rs:163`) in that run, the chain itself was right. Without `--elf` the ELF is found by build id from `fw/donguru` (its `target/`), not from the repo root. (5) `build-std = ["core"]` with `optimize_for_size` (`fw/donguru/.cargo/config.toml`): 289,780 B; core 11.2 KiB and compiler_builtins 6.3 KiB in cargo bloat (std was 18.7 KiB). The dev build overflows FLASH by 17.6 KB with core at the dev profile (opt-level 3, debug assertions); only the release has to fit (the person, 3 Nov 2026), and no feature set closes it (all off: 17.3 KB over), so `fw/donguru/README.md` says how to build a dev image that fits: `CARGO_PROFILE_DEV_OPT_LEVEL=s`, 444,864 B with assertions kept. (6) No `defmt::Debug2Format` or other core::fmt formatting in the firmware's own code (`{:?}` in its defmt macros is defmt's Debug hint, `defmt::Format`; settings errors already use it), so nothing to replace: 289,780 B. The core::fmt `Debug` code still linked, about 2.2 KB, comes from dependencies' `unwrap`/`expect`/`assert_eq!`: usbpd (`assert_eq!` on `MessageType`, its derived enum `Debug` pulling `char` Debug 628 B; `request::Error` unwrap), embassy-usb (`ReadError`, `EndpointAllocError` unwraps), wire_weaver `ww_defmt_logger` (`expect` on a `shrink_wrap::Error`, lib.rs:552) and `ww_stream::store::persistent_ram::Slot::decode` (`try_into().unwrap()`). In all 314,356 B → 289,780 B (−24,576 B), 226,316 B (221 KiB) free of 504 KiB. Defmt level kept at `debug` (`fw/donguru/.cargo/config.toml`): `info` would be 289,344 B (−436 B), `warn` 286,948 B (−2,832 B). Not taken, as in donguru_template FW-12: panic_immediate_abort, lld `--icf=all`. The final image (698ea7e) tested on B153A (3 Nov 2026, gpd-omarchy): written with `donguru fw update` (34.2 s), `fw version`, `power status`, `pd status`, `settings show` and `device log` (defmt decoded with the ELF) work.
-- ✅ **FW-64 `plug.pd` log ring out of `.data`**: `donguru::pd::LOG` (`fw/donguru/src/pd.rs`, a `donguru_board::pd::Ring<48>`) sat in `.data` at 2,328 B flash: `Record::EMPTY` (`donguru_board/src/pd.rs`) used `Kind::Detached` for the unused slots, whose tag is 1, so the ring's static initializer wasn't all-zero and rustc couldn't place it in `.bss`. `Kind` is firmware-internal (`Record::to_api` turns it into the wire's `PdEvent`, API-30), so adding a variant is no wire change. Added `Kind::Empty` as the first (tag 0) variant, used only by `Record::EMPTY`; `Ring::pop` only ever returns a slot a `Ring::push` wrote, so `Record::to_api`'s `Kind::Empty` arm is unreachable by construction. `llvm-size` before/after (`fw/donguru`, release, same FW-63 build): `LOG` moved from `.data` (`d`, 0x918 B) to `.bss` (`b`, same size); text+data 289,780 B → 287,508 B (−2,272 B), `.data` 3,052 B → 724 B. Checked on B153A (3 Nov 2026, gpd-omarchy): `donguru_board` unit tests pass (65), `dg fw update` to the new image, then `dg pd source on` with a sink attached and `dg pd log --format jsonl` decoded Attached and the Tx `SourceCapabilities` retries the same as before the fix.
+- ✅ **FW-62 PD task on its own interrupt executor**: the PD source (API-30) ran on the thread-mode executor with the USB server, and embassy's UCPD driver arms the RX DMA only inside `receive`. A server turn across the end of a TX delayed that, so the first GoodCRC bytes overran RXDR: `rx discarded` (RXOVR, `pd_rx_overrun`), or no record at all, and usbpd sent the message again. M1 counted this as a missing or garbled GoodCRC from the sink's FUSB302B, 5 of 155. Cause, measured on B153A with rePort 027 and the ZY12PDN's FUSB302B (3 Nov 2026, a dev PC, opt z): the sink received every attempt with a good CRC (each retry shows the same MessageID twice), 400 Get_Sink_Cap per run gave 3.5% retries with `pd log` streaming (44/1244) and 0.5% without (6/1206), and the counters read 25 overruns and 0 CRC errors. A retried message's TX record is about 575 us late (1200 us after the previous record, 625 us when normal), and its discard comes 63 us later. I2C load on the sink changed nothing: reading its FIFO or plain registers without pause during the replies left 3.7-4.6% against 3.5% (pd_probe's `hammer` case, usb_io_fw HOST-7). Now `pd_task` runs on an interrupt executor at P1 on TIM7's unused vector, above thread mode and below the interrupts at P0. With it: 0 retries in 2000 Not_Supported with and without the log, 0 of 600 in 200 negotiations (7 of 307 per 100 before), 0 of 150 in the M1 rerun, 0 overruns. Hard Reset, Soft_Reset and a late Request behave as before. +144 bytes of flash. PD's poll now comes on top of the deepest thread-mode stack: not measured; the stack has about 79 KB and flip-link makes an overflow fault. Counters `pd_rx_overrun` and `pd_rx_crc` tell the two discards apart.
+- ✅ **FW-63 Flash diet of 3 Nov 2026**: the recipe of donguru_template FW-12 and embedded_bedrock TPL-81, one step at a time, release text+data measured with `llvm-size` after each at opt-level z (`fw/donguru/Cargo.toml` release profile), default features. Baseline 314,356 B (wire_weaver 04979e1). (1) wire_weaver 61c095a with SRV-53: 311,940 B. (2) pinned `nightly-2026-11-02` (`fw/donguru/rust-toolchain.toml`): 317,824 B; the dev build no longer fits (FLASH overflowed by 408 B, it had 2,216 B left on stable). (3) `trim-paths = "all"` in the dev and release profiles: 314,904 B; no `/home/`, `.cargo/registry` or `.cargo/git` in the flash sections (`.vector_table`, `.text`, `.rodata`, `.data`), only `.debug_str` still names the embedded_bedrock checkout; the dev build fits again (514,748 B of 516,096 B). (4) `-Zlocation-detail=none` for release only (`fw/donguru/.cargo/config.toml`, `[profile.release] rustflags`): 293,912 B; panic messages say `<redacted>:0:0`, and `donguru device reset-cause [--elf F] [--force]` decodes the record's return addresses (embedded_bedrock ROB-13) as `file:line` frames through `ww_report::crash` (wire_weaver CLT-59), `donguru_core::crash`. Checked on B153A (3 Nov 2026, a dev PC) with a one-shot test image panicking on an out-of-bounds index 15 s after boot: the chain names `donguru::crash_test_index at src/main.rs:306:5` and its callers down to `Reset`. ww_report's `<- panic site` marker picked a stale word above `panic_fmt` (`button.rs:163`) in that run, the chain itself was right. Without `--elf` the ELF is found by build id from `fw/donguru` (its `target/`), not from the repo root. (5) `build-std = ["core"]` with `optimize_for_size` (`fw/donguru/.cargo/config.toml`): 289,780 B; core 11.2 KiB and compiler_builtins 6.3 KiB in cargo bloat (std was 18.7 KiB). The dev build overflows FLASH by 17.6 KB with core at the dev profile (opt-level 3, debug assertions); only the release has to fit (the person, 3 Nov 2026), and no feature set closes it (all off: 17.3 KB over), so `fw/donguru/README.md` says how to build a dev image that fits: `CARGO_PROFILE_DEV_OPT_LEVEL=s`, 444,864 B with assertions kept. (6) No `defmt::Debug2Format` or other core::fmt formatting in the firmware's own code (`{:?}` in its defmt macros is defmt's Debug hint, `defmt::Format`; settings errors already use it), so nothing to replace: 289,780 B. The core::fmt `Debug` code still linked, about 2.2 KB, comes from dependencies' `unwrap`/`expect`/`assert_eq!`: usbpd (`assert_eq!` on `MessageType`, its derived enum `Debug` pulling `char` Debug 628 B; `request::Error` unwrap), embassy-usb (`ReadError`, `EndpointAllocError` unwraps), wire_weaver `ww_defmt_logger` (`expect` on a `shrink_wrap::Error`, lib.rs:552) and `ww_stream::store::persistent_ram::Slot::decode` (`try_into().unwrap()`). In all 314,356 B → 289,780 B (−24,576 B), 226,316 B (221 KiB) free of 504 KiB. Defmt level kept at `debug` (`fw/donguru/.cargo/config.toml`): `info` would be 289,344 B (−436 B), `warn` 286,948 B (−2,832 B). Not taken, as in donguru_template FW-12: panic_immediate_abort, lld `--icf=all`. The final image (698ea7e) tested on B153A (3 Nov 2026, a dev PC): written with `donguru fw update` (34.2 s), `fw version`, `power status`, `pd status`, `settings show` and `device log` (defmt decoded with the ELF) work.
+- ✅ **FW-64 `plug.pd` log ring out of `.data`**: `donguru::pd::LOG` (`fw/donguru/src/pd.rs`, a `donguru_board::pd::Ring<48>`) sat in `.data` at 2,328 B flash: `Record::EMPTY` (`donguru_board/src/pd.rs`) used `Kind::Detached` for the unused slots, whose tag is 1, so the ring's static initializer wasn't all-zero and rustc couldn't place it in `.bss`. `Kind` is firmware-internal (`Record::to_api` turns it into the wire's `PdEvent`, API-30), so adding a variant is no wire change. Added `Kind::Empty` as the first (tag 0) variant, used only by `Record::EMPTY`; `Ring::pop` only ever returns a slot a `Ring::push` wrote, so `Record::to_api`'s `Kind::Empty` arm is unreachable by construction. `llvm-size` before/after (`fw/donguru`, release, same FW-63 build): `LOG` moved from `.data` (`d`, 0x918 B) to `.bss` (`b`, same size); text+data 289,780 B → 287,508 B (−2,272 B), `.data` 3,052 B → 724 B. Checked on B153A (3 Nov 2026, a dev PC): `donguru_board` unit tests pass (65), `dg fw update` to the new image, then `dg pd source on` with a sink attached and `dg pd log --format jsonl` decoded Attached and the Tx `SourceCapabilities` retries the same as before the fix.
 - 🐛 **FW-61 No GoodCRC for a reserved message type (usbpd 3.0.0)**: a control message of a reserved type (0x1F) from the sink gets Not_Supported but no GoodCRC first, so the sink retries and reports a failed transmit. usbpd's protocol layer returns `UnsupportedMessage` before `handle_rx_ack` in `receive_message_inner` (`protocol_layer/mod.rs`); with UCPD2 the GoodCRC is sent in software, so it never goes out. USB PD 3.2 §6.12.2.3 acknowledges every message with a good CRC, then the policy engine answers Not_Supported (§6.3.15). Upstream's to fix; seen with `pd_probe --case reserved` (3 Nov 2026).
-- ✅ **FW-56 `pd log` keeps capturing when its screen goes away**: in M1 (2 Nov 2026) `dg pd log --restart --for 2.2 -o X 2>&1 | head -1` with a `sender_response` override wrote empty logs, and the sink's Request after a restart got no GoodCRC. Cause, reproduced on B153A (3 Nov 2026, gpd-omarchy, firmware 0.1.1 at a388fa4, rePort 027 with the ZY12PDN): the override note on stderr was the first line, so `head` took it and closed the pipe. The next screen line hit a broken pipe, and the CLI ended there as for any `dg ... | head`, 40-190 ms after its restart, before any record reached the file. Without the override the first line was a record, and the run that showed the bug was the only one piped into `head`. So the loop's three `--restart`s came back to back. Each one's `Off` drops UCPD2 at once, and one of them landed while the sink's 25 ms late Request was on the wire: no GoodCRC. The firmware does what it should: a restart while the last one is still in tSrcRecover or the Rd debounce restarts that wait, so three quick restarts can make one negotiation. Fix in the CLI: with `-o`, a broken pipe on the screen stops the screen output and the capture runs its `--for`; stderr notes are written with `writeln!` (no `eprintln!` panic on a closed stderr). After the fix the same line gives three logs of 8 records each, and the sink four contracts at a 25 ms late Request with SenderResponseTimer 60 ms. The sink's no-attach after its hard reset in that run is pd_bench SINK-3.
+- ✅ **FW-56 `pd log` keeps capturing when its screen goes away**: in M1 (2 Nov 2026) `dg pd log --restart --for 2.2 -o X 2>&1 | head -1` with a `sender_response` override wrote empty logs, and the sink's Request after a restart got no GoodCRC. Cause, reproduced on B153A (3 Nov 2026, a dev PC, firmware 0.1.1 at a388fa4, rePort 027 with the ZY12PDN): the override note on stderr was the first line, so `head` took it and closed the pipe. The next screen line hit a broken pipe, and the CLI ended there as for any `dg ... | head`, 40-190 ms after its restart, before any record reached the file. Without the override the first line was a record, and the run that showed the bug was the only one piped into `head`. So the loop's three `--restart`s came back to back. Each one's `Off` drops UCPD2 at once, and one of them landed while the sink's 25 ms late Request was on the wire: no GoodCRC. The firmware does what it should: a restart while the last one is still in tSrcRecover or the Rd debounce restarts that wait, so three quick restarts can make one negotiation. Fix in the CLI: with `-o`, a broken pipe on the screen stops the screen output and the capture runs its `--for`; stderr notes are written with `writeln!` (no `eprintln!` panic on a closed stderr). After the fix the same line gives three logs of 8 records each, and the sink four contracts at a 25 ms late Request with SenderResponseTimer 60 ms. The sink's no-attach after its hard reset in that run is pd_bench SINK-3.
 - ✅ **FW-13 HardFault handling for production**: `HardFault` and the panic handler save a `bedrock_crash` record
   (cause, registers, 32 stack words, message, uptime, build id) in `.uninit` RAM and reset instead of looping
   (`fw/donguru/src/main.rs`, `src/last_reset.rs`); the next boot logs it and serves it as `device.last_reset`
@@ -121,30 +121,30 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   has to end the probe-rs session, one way or another, before cutting the DUT's power.
   Tested 12 Oct 2026 on B153A + B129A (CANnify Micro, STM32G0B1) with probe-rs: reads at 100 kHz, 400 kHz and
   1 MHz (16 KB in about 2 s), both cable orientations (flipped = `Swapped`), pins Hi-Z after disconnect.
-  Next: a level-shifter mode for 1.8 V targets (P2534#12oct-1338b); SPI-driven SWD is FW-21.
-- ✅ **FW-17 Plug CC drive for SWD-host**: stopgap, hardcoded (`src/swd.rs`, `src/cmsis_dap.rs`; P2534#12oct-1338b).
+  Next: a level-shifter mode for 1.8 V targets; SPI-driven SWD is FW-21.
+- ✅ **FW-17 Plug CC drive for SWD-host**: stopgap, hardcoded (`src/swd.rs`, `src/cmsis_dap.rs`).
   PD0/PD2 (UCPD2_CC1/CC2; B153A has no DPO2036, hw_b153a.md §0, so these reach the plug CC directly) are driven
   push-pull high on a successful `DAP_Connect` and released to Hi-Z together with SWCLK/SWDIO on `DAP_Disconnect`,
   CMSIS-DAP v2 endpoint disable and `sbu.release` — a downstream board such as B129A gates its SBU->SWD mux on CC
   voltage and would otherwise never route its SBU lines to the MCU, and a driven CC left up after a session would
   back-feed an unpowered DUT through the gating comparators. Not a real CC/PD role: no Rp/Rd, no UCPD2 involved;
-  the follow-up (proper CC/PD handling) is tracked on the tpm task. Tested 12 Oct 2026: B129A's `SWD_SEL` (TP1)
+  the follow-up (proper CC/PD handling) is tracked separately. Tested 12 Oct 2026: B129A's `SWD_SEL` (TP1)
   goes high during a session, PD0/PD2 are inputs again after disconnect.
 - ✅ **FW-18 Hub brown-out recovery**: the hub (U301) shares `+3V3_DCDC` with the MCU (hw_b153a.md §3); a hard
   turn-on load on the header's switched VBUS (Q102, inrush into a large downstream cap) can sag that rail enough
   to reset the hub without resetting the MCU, which loses the hub's SMBus config and attach state for good
-  (P2534#12oct-1819, seen on the P2625 power-cut bench). `src/hub.rs`'s `watchdog_task` notices the loss — the
+  (seen on the power-cut bench). `src/hub.rs`'s `watchdog_task` notices the loss — the
   composite USB device (carried on hub port 1) dropping out of the configured state it had reached, or a periodic
   I2C probe that reads the hub's VID/PID back all-zero twice (a reset hub waits for its config again; a NAK only
   means busy, FW-41) — and redoes the reset + config + attach bring-up. No probing for 1 s after an attach, and a
   USB-side request within 2 s of one is the echo of our own hub reset, not a new loss.
-  Tested 12 Oct 2026 on B153A (P2625 bench, omarchy-m1): the bench's VBUS_SW line now has a 10R series resistor
+  Tested 12 Oct 2026 on B153A (power-cut bench, a dev PC): the bench's VBUS_SW line now has a 10R series resistor
   (power-cut-bench session) that stops the original inrush from browning out the hub, so this was verified by a
   debugger-forced hub reset instead (same electrical event as the brown-out, from the hub's point of view): a
   J-Link (`--probe 1366:0105`) wrote PC13 (GPIOC BSRR, `0x5000_0818`) low then high while the firmware kept
   running, 10 times. Donguru's composite device (VID:PID `c0de:cafe`) re-enumerated on the host every time, about
   2.0-2.3 s after each pulse (`journalctl -k`: the hub itself, VID:PID `0424:2512`, re-attaches first). The ~1 s
-  target in the tpm task was a rough estimate; ~2 s here is mostly host-side USB re-enumeration overhead, not the
+  target was a rough estimate; ~2 s here is mostly host-side USB re-enumeration overhead, not the
   firmware's own recovery time. Not yet exercised against a real brown-out (needs the 10R resistor bypassed, which
   the user declined for now since the bench is in use for cut measurements).
   Fixed 20 Oct 2026 (FW-41): the I2C probe was a zero-length write that took a NAK for a loss, so it reset the
@@ -174,7 +174,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
     task goes back to listening, so `sbu.release` is never stuck behind a host that stopped reading.
 
   Hi-Z on `DAP_Disconnect`, on endpoint disable and on `sbu.release` is unchanged.
-  Tested 13 Oct 2026 on B153A + B129A (omarchy-m1, probe-rs 0.32, release build with `plug-vbus-on`, before =
+  Tested 13 Oct 2026 on B153A + B129A (a dev PC, probe-rs 0.32, release build with `plug-vbus-on`, before =
   0.4.1): the link works and is clean, but the gain is about 9 %, not the 4-5x expected. 64 KB of B129 flash at
   1000 kHz: 7.7 s -> 7.05 s with 32-bit accesses (`probe-rs read b32`), 30.3 s -> 27.3 s with 8-bit, bytes
   identical to the read before. `donguru swd memtest --size 16K` at 100, 400 and 1000 kHz and the full 144 KiB RAM
@@ -186,7 +186,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   (2.1 KiB/s at 100 kHz): `src/swd.rs` spends several microseconds per bit on top of the half-period delay. The
   next step for speed is there (a tighter bit loop, or SPI-driven SWD as planned under FW-15), and one request
   now holds the executor for about 55 ms at 1000 kHz (126 words) and about 0.25 s at 100 kHz.
-- ✅ **FW-20 Faster bit-bang SWD**: the SWD clock is what was asked for, up to about 3 MHz (P2534#13oct-1353).
+- ✅ **FW-20 Faster bit-bang SWD**: the SWD clock is what was asked for, up to about 3 MHz.
   FW-19 showed the bit loop was the limit: about 50 CPU cycles of overhead per clock edge (embassy `Flex` calls,
   the orientation re-read per edge), so "1 MHz" ran at about 400 kHz. `src/swd.rs` now clocks through two
   inline-assembly kernels on GPIOA's BSRR / BRR / IDR (one store per edge, SWCLK falling and the next SWDIO bit in
@@ -202,7 +202,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   The usable clock also depends on the DUT: series resistors and clamp diodes on its SWD lines slow the edges
   (B129A: 200R + 5V6 zener, tau about 70 ns), so a short clock half no longer reaches a clean low. On B129A use
   2 MHz or less.
-  Tested 13 Oct 2026 on B153A + B129A (omarchy-m1, probe-rs 0.32, release build with `plug-vbus-on`, flashed and run
+  Tested 13 Oct 2026 on B153A + B129A (a dev PC, probe-rs 0.32, release build with `plug-vbus-on`, flashed and run
   by the parent session): 64 KB of B129 flash with `probe-rs read b32`, bytes identical to the 0.5.0 read, in
   9.96 / 3.13 / 1.77 / 1.27 / 1.07 s at 100 / 400 / 1000 / 2000 / 4000 kHz (0.5.0 at 1000 kHz: 7.03 s; 4000 kHz is
   about 60 KB/s). `donguru swd memtest --size 16K` at 400, 1000, 2000 and 4000 kHz and the full 144 KiB RAM at
@@ -218,7 +218,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   0.16 V (worst 0.28), high 2.89 V (worst 2.82). 64 KB reads identical in 1.77 / 1.29 / 1.19 s at 1000 / 2000 /
   3000 kHz, memtest 16K at 400 / 1000 / 2000 / 3000 kHz pass, Hi-Z after disconnect holds.
 - 🧪 **FW-21 SPI-driven SWD** (experimental): a second SWD-host mode, `SwdMode::Spi` (API-5), next to the default bit-bang
-  (P2534#13oct-1353b). On B153A the SPI pins reach the plug only through the TXS0102 level shifter (R211/R212 not
+  mode. On B153A the SPI pins reach the plug only through the TXS0102 level shifter (R211/R212 not
   fitted, hw_b153a.md §8), so the mode engages that side: PA0/PA1 Hi-Z, SPI2 on with SWCLK = SPI2_SCK on PB8 and
   SWDIO = SPI2_MOSI on PB11 + SPI2_MISO on PB6 (same net, full duplex, MOSI switched to input while the target
   drives), then `SBU_OE` high; V_SBU stays 3.3 V. Every frame CPOL 0 / CPHA 0, LSB first, 4..16 bits: request 8 |
@@ -243,7 +243,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   experimental: 🧪 on purpose, no more bench time planned.
 - 🧪 **FW-22 Board variant detection**: Main (2-port USB2512B) vs. Plus (4-port USB2514B, not decided/built yet)
   identified at boot from a GPIO strap, not the hub's PID (`src/hub.rs::read_board_variant_strap`,
-  `donguru_board::hub`, P2534#14oct-1439). Reading the hub's own power-on-default VID/PID/DID (HUB-5) before
+  `donguru_board::hub`). Reading the hub's own power-on-default VID/PID/DID (HUB-5) before
   configuring it does not work on this hub's SMBus-slave strap — it reads all-zero regardless of delay (tried
   0/5/100/1000 ms), confirming hw_b153a.md §9's existing caution that these registers hold whatever was last
   written there, not a factory default. The signal used instead: PA10 (`SBU_TO_USB`, U901 S) carries R902, a
@@ -253,8 +253,8 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   (`usb251xb::Variant`, port count, D+/D- swap mask for FW-6) from the detected variant instead of a hardcoded
   Main constant; the pure mapping and config builder are host-unit-tested for both variants (`donguru_board::hub`,
   `just test`), including the not-yet-built Plus. Variant exposed read-only over WireWeaver
-  (`device.variant`, API-7, FW-11 hw_info). Tested 14 Oct 2026 on B153A (J-Link via omarchy-m1,
-  P2534#14oct-1439): reads PA10 high → `BoardVariant::Main` on 2 cold power-cycles (true replug, J-Link VTref
+  (`device.variant`, API-7, FW-11 hw_info). Tested 14 Oct 2026 on B153A (J-Link via a dev PC):
+  reads PA10 high → `BoardVariant::Main` on 2 cold power-cycles (true replug, J-Link VTref
   0.00 V between them) and 2 debugger-forced resets, hub attaching correctly every time. 🧪 because Plus is
   untested hardware.
 - ✅ **FW-23 Firmware clippy clean**: `just lint` runs `just fw-lint` (`cargo fmt --check` and
@@ -263,7 +263,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   15 Oct 2026 were gone by 24 Oct but for the doc list indentation in `hub.rs` / `swd.rs` and `uart::replay` dead
   without `uart-replay`; the `usb_serial` example follows embassy main's API (`Usbsel::Hsi48`, `Driver::new`
   interrupt last). Fixed 24 Oct 2026.
-- 🚧 **FW-24 WireWeaver USB throughput** (P2534#15oct-1747): was ~30% of USB FS bulk (`ww usb-loopback`, 1 KB
+- 🚧 **FW-24 WireWeaver USB throughput**: was ~30% of USB FS bulk (`ww usb-loopback`, 1 KB
   messages: 152 round trips/s, 373 kB/s host -> device, 316 kB/s device -> host). Done: flash prefetch on
   (`main.rs`, embassy-stm32 0.6 leaves it off on the G0), off again since FW-38 (ES0548); release `opt-level = 3` instead of "z" (~40% faster
   here; back to "z" in FW-57); WireWeaver TR-12 (U2Head byte fast path, replies flushed when no request waits); double-buffered bulk
@@ -364,8 +364,8 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   read-modify-write of RCC_APBENR1 over SWD while the core already runs, and puts back the value it read: when the
   firmware enables USB and SPI2 in between, both clocks go off again (APBENR1 `0x18410504` instead of
   `0x18416504`, USB registers all zero, no D+ pull-up). Hit about one boot in three after a probe-rs reset;
-  `cnt run` halts the core first, a power-up without a debugger never runs it. Upstream notes: tpm
-  `prj/P2534-donguru/design/upstream-probe-rs-g0-dbgen.md`. (2) Ours: FW-18's I2C probe counted the hub's NAK
+  `cnt run` halts the core first, a power-up without a debugger never runs it. Upstream notes in our internal
+  design notes. (2) Ours: FW-18's I2C probe counted the hub's NAK
   as a loss, and a hub with nothing on port 1 NAKs once the host talks to it, so it reset the hub forever. Now the
   probe reads VID/PID and only all-zero counts (FW-18); a boot hit by (1) stays off USB until the next reset
   instead of looping.
@@ -384,11 +384,12 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   505 kB/s (the rest lost, counted), LZ4 boot 482 kB/s at 2.8x, ls 551 kB/s at 3.9x, top 568 kB/s at 4.3x with
   none lost; 2 Mbaud all delivered, CPU 69 % raw / 68-74 % LZ4 (receive path alone 23 %). Needs two fixes not in
   this repo yet: WireWeaver's `RefVec<u8>` slice write (wire_weaver branch s/20oct2026-uart-rx-lz4, `perf(shrink_wrap)`)
-  and embassy's DMA ring copy without a division per byte (tpm `prj/P2534-donguru/design/upstream-embassy-dma-ringbuffer-copy.md`,
-  not merged upstream): with upstream embassy the receive path alone takes the whole CPU at 5.8 Mbaud and 16 kB/s
-  get through. Open: point `[patch.crates-io]` embassy-stm32 at a fork with the fix until upstream has it (the
-  person's call); bytes lost in the DMA ring itself (`uart_rx_errors`, a ring overrun) are not counted into the
-  stream (none seen with the slot queue). Design notes: tpm `prj/P2534-donguru/design/uart-compression/notes.md`.
+  and embassy's DMA ring copy without a division per byte (our design notes on the upstream embassy DMA
+  ringbuffer copy, not merged upstream): with upstream embassy the receive path alone takes the whole CPU at
+  5.8 Mbaud and 16 kB/s get through. Open: point `[patch.crates-io]` embassy-stm32 at a fork with the fix until
+  upstream has it (the person's call); bytes lost in the DMA ring itself (`uart_rx_errors`, a ring overrun) are
+  not counted into the stream (none seen with the slot queue). Design notes: our internal UART compression
+  notes.
 - ✅ **FW-43 CPU idle counter**: the thread-mode executor runs by hand (`src/cpu.rs`, `main` is a `cortex_m_rt::entry`
   spawning the `boot` task) and counts the time in WFE with interrupts masked (SEVONPEND wakes it) in the counter
   `idle_us`; `executor_polls` counts the wake-ups. CPU load over a span = 1 - Δ`idle_us` / span, from
@@ -398,14 +399,14 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `crate::sync::SYNC`'s shared time (`bedrock_led::Indication::run_with`, DEV-14) while a host has steered it
   through `clock` (API-57); free-running otherwise, as before. `crate::sync::SYNC` is a `bedrock_sync::Sync`
   (DEV-13), the shared clock itself, disciplined by `clock.steer` (`src/ww/clock.rs`, `ClockState`). Part of
-  P2528's LED-clock-sync design (design/clock-sync.md): Donguru, rePort and B135 breathing in phase on one host.
+  the LED-clock-sync design: Donguru, rePort and B135 breathing in phase on one host.
   No sync line and no oscillator backend here (HSI16 trim too coarse, decided 21 Oct 2026). Flashed and run on
-  B153A (omarchy-m1, J-Link, 21 Oct 2026): boots clean, 227 s with no panic once another session's concurrent
-  probe-rs/gdb use of the same board (PC13/RTC_CR pokes, P2534 bootloader test) stopped. `ww sync` end to end
+  B153A (a dev PC, J-Link, 21 Oct 2026): boots clean, 227 s with no panic once another session's concurrent
+  probe-rs/gdb use of the same board (PC13/RTC_CR pokes, a bootloader test) stopped. `ww sync` end to end
   (host-synced `Locked`, the residual, LEDs in phase with rePort) not yet exercised: that same interference left
   the hub's USB enumeration wedged on the host side (`dmesg`: "unable to enumerate" on hub port 1 since 17:51),
   so `donguru_api` never answered over USB during this session; needs a replug or a host-side USB port reset on
-  omarchy-m1 to retest, nothing pointing at this firmware's own code (no panic in 227 s of clean running, and the
+  that PC to retest, nothing pointing at this firmware's own code (no panic in 227 s of clean running, and the
   same reset/enumeration failures the board showed before the two LED/clock pieces landed on it today).
 - ✅ **FW-45 Boot loop into the ROM bootloader**: after 3 boots in a row without a healthy mark the fourth goes to
   the ROM DFU on its own (as B135 BOOT-5), so a firmware that crashes early can still be updated over USB. Every
@@ -415,11 +416,11 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   request (`main.rs`, `boot::rescue`): after a power cycle no firmware has configured the hub yet. The next firmware
   logs it and reports `device.dfu.node` `last_result` `Recovery` until a requested update or a power cycle. Not
   caught: a crash after USB is configured or after 10 s, a crash in the hub bring-up itself. Test image: feature
-  `crash-loop-test`. Tested on B153A (omarchy-m1, 21 Oct 2026), all over USB, no probe: the test image written
+  `crash-loop-test`. Tested on B153A (a dev PC, 21 Oct 2026), all over USB, no probe: the test image written
   with `ww dfu stm32 flash` -> 0483:df11 behind the hub (same serial) about 1 s after the ROM's jump, stays there ->
   the good image back with `ww dfu stm32 flash --follow`, `ww dfu status` last update `Recovery` -> `just update`
   clears it to `Nothing`; 5 `reboot --into app` in a row stay in the firmware. Not tested: the rescue after a power
-  cycle (hub not yet held, the rescue's own bring-up), the 10 s mark without a USB host. tpm P2534#21oct-1844. ^v1.0
+  cycle (hub not yet held, the rescue's own bring-up), the 10 s mark without a USB host. ^v1.0
 - ✅ **FW-46 Hub kept across MCU resets**: the hub stays attached and configured through a firmware update, crash or
   reset (the FW-12 RTC_OUT1 hold on rev A, the RESET_N pull-up on rev B), so a DUT's USB link on a downstream port
   survives them; only the MCU's own device on port 1 re-enumerates. At boot, after anything but a power-on or
@@ -431,7 +432,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   reset; seen after a probe flash): kept, and `watchdog_task` reads it back once the MCU's USB has woken it, resets
   it if it is not this config or still silent after 5 s. Counters `hub_kept`, `hub_kept_reconfigured`. Code:
   `fw/donguru/src/hub.rs` (`Hub::keep`, `bring_up`), the rescue boot (FW-45) goes through the same `bring_up`.
-  Tested on B153A (omarchy-m1, 21 Oct 2026): the hub stayed the same host device (no disconnect in `journalctl -k`)
+  Tested on B153A (a dev PC, 21 Oct 2026): the hub stayed the same host device (no disconnect in `journalctl -k`)
   through a probe flash (hub suspended, verified 1 s after boot), 3 `ww dfu reboot --into app` and a ROM update
   (`just update`, kept in 7 ms); a firmware with another hub config (power-on time 100 -> 50 ms) written by ROM update
   found `Differs { register: 0x10 }` and reconfigured, so did the way back. FW-18 still recovers (RTC_CR POL pulsed
@@ -440,7 +441,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   whole time, 446 of 446 echoes back, the DUT the same host device throughout. Seen once: in the first run, right
   after B129A had been flashed and enumerated, it dropped and re-enumerated 1 s after the first reboot; not again.
   A ROM update keeps the hub but not the DUT's link: the ROM drives the plug data switch off (FW-50). A bus-powered
-  DUT loses power at every MCU reset (FW-49). tpm P2534#21oct-1844b.
+  DUT loses power at every MCU reset (FW-49).
 - 🧪 **FW-47 Rev A workarounds behind the feature `rev_a`**: on by default while B153A is the only board; a rev B
   release firmware is built without it, the first boards keep it for testing and jigs (Roman, 21 Oct 2026). Gated:
   PA4 `HUB_I2C_EN` driven high for the hub's SDA pull-up (`src/hub.rs`; rev B: R301 to 3.3 V, PA4 free), the plug
@@ -459,7 +460,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   every MCU reset and stays off through the ~43 s ROM update; `plug_vbus_at_boot` only turns it on again once the
   ADC reads. A bus-powered DUT on the plug therefore loses its link even though the hub keeps it (FW-46). Needs a
   hold that survives the reset (no backup-domain output on PA6; rev B schematic) and a decision on safety: VBUS left
-  on into a ROM session nobody supervises (no guard running). tpm P2534#21oct-1844b.
+  on into a ROM session nobody supervises (no guard running).
 - 🐛 **FW-50 The ROM bootloader cuts the DUT's USB data (rev A)**: DATA_CUT (PA9, U701 S) is also USART1_TX of
   the STM32 ROM bootloader, which opens all its interfaces at once: in the ROM DFU (FW-12) PA9 is AF1 and idles high
   (B153A, 21 Oct 2026, J-Link: GPIOA MODER 0xe82baaaf, AFRH 0x110, IDR bit 9 set), so U701 switches the plug data to
@@ -505,18 +506,18 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   - So z costs 10-25 % on the loopback (one run each, noisy); s equals opt 3 at +29 KiB over z. Roman chose z (3 Nov
     2026): the full PD stack (FW-58) needs the room, s would leave none. The loopback is the only check done; the header
     UART LZ4 and the meter samples were not measured at either level (no device on the header UART, no meter
-    stream command yet). Open: those two, then the FW-53 features back on. P2534#3nov-0000b.
+    stream command yet). Open: those two, then the FW-53 features back on.
   Against WireWeaver 512f59e (3 Nov 2026): text+data 314,088 B, −2,796 B against c440491 after SRV-55; see CHANGELOG [Unreleased].
 - 📋 **FW-58 One PD runtime for both UCPDs**: a port-erased PHY so usbpd's engines and the DPMs are compiled once for
   UCPD1 and UCPD2; the driver splits SOP (to the engine) from SOP' / SOP'' (cable role) and taps every message and
   event into one two-port log of raw records (decoded on the host, CORE-14); the PD safety rules in `donguru_board`
   (never request above 20 V, U601 open while both sides may source, offers never above the receptacle's). The API-30
-  source moves onto it. P2534#3nov-0001b.
+  source moves onto it.
 - 📋 **FW-59 usbpd fork of our own**: private romixlab/usbpd through `[patch.crates-io]` like embassy, with no
   regard for upstream (Roman, 3 Nov 2026): its API changes freely, and if it drifts too far it becomes our own crate.
   The SOP type in the driver trait and a MessageID per SOP, VDMs to the DPM in both engines, VDM decoding without
   `panic!` on unknown values (host input), a detach error, chunked transmit, observation hooks and per-timer
-  overrides. P2534#3nov-0001.
+  overrides.
 
 ## API (`API`)
 
@@ -541,8 +542,8 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   EP3 CMSIS-DAP (API-8). Tested 15 Oct 2026 on B153A with `ww list` / `ww introspect`.
 - 📋 **API-3 Full API**: ports (power, data), power meter readings and streams, button / switch events, USART bridge,
   GPIO, I2C, device info; designed together with the CLI command tree. ^revB
-  Planned 15 Oct 2026 (P2534#15oct-2031): `donguru_api` 0.2.0 with the whole tree declared, then one item per level
-  below (API-8..API-21); the design is kept in tpm (P2534 `design/api-v1.md`).
+  Planned 15 Oct 2026: `donguru_api` 0.2.0 with the whole tree declared, then one item per level
+  below (API-8..API-21); the design is kept in our internal notes.
 - 🧪 **API-4 `plug.orientation` / `sbu.release`** (were `swd_orientation` / `swd_release`, moved in 0.2.0, API-8):
   cable orientation of everything on SBU (rw + observe, `Auto` / `Normal` / `Swapped`; `Auto` acts as `Normal` until
   CC detection) and the Hi-Z disconnect for the bench power-cut test (FW-15). Only the SWD-host uses them so far.
@@ -552,8 +553,8 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 🧪 **API-7 `device.variant`** (was `board_variant`, moved in 0.2.0): ro property, `BoardVariant::Main` / `Plus` /
   `Unknown` (FW-22); also the variant of `device.board.BOARD`. A variant from a newer firmware reads as
   `BoardVariant::Other(n)` on the host (`future_version = Other`, SW-47).
-- ✅ **API-8 API tree 0.2.0**: `donguru_api` 0.2.0 declares the whole v1 tree (design: tpm
-  `prj/P2534-donguru/design/api-v1.md`): `device` (contract traits, `variant`, `settings`), `leds`, `meter`, `plug`,
+- ✅ **API-8 API tree 0.2.0**: `donguru_api` 0.2.0 declares the whole v1 tree (design in our internal
+  design notes): `device` (contract traits, `variant`, `settings`), `leds`, `meter`, `plug`,
   `header`, `sbu`, `inputs`, `hub`, `swd`, `uart[]`, `i2c[]`, `gpio[]`, `adc`, `debug`. Handlers in one module per
   level (`fw/donguru/src/ww/`); observed properties served by `poll_properties` in the server task; `debug` behind
   the `debug-api` cargo feature (on by default). Implemented: the moved items (API-4, API-5, API-7), `debug.led_set`
@@ -658,7 +659,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   spurious recoveries after a cold boot fixed. ^revB
 - 🧪 **API-18 Bring-up API**: MCU pins by port and number (refused list, no memory write), boot-time pin snapshot,
   Feature `debug-api`, off in the default build since FW-53.
-  hub SMBus registers, UCPD1/2 state and role, raw LEDs, peripheral register reads (P2534#14oct-1014). ^revB
+  hub SMBus registers, UCPD1/2 state and role, raw LEDs, peripheral register reads. ^revB
   Done: rules in `donguru_board::pins` (refused list, the pin claim table `Claims` with its holders: LEDs, meter,
   button, header UART, V_SBU select from boot, an SWD session and its plug CC drive, a UCPD role; the electrical
   rules: tied nets, SBU_OE with PA0 / PA1, PA0 / PA1 push-pull without V_SBU, `~PWR_FLT` push-pull; reg_read's
@@ -683,7 +684,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   flash (half of it the served properties' serdes, linked now that they answer; FLASH 351 of 504 KiB). The label
   at boot also goes into the WireWeaver interface's USB string descriptor (`ww list` LABEL column, a new label
   shows after the next boot). Factory key (FW-9 calibration) not used yet. CLI: `dg settings` (CLI-47).
-  Tested 19 Oct 2026 on B153A + B129A (Python bindings, J-Link on omarchy-m1): a store left by an earlier bench test
+  Tested 19 Oct 2026 on B153A + B129A (Python bindings, J-Link on a dev PC): a store left by an earlier bench test
   (label "bench-1") loaded as is; every setting and the label written (3-6 ms per write, the record programmed
   before the answer), out-of-range `meter_window` and a 0 V `plug_vbus_at_boot` refused with `InvalidArgument` and
   their reason; after a reset everything read back, the live deadband came from the setting, and
@@ -701,7 +702,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `reboot(App / Updater)` (the reply goes out, the reset 50 ms later), `boot_state` always `Confirmed`, `confirm`
   `Ok`, `revert` `Unsupported`; `node` says `Profile::InPlace`, unsealed, `boot_control` only. `Updater` is the
   STM32 ROM bootloader (FW-12). Code: `fw/donguru/src/ww/boot.rs`. `ww dfu reboot` tested on B153A 21 Oct 2026.
-- ✅ **API-63 Evolution snapshot test**: `donguru_api` gets WireWeaver's evolution check (P2401#3nov-0059b): a
+- ✅ **API-63 Evolution snapshot test**: `donguru_api` gets WireWeaver's evolution check: a
   dev-dependency on `wire_weaver_evolution` and `donguru_api/tests/evolution.rs` compare the crate with its
   snapshot in `donguru_api/api_snapshots/`, run by `just test` / `just api-check`; `just api-save` saves the
   current version's snapshot. Caught by hand before (STD-98's wire break), now part of `cargo test --workspace`.
@@ -719,14 +720,14 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `meter.vbus_in`). `host.cc` (who sources, Type-C current from Rp), `host.pd`: PD sink on UCPD1 with
   `source_caps` (PDOs incl. PPS), `request(pdo, voltage, current)`, the current contract, `last_source` (kept for
   FW-28) and a `messages` stream of decoded PD messages. Lab `charger-inspector`, `pd-sniffing`. 📋 planned (2 Nov
-  2026, P2534#3nov-0001d): on the FW-58 runtime, caps incl. PPS / AVS / EPR (EPR entered only to read caps, never a
+  2026): on the FW-58 runtime, caps incl. PPS / AVS / EPR (EPR entered only to read caps, never a
   request above 20 V: the VBUS path is 20 V), PPS keep-alive, extended and status messages; rev A only out of spec
   (the fixed 5K1, hw_b153a.md §0).
 - 💡 **API-24 Plug CC role**: `plug.cc_role` = `Off` / `Sink` (Rd) / `Source { current }` (Rp 0.9 / 1.5 / 3 A) /
   `Auto` (follow the computer side, the default), replacing FW-17's hardcoded drive. Lets a DUT be a source (power
   bank, phone with reverse charging) and is what back-feeding needs: the guard opens the switch while both sides
-  source. Lab `who-feeds-whom`. 📋 planned (P2534#3nov-0002): with `Drp` (toggling in firmware) and a PD sink on
-  the plug against a charger DUT, U601 open; rev A cannot read plug VBUS (rev B ask, P2534#3nov-0000).
+  source. Lab `who-feeds-whom`. 📋 planned: with `Drp` (toggling in firmware) and a PD sink on
+  the plug against a charger DUT, U601 open; rev A cannot read plug VBUS (rev B ask).
 - 💡 **API-25 Meter zero and averages with uncertainty**: `meter.zero()` learns the current offset while the plug is
   off (the INA181's offset is worth tens of mA on a 5 mΩ shunt), `meter.average(window)` returns mean / min / max and
   a one-sigma error. One ADC step is ~3 mA: the docs say what the meter can and can't resolve. Lab `standby-current`.
@@ -735,7 +736,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   sequence pauses while it runs. Lab `inrush`.
 - 💡 **API-27 Cable e-marker**: read the e-marker of the cable on the receptacle with SOP' (needs VCONN from
   Donguru's side or a source that supplies it): current, voltage, speed, length, vendor. Lab `cable-check`. 📋
-  planned (P2534#3nov-0002d): first passive, SOP' / SOP'' received on UCPD1 without our GoodCRC while the computer
+  planned: first passive, SOP' / SOP'' received on UCPD1 without our GoodCRC while the computer
   discovers the cable (embassy reports a Cable Reset as a Hard Reset: fix in our fork); e-marker emulation on the
   plug once rev B has a switched Ra on B5.
 - 💡 **API-28 UART over TCP on NCM**: with API-21, the SBU UART as a raw TCP port (2323, like ser2net), one more
@@ -744,8 +745,8 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   empty in the official firmware), versioned apart from the rest, so a fork adds methods without changing
   `donguru_api`'s version and the official `dg` keeps working. `dg info` shows a firmware with an `ext` as custom.
   Lab `own-api-method`.
-- 🚧 **API-30 PD source on the plug**: UCPD2 as a PD source towards the DUT. First subset (`donguru_api` 0.5.2,
-  P2534#20oct-1421): `plug.pd.source` = `Off` / `Source { max_current, sender_response }` offers one fixed PDO, 5 V at
+- 🚧 **API-30 PD source on the plug**: UCPD2 as a PD source towards the DUT. First subset (`donguru_api` 0.5.2):
+  `plug.pd.source` = `Off` / `Source { max_current, sender_response }` offers one fixed PDO, 5 V at
   `max_current` (100 mA to 3 A, rounded down to 10 mA), with the Rp that never offers more (default USB below 1.5 A,
   1.5 A, 3 A); `plug.pd.state` (`Off`, `Unattached`, `Attached`, `Contract` with the request, `NoPd`, `Failed`);
   `plug.pd.messages`, a counted stream of raw records (every message both ways with GoodCRC, the transmit outcome,
@@ -760,7 +761,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   (SenderResponseTimer and tPSHardReset) as a logged, out-of-spec test knob for a slow sink. Host: `donguru pd source
   on|off`, `pd status` and `pd log [--follow] [-o FILE] [--restart] [--for S]` as `pd_log` JSON lines, decode and the
   sender-response override noted on start (CLI-55); the mock models the setting and the state, no sink.
-  Tested on B153A (2 Nov 2026, gpd-omarchy, firmware a388fa4) with the ZY12PDN's FUSB302B as the sink, no load on its
+  Tested on B153A (2 Nov 2026, a dev PC, firmware a388fa4) with the ZY12PDN's FUSB302B as the sink, no load on its
   output: Rd reads as `Low` on CC1; a hand-driven sink over rePort 027's I2C (F030 in reset) got a contract at the
   spec's timers, Request 7-9 ms after the GoodCRC of Source_Capabilities, Accept 1.3 ms and PS_RDY 2.5 ms after the
   Request, `pd status` shows it; an invalid object position gets Reject (`pd_requests_rejected`); Rd removed: `Detached`
@@ -785,14 +786,14 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   SVIDs / Modes, Enter / Exit Mode, Attention logged) and responder (Donguru's identity, configurable; modes NAKed or
   emulated) on both ports; unstructured VDMs raw. A mode that puts signals on SBU (DisplayPort AUX) needs
   `sbu.release` first or is refused while SBU is in use. `dg pd identity | svids | modes | enter | exit`, decoded on
-  the host (CORE-14). P2534#3nov-0002c.
+  the host (CORE-14).
 - 📋 **API-61 PD role swaps**: PR_Swap on the plug with U601 opened before the DUT sources (never both sides
   sourcing), DR_Swap accepted as a test knob (the hub stays the host, the data path doesn't change), VCONN_Swap
-  rejected (no VCONN source). Receptacle swaps wait for rev B (API-32). P2534#3nov-0002b.
+  rejected (no VCONN source). Receptacle swaps wait for rev B (API-32).
 - 📋 **API-62 PD proxy**: Donguru in line between a charger (receptacle, API-23) and a DUT (plug, API-24): offers
   the charger's PDOs downstream, requests upstream what the DUT asks, VBUS through U601 without glitches; both sides
   in one log on one clock; fault injection (drop GoodCRC, delay, mutate, refuse). CC is not passed through, so a
-  passive sniffer is impossible; this is the next best. P2534#3nov-0002f.
+  passive sniffer is impossible; this is the next best.
 
 ## Host library (`CORE`)
 
@@ -805,7 +806,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   typed error), Unimplemented, Timeout, Incompatible, Link}`; the B153A net names (`nets.rs`, hw_b153a.md §11);
   `vbus.rs` builds a `VbusMode` from plain volts/amps (`force_on`, `auto`), used by `dg power on` / `dg header
   vbus on` (CLI-11, CLI-16) so the CLI doesn't need `ww_si`'s constructors itself.
-  Tested 15 Oct 2026 on B153A (omarchy-m1): `dg device list` finds it, `dg device info` reads `device.variant`
+  Tested 15 Oct 2026 on B153A (a dev PC): `dg device list` finds it, `dg device info` reads `device.variant`
   (Main), board, firmware, UID.
 - ✅ **CORE-2 Error type**: `thiserror` errors mapped to exit codes by the CLI (`donguru-core/src/error.rs`).
 - ✅ **CORE-3 In-process mock instead of a transport trait** (`donguru-core/src/mock/`, feature `mock`): the generated
@@ -839,12 +840,12 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - ✅ **CORE-7 ELF keeper: `dg` always finds the firmware ELF** (CLI-19's `device counters` / `device log` decode):
   `cnt_core::elf::resolve` already did the lookup (`WW_ELF_PATH`, then `~/.cache/ww/elf`, then `target/`) that
   `donguru-core/src/counters.rs` / `src/log.rs` call; `just fw-size`'s release build calls `cnt elf add "$elf"`
-  after building. Upstream in `cnt` (0.5.0, proposed and built per `prj/P2534-donguru/design/elf-keeper.md`, lands
+  after building. Upstream in `cnt` (0.5.0, proposed and built per our internal design notes, lands
   as 0.5.1): `cnt run` (the actual day-to-day flash path, `cargo run` in `fw/donguru`) now caches the ELF it just
   flashed the same way; `cnt_core::elf` gained a config file (`~/.config/ww/config.toml`'s `[elf] dirs`, `~`
   expanded) for a directory synced between machines, read before the local ELF directory and `add`'s default
   target when one's set, so a flash on either dev PC publishes straight into it — declared as the mesh's `ww-elf`
-  Syncthing share (`tpm` `area/ops/provision.toml`) between gpd-omarchy and omarchy-m1, approved and syncing on
+  Syncthing share (`tpm` `area/ops/provision.toml`) between two of our PCs, approved and syncing on
   both (round-tripped a test ELF each way, ~10-15 s). Tested 16 Oct 2026 on B153A rev A: flashed `fw/donguru` via
   `cargo run` (the `cnt run` runner); the ELF landed in the shared directory and synced to the other PC within
   seconds; `dg device counters` and `dg device log`, **no `--elf`**, found it by build id and decoded real
@@ -876,7 +877,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 📋 **CORE-14 PD decoder**: the firmware's raw PD records (FW-58) decoded in donguru-core: every control, data
   and extended message, VDM headers and VDOs (ID header, cert, product, cable, AMA / VPD, DisplayPort, TBT3, USB4
   modes), SOP*, resets; `dg pd log` for both ports and every SOP, text and jsonl. Shared with pd_bench `pd_log`
-  where it fits. P2534#3nov-0001c.
+  where it fits.
 
 ## CLI (`CLI`)
 
@@ -926,9 +927,9 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `follow::stm32_dfu_update_with`, erases, writes and verifies, waits for the firmware, reconnects by serial and prints
   old -> new; progress bar on stderr, json report. Logic in `donguru_core::update` (typed `FirmwareImage`,
   `Dongle::update_firmware`, `update_with` takes the bus, DFU interface and reconnect: mock + simulated ROM tests).
-  A firmware with the 24-hex serial gets the ROM serial from its UID. Tested on B153A (omarchy-m1, 21 Oct 2026):
+  A firmware with the 24-hex serial gets the ROM serial from its UID. Tested on B153A (a dev PC, 21 Oct 2026):
   three updates in a row, 44.1-44.7 s each, version read back. Docs: `docs/user/firmware-update.md`. Not done: a
-  firmware that does not start (FW-45), `--wait`/timeouts flags. tpm P2534#21oct-1844c. ^v1.0
+  firmware that does not start (FW-45), `--wait`/timeouts flags. ^v1.0
 - ✅ **CLI-11 `power status / on / off / cycle / meter / watch / totals`** (`donguru-cli/src/commands/power.rs`):
   `status` tables plug + header + meter in one read; `on` (`--allow-voltage`, `--trip`) and `off` read back `vbus`
   after the write and fail the exit code unless it ended up where asked (`On` / `Off`), covering a trip or a latched
@@ -1084,7 +1085,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   and framings, the rest comes from clap with the doc comments as help (commands, flags, setting names, enum values).
   `dg completions --install [SHELL]` writes `donguru` and `dg` into the per-user directories, `just install` calls it.
   Not done: `settings set KEY VALUE` values by key, `swd memtest --chip` (probe-rs chip names) and `--probe`, gpio pin
-  names once CLI-5 is real. Checked in fish and by hand on omarchy-m1; bash and zsh scripts generated, not run.
+  names once CLI-5 is real. Checked in fish and by hand on a dev PC; bash and zsh scripts generated, not run.
 - ✅ **CLI-50 `just install` / `just deploy`** (`justfile`): `cargo install --path donguru-cli --locked`, `dg` as a link
   to the same executable in the cargo bin directory (not a second `[[bin]]`), completions; `deploy` refuses on local
   changes, pulls `--ff-only`, `deps-pull`, installs and checks `--version` against HEAD.
@@ -1117,7 +1118,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `pd-log print` (`donguru-core::pd::log_record`, `pd_log::Decoder`, path dependency on `pd_bench`'s LOG-1), not the
   old header-guessing `donguru_core::pd::describe` (dropped). An active `sender_response` override is noted on
   stderr once at the start. Unit- and mock-tested (`donguru-cli/src/commands/pd.rs`, `donguru-core/src/pd.rs`).
-  Tested on B153A (2 Nov 2026, gpd-omarchy, firmware a388fa4): `dg pd log --for 5 -o donguru.jsonl` against the
+  Tested on B153A (2 Nov 2026, a dev PC, firmware a388fa4): `dg pd log --for 5 -o donguru.jsonl` against the
   ZY12PDN decoded `Source_Capabilities` retries live and wrote a file `pd-log print` reads back; `pd-log merge` of
   that file with a synthetic rePort-style log lines both up by host time. Not yet: `CLI-44`'s scenarios.
 
@@ -1156,13 +1157,13 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   experimental). Labs describe Donguru as it should be: each lists the feature IDs it relies on, the header shows
   their status read from FEATURES.md, and the book ends with a feature map, missing first. Most features they use
   are 💡 items added for them. Missing: photos, real output from a rev B board, publishing (docs CI needs Typst and
-  the vhrd package, P2534#17oct-1150). Catalog and findings: tpm `prj/P2534-donguru/design/lab-book*.md`.
+  the vhrd package). Catalog and findings in our internal design notes.
 - 📋 **PKG-4 License**: the workspace says `license = "TBD"`. Still genuinely undecided (Roman's call, not
   written on his behalf), but now wired through consistently: `donguru-cli` and `donguru-core` were missing
   `license.workspace = true` (every other crate had it), so both PKG-3's packages read `TBD` straight from the
   workspace with no separate copy anywhere. No `LICENSE` file: cargo-deb's auto-generated `copyright` just says
   "Copyright information missing" with `License: TBD`, which is honest rather than a text claiming terms that
-  don't exist yet. Decision recorded in tpm `prj/P2534-donguru/design/night-24oct-decisions.md` ("pkg"). ^v1.0
+  don't exist yet. Decision recorded in our internal design notes ("pkg"). ^v1.0
 - 💡 **PKG-6 SBU breakout**: a small USB-C receptacle board with SBU1, SBU2, CC, VBUS, GND (and D+/D-) on 2.54 mm
   pins and labels, for wiring Donguru's SBU functions (UART, I2C, SWD, GPIO) to a board without Donguru's SBU
   convention; sold with it or as an accessory. Labs `serial-console`, `i2c-on-the-plug`.

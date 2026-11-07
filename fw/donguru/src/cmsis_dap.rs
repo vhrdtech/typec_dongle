@@ -215,7 +215,7 @@ pub async fn dap_task(mut class: CmsisDapClass<'static, crate::ww::UsbDriver>, m
             let n_out = host
                 .dap
                 .process_command(&request[..n], &mut response, DapVersion::V2);
-            // Stopgap plug CC drive (FW-17, P2534#12oct-1338b, `src/swd.rs` module doc): hardcoded to these two
+            // Stopgap plug CC drive (FW-17, see `src/swd.rs` module doc): hardcoded to these two
             // command bytes rather than a real connect/disconnect callback through `dap_rs`. `response[1]` is
             // `ConnectPortResponse`, 0 = Failed.
             match command {

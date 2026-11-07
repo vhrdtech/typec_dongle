@@ -4,7 +4,7 @@
 //! this has run. Config and attach go through the `usb251xb` crate (typed registers, port swap, VID/PID
 //! readback, FW-6) instead of the raw bytes written in the FW-5 bring-up.
 //!
-//! Two board variants (Main, 2-port USB2512B; Plus, 4-port USB2514B, P2534 #12, not decided/built yet) share this
+//! Two board variants (Main, 2-port USB2512B; Plus, 4-port USB2514B, not decided/built yet) share this
 //! bring-up. Reading which one is fitted from the hub's own power-on-default PID register (HUB-5) does not work
 //! on this hub's SMBus-slave strap — [`Hub::read_power_on_defaults`]'s doc has the detail — so the signal used
 //! instead is a board strap on PA10 (SBU_TO_USB, U901's S): [`read_board_variant_strap`], R902 fitted only on
@@ -14,7 +14,7 @@
 //! FW-11 hw_info).
 //!
 //! The hub and the MCU share `+3V3_DCDC` (hw_b153a.md §3). A hard turn-on load on the header's switched VBUS
-//! (Q102, FW-14) sags that rail enough to reset the hub but not the MCU (P2534#12oct-1819): the hub comes back
+//! (Q102, FW-14) sags that rail enough to reset the hub but not the MCU: the hub comes back
 //! powered but unconfigured and un-attached, and only redoing this bring-up gets it back. [`watchdog_task`]
 //! notices the loss two ways: `src/ww/mod.rs` calls [`request_recovery`] when the composite USB device (on hub port
 //! 1) drops out of the configured state after having reached it once — the hub's own reset bounces that port

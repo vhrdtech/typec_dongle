@@ -9,7 +9,7 @@
     "https://github.com/vhrdtech/wire_weaver/blob/master/docs/evolution/rules.md",
     "Data types used in the API go here too, with `#[derive_shrink_wrap]`.",
     "",
-    "0.2 is the whole v1 tree (API-8, design of record: tpm `prj/P2534-donguru/design/api-v1.md`): one level per part",
+    "0.2 is the whole v1 tree (API-8, design of record in our internal design notes): one level per part",
     "of the dongle, the stdlib traits for everything generic. Items a firmware doesn\'t have yet answer",
     "`Unimplemented`. Index rule for the arrays (`uart`, `i2c`, `gpio`): 0 = plug side, 1 = header.",
     "",
@@ -87,7 +87,7 @@
             "2-port USB2512B hub (U301).",
         ], ident: "Main", fields: Unit, discriminant: 0, since: None),
         (docs: [
-            "4-port USB2514B hub (U301), not decided/built yet (P2534 #12).",
+            "4-port USB2514B hub (U301), not decided/built yet.",
         ], ident: "Plus", fields: Unit, discriminant: 1, since: None),
         (docs: [
             "The fitted hub\'s power-on PID matched neither [`Main`](BoardVariant::Main) nor",

@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+- docs: internal references removed
+
 ## [0.20.44] - 2026-11-04
 
 ### Changed
@@ -56,7 +58,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ### Added
 
-- `donguru_api` gets WireWeaver's evolution snapshot test (API-63, P2401#3nov-0059b): `just test` / `just api-check`
+- `donguru_api` gets WireWeaver's evolution snapshot test (API-63): `just test` / `just api-check`
   now catch an API change that needs a bigger version bump than it got, the way `donguru_api`'s break during
   STD-98 was found only by hand. `just api-save` saves a version's snapshot; 0.6.0's is the first, committed in
   `donguru_api/api_snapshots/`.
@@ -100,7 +102,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
 - `device.board.set_reworks` (`ww_board_info` 0.3.0, STD-98) added to `omit` next to `device.board.REWORKS` in the
   firmware (`fw/donguru/src/ww/mod.rs`) and the host mock server (`donguru-core/src/mock/server.rs`): reworks aren't
   served yet (STD-24); keeps building once STD-98 lands on wire_weaver main.
-- Built against wire_weaver master 084f9e9 with its rework guard (STD-101), which has no API items any more: the guard runs in a firmware's `main` before any init and refuses a board with a rework the image doesn't know. Donguru keeps no reworks list (STD-24), so its firmware doesn't run the guard: nothing to omit beyond `device.board.REWORKS` and `set_reworks`. The host's `#[since]` check now compares versions in full (wire_weaver 425b7477), so `device.boot`, `device.dfu` (0.5.1) and `plug.pd` (0.5.2) keep their markers across the 0.6.0 bump. Tested 3 Nov 2026 on B153A (gpd-omarchy): flashed through the ROM bootloader (`ww dfu stm32 flash`, as the 0.6.0 CLI refuses the 0.5.2 firmware), boots as `donguru_api@0.6.0`, `ww info` answers, `dg fw version`, `pd status`, `power status`, `settings show` work, and `dg fw update` writes it again (38.8 s).
+- Built against wire_weaver master 084f9e9 with its rework guard (STD-101), which has no API items any more: the guard runs in a firmware's `main` before any init and refuses a board with a rework the image doesn't know. Donguru keeps no reworks list (STD-24), so its firmware doesn't run the guard: nothing to omit beyond `device.board.REWORKS` and `set_reworks`. The host's `#[since]` check now compares versions in full (wire_weaver 425b7477), so `device.boot`, `device.dfu` (0.5.1) and `plug.pd` (0.5.2) keep their markers across the 0.6.0 bump. Tested 3 Nov 2026 on B153A (a dev PC): flashed through the ROM bootloader (`ww dfu stm32 flash`, as the 0.6.0 CLI refuses the 0.5.2 firmware), boots as `donguru_api@0.6.0`, `ww info` answers, `dg fw version`, `pd status`, `power status`, `settings show` work, and `dg fw update` writes it again (38.8 s).
 - `donguru_api` bumped 0.5.2 → 0.6.0 (Breaking): wire_weaver STD-98 changed `ww_board_info::Rework`'s `id` from a
   string to a number, which changes `Device::board`'s wire signature even though `device.board.REWORKS` is
   omitted here — a device built against 0.6.0 doesn't talk to a host built against 0.5.x or older, and the other
@@ -224,7 +226,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ### Changed
 
-- Firmware: the hub stays attached and configured through a firmware update, a crash or a reboot (FW-46), so a device on the plug keeps its USB link through a reboot or a crash; only Donguru's own USB device re-enumerates. At boot the firmware reads the hub's config back over I2C and keeps the hub when it holds what this firmware writes and is attached; a firmware with another hub config, or a hub that lost its config, gets the reset pulse and the config as before. A power cycle still starts the hub from reset. New counters `hub_kept` and `hub_kept_reconfigured`. No API change (`donguru_api` stays 0.5.1). Tested on B153A (omarchy-m1, 21 Oct 2026): the hub stayed the same host device through a probe flash, 3 `ww dfu reboot --into app` and a ROM update (`just update`); a firmware with a changed hub config reconfigured it, both ways; brown-out recovery (FW-18) still works; with a self-powered USB serial DUT on the plug (B129A) its open tty kept echoing through 5 reboots in a row, none lost. Not kept on rev A: the DUT's link through a ROM update, because the ROM bootloader drives the plug data switch off (PA9 is its USART1_TX, FW-50), and a bus-powered DUT, because plug VBUS goes off at every MCU reset (FW-49).
+- Firmware: the hub stays attached and configured through a firmware update, a crash or a reboot (FW-46), so a device on the plug keeps its USB link through a reboot or a crash; only Donguru's own USB device re-enumerates. At boot the firmware reads the hub's config back over I2C and keeps the hub when it holds what this firmware writes and is attached; a firmware with another hub config, or a hub that lost its config, gets the reset pulse and the config as before. A power cycle still starts the hub from reset. New counters `hub_kept` and `hub_kept_reconfigured`. No API change (`donguru_api` stays 0.5.1). Tested on B153A (a dev PC, 21 Oct 2026): the hub stayed the same host device through a probe flash, 3 `ww dfu reboot --into app` and a ROM update (`just update`); a firmware with a changed hub config reconfigured it, both ways; brown-out recovery (FW-18) still works; with a self-powered USB serial DUT on the plug (B129A) its open tty kept echoing through 5 reboots in a row, none lost. Not kept on rev A: the DUT's link through a ROM update, because the ROM bootloader drives the plug data switch off (PA9 is its USART1_TX, FW-50), and a bus-powered DUT, because plug VBUS goes off at every MCU reset (FW-49).
 
 ## [0.20.22] - 2026-10-21
 
@@ -265,7 +267,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ### Added
 
-- Firmware: a boot loop ends in the STM32 ROM bootloader on its own (FW-45), so a firmware that crashes as it starts can still be updated over USB without a probe. Every boot counts in the boot word (TAMP_BKP4R); a boot is healthy once USB is configured or after 10 s up (a dongle on a charger never trips it). After 3 boots in a row without that, the fourth brings the hub up, resets into the ROM's USB DFU (0483:df11, the same serial) and `ww stm32dfu -s SERIAL flash ELF` writes a good image. The next firmware logs it and reports `device.dfu.node` `last_result` as `Recovery` until the next requested update or a power cycle (was always `Nothing`; no API change, `donguru_api` stays 0.5.1). Cargo feature `crash-loop-test` builds an image that panics at every start, to check it. Tested on B153A (omarchy-m1, 21 Oct 2026) without a probe: the crash-loop image written over USB ended in the ROM DFU behind the hub about 1 s after it started, `ww stm32dfu flash` brought the good image back with `Recovery` reported, the next `just update` cleared it, 5 app reboots in a row stayed in the firmware. Not run on a board: the rescue right after a power cycle, the 10 s mark without a USB host.
+- Firmware: a boot loop ends in the STM32 ROM bootloader on its own (FW-45), so a firmware that crashes as it starts can still be updated over USB without a probe. Every boot counts in the boot word (TAMP_BKP4R); a boot is healthy once USB is configured or after 10 s up (a dongle on a charger never trips it). After 3 boots in a row without that, the fourth brings the hub up, resets into the ROM's USB DFU (0483:df11, the same serial) and `ww stm32dfu -s SERIAL flash ELF` writes a good image. The next firmware logs it and reports `device.dfu.node` `last_result` as `Recovery` until the next requested update or a power cycle (was always `Nothing`; no API change, `donguru_api` stays 0.5.1). Cargo feature `crash-loop-test` builds an image that panics at every start, to check it. Tested on B153A (a dev PC, 21 Oct 2026) without a probe: the crash-loop image written over USB ended in the ROM DFU behind the hub about 1 s after it started, `ww stm32dfu flash` brought the good image back with `Recovery` reported, the next `just update` cleared it, 5 app reboots in a row stayed in the firmware. Not run on a board: the rescue right after a power cycle, the 10 s mark without a USB host.
 
 ## [0.20.19] - 2026-10-21
 
@@ -275,7 +277,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
   [ELF]` writes a firmware over USB without a probe: reboots into the STM32 ROM bootloader, writes and verifies,
   waits for the firmware and prints the old and the new version, with a progress bar on stderr and `--format json`
   (CLI-10). `donguru_core::update` has the typed API (`FirmwareImage`, `Dongle::update_firmware`,
-  `Device::reboot`). Tested on B153A (omarchy-m1, 21 Oct 2026): three updates in a row, 44 s each.
+  `Device::reboot`). Tested on B153A (a dev PC, 21 Oct 2026): three updates in a row, 44 s each.
 
 ## [0.20.18] - 2026-10-21
 
@@ -287,7 +289,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
   USB DFU behind its hub, `ww stm32dfu -s SERIAL flash ELF --wait 10 --follow` writes it and waits for the firmware
   to come back; `just update SERIAL` does both, `docs/user/firmware-update.md` explains it. Needs a `ww` from
   wire_weaver master (`ww stm32dfu`). On rev A the hub's RESET_N is driven from RTC_OUT1 so the hub stays up through
-  the resets. Tested on B153A (omarchy-m1, 21 Oct 2026): ROM DFU up in under 0.5 s, 415 KB written and verified in
+  the resets. Tested on B153A (a dev PC, 21 Oct 2026): ROM DFU up in under 0.5 s, 415 KB written and verified in
   42.5-42.9 s, firmware back right after, 5 times in a row without a power cycle (44 s per update end to end).
 
 ### Changed
@@ -313,11 +315,11 @@ IDs refer to [FEATURES.md](FEATURES.md).
   `sync_status`, `time_map`, `set_sources` / `sources` through embedded_bedrock's `bedrock_sync` (DEV-13), a static
   `SYNC` disciplined onto UTC by a host polling about once a second. `configure_sync` always `Unsupported` and
   `set_time_of_day` always `WrongState` (no sync line); no oscillator backend (Donguru's HSI16 trim is too coarse
-  to steer without wobbling UART / PWM, decided 21 Oct 2026, P2528 design/clock-sync.md). The status LEDs
+  to steer without wobbling UART / PWM, decided 21 Oct 2026, from our internal design notes). The status LEDs
   (`src/led.rs`) align their breath / blink to `SYNC`'s shared time while it has one (`bedrock_led::Indication::
   run_with`), free-running otherwise as before, so Donguru's LEDs breathe in phase with other boards synced by the
   same host (`ww sync`). Release FLASH 391.59 → 407.04 KiB of 504 KiB (+15.45 KiB), RAM 89.11 → 89.27 KiB of
-  144 KiB (+0.16 KiB). Flashed and run on B153A (omarchy-m1): boots clean, 227 s with no panic; `ww sync` end to
+  144 KiB (+0.16 KiB). Flashed and run on B153A (a dev PC): boots clean, 227 s with no panic; `ww sync` end to
   end not yet exercised, blocked this session by the board's USB hub stuck from concurrent unrelated use of the
   same board (FW-44).
 
@@ -325,7 +327,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ### Changed
 
-- Firmware and CLI built against WireWeaver master with TR-15 (link setup token, per-medium framing, 2bd3cc95): a wire break of the link, not of `donguru_api` (still 0.4.1). A dongle on older firmware no longer talks to this CLI and older CLIs don't talk to this firmware: flash the firmware and install the CLI together. Tested 21 Oct 2026 on B153A (omarchy-m1, flashed by J-Link): the new CLI against the 0.20.14 firmware stops with "The device speaks link 0.5.0 (without setup token) ... update the older side" (exit 1); after the flash `dg info`, `device list`, `device reset-cause`, `device counters --elf`, `power status`, `power meter`, `power watch` and `settings show` work, 30 reconnects in a row all connect, counters all 0.
+- Firmware and CLI built against WireWeaver master with TR-15 (link setup token, per-medium framing, 2bd3cc95): a wire break of the link, not of `donguru_api` (still 0.4.1). A dongle on older firmware no longer talks to this CLI and older CLIs don't talk to this firmware: flash the firmware and install the CLI together. Tested 21 Oct 2026 on B153A (a dev PC, flashed by J-Link): the new CLI against the 0.20.14 firmware stops with "The device speaks link 0.5.0 (without setup token) ... update the older side" (exit 1); after the flash `dg info`, `device list`, `device reset-cause`, `device counters --elf`, `power status`, `power meter`, `power watch` and `settings show` work, 30 reconnects in a row all connect, counters all 0.
 
 ## [0.20.15] - 2026-10-21
 
@@ -395,7 +397,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
 ### Changed
 
 - Firmware: observed properties are event-driven (WireWeaver SRV-25): the server task sleeps until the next observed property is due (`ObserveState::next_wake`) or something changes outside it, instead of waking every 1 ms while a host observes anything (`OBSERVE_TICK` is gone). `src/power.rs` marks `plug.vbus` / `header.vbus_sw` changed through the observe signal (`ww::OBSERVE`, from any task; its `CHANGES` bits and `ServerState::power_changed` are gone), the ADC task checks the meter deadband on each new reading and marks `meter.reading` / `temperature` / `totals` there (the server task no longer polls `adc::latest()`), and the samples writer wakes the server for a batch. The log pump and the settings store's tidying keep their `PUMP_PERIOD`. Release FLASH at opt-level 3 355.7 -> 361.4 KiB (+5.8: `next_wake` and the signal, of which 3.2 come with the library), at z 243.7 -> 246.8 KiB (+3.1). Tested 19 Oct 2026 on B153A: the server task wakes ~101/s idle (the 10 ms log pump), ~111/s observing the meter on change or every 200 ms, ~190/s with samples (no 1 ms tick); `dg power watch` 50 rows in 5 s at 100 ms, 299 in 3 s at 10 ms; `--samples` 1608/s for 5 s, none missed (largest gap 759 us); with a 30 mV / 20 mA deadband an idle DUT sends the first reading only; on-change `plug.vbus` follows a `vbus_cycle` (Off, On 300 ms later, answer `On`) and an over-current trip (`Tripped(OverCurrent)` 8 ms after an `Auto` 5 mA mode). `ww usb-loopback` 1 KB: 311 round trips/s, 618 kB/s host -> device, 489 kB/s device -> host; 64 B: 2.0k/s, 302 / 514 kB/s, host -> device 17% below 0.20.6 (FW-40); with WireWeaver's `next_wake` early return and `is_active` flag 343 kB/s at 64 B (~5% below 0.20.6) and 621-628 kB/s at 1 KB, samples unchanged (1608/s, none missed).
-- `MeterReading` has no `power` any more (`donguru_api` 0.4.0, P2534#19oct-1340): it was always `vbus_in` x `current`, now computed on the host (`donguru_core::reading_power_w`); `dg power` shows mW and `power_mw` in JSON as before. Saves a column of every batched meter sample on the wire and its encoder in the firmware. Update firmware and host together: hosts with `donguru_api` 0.3 can't observe or read `meter.reading` of a 0.4 firmware and the other way round (the API version tells them apart, `dg` says so). Release FLASH at opt-level 3 363.1 -> 355.7 KiB (-7.4), at z 246.4 -> 243.7 KiB (-2.8). Tested 19 Oct 2026 on B153A: `dg power status` / `watch` show mW as before.
+- `MeterReading` has no `power` any more (`donguru_api` 0.4.0): it was always `vbus_in` x `current`, now computed on the host (`donguru_core::reading_power_w`); `dg power` shows mW and `power_mw` in JSON as before. Saves a column of every batched meter sample on the wire and its encoder in the firmware. Update firmware and host together: hosts with `donguru_api` 0.3 can't observe or read `meter.reading` of a 0.4 firmware and the other way round (the API version tells them apart, `dg` says so). Release FLASH at opt-level 3 363.1 -> 355.7 KiB (-7.4), at z 246.4 -> 243.7 KiB (-2.8). Tested 19 Oct 2026 on B153A: `dg power status` / `watch` show mW as before.
 - Firmware: handlers that never await are plain `fn`s, only the ones that do (settings and label writes, meter reads, `plug.vbus_cycle`, `sbu.release`, `adc.read`, `debug.log_flood`) stay `async` (WireWeaver SRV-21 `handler_model`); a property whose setter awaits keeps an async getter too. Release FLASH at opt-level 3 397.8 -> 385.2 KiB (-12.6), at z 282.2 -> 262.1 KiB (-20.2). Tested 19 Oct 2026 on B153A with SRV-22..25: settings show / set / reset, `plug.vbus_cycle`, the meter; device errors name their site (`BadIndex at level site 42 (index not valid)` for `uart[7]`, `Unimplemented at item site 2 (handler)`).
 - Firmware: built with WireWeaver's fixed error site numbers (SRV-22): an error's `err_seq` names the same site in every build, and the error arms of the server are shared code. Release FLASH at opt-level 3 385.2 -> 383.5 KiB (-1.7), at z 262.1 -> 260.6 KiB (-1.5). No code change in the firmware.
 - Firmware: built with WireWeaver's one observe table code (SRV-23) and one observe loop (SRV-24) for every trait level, instead of a copy per level. Release FLASH at opt-level 3 383.5 -> 363.1 KiB (-20.4), at z 260.6 -> 246.4 KiB (-14.2). No code change in the firmware.
@@ -449,7 +451,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ### Changed
 
-- Docs: product names written WireWeaver and ShrinkWrap in prose (P2534).
+- Docs: product names written WireWeaver and ShrinkWrap in prose.
 
 ## [0.20.1] - 2026-10-16
 
@@ -467,7 +469,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
   with, now caches the flashed ELF by build id the same way; `cnt_core::elf` reads a config file
   (`~/.config/ww/config.toml`'s `[elf] dirs`) for a directory shared between machines, in addition to
   `WW_ELF_PATH`, so a board flashed on one dev PC is found by `dg` on another. That directory is declared as the
-  `ww-elf` Syncthing share between gpd-omarchy and omarchy-m1 (`tpm area/ops/provision.toml`), approved and
+  `ww-elf` Syncthing share between two of our PCs (`tpm area/ops/provision.toml`), approved and
   syncing. Tested 16 Oct 2026 on B153A rev A: flashed via `cargo run`, `dg device counters` / `dg device log`
   found the ELF with no `--elf` and decoded it (against `cnt_core` patched to the unreleased branch; works
   against crates.io once `cnt` 0.5.1 is out).
@@ -612,7 +614,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
   `debug`. Errors keep the device's category (`Refused`, `InUse`, ...) and typed error (`OverVoltage { measured }`).
 - In-process mock dongle (`mock` feature, CORE-3): `DonguruApi` served on `ww_device::Server` in the same process,
   the test double for the CLI, GUI and Python bindings.
-- `dg device list` and `dg device info` (CLI-7, text / json / jsonl). Tested 15 Oct 2026 on B153A on omarchy-m1:
+- `dg device list` and `dg device info` (CLI-7, text / json / jsonl). Tested 15 Oct 2026 on B153A:
   the dongle is listed (API 0.2.0), `device info` reads variant Main, board "Donguru B153" rev A, firmware, UID.
 
 ### Changed
@@ -760,7 +762,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
   polarity swap (fixes a full/high-speed device on the plug looking low-speed to the hub), and a VID/PID
   readback logged right after configuring, using the crate's correct SMBus block-read framing instead of the
   plain register read that used to come back as 0 (`src/hub.rs`, FW-6, FW-18 recovery unchanged on top). Tested
-  14 Oct 2026 on B153A (J-Link via omarchy-m1): HUB-1 (config/attach) and HUB-5 (VID/PID readback, now
+  14 Oct 2026 on B153A (J-Link via a dev PC): HUB-1 (config/attach) and HUB-5 (VID/PID readback, now
   `0424/2512` instead of 0) confirmed; HUB-7 (the port 2/4 swap itself, with a device on the plug) not yet.
 
 ### Fixed
@@ -840,7 +842,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
   SWCLK/SWDIO on `DAP_Disconnect` / endpoint disable / `swd_release`), so a downstream board gating its SBU->SWD
   mux on CC (e.g. B129A) switches over during a probe-rs session (FW-17). Built, not tested on hardware.
 - Firmware: `plug-vbus-on` build feature, off by default: AOZ1375 on from boot so one cable powers the DUT and
-  carries SWD, a stopgap until FW-8. Never on the P2625 power-cut bench (the DUT runs from Q102 there).
+  carries SWD, a stopgap until FW-8. Never on the power-cut bench (the DUT runs from Q102 there).
 
 ### Fixed
 
@@ -860,7 +862,7 @@ IDs refer to [FEATURES.md](FEATURES.md).
 - AGENTS.md (repository rules), FEATURES.md and this changelog.
 - Firmware: SWD-host over the plug SBU lines, CMSIS-DAP v2 (bulk) alongside WireWeaver on one composite USB
   device, `donguru_api` 0.1.1 (old CLIs still work: additive, same major/minor): `swd_orientation` rw property
-  and `swd_release` Hi-Z disconnect, for the P2625 power-cut bench (FW-15, API-4). The pins also go Hi-Z on a
+  and `swd_release` Hi-Z disconnect, for the power-cut bench (FW-15, API-4). The pins also go Hi-Z on a
   clean `DAP_Disconnect` and on a USB reset/suspend of the CMSIS-DAP interface, not only on an explicit
   `swd_release` call, so a bench harness only has to end the probe-rs session before cutting power. Built, not
   tested on hardware.

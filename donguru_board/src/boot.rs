@@ -204,7 +204,7 @@ const POL: u32 = 1 << 20;
 
 /// RTC_CR with RTC_OUT1 (PC13) holding the hub's RESET_N (rev A): high (`run`) or low (hub in reset), from the RTC
 /// in the backup domain, which keeps the level through a system reset (not a power cycle: the backup domain resets,
-/// PC13 goes Hi-Z and R304 holds the hub in reset). The other bits of `cr` stay. B153A on omarchy-m1, 21 Oct 2026:
+/// PC13 goes Hi-Z and R304 holds the hub in reset). The other bits of `cr` stay. B153A on a dev PC, 21 Oct 2026:
 /// RTC_CR 0x0030_0000 kept the hub enumerated through two resets.
 pub fn rtc_cr_hub(cr: u32, run: bool) -> u32 {
     (cr & !RTC_CR_OUT) | OSEL_ALARM_A | if run { POL } else { 0 }
@@ -453,7 +453,7 @@ mod tests {
 
     #[test]
     fn rom_serial_on_a_b153a() {
-        // B153A on omarchy-m1, 21 Oct 2026: firmware serial (the UID as 24 hex) 530016000A50315448313520, ROM DFU
+        // B153A on a dev PC, 21 Oct 2026: firmware serial (the UID as 24 hex) 530016000A50315448313520, ROM DFU
         // serial 204B319B5431
         assert_eq!(
             &rom_serial([0x0016_0053, 0x5431_500A, 0x2035_3148]),

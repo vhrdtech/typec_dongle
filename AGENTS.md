@@ -44,7 +44,7 @@ stands.
 - Questions like "what's new" or "what changed since X" are answered from CHANGELOG.md, newest sections first
   (the user's version or date as the cutoff), with FEATURES.md for current status.
 
-The tpm repo's `/sync-repos` reads this file to log progress, so a missing entry means work nobody sees.
+Our internal tooling reads this file to log progress, so a missing entry means work nobody sees.
 
 ## Layout
 
@@ -75,7 +75,7 @@ The `justfile` is the single entry point for tasks; CI runs the same targets.
 just                     # list recipes
 just verify              # fmt check, clippy (-D warnings), tests: what CI runs
 just fmt
-just install             # donguru, dg and completions onto PATH; works anywhere, with tpm it uses the release stack
+just install             # donguru, dg and completions onto PATH; works anywhere, uses a release-management tool's stack if present
 just hooks-install       # once after cloning: prek pre-commit / pre-push hooks
 just serve-docs          # docs site with live reload
 just fw-size             # firmware release build, FLASH / RAM use, biggest symbols, counters
@@ -119,20 +119,19 @@ Conventional Commits with a scope: `feat(cli): ...`, `fix(fw): ...`, `feat(api):
 `docs: ...`, `build: ...`, `ci: ...`. Short imperative summary, blank line, body with what and why; reference
 feature IDs (`feat(cli): gpio read over WireWeaver (CLI-5)`). The pre-commit hooks must pass; don't skip them.
 
-Commit on your own initiative (tpm CLAUDE.md "Commits are free, prod is gated"): work happens on a session branch
-(`tpm work new SLUG`), each finished step is one commit with FEATURES.md and CHANGELOG.md updated in it. When the
-work is done and the user agrees, `tpm land` puts it on main; pushing is the housekeeping timer's job. Anything that
-reaches clients (prod deploy, firmware/OTA release, registry publish) still waits for the user's OK.
+Commit on your own initiative: work happens on a session branch, each finished step is one commit with FEATURES.md
+and CHANGELOG.md updated in it. When the work is done and the user agrees, it lands on main; pushing happens on its
+own schedule afterward. Anything that reaches clients (prod deploy, firmware/OTA release, registry publish) still
+waits for the user's OK.
 
 ## Versions
 
-Landing bumps the version, not each work commit (tpm CLAUDE.md "Landing bumps the version"), so any build from main
-traces back to a release commit:
-- Session commits add CHANGELOG entries under `[Unreleased]` without bumping. `tpm land` turns them into the next
+Landing bumps the version, not each work commit, so any build from main traces back to a release commit:
+- Session commits add CHANGELOG entries under `[Unreleased]` without bumping. Landing turns them into the next
   version's section with the manifest bump in one `release: x.y.z` commit: minor for Added/Changed/Removed/Deprecated,
-  else patch; major only when the owner says so (`tpm land --version`).
-- In a workspace, bump the changed crates by hand on the branch, then `tpm land --no-bump`. Docs-only, CI-only and
-  no-behaviour-change refactors land without a bump.
+  else patch; major only when the owner says so.
+- In a workspace, bump the changed crates by hand on the branch before landing; it then lands without a further bump.
+  Docs-only, CI-only and no-behaviour-change refactors land without a bump.
 - CLIs print version, git SHA and build time in `--version`, e.g. `tool 0.4.2 (a1b2c3d-dirty, built 3 Oct 2026
   18:20)`: a small `build.rs` without extra crates (`git rev-parse --short HEAD`, `-dirty` when
   `git status --porcelain` isn't empty, `rerun-if-changed` on `.git/HEAD` and `.git/index`, `unknown` without
