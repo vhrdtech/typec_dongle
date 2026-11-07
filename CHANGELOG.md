@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.45] - 2026-11-07
+
 - docs: internal references removed
 
 ## [0.20.44] - 2026-11-04
