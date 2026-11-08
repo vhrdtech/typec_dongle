@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.46] - 2026-11-08
+
 ### Changed
 
 - Firmware: embassy from the romixlab/embassy fork at its default branch `main` (1ab8deec, plain git dependency, Cargo.lock holds the rev) instead of its `donguru-ring-copy` branch (FW-42). `main` is now the one integration branch for all our firmware: upstream 262fdba with each fix merged in from its own `t/<slug>` branch. For Donguru it carries the same DMA ring copy as before, plus `t/tim-psc-round` (the TIM prescaler rounded to the nearest tick, the same divisor at 64 MHz) and `t/h7-fracn` (H7 only). Release FLASH .text 246 720 -> 246 728 B, RAM unchanged; dev and release build, `just fw-lint` clean. Not run on a board yet.
