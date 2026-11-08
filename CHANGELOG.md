@@ -6,6 +6,18 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Changed
+
+- Firmware: USB on embedded_bedrock's `bedrock_usb` (FW-66): the composite device (WireWeaver EP1/EP2, CMSIS-DAP v2 EP3) is a `const`, served by bedrock_usb's usb_v4 driver, EP0 control machine and WireWeaver class; embassy-usb, embassy-stm32's USB driver and `wire_weaver_usb_embassy` are gone from `fw/donguru`. Same descriptors and endpoints as before, except descriptor 0x40 naming the stack `bdus` (was `wwue`). `donguru_api` unchanged (0.6.0), old CLIs keep working. Release builds against main 550e5f8 (`llvm-size`, text / data / bss in bytes): opt-level z default features 254,460 / 724 / 61,280 → 248,112 / 812 / 60,096 (text −6,348, RAM −1,096); z with `swd-host` 264,812 / 724 / 62,720 → 258,724 / 844 / 61,576 (text −6,088, RAM −1,024); opt-level 3 default 377,232 → 368,644 text (−8,588); 3 with `swd-host` 393,048 → 387,204 (−5,844). USB code from DWARF (`bedrock-lint code-size`: embassy-usb, embassy-stm32 `usb/`, wire_weaver_usb_embassy and `cmsis_dap.rs` before, bedrock_usb and `cmsis_dap.rs` after): z 11,156 → 7,802 B, z `swd-host` 13,114 → 9,600 B, 3 11,866 → 8,412 B, 3 `swd-host` 13,554 → 12,706 B. Stack (`bedrock-lint frames`, deepest static path of each task poll, z / 3): `usb_task` 1,548 → 1,356 / 1,116 → 1,028 B, `dap_task` 1,644 → 1,492 / 1,220 → 1,172 B, `server_task` 4,924 → 4,924 / 12,852 → 4,388 B, boot task 11,116 → 11,148 / 10,460 → 10,428 B. Not run on a board.
+
+### Added
+
+- Firmware: the CMSIS-DAP v2 function has its own MS OS 2.0 function subset (WinUSB, CMSIS-DAP v2 interface GUID), so Windows binds WinUSB to it without a driver install (FW-66).
+
+### Removed
+
+- `fw/donguru/examples/usb_serial.rs`, the embassy-usb CDC ACM echo example: bedrock_usb has no CDC class and the firmware talks WireWeaver (FW-66).
+
 ## [0.20.46] - 2026-11-08
 
 ### Changed

@@ -34,7 +34,7 @@ use embassy_stm32::{
         PllPreDiv, PllRDiv, PllSource, Sysclk,
         mux::{Adcsel, Usbsel},
     },
-    ucpd as ucpd_drv, usart, usb,
+    ucpd as ucpd_drv, usart,
 };
 
 assign_resources! {
@@ -150,8 +150,13 @@ bind_interrupts!(pub struct Irqs {
     DMA1_CHANNEL2_3 => dma::InterruptHandler<peripherals::DMA1_CH2>, dma::InterruptHandler<peripherals::DMA1_CH3>;
     USART3_4_5_6_LPUART1 => usart::InterruptHandler<peripherals::USART5>;
     DMA1_CH4_7_DMA2_CH1_5_DMAMUX1_OVR => dma::InterruptHandler<peripherals::DMA1_CH4>, dma::InterruptHandler<peripherals::DMA1_CH5>;
-    USB_UCPD1_2 => usb::InterruptHandler<peripherals::USB>, ucpd_drv::InterruptHandler<peripherals::UCPD2>;
+    // one vector for both: each handler looks at its own flags
+    USB_UCPD1_2 => bedrock_usb::v4::embassy::InterruptHandler<peripherals::USB>, ucpd_drv::InterruptHandler<peripherals::UCPD2>;
 });
+
+/// HCLK as set up in `boot` (SYSCLK 64 MHz, AHB undivided): bedrock_usb's short waits (tSTARTUP, ES0548 2.16.1)
+/// count in it.
+const HCLK_HZ: u32 = 64_000_000;
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
@@ -243,8 +248,16 @@ async fn boot(spawner: embassy_executor::Spawner, start: boot::Start) {
     let hub = hub::bring_up(r.hub, warm).await;
     spawner.spawn(unwrap!(hub::watchdog_task(hub)));
 
-    // Composite USB device (FS, HSI48 clock above): WireWeaver and CMSIS-DAP v2 (FW-15), see src/ww/mod.rs.
-    let usb_driver = usb::Driver::new(r.usb.usb, r.usb.pa12, r.usb.pa11, Irqs);
+    // Composite USB device (FS, HSI48 clock above): WireWeaver and CMSIS-DAP v2 (FW-15) on bedrock_usb, see
+    // src/ww/mod.rs. Off the bus until ww::start has taken the endpoints and connects it.
+    let usb_driver = bedrock_usb::v4::embassy::new::<ww::Desc, _, _>(
+        r.usb.usb,
+        Irqs,
+        r.usb.pa12,
+        r.usb.pa11,
+        &ww::USB_STATE,
+        HCLK_HZ,
+    );
     let swd_host = swd::SwdHost::new(r.swd);
     // device.settings and the label (API-19): their boot values are applied by ww::start
     let settings = settings::open(r.settings.flash).await;

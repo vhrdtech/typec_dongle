@@ -17,7 +17,6 @@ cortex-m-rt = "0.7"
 critical-section = "1.2" # RCC and SYSCFG read-modify-writes shared with embassy (src/ucpd.rs)
 portable-atomic = { version = "1.11", features = ["critical-section"] } # atomics for Cortex-M0(+)
 embassy-stm32 = { version = "0.6.0", features = ["defmt", "stm32g0b1ce", "unstable-pac", "exti", "time", "time-driver-tim4"] } # not "any": it would pick TIM15, which drives the PF1 LED
-embassy-usb = { version = "0.6.0", default-features = false, features = ["defmt"] }
 embassy-executor = { version = "0.10.0", features = ["platform-cortex-m", "executor-thread", "executor-interrupt", "defmt"] }
 embassy-time = { version = "0.5.1", features = ["defmt", "defmt-timestamp-uptime"] }
 embassy-sync = { version = "0.8.0", features = ["defmt"] }
@@ -34,8 +33,12 @@ bedrock_led = { git = "https://github.com/romixlab/embedded_bedrock", features =
 # backend here (HSI trim too coarse for Donguru, decided 21 Oct 2026) and no sync line, so `ww-timebase` is the only
 # feature besides `embassy`.
 bedrock_sync = { git = "https://github.com/romixlab/embedded_bedrock", features = ["embassy", "ww-timebase", "defmt"] }
-# CMSIS-DAP command processing (SWD/JTAG state machine), transport written ourselves against embassy-usb: its own
-# `usb` module targets the separate `usb-device` crate, incompatible with the embassy-usb stack used here.
+# the USB device (FW-66): the composite WireWeaver + CMSIS-DAP device as a `const`, the usb_v4 driver, the EP0 control
+# machine and the WireWeaver class (`ww`); `embassy-stm32` for the interrupt binding and `Peri<USB>`, `embassy-time`
+# for the WireWeaver write timeout. From the embedded_bedrock git repository like bedrock_led.
+bedrock_usb = { git = "https://github.com/romixlab/embedded_bedrock", features = ["embassy-stm32", "ww", "embassy-time", "defmt"] }
+# CMSIS-DAP command processing (SWD/JTAG state machine), transport written ourselves on bedrock_usb's bulk endpoints
+# (src/cmsis_dap.rs): its own `usb` module targets the separate `usb-device` crate.
 # Its own "defmt" feature pulls defmt 0.3, a different major version than ours (1.1): left off, nothing here needs
 # to Format-print its types directly.
 # "usb-hs": DAP_Info reports a 512-byte DAP packet. Nothing else: the feature only switches `DAP2_PACKET_SIZE`,
@@ -73,7 +76,8 @@ ww_date_time = { git = "https://github.com/vhrdtech/wire_weaver", default-featur
 ww_uart = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
 ww_uid = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
 ww_user_info = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
-wire_weaver_usb_embassy = { git = "https://github.com/vhrdtech/wire_weaver" }
+# the WireWeaver server on the USB function (src/ww/mod.rs): link state machine, framing, event loop
+ww_device = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false, features = ["embassy-time", "defmt"] }
 # device.settings and device.label kept in flash (API-19, src/settings.rs): the settings store, reading the flash
 # through the ECC-safe wrapper so a word cut by a power loss reads as zeros instead of an NMI on every boot
 # (nmi-handler: its NMI handler, panicking on any other NMI, so the crash record catches it)
@@ -204,11 +208,10 @@ overflow-checks = false
 # bedrock_crash = { path = "../../../embedded_bedrock/bedrock_crash" }
 # bedrock_led = { path = "../../../embedded_bedrock/bedrock_led" }
 # bedrock_sync = { path = "../../../embedded_bedrock/bedrock_sync" }
+# bedrock_usb = { path = "../../../embedded_bedrock/bedrock_usb" }
 
 [patch.crates-io]
 embassy-stm32 = { git = "https://github.com/romixlab/embassy" }
-embassy-usb = { git = "https://github.com/romixlab/embassy" }
-embassy-usb-driver = { git = "https://github.com/romixlab/embassy" }
 embassy-hal-internal = { git = "https://github.com/romixlab/embassy" }
 embassy-embedded-hal = { git = "https://github.com/romixlab/embassy" }
 embassy-sync = { git = "https://github.com/romixlab/embassy" }
@@ -219,5 +222,4 @@ embassy-executor = { git = "https://github.com/romixlab/embassy" }
 embassy-executor-macros = { git = "https://github.com/romixlab/embassy" }
 embassy-executor-timer-queue = { git = "https://github.com/romixlab/embassy" }
 embassy-futures = { git = "https://github.com/romixlab/embassy" }
-embassy-net-driver-channel = { git = "https://github.com/romixlab/embassy" }
 embassy-usb-synopsys-otg = { git = "https://github.com/romixlab/embassy" }

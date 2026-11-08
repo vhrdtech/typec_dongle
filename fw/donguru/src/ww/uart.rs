@@ -1,14 +1,13 @@
 //! `uart[]`: 0 = plug SBU, 1 = header IO7/IO8 (`ww_uart::Uart`, API-14).
 
 use super::ServerState;
-use super::UsbDriver;
+use super::UsbServer;
 use crate::uart;
 use embassy_time::Instant;
 #[cfg(feature = "header-uart")]
 use static_cell::StaticCell;
 use wire_weaver::prelude::*;
 use wire_weaver::shrink_wrap::Error as SwError;
-use wire_weaver_usb_embassy::UsbServer;
 use ww_client_server::stream::{StreamCodec, StreamCodecs, StreamStatus};
 #[cfg(feature = "header-uart")]
 use ww_stream::codec::Compressed;
@@ -316,7 +315,7 @@ impl ServerState {
 impl ServerState {
     /// The header UART has something for the host: credit to give back for bytes sent on the line, bytes received.
     /// Called by the server task when [uart::wait_event] completes.
-    pub(super) async fn uart_pump(&mut self, server: &mut UsbServer<'static, UsbDriver>) {
+    pub(super) async fn uart_pump(&mut self, server: &mut UsbServer) {
         let done = uart::take_tx_done();
         if done > 0 {
             self.uart_tx_credit[HEADER].free(done);

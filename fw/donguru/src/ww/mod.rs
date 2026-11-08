@@ -30,21 +30,20 @@ pub use meter::{MeterMarks, MeterSamples};
 #[cfg(feature = "swd-host")]
 use crate::cmsis_dap;
 use crate::{hub as hub_ctl, power, settings, swd as swd_host};
+use bedrock_usb::Usb;
+use bedrock_usb::buffer::Double;
+use bedrock_usb::control::Handler;
+use bedrock_usb::desc::{Device, Function, STRING_FIRST_INTERFACE, STRING_SERIAL, Str};
+use bedrock_usb::v4::{BulkIn, BulkOut, Mmio};
 use cnt::cnt;
 use defmt::{info, unwrap};
 use embassy_executor::Spawner;
 use embassy_futures::select::{Either5, select5};
-use embassy_stm32::{peripherals, usb};
-use embassy_time::{Instant, Timer};
-use embassy_usb::driver::{Direction, EndpointAddress};
-use embassy_usb::{Builder, Config as UsbConfig, Handler};
-use static_cell::StaticCell;
+use embassy_time::{Duration, Instant, Timer};
+use static_cell::{ConstStaticCell, StaticCell};
 use wire_weaver::prelude::*;
 use wire_weaver::{EventWriter, MessageSink, WireWeaverAsyncApiBackend};
-use wire_weaver_usb_embassy::ww_device::LinkEvent;
-use wire_weaver_usb_embassy::{
-    LinkConfig, ServerBuffers, State as WwState, UsbDevice, UsbServer, UsbTimings, WireWeaverClass,
-};
+use ww_device::{EmbassyClock, FramedRx, FramedTx, LinkConfig, LinkEvent, RxBuffer};
 use ww_stream::observe::ObserveLimits;
 use ww_stream::sink::SinkCredit;
 use ww_stream::tx::Counted;
@@ -55,10 +54,10 @@ const MAX_MESSAGE_LEN: usize = 1024;
 
 /// USB endpoint registers, fixed so they don't move when an interface is added or cut by a feature (API-8, endpoint
 /// table in the design). WireWeaver's bulk endpoints are double-buffered, each takes a whole register.
-const EP_WW_OUT: usize = 1;
-const EP_WW_IN: usize = 2;
+const EP_WW_OUT: u8 = 1;
+const EP_WW_IN: u8 = 2;
 #[cfg(feature = "swd-host")]
-const EP_CMSIS_DAP: usize = 3;
+pub(crate) const EP_CMSIS_DAP: u8 = 3;
 
 /// Biggest `PropertyUpdate` event the link carries; a batch of samples is sealed before it outgrows one.
 const OBSERVE_BUF_LEN: usize = 512;
@@ -278,20 +277,18 @@ fn link_config() -> LinkConfig<'static> {
 }
 
 /// Watches the composite device's own USB state for the hub (U301, port 1 carries the MCU's own USB) bouncing
-/// after a brown-out (`src/hub.rs`, FW-18): a reset from `None`/`Default` state is normal on first enumeration,
-/// but once the device has reached `Configured` once, any later `reset()` means something upstream bounced the
-/// link outside of the host ever issuing one — exactly what the hub's own reset does to its downstream ports.
-struct HubWatchHandler {
+/// after a brown-out (`src/hub.rs`, FW-18): a reset before the first configuration is normal enumeration, but once
+/// the device has been configured, any later bus reset or loss of the configuration means something upstream
+/// bounced the link without the host asking for it: exactly what the hub's own reset does to its downstream ports.
+/// Also serves the strings only known at run time: the serial number and the WireWeaver interface's API id with
+/// the user label.
+struct UsbControl {
+    serial: &'static str,
+    api_id: &'static str,
     was_configured: bool,
 }
 
-impl HubWatchHandler {
-    const fn new() -> Self {
-        HubWatchHandler {
-            was_configured: false,
-        }
-    }
-
+impl UsbControl {
     fn lost(&mut self) {
         if self.was_configured {
             self.was_configured = false;
@@ -300,7 +297,7 @@ impl HubWatchHandler {
     }
 }
 
-impl Handler for HubWatchHandler {
+impl Handler for UsbControl {
     fn reset(&mut self) {
         self.lost();
     }
@@ -313,52 +310,96 @@ impl Handler for HubWatchHandler {
             self.lost();
         }
     }
-}
 
-pub type UsbDriver = usb::Driver<'static, peripherals::USB>;
-
-const MAX_USB_PACKET_LEN: usize = 64; // Full Speed
-
-/// Descriptor and class buffers for the whole composite device (WireWeaver + CMSIS-DAP v2). Replaces
-/// `wire_weaver_usb_embassy::usb_init`'s convenience `UsbBuffers`, which only has room for one function: its own
-/// doc comment points at building the `Builder` by hand for "other USB classes alongside".
-struct UsbBuffers {
-    config_descriptor: [u8; 192],
-    bos_descriptor: [u8; 40],
-    msos_descriptor: [u8; 330],
-    control: [u8; 256],
-    ww_state: WwState,
-    #[cfg(feature = "swd-host")]
-    dap_state: cmsis_dap::State,
-    hub_watch: HubWatchHandler,
-    server: ServerBuffers<MAX_USB_PACKET_LEN, MAX_MESSAGE_LEN>,
-}
-
-impl Default for UsbBuffers {
-    fn default() -> Self {
-        UsbBuffers {
-            config_descriptor: [0; 192],
-            bos_descriptor: [0; 40],
-            msos_descriptor: [0; 330],
-            control: [0; 256],
-            ww_state: WwState::new(),
-            #[cfg(feature = "swd-host")]
-            dap_state: cmsis_dap::State::new(),
-            hub_watch: HubWatchHandler::new(),
-            server: ServerBuffers::default(),
+    fn string(&self, index: u8) -> Option<&str> {
+        match index {
+            STRING_SERIAL => Some(self.serial),
+            STRING_API_ID => Some(self.api_id),
+            _ => None,
         }
     }
 }
 
-static USB_BUFFERS: StaticCell<UsbBuffers> = StaticCell::new();
+const MAX_USB_PACKET_LEN: usize = 64; // Full Speed
+
+/// The WireWeaver function: vendor interface, API id as its string (with the label, so `Str::Runtime`), the
+/// double-buffered bulk endpoints: the USB peripheral takes the next packet while the previous one is processed,
+/// instead of making the host retry (through the board's hub that costs ~half the throughput, FW-24).
+const WW_FUNCTION: Function = bedrock_usb::ww_function! {
+    out: EP_WW_OUT, in: EP_WW_IN, max_packet: MAX_USB_PACKET_LEN as u16, buffering: bedrock_usb::Buffering::Double,
+    user_crate: donguru_api::DONGURU_API_FULL_GID.crate_id,
+    user_version: (
+        donguru_api::DONGURU_API_FULL_GID.version.major.0,
+        donguru_api::DONGURU_API_FULL_GID.version.minor.0,
+        donguru_api::DONGURU_API_FULL_GID.version.patch.0
+    ),
+    api_id: Str::Runtime,
+};
+#[cfg(feature = "swd-host")]
+const FUNCTIONS: &[Function] = &[WW_FUNCTION, cmsis_dap::FUNCTION];
+#[cfg(not(feature = "swd-host"))]
+const FUNCTIONS: &[Function] = &[WW_FUNCTION];
+
+/// The composite USB device, WireWeaver and CMSIS-DAP v2 (`src/cmsis_dap.rs`): descriptors, endpoint registers
+/// and USB SRAM are fixed at build time (bedrock_usb). One IAD per function, as Windows needs for a composite device.
+const DEVICE: Device = Device {
+    manufacturer: Str::Const("donguru"),
+    product: Str::Const("donguru"),
+    serial: Str::Runtime,
+    // WinUSB on the WireWeaver function, at device level and in its function subset
+    ms_os_20: Some(bedrock_usb::ww::MS_OS_20),
+    functions: FUNCTIONS,
+    ..Device::new(0xc0de, 0xcafe)
+};
+bedrock_usb::descriptors!(pub Desc = DEVICE);
+bedrock_usb::state!(pub static USB_STATE: Desc);
+
+/// String index of the WireWeaver interface's API id: the first interface with a string.
+const STRING_API_ID: u8 = STRING_FIRST_INTERFACE;
+const _: () = assert!(matches!(DEVICE.string(STRING_API_ID), Some(Str::Runtime)));
+
+/// The USB driver, created in `main.rs` and handed to [start].
+pub type UsbDriver = bedrock_usb::v4::Driver<Desc, Mmio>;
+type UsbDevice = Usb<Desc, Mmio, UsbControl>;
+type WwTx = FramedTx<'static, bedrock_usb::ww::Sender<BulkIn<Mmio, EP_WW_IN, Double>, Duration>>;
+type WwRx = FramedRx<'static, bedrock_usb::ww::Receiver<BulkOut<Mmio, EP_WW_OUT, Double>>>;
+/// The WireWeaver server on the USB function.
+pub type UsbServer = ww_device::Server<'static, WwTx, WwRx, EmbassyClock>;
+
+/// Messages are held this long to share a frame; the host is told the same. Full speed, for throughput (what
+/// `wire_weaver_usb_embassy::UsbTimings::fs_higher_speed` sets).
+const ACCUMULATION_TIME: core::time::Duration = core::time::Duration::from_micros(1000);
+/// A packet the host doesn't take within this time: the host is gone without disconnecting.
+const PACKET_SEND_TIMEOUT: Duration = Duration::from_millis(250);
+
+/// The server's packet and message buffers.
+struct ServerBuffers {
+    /// USB packets in, messages put together from them
+    rx: RxBuffer<MAX_USB_PACKET_LEN, MAX_MESSAGE_LEN>,
+    /// The packet being filled for sending
+    tx: [u8; MAX_USB_PACKET_LEN],
+    /// Replies and link messages
+    scratch: [u8; MAX_MESSAGE_LEN],
+    /// Events sent from handlers and through `server.sink()`
+    event_scratch: [u8; MAX_MESSAGE_LEN],
+}
+
+static SERVER_BUFFERS: ConstStaticCell<ServerBuffers> = ConstStaticCell::new(ServerBuffers {
+    rx: RxBuffer::new(),
+    tx: [0; MAX_USB_PACKET_LEN],
+    scratch: [0; MAX_MESSAGE_LEN],
+    event_scratch: [0; MAX_MESSAGE_LEN],
+});
+static USB: StaticCell<UsbDevice> = StaticCell::new();
 static SERVER_STATE: StaticCell<ServerState> = StaticCell::new();
 /// `server_impl::API_ID` with the user label (API-19), as the WireWeaver interface's string descriptor.
 static API_ID_LABELED: StaticCell<[u8; 256]> = StaticCell::new();
 
-/// Builds the composite USB device (WireWeaver + CMSIS-DAP v2, `src/cmsis_dap.rs`) on `driver` and spawns the
-/// USB, WireWeaver server and CMSIS-DAP tasks. `swd_host` is handed to the CMSIS-DAP task, which is the sole
-/// owner of the SWD-host pins (FW-15). `last_reset` is what `last_reset::boot` read, served as `device.last_reset`.
-/// `settings` is the open settings store (`src/settings.rs`): its boot values are applied here.
+/// Takes the endpoints of the composite USB device (WireWeaver + CMSIS-DAP v2, `src/cmsis_dap.rs`) from `driver`,
+/// connects it and spawns the USB, WireWeaver server and CMSIS-DAP tasks. `swd_host` is handed to the CMSIS-DAP
+/// task, which is the sole owner of the SWD-host pins (FW-15). `last_reset` is what `last_reset::boot` read, served
+/// as `device.last_reset`. `settings` is the open settings store (`src/settings.rs`): its boot values are applied
+/// here.
 pub async fn start(
     spawner: Spawner,
     driver: UsbDriver,
@@ -366,36 +407,11 @@ pub async fn start(
     last_reset: bedrock_crash::Snapshot,
     settings: (&'static mut settings::Store, &'static mut settings::User),
 ) {
-    let buffers = USB_BUFFERS.init(UsbBuffers::default());
     // in a static, not on the task's future: the observe tables and stream states are a few hundred bytes
     let state =
         SERVER_STATE.init(ServerState::new(embassy_stm32::uid::uid(), last_reset, settings).await);
     state.apply_boot_settings().await;
 
-    let mut config = UsbConfig::new(0xc0de, 0xcafe);
-    config.manufacturer = Some("donguru");
-    config.product = Some("donguru");
-    config.serial_number = Some(crate::boot::usb_serial());
-    // Required for Windows compatibility with more than one function, see wire_weaver_usb_embassy::usb_init.
-    config.device_class = 0xEF;
-    config.device_sub_class = 0x02;
-    config.device_protocol = 0x01;
-    config.composite_with_iads = true;
-    config.max_power = 100;
-    config.self_powered = false;
-
-    let mut builder = Builder::new(
-        driver,
-        config,
-        &mut buffers.config_descriptor,
-        &mut buffers.bos_descriptor,
-        &mut buffers.msos_descriptor,
-        &mut buffers.control,
-    );
-    builder.handler(&mut buffers.hub_watch);
-
-    let timings = UsbTimings::fs_higher_speed();
-    let link_cfg = link_config();
     // server_impl::API_ID is reported in a USB string descriptor, `ww list` shows it without opening the device,
     // with the label from the settings (as it was at boot: a new label shows after the next one)
     let api_id = wire_weaver::api_id::with_label(
@@ -403,52 +419,55 @@ pub async fn start(
         state.user.get().label.as_str(),
         API_ID_LABELED.init([0; 256]),
     );
-    // Double-buffered bulk endpoints: the USB peripheral takes the next packet while the previous one is processed,
-    // instead of making the host retry (through the board's hub that costs ~half the throughput, FW-24). Each one
-    // uses both directions of a hardware endpoint register.
-    let ww = WireWeaverClass::with_endpoints(
-        &mut builder,
-        &mut buffers.ww_state,
-        timings.packet_send_timeout,
-        &link_cfg.user_api_version,
-        api_id,
-        |alt| {
-            (
-                alt.endpoint_bulk_out_double_buffered(
-                    Some(EndpointAddress::from_parts(EP_WW_OUT, Direction::Out)),
-                    MAX_USB_PACKET_LEN as u16,
-                ),
-                alt.endpoint_bulk_in_double_buffered(
-                    Some(EndpointAddress::from_parts(EP_WW_IN, Direction::In)),
-                    MAX_USB_PACKET_LEN as u16,
-                ),
-            )
-        },
-    );
-    #[cfg(feature = "swd-host")]
-    let dap_class = cmsis_dap::CmsisDapClass::new(
-        &mut builder,
-        &mut buffers.dap_state,
-        EP_CMSIS_DAP as u8,
-        MAX_USB_PACKET_LEN as u16,
-    );
 
-    let usb = builder.build();
-    let server = ww.into_server(link_cfg, &timings, &mut buffers.server);
+    let ww_out = driver.bulk_out::<EP_WW_OUT, Double>();
+    let ww_in = driver.bulk_in::<EP_WW_IN, Double>();
+    #[cfg(feature = "swd-host")]
+    let dap = cmsis_dap::CmsisDap::new(&driver);
+    driver.connect();
+    let usb = USB.init(Usb::new(
+        driver,
+        UsbControl {
+            serial: crate::boot::usb_serial(),
+            api_id,
+            was_configured: false,
+        },
+    ));
+
+    let mut link_cfg = link_config();
+    link_cfg.accumulation_time = ACCUMULATION_TIME;
+    let ServerBuffers {
+        rx,
+        tx,
+        scratch,
+        event_scratch,
+    } = SERVER_BUFFERS.take();
+    let server = ww_device::Server::new(
+        link_cfg,
+        FramedTx::new(bedrock_usb::ww::Sender::new(ww_in, PACKET_SEND_TIMEOUT), tx),
+        FramedRx::new(
+            bedrock_usb::ww::Receiver::new(ww_out),
+            rx.assembly_buf(MAX_USB_PACKET_LEN),
+        ),
+        EmbassyClock,
+        scratch,
+        event_scratch,
+    );
 
     spawner.spawn(unwrap!(usb_task(usb)));
     spawner.spawn(unwrap!(server_task(server, state)));
     #[cfg(feature = "swd-host")]
-    spawner.spawn(unwrap!(cmsis_dap::dap_task(dap_class, swd_host)));
+    spawner.spawn(unwrap!(cmsis_dap::dap_task(dap, swd_host)));
     // no CMSIS-DAP task to own it: the pins keep the safe state `SwdHost::new` set (V_SBU 3.3 V, shifter and
     // pull-ups off, SBU and CC Hi-Z); dropping it would hand them back to their reset state
     #[cfg(not(feature = "swd-host"))]
     core::mem::forget(swd_host);
 }
 
+/// The bus and EP0 (bedrock_usb's `Usb::run`); the class endpoints are served by their own tasks.
 #[embassy_executor::task]
-async fn usb_task(mut usb: UsbDevice<'static, UsbDriver>) {
-    usb.run().await;
+async fn usb_task(usb: &'static mut UsbDevice) -> ! {
+    usb.run().await
 }
 
 /// Serves requests; every [PUMP_PERIOD](crate::log::PUMP_PERIOD) moves the defmt log into its store
@@ -458,7 +477,7 @@ async fn usb_task(mut usb: UsbDevice<'static, UsbDriver>) {
 /// when the link goes down: a host that comes back asks again; the log stays in its store for a host that resumes
 /// it. Also wakes for the deferred answers of `plug.vbus_cycle` (`src/power.rs`).
 #[embassy_executor::task]
-async fn server_task(mut server: UsbServer<'static, UsbDriver>, state: &'static mut ServerState) {
+async fn server_task(mut server: UsbServer, state: &'static mut ServerState) {
     let mut buf = [0u8; OBSERVE_BUF_LEN];
     #[cfg(feature = "meter-samples")]
     let scratch = SCRATCH.init(ww_stream::batch::Scratch::new());
@@ -469,7 +488,7 @@ async fn server_task(mut server: UsbServer<'static, UsbDriver>, state: &'static 
         let observe_at = state
             .observe
             .next_wake(Instant::now().as_micros())
-            .map(wire_weaver_usb_embassy::ww_device::Instant::from_micros);
+            .map(ww_device::Instant::from_micros);
         match select5(
             server.wait_until(observe_at),
             Timer::at(next_pump),

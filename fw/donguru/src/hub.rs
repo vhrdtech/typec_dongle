@@ -1,4 +1,4 @@
-//! USB hub U301 (USB251xB) bring-up and brown-out recovery (FW-18), from `examples/usb_serial.rs` (FW-5). The hub
+//! USB hub U301 (USB251xB) bring-up and brown-out recovery (FW-18), from the former `examples/usb_serial.rs` (FW-5). The hub
 //! is strapped for SMBus configuration (hw_b153a.md §6): out of reset it waits for its config over I2C and an
 //! attach command, and the MCU's own USB sits behind it on hub port 1, so nothing enumerates on the host until
 //! this has run. Config and attach go through the `usb251xb` crate (typed registers, port swap, VID/PID

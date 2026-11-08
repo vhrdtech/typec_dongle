@@ -178,10 +178,7 @@ impl ServerState {
 
     /// Sends the records the PD task logged, a few per turn; with no host they count as lost, so a host that opens
     /// the stream later sees how many it missed.
-    pub(super) async fn pd_pump(
-        &mut self,
-        server: &mut super::UsbServer<'static, super::UsbDriver>,
-    ) {
+    pub(super) async fn pd_pump(&mut self, server: &mut super::UsbServer) {
         let mut budget = PD_RECORDS_PER_TURN;
         while let Some((record, lost)) = pd::take_record() {
             if lost > 0 {

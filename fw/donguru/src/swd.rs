@@ -24,8 +24,8 @@
 //! which owns the pins while a CMSIS-DAP host is connected.
 //!
 //! `dap_rs` is used for CMSIS-DAP command processing (request parsing, transfer retries, ack/parity handling) but
-//! not its `usb` module: that targets the separate `usb-device` crate, incompatible with the `embassy-usb` stack
-//! used here. [`crate::cmsis_dap`] feeds it raw packets instead.
+//! not its `usb` module: that targets the separate `usb-device` crate, not the bedrock_usb stack used here.
+//! [`crate::cmsis_dap`] feeds it raw packets instead.
 //!
 //! The bit-bang kernels and how their timing is calibrated: see "Bit-bang kernels" below (FW-20). This crate has no
 //! test target (`fw/donguru/Cargo.toml`, like the rest of the firmware): the timing arithmetic is unit-tested in
