@@ -1,6 +1,6 @@
 // donguru_api 0.6.0 traits and types, saved by `ww api save`.
 // Do not edit, bump the crate version and save a new snapshot instead.
-// shrink_wrap sha256: a17b54a47695e432368a48e53eeeb56af58ac7e35ab0b4213544d63808d00c0c
+// shrink_wrap sha256: dc5407adcb7d6ae297b65566bd839d5126d02b7e86959d9f4fd242116977605c
 (magic: 2837124336, ww_self_version: (major: 0, minor: 3, patch: 0), root: (docs: [
     "WireWeaver API of the donguru firmware (`donguru_api/` in the repo root), served by `fw/donguru/src/ww/`.",
     "",
@@ -50,14 +50,14 @@
         62,
     ]),
     SkippedFullVersion(crate_idx: 2, type_name: "Unbounded", signature: [
-        141,
-        245,
+        55,
+        18,
+        202,
+        102,
         156,
-        90,
-        45,
-        137,
-        12,
-        110,
+        182,
+        138,
+        5,
     ]),
     SkippedFullVersion(crate_idx: 3, type_name: "Quantity", signature: [
         96,
@@ -181,14 +181,14 @@
         ]), docs: [], slot: None, series_opaque: false),
     ]), sparse: false, path: None, instance_of: None, extra: None)), crate_idx: 0),
     SkippedFullVersion(crate_idx: 10, type_name: "UartConfig", signature: [
-        50,
-        241,
-        68,
-        76,
-        106,
-        180,
-        121,
-        104,
+        161,
+        177,
+        94,
+        255,
+        115,
+        213,
+        225,
+        48,
     ]),
     InLine(ty: Struct((size: Unsized, crate_idx: 0, docs: [
         "One meter reading, all from the same ADC window (or sequence, for samples).",
@@ -804,24 +804,24 @@
         203,
     ]),
     SkippedFullVersion(crate_idx: 1, trait_name: "LastReset", signature: [
+        50,
+        223,
+        79,
+        254,
+        150,
+        80,
         124,
-        30,
-        49,
-        215,
-        154,
-        135,
-        164,
-        85,
+        217,
     ]),
     SkippedFullVersion(crate_idx: 4, trait_name: "BoardInfo", signature: [
-        141,
-        19,
-        235,
-        72,
-        135,
-        254,
-        88,
-        166,
+        187,
+        183,
+        62,
+        21,
+        115,
+        51,
+        84,
+        222,
     ]),
     SkippedFullVersion(crate_idx: 6, trait_name: "Uid", signature: [
         248,
@@ -844,14 +844,14 @@
         53,
     ]),
     SkippedFullVersion(crate_idx: 8, trait_name: "Counters", signature: [
-        169,
-        232,
-        91,
-        85,
-        77,
-        199,
-        242,
-        223,
+        62,
+        118,
+        156,
+        97,
+        161,
+        214,
+        5,
+        174,
     ]),
     SkippedFullVersion(crate_idx: 9, trait_name: "LogDefmt", signature: [
         129,
@@ -908,14 +908,14 @@
         ], optional: None, meta: None),
     ], compact_id: None, meta: None), crate_idx: 0),
     SkippedFullVersion(crate_idx: 11, trait_name: "BootControl", signature: [
-        182,
-        176,
-        65,
-        71,
-        15,
-        196,
-        155,
-        14,
+        234,
+        23,
+        247,
+        238,
+        47,
+        255,
+        106,
+        50,
     ]),
     SkippedFullVersion(crate_idx: 11, trait_name: "UpdateNode", signature: [
         135,
@@ -976,24 +976,24 @@
         ], optional: None, meta: None),
     ], compact_id: None, meta: None), crate_idx: 0),
     SkippedFullVersion(crate_idx: 12, trait_name: "Clock", signature: [
+        152,
+        32,
+        127,
+        198,
+        35,
+        159,
         174,
-        240,
-        107,
-        29,
-        125,
-        67,
-        156,
-        9,
+        70,
     ]),
     SkippedFullVersion(crate_idx: 13, trait_name: "Indication", signature: [
-        115,
-        190,
+        107,
+        66,
         103,
+        56,
+        234,
+        55,
         110,
-        125,
-        181,
-        231,
-        219,
+        84,
     ]),
     InLine(level: (docs: [
         "Power meter on the receptacle side: VBUS_IN and the current to the DUT, from one ADC window.",
@@ -1073,8 +1073,8 @@
             (ident: "off", ty: Instance(type_idx: 2, args: [
                 Type(OutOfLine(type_idx: 0)),
                 Type(OutOfLine(type_idx: 1)),
-            ])),
-            (ident: "release_sbu", ty: Bool),
+            ]), default: None, flatten: false),
+            (ident: "release_sbu", ty: Bool, default: None, flatten: false),
         ], return_ty: Some(Result(ok_ty: OutOfLine(type_idx: 19), err_ty: OutOfLine(type_idx: 20))), errors: Some([
             (ident: "Common", nested: Some([
                 "Refused",
@@ -1142,7 +1142,7 @@
             "3K3 pull-ups to V_SBU (PC15).",
         ], optional: None, meta: None),
         (id: 4, kind: Method(args: [
-            (ident: "enabled", ty: Bool),
+            (ident: "enabled", ty: Bool, default: None, flatten: false),
         ], return_ty: Some(Result(ok_ty: Tuple([]), err_ty: OutOfLine(type_idx: 35))), errors: Some([
             (ident: "Common", nested: Some([
                 "InUse",
@@ -1194,53 +1194,53 @@
         ], optional: None, meta: None),
     ], compact_id: None, meta: None), crate_idx: 0),
     SkippedFullVersion(crate_idx: 10, trait_name: "Uart", signature: [
-        38,
-        123,
-        60,
-        221,
-        75,
-        100,
-        185,
-        153,
+        130,
+        159,
+        113,
+        30,
+        40,
+        145,
+        57,
+        236,
     ]),
     SkippedFullVersion(crate_idx: 14, trait_name: "I2c", signature: [
-        101,
-        0,
-        11,
-        158,
-        45,
-        12,
-        30,
-        105,
+        80,
+        38,
+        229,
+        197,
+        5,
+        194,
+        119,
+        55,
     ]),
     SkippedFullVersion(crate_idx: 15, trait_name: "Bank", signature: [
-        211,
-        214,
-        205,
-        92,
-        235,
-        129,
-        20,
-        192,
+        240,
+        49,
+        216,
+        124,
+        97,
+        38,
+        123,
+        247,
     ]),
     SkippedFullVersion(crate_idx: 16, trait_name: "Adc", signature: [
-        107,
-        184,
-        154,
-        93,
-        233,
-        240,
-        219,
-        177,
+        187,
+        112,
+        130,
+        250,
+        204,
+        236,
+        41,
+        250,
     ]),
     InLine(level: (docs: [
         "Bring-up and production test. Refused always: NRST, supply pins, our USB and SWD, PA15, the VBUS enables (use",
         "`plug` / `header`), the hub reset and I2C (use `hub_*`). `InUse` for a pin a running function owns.",
     ], crate_idx: 0, trait_name: "Bringup", items: [
         (id: 0, kind: Method(args: [
-            (ident: "pin", ty: OutOfLine(type_idx: 47)),
-            (ident: "mode", ty: OutOfLine(type_idx: 48)),
-            (ident: "level", ty: Option(some_ty: OutOfLine(type_idx: 45))),
+            (ident: "pin", ty: OutOfLine(type_idx: 47), default: None, flatten: false),
+            (ident: "mode", ty: OutOfLine(type_idx: 48), default: None, flatten: false),
+            (ident: "level", ty: Option(some_ty: OutOfLine(type_idx: 45)), default: Some("None"), flatten: false),
         ], return_ty: Some(Result(ok_ty: OutOfLine(type_idx: 49), err_ty: OutOfLine(type_idx: 50))), errors: Some([
             (ident: "Common", nested: Some([
                 "Refused",
@@ -1251,7 +1251,7 @@
             "Sets a pin\'s mode and, for outputs, its level.",
         ], optional: None, meta: None),
         (id: 1, kind: Method(args: [
-            (ident: "pin", ty: OutOfLine(type_idx: 47)),
+            (ident: "pin", ty: OutOfLine(type_idx: 47), default: None, flatten: false),
         ], return_ty: Some(Result(ok_ty: OutOfLine(type_idx: 49), err_ty: OutOfLine(type_idx: 50))), errors: Some([
             (ident: "Common", nested: Some([
                 "InvalidArgument",
@@ -1260,8 +1260,8 @@
             "Reads a pin\'s registers.",
         ], optional: None, meta: None),
         (id: 2, kind: Method(args: [
-            (ident: "pin", ty: OutOfLine(type_idx: 47)),
-            (ident: "af", ty: NumericAny(Base(U8))),
+            (ident: "pin", ty: OutOfLine(type_idx: 47), default: None, flatten: false),
+            (ident: "af", ty: NumericAny(Base(U8)), default: None, flatten: false),
         ], return_ty: Some(Result(ok_ty: OutOfLine(type_idx: 49), err_ty: OutOfLine(type_idx: 50))), errors: Some([
             (ident: "Common", nested: Some([
                 "Refused",
@@ -1278,8 +1278,8 @@
             "GPIOA..F registers as captured first thing in main, before init.",
         ], optional: None, meta: None),
         (id: 5, kind: Method(args: [
-            (ident: "reg", ty: NumericAny(Base(U8))),
-            (ident: "len", ty: NumericAny(Base(U8))),
+            (ident: "reg", ty: NumericAny(Base(U8)), default: None, flatten: false),
+            (ident: "len", ty: NumericAny(Base(U8)), default: None, flatten: false),
         ], return_ty: Some(Result(ok_ty: MaxLen(max_len: Fixed(32), ty: Vec(NumericAny(Base(U8)))), err_ty: OutOfLine(type_idx: 50))), errors: Some([
             (ident: "Common", nested: Some([
                 "Busy",
@@ -1290,8 +1290,8 @@
             "SMBus block read from the hub.",
         ], optional: None, meta: None),
         (id: 6, kind: Method(args: [
-            (ident: "reg", ty: NumericAny(Base(U8))),
-            (ident: "data", ty: MaxLen(max_len: Fixed(32), ty: Vec(NumericAny(Base(U8))))),
+            (ident: "reg", ty: NumericAny(Base(U8)), default: None, flatten: false),
+            (ident: "data", ty: MaxLen(max_len: Fixed(32), ty: Vec(NumericAny(Base(U8)))), default: Some("Default::default()"), flatten: false),
         ], return_ty: Some(Result(ok_ty: Tuple([]), err_ty: OutOfLine(type_idx: 50))), errors: Some([
             (ident: "Common", nested: Some([
                 "Busy",
@@ -1303,13 +1303,13 @@
             "SMBus block write to the hub.",
         ], optional: None, meta: None),
         (id: 7, kind: Method(args: [
-            (ident: "port", ty: OutOfLine(type_idx: 53)),
+            (ident: "port", ty: OutOfLine(type_idx: 53), default: None, flatten: false),
         ], return_ty: Some(OutOfLine(type_idx: 54)), errors: None), multiplicity: Flat, since: None, ident: "ucpd", docs: [
             "UCPD registers and CC line states.",
         ], optional: None, meta: None),
         (id: 8, kind: Method(args: [
-            (ident: "port", ty: OutOfLine(type_idx: 53)),
-            (ident: "role", ty: OutOfLine(type_idx: 55)),
+            (ident: "port", ty: OutOfLine(type_idx: 53), default: None, flatten: false),
+            (ident: "role", ty: OutOfLine(type_idx: 55), default: None, flatten: false),
         ], return_ty: Some(Result(ok_ty: OutOfLine(type_idx: 54), err_ty: OutOfLine(type_idx: 50))), errors: Some([
             (ident: "Common", nested: Some([
                 "Refused",
@@ -1318,14 +1318,14 @@
             "Sets a UCPD port\'s CC role. `Rp` refused on UCPD1 on rev A.",
         ], optional: None, meta: None),
         (id: 9, kind: Method(args: [
-            (ident: "led", ty: OutOfLine(type_idx: 56)),
-            (ident: "mode", ty: OutOfLine(type_idx: 57)),
+            (ident: "led", ty: OutOfLine(type_idx: 56), default: None, flatten: false),
+            (ident: "mode", ty: OutOfLine(type_idx: 57), default: None, flatten: false),
         ], return_ty: None, errors: None), multiplicity: Flat, since: None, ident: "led_set", docs: [
             "Drives one LED directly.",
         ], optional: None, meta: None),
         (id: 10, kind: Method(args: [
-            (ident: "addr", ty: NumericAny(Base(U32))),
-            (ident: "words", ty: NumericAny(Base(U8))),
+            (ident: "addr", ty: NumericAny(Base(U32)), default: None, flatten: false),
+            (ident: "words", ty: NumericAny(Base(U8)), default: None, flatten: false),
         ], return_ty: Some(Result(ok_ty: MaxLen(max_len: Fixed(32), ty: Vec(NumericAny(Base(U32)))), err_ty: OutOfLine(type_idx: 50))), errors: Some([
             (ident: "Common", nested: Some([
                 "Refused",
@@ -1335,12 +1335,12 @@
             "Reads 32-bit words of peripheral space (0x4000_0000..0x5000_2000) only.",
         ], optional: None, meta: None),
         (id: 11, kind: Method(args: [
-            (ident: "count", ty: NumericAny(Base(U32))),
+            (ident: "count", ty: NumericAny(Base(U32)), default: None, flatten: false),
         ], return_ty: None, errors: None), multiplicity: Flat, since: Some((major: 0, minor: 2, patch: 1)), ident: "log_flood", docs: [
             "Logs `count` numbered lines at once, more than the log keeps up with: the host sees how many are lost.",
         ], optional: None, meta: None),
         (id: 12, kind: Method(args: [
-            (ident: "capture", ty: OutOfLine(type_idx: 58)),
+            (ident: "capture", ty: OutOfLine(type_idx: 58), default: None, flatten: false),
         ], return_ty: Some(Result(ok_ty: NumericAny(Base(U32)), err_ty: OutOfLine(type_idx: 50))), errors: Some([
             (ident: "Common", nested: Some([
                 "Unsupported",
