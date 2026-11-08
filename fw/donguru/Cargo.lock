@@ -591,7 +591,7 @@ checksum = "252afb9ae5eaa683babdc6a068b3f5726eb19e05070c731f9b2a23a7c3e8ed34"
 [[package]]
 name = "embassy-crypto"
 version = "0.1.0"
-source = "git+https://github.com/romixlab/embassy?branch=donguru-ring-copy#84ae135f91069d49c8dcb823a677e9f4b4a1e534"
+source = "git+https://github.com/romixlab/embassy#1ab8deec96839cf15e04d7ab584b07c589fd4036"
 dependencies = [
  "defmt 1.1.1",
  "unitrait",
@@ -600,7 +600,7 @@ dependencies = [
 [[package]]
 name = "embassy-embedded-hal"
 version = "0.6.0"
-source = "git+https://github.com/romixlab/embassy?branch=donguru-ring-copy#84ae135f91069d49c8dcb823a677e9f4b4a1e534"
+source = "git+https://github.com/romixlab/embassy#1ab8deec96839cf15e04d7ab584b07c589fd4036"
 dependencies = [
  "defmt 1.1.1",
  "embassy-futures",
@@ -617,7 +617,7 @@ dependencies = [
 [[package]]
 name = "embassy-executor"
 version = "0.10.0"
-source = "git+https://github.com/romixlab/embassy?branch=donguru-ring-copy#84ae135f91069d49c8dcb823a677e9f4b4a1e534"
+source = "git+https://github.com/romixlab/embassy#1ab8deec96839cf15e04d7ab584b07c589fd4036"
 dependencies = [
  "cordyceps",
  "cortex-m",
@@ -632,7 +632,7 @@ dependencies = [
 [[package]]
 name = "embassy-executor-macros"
 version = "0.8.0"
-source = "git+https://github.com/romixlab/embassy?branch=donguru-ring-copy#84ae135f91069d49c8dcb823a677e9f4b4a1e534"
+source = "git+https://github.com/romixlab/embassy#1ab8deec96839cf15e04d7ab584b07c589fd4036"
 dependencies = [
  "darling 0.20.11",
  "proc-macro2",
@@ -643,7 +643,7 @@ dependencies = [
 [[package]]
 name = "embassy-executor-timer-queue"
 version = "0.1.1"
-source = "git+https://github.com/romixlab/embassy?branch=donguru-ring-copy#84ae135f91069d49c8dcb823a677e9f4b4a1e534"
+source = "git+https://github.com/romixlab/embassy#1ab8deec96839cf15e04d7ab584b07c589fd4036"
 dependencies = [
  "unitrait",
 ]
@@ -651,12 +651,12 @@ dependencies = [
 [[package]]
 name = "embassy-futures"
 version = "0.1.2"
-source = "git+https://github.com/romixlab/embassy?branch=donguru-ring-copy#84ae135f91069d49c8dcb823a677e9f4b4a1e534"
+source = "git+https://github.com/romixlab/embassy#1ab8deec96839cf15e04d7ab584b07c589fd4036"
 
 [[package]]
 name = "embassy-hal-internal"
 version = "0.5.0"
-source = "git+https://github.com/romixlab/embassy?branch=donguru-ring-copy#84ae135f91069d49c8dcb823a677e9f4b4a1e534"
+source = "git+https://github.com/romixlab/embassy#1ab8deec96839cf15e04d7ab584b07c589fd4036"
 dependencies = [
  "cortex-m",
  "critical-section",
@@ -694,7 +694,7 @@ dependencies = [
 [[package]]
 name = "embassy-net-driver-channel"
 version = "0.4.0"
-source = "git+https://github.com/romixlab/embassy?branch=donguru-ring-copy#84ae135f91069d49c8dcb823a677e9f4b4a1e534"
+source = "git+https://github.com/romixlab/embassy#1ab8deec96839cf15e04d7ab584b07c589fd4036"
 dependencies = [
  "embassy-futures",
  "embassy-sync",
@@ -704,7 +704,7 @@ dependencies = [
 [[package]]
 name = "embassy-ptp-driver"
 version = "0.1.0"
-source = "git+https://github.com/romixlab/embassy?branch=donguru-ring-copy#84ae135f91069d49c8dcb823a677e9f4b4a1e534"
+source = "git+https://github.com/romixlab/embassy#1ab8deec96839cf15e04d7ab584b07c589fd4036"
 dependencies = [
  "defmt 1.1.1",
 ]
@@ -712,7 +712,7 @@ dependencies = [
 [[package]]
 name = "embassy-stm32"
 version = "0.6.0"
-source = "git+https://github.com/romixlab/embassy?branch=donguru-ring-copy#84ae135f91069d49c8dcb823a677e9f4b4a1e534"
+source = "git+https://github.com/romixlab/embassy#1ab8deec96839cf15e04d7ab584b07c589fd4036"
 dependencies = [
  "aligned",
  "bit_field",
@@ -768,7 +768,7 @@ dependencies = [
 [[package]]
 name = "embassy-sync"
 version = "0.8.0"
-source = "git+https://github.com/romixlab/embassy?branch=donguru-ring-copy#84ae135f91069d49c8dcb823a677e9f4b4a1e534"
+source = "git+https://github.com/romixlab/embassy#1ab8deec96839cf15e04d7ab584b07c589fd4036"
 dependencies = [
  "cfg-if",
  "critical-section",
@@ -782,7 +782,7 @@ dependencies = [
 [[package]]
 name = "embassy-time"
 version = "0.5.1"
-source = "git+https://github.com/romixlab/embassy?branch=donguru-ring-copy#84ae135f91069d49c8dcb823a677e9f4b4a1e534"
+source = "git+https://github.com/romixlab/embassy#1ab8deec96839cf15e04d7ab584b07c589fd4036"
 dependencies = [
  "cfg-if",
  "critical-section",
@@ -798,7 +798,7 @@ dependencies = [
 [[package]]
 name = "embassy-time-driver"
 version = "0.2.2"
-source = "git+https://github.com/romixlab/embassy?branch=donguru-ring-copy#84ae135f91069d49c8dcb823a677e9f4b4a1e534"
+source = "git+https://github.com/romixlab/embassy#1ab8deec96839cf15e04d7ab584b07c589fd4036"
 dependencies = [
  "document-features",
 ]
@@ -806,7 +806,7 @@ dependencies = [
 [[package]]
 name = "embassy-time-queue-utils"
 version = "0.3.2"
-source = "git+https://github.com/romixlab/embassy?branch=donguru-ring-copy#84ae135f91069d49c8dcb823a677e9f4b4a1e534"
+source = "git+https://github.com/romixlab/embassy#1ab8deec96839cf15e04d7ab584b07c589fd4036"
 dependencies = [
  "embassy-executor-timer-queue",
  "heapless 0.9.3",
@@ -815,7 +815,7 @@ dependencies = [
 [[package]]
 name = "embassy-usb"
 version = "0.6.0"
-source = "git+https://github.com/romixlab/embassy?branch=donguru-ring-copy#84ae135f91069d49c8dcb823a677e9f4b4a1e534"
+source = "git+https://github.com/romixlab/embassy#1ab8deec96839cf15e04d7ab584b07c589fd4036"
 dependencies = [
  "aligned",
  "bitflags 2.13.2",
@@ -834,7 +834,7 @@ dependencies = [
 [[package]]
 name = "embassy-usb-driver"
 version = "0.2.2"
-source = "git+https://github.com/romixlab/embassy?branch=donguru-ring-copy#84ae135f91069d49c8dcb823a677e9f4b4a1e534"
+source = "git+https://github.com/romixlab/embassy#1ab8deec96839cf15e04d7ab584b07c589fd4036"
 dependencies = [
  "defmt 1.1.1",
  "embedded-io-async 0.6.1",
@@ -844,7 +844,7 @@ dependencies = [
 [[package]]
 name = "embassy-usb-synopsys-otg"
 version = "0.4.0"
-source = "git+https://github.com/romixlab/embassy?branch=donguru-ring-copy#84ae135f91069d49c8dcb823a677e9f4b4a1e534"
+source = "git+https://github.com/romixlab/embassy#1ab8deec96839cf15e04d7ab584b07c589fd4036"
 dependencies = [
  "defmt 1.1.1",
  "document-features",

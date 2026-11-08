@@ -176,16 +176,15 @@ debug-assertions = false
 opt-level = 0
 overflow-checks = false
 
-# embassy from upstream main at a pinned rev: double-buffered USB bulk endpoints on the G0 (embassy-rs/embassy#7275,
-# FW-24) are merged but not released (crates.io embassy-stm32 is 0.6.0). main still has the versions asked for above
-# (0.6.0 / 0.10.0 / 0.5.1 / 0.8.0), so the dependency lines stay the crates.io ones and this block swaps the source;
-# every embassy crate comes from the same tree, as embassy-stm32's path dependencies would otherwise clash with the
-# crates.io ones. The code uses main's API (CamelCase PAC enums, unified ADC driver, `usb::Driver::new` interrupt
-# last). Back to crates.io: drop this block once the next embassy-stm32 release ships (bump the versions above).
-# For now the tree is romixlab/embassy `donguru-ring-copy`: upstream 262fdba plus one commit, the DMA ring buffer copying
-# out in up to two runs instead of a software division per byte (on the M0+ the header UART got 16 kB/s at 5.8 Mbaud
-# without it, FW-42). Back to embassy-rs once that fix is merged upstream.
-# The branch keeps `cargo update -p embassy-stm32` on this patched line; Cargo.lock pins the commit (it was 84ae135).
+# embassy from our fork, romixlab/embassy, at its default branch `main` (FORK.md there): an upstream commit (262fdba
+# for now) with our small fixes merged in, one `t/<slug>` branch each, shared with the other firmware. For Donguru it
+# carries the DMA ring buffer copying out in up to two runs instead of a software division per byte (on the M0+ the
+# header UART got 16 kB/s at 5.8 Mbaud without it, FW-42); upstream main already has the double-buffered USB bulk
+# endpoints (embassy-rs/embassy#7275, FW-24). The fork's main keeps the versions asked for above (0.6.0 / 0.10.0 /
+# 0.5.1 / 0.8.0), so the dependency lines stay the crates.io ones and this block swaps the source; every embassy crate
+# comes from the same tree, as embassy-stm32's path dependencies would otherwise clash with the crates.io ones. The
+# code uses main's API (CamelCase PAC enums, unified ADC driver, `usb::Driver::new` interrupt last). The fork's main
+# only moves forward (merges), so Cargo.lock's rev stays fetchable; `cargo update -p embassy-stm32` moves it.
 # wire_weaver and embedded_bedrock are git dependencies, pinned by Cargo.lock. bedrock_led and bedrock_sync take
 # WireWeaver from the same git URL (embedded_bedrock's workspace dependencies), so they and the firmware share one
 # wire_weaver, ww_indication, ww_timebase and shrink_wrap (two copies of a crate are two types: E0308 in ww/leds.rs and
@@ -207,18 +206,18 @@ overflow-checks = false
 # bedrock_sync = { path = "../../../embedded_bedrock/bedrock_sync" }
 
 [patch.crates-io]
-embassy-stm32 = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
-embassy-usb = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
-embassy-usb-driver = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
-embassy-hal-internal = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
-embassy-embedded-hal = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
-embassy-sync = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
-embassy-time = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
-embassy-time-driver = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
-embassy-time-queue-utils = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
-embassy-executor = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
-embassy-executor-macros = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
-embassy-executor-timer-queue = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
-embassy-futures = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
-embassy-net-driver-channel = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
-embassy-usb-synopsys-otg = { git = "https://github.com/romixlab/embassy", branch = "donguru-ring-copy" }
+embassy-stm32 = { git = "https://github.com/romixlab/embassy" }
+embassy-usb = { git = "https://github.com/romixlab/embassy" }
+embassy-usb-driver = { git = "https://github.com/romixlab/embassy" }
+embassy-hal-internal = { git = "https://github.com/romixlab/embassy" }
+embassy-embedded-hal = { git = "https://github.com/romixlab/embassy" }
+embassy-sync = { git = "https://github.com/romixlab/embassy" }
+embassy-time = { git = "https://github.com/romixlab/embassy" }
+embassy-time-driver = { git = "https://github.com/romixlab/embassy" }
+embassy-time-queue-utils = { git = "https://github.com/romixlab/embassy" }
+embassy-executor = { git = "https://github.com/romixlab/embassy" }
+embassy-executor-macros = { git = "https://github.com/romixlab/embassy" }
+embassy-executor-timer-queue = { git = "https://github.com/romixlab/embassy" }
+embassy-futures = { git = "https://github.com/romixlab/embassy" }
+embassy-net-driver-channel = { git = "https://github.com/romixlab/embassy" }
+embassy-usb-synopsys-otg = { git = "https://github.com/romixlab/embassy" }
