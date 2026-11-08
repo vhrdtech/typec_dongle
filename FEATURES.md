@@ -519,17 +519,16 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `panic!` on unknown values (host input), a detach error, chunked transmit, observation hooks and per-timer
   overrides.
 
-- 📋 **FW-66 USB on bedrock_usb behind `usb-bedrock`**: the composite device (WireWeaver + CMSIS-DAP v2) on
-  embedded_bedrock's bedrock_usb (USBD) instead of embassy-usb and embassy-stm32's driver, chosen by a cargo feature
-  so both stacks build from one commit: a `const` device in `src/ww/mod.rs` with the endpoint registers of API-8,
-  `cmsis_dap.rs` on bedrock_usb endpoints (`donguru_dap` unchanged), `bedrock_usb::InterruptHandler` next to UCPD2's
-  on `USB_UCPD1_2`, `HubWatch` and `boot::usb_configured()` from its bus state. Measured against the embassy build,
-  same features, opt-level z and 3: flash and RAM (USB code per source file from DWARF, about 11.0 KiB at z on
-  8 Nov 2026), stack high-water, `ww usb-loopback` 1 KB / 64 B (FW-57 numbers), probe-rs and `swd memtest` through
-  the CMSIS-DAP, enumeration on Linux and Windows (WinUSB on both interfaces). Also brings the ES0548 2.16.1 wait
-  (CTR before the USB SRAM write is done) that embassy-stm32 skips on the G0 (embedded_bedrock check USB-5).
-- 📋 **FW-67 bedrock_usb by default**: after FW-66 and a soak in daily use (probe-rs flashing, `dg`, Windows),
-  `usb-bedrock` becomes the default and embassy-usb leaves the dependencies; release flash and RAM in the CHANGELOG.
+- 📋 **FW-66 USB on bedrock_usb**: the composite device (WireWeaver + CMSIS-DAP v2) on embedded_bedrock's
+  bedrock_usb (USBD) instead of embassy-usb and embassy-stm32's driver, which leave fw/donguru (no feature, no
+  second path; Roman, 8 Nov 2026): a `const` device in `src/ww/mod.rs` with the endpoint registers of API-8,
+  `cmsis_dap.rs` on bedrock_usb endpoints (`donguru_dap` unchanged) with its own MS OS 2.0 function subset,
+  `bedrock_usb::InterruptHandler` next to UCPD2's on `USB_UCPD1_2`, `HubWatch` and `boot::usb_configured()` from
+  its bus state. Measured against main before the switch at opt-level z and 3: flash and RAM (USB code per source
+  file from DWARF, about 11.0 KiB at z on 8 Nov 2026) and stack high-water. Brings the ES0548 2.16.1 wait (CTR
+  before the USB SRAM write is done) that embassy-stm32 skips on the G0 (embedded_bedrock check USB-5). 🧪 until
+  B153A ran it: enumeration on Linux and Windows (WinUSB on both interfaces), `ww usb-loopback` 1 KB / 64 B against
+  FW-57's numbers, probe-rs and `swd memtest` through the CMSIS-DAP, `bedrock-usb-ch9` clean.
 
 ## API (`API`)
 
@@ -1190,5 +1189,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 
 ## Dropped and superseded
 
+- **FW-67 bedrock_usb by default after a soak**: superseded by FW-66, which switches Donguru to bedrock_usb
+  directly with no feature and no soak (Roman, 8 Nov 2026).
 - **API-2 `led_on` / `led_off`** (status LED, the template's example methods): replaced in 0.2.0 by `debug.led_set`
   (raw LEDs, API-8) and `leds` (`ww_indication`, API-9).
