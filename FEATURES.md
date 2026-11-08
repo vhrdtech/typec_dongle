@@ -519,6 +519,18 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
   `panic!` on unknown values (host input), a detach error, chunked transmit, observation hooks and per-timer
   overrides.
 
+- 📋 **FW-66 USB on bedrock_usb behind `usb-bedrock`**: the composite device (WireWeaver + CMSIS-DAP v2) on
+  embedded_bedrock's bedrock_usb (USBD) instead of embassy-usb and embassy-stm32's driver, chosen by a cargo feature
+  so both stacks build from one commit: a `const` device in `src/ww/mod.rs` with the endpoint registers of API-8,
+  `cmsis_dap.rs` on bedrock_usb endpoints (`donguru_dap` unchanged), `bedrock_usb::InterruptHandler` next to UCPD2's
+  on `USB_UCPD1_2`, `HubWatch` and `boot::usb_configured()` from its bus state. Measured against the embassy build,
+  same features, opt-level z and 3: flash and RAM (USB code per source file from DWARF, about 11.0 KiB at z on
+  8 Nov 2026), stack high-water, `ww usb-loopback` 1 KB / 64 B (FW-57 numbers), probe-rs and `swd memtest` through
+  the CMSIS-DAP, enumeration on Linux and Windows (WinUSB on both interfaces). Also brings the ES0548 2.16.1 wait
+  (CTR before the USB SRAM write is done) that embassy-stm32 skips on the G0 (embedded_bedrock check USB-5).
+- 📋 **FW-67 bedrock_usb by default**: after FW-66 and a soak in daily use (probe-rs flashing, `dg`, Windows),
+  `usb-bedrock` becomes the default and embassy-usb leaves the dependencies; release flash and RAM in the CHANGELOG.
+
 ## API (`API`)
 
 - 🧪 **FW-51 Firmware builds against the sibling checkouts, WireWeaver TR-15**: main stopped building (24 Oct 2026):
