@@ -68,7 +68,7 @@ dependencies = [
 [[package]]
 name = "bedrock_crash"
 version = "0.1.0"
-source = "git+https://github.com/romixlab/embedded_bedrock#91fe73f7b7d79c932316f2668c6dd2768b7cebbd"
+source = "git+https://github.com/romixlab/embedded_bedrock#b62d3d81bfce618c8e754ce045c202d6a346fc1f"
 dependencies = [
  "cortex-m",
  "cortex-m-rt",
@@ -78,7 +78,7 @@ dependencies = [
 [[package]]
 name = "bedrock_led"
 version = "0.1.0"
-source = "git+https://github.com/romixlab/embedded_bedrock#91fe73f7b7d79c932316f2668c6dd2768b7cebbd"
+source = "git+https://github.com/romixlab/embedded_bedrock#b62d3d81bfce618c8e754ce045c202d6a346fc1f"
 dependencies = [
  "defmt 1.1.1",
  "embassy-sync",
@@ -90,7 +90,7 @@ dependencies = [
 [[package]]
 name = "bedrock_sync"
 version = "0.1.0"
-source = "git+https://github.com/romixlab/embedded_bedrock#91fe73f7b7d79c932316f2668c6dd2768b7cebbd"
+source = "git+https://github.com/romixlab/embedded_bedrock#b62d3d81bfce618c8e754ce045c202d6a346fc1f"
 dependencies = [
  "defmt 1.1.1",
  "embassy-sync",
@@ -974,7 +974,7 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 [[package]]
 name = "exact_units"
 version = "0.1.0"
-source = "git+https://github.com/romixlab/exact_units#20561d92605c3ec3daceb358dbc0f7035c09b076"
+source = "git+https://github.com/romixlab/exact_units#ba4502d37c3ddea8824b6e3fd518c98a1ff2b7fc"
 dependencies = [
  "defmt 1.1.1",
  "serde",
