@@ -151,6 +151,36 @@ pub fn check<E>(config: &Config, mut read: impl FnMut(u8, &mut [u8]) -> Result<(
     }
 }
 
+/// What `watchdog_task` (`fw/donguru/src/hub.rs`) should do about a recovery request (FW-18), decided from one
+/// [`check`] read and how many retries are left for a [`Check::NoAnswer`] answer, rather than assuming every
+/// loss of the MCU's own configured state means the hub itself got reset (FW-68): `UsbControl::reset`
+/// (`fw/donguru/src/ww/mod.rs`) asks for recovery on any bus reset after the first configuration, which also
+/// fires when the host resets only the composite device (a bedrock-usb-ch9 bus-reset test, `usbreset`, a
+/// driver's error recovery) — the hub and every other downstream port are untouched then, so recovering would
+/// drop a DUT on another port for nothing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub enum RecoveryStep {
+    /// [`Check::Kept`]: the hub still holds this firmware's config and is attached, so the loss was the host
+    /// resetting only its own port. Do nothing.
+    Kept,
+    /// [`Check::NoAnswer`] with retries left: the hub may be briefly busy with the host (FW-41); ask again.
+    Retry,
+    /// Anything else ([`Check::Unconfigured`], [`Check::Differs`], [`Check::NotAttached`], or
+    /// [`Check::NoAnswer`] with no retries left): the hub lost its config, or never had it. Redo the bring-up.
+    Recover,
+}
+
+/// Decides [`RecoveryStep`] from one [`check`] read; `retries_left` is how many further [`Check::NoAnswer`]
+/// reads the caller is willing to make before giving up and recovering.
+pub fn recovery_step(check: Check, retries_left: u8) -> RecoveryStep {
+    match check {
+        Check::Kept => RecoveryStep::Kept,
+        Check::NoAnswer if retries_left > 0 => RecoveryStep::Retry,
+        _ => RecoveryStep::Recover,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -227,6 +257,41 @@ mod tests {
     fn no_answer() {
         let config = hub_config(BoardVariant::Main);
         assert_eq!(check(&config, |_, _| Err(())), Check::NoAnswer);
+    }
+
+    #[test]
+    fn kept_hub_does_not_recover() {
+        assert_eq!(recovery_step(Check::Kept, 3), RecoveryStep::Kept);
+    }
+
+    #[test]
+    fn unconfigured_hub_recovers_even_with_retries_left() {
+        assert_eq!(recovery_step(Check::Unconfigured, 3), RecoveryStep::Recover);
+    }
+
+    #[test]
+    fn not_attached_hub_recovers() {
+        assert_eq!(recovery_step(Check::NotAttached, 3), RecoveryStep::Recover);
+    }
+
+    #[test]
+    fn differing_config_recovers() {
+        let differs = Check::Differs {
+            register: 0xFA,
+            expected: 0x12,
+            read: 0x14,
+        };
+        assert_eq!(recovery_step(differs, 3), RecoveryStep::Recover);
+    }
+
+    #[test]
+    fn no_answer_retries_while_retries_remain() {
+        assert_eq!(recovery_step(Check::NoAnswer, 1), RecoveryStep::Retry);
+    }
+
+    #[test]
+    fn no_answer_recovers_once_retries_are_exhausted() {
+        assert_eq!(recovery_step(Check::NoAnswer, 0), RecoveryStep::Recover);
     }
 
     #[test]

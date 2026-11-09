@@ -33,7 +33,9 @@ use crate::HubResources;
 use cnt::cnt;
 use defmt::{debug, info, warn};
 use donguru_api::BoardVariant;
-use donguru_board::hub::{Check, board_variant_from_strap, check, hub_config};
+use donguru_board::hub::{
+    Check, RecoveryStep, board_variant_from_strap, check, hub_config, recovery_step,
+};
 use embassy_futures::select::{Either3, select3};
 use embassy_stm32::Peri;
 use embassy_stm32::gpio::{Flex, Level, Output, Pull, Speed};
@@ -469,6 +471,14 @@ const ATTACH_GRACE: Duration = Duration::from_secs(1);
 /// request in this window after an attach is that echo, not a new loss.
 const OWN_RESET_ECHO: Duration = Duration::from_secs(2);
 
+/// Further [`Hub::check`] reads [`watchdog_task`] makes on a recovery request that reads [`Check::NoAnswer`]
+/// (busy with the host, FW-41) before giving up and recovering (FW-68): short and bounded, so a genuine loss
+/// still gets fixed quickly.
+const RECOVERY_CHECK_RETRIES: u8 = 3;
+
+/// Spacing between those retries.
+const RECOVERY_CHECK_RETRY_MS: u64 = 20;
+
 /// How often [`Hub::keep`] asks again.
 const KEEP_RETRY_MS: u64 = 50;
 
@@ -523,7 +533,7 @@ pub async fn watchdog_task(mut hub: Hub) {
     let mut last = Probe::Configured;
     let mut unconfigured = 0u8;
     let mut attached_at = Instant::now(); // bring_up has just attached it, or kept it
-    loop {
+    'poll: loop {
         let why = match select3(
             Timer::after_millis(POLL_INTERVAL_MS),
             RECOVERY_REQUEST.wait(),
@@ -577,7 +587,27 @@ pub async fn watchdog_task(mut hub: Hub) {
             }
             // our own hub reset bounced the MCU's port as well
             Either3::Second(()) if attached_at.elapsed() < OWN_RESET_ECHO => continue,
-            Either3::Second(()) => "USB device left the configured state",
+            // UsbControl::reset (src/ww/mod.rs) fires on any bus reset after the first configuration, not only
+            // on the hub itself bouncing: read the hub back first (FW-46's check) and only recover when it
+            // confirms the loss, so a host-only reset (bedrock-usb-ch9 bus-reset, `usbreset`, a driver's error
+            // recovery) doesn't drop every other downstream port for nothing (FW-68).
+            Either3::Second(()) => {
+                let mut retries = RECOVERY_CHECK_RETRIES;
+                loop {
+                    match recovery_step(hub.check(), retries) {
+                        RecoveryStep::Kept => {
+                            cnt!(usb_reset_hub_kept: u32);
+                            info!("hub: kept, the host reset only its own port");
+                            continue 'poll;
+                        }
+                        RecoveryStep::Retry => {
+                            retries -= 1;
+                            Timer::after_millis(RECOVERY_CHECK_RETRY_MS).await;
+                        }
+                        RecoveryStep::Recover => break "USB device left the configured state",
+                    }
+                }
+            }
         };
         hub.recover(why).await;
         hub.unverified = false;
