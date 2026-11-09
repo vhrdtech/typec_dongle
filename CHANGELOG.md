@@ -6,6 +6,10 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Changed
+
+- Tested on B153A, Linux: USB on bedrock_usb (FW-66) enumerates, `ww usb-loopback` runs as fast as embassy-usb with 0 lost, `bedrock-usb-ch9` 19 of 20 pass (embassy-usb 17). Both drop off the bus on a USB bus reset (FW-68).
+
 ## [0.20.47] - 2026-11-09
 
 ### Added
