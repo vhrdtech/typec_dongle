@@ -541,8 +541,8 @@ async fn debug() {
         .led_set(
             Led::Status,
             LedMode::Blink {
-                on_ms: 100,
-                off_ms: 400,
+                on: ww_si::Millis::new(100),
+                off: ww_si::Millis::new(400),
             },
         )
         .await
@@ -550,8 +550,8 @@ async fn debug() {
     assert_eq!(
         mock.state().await.leds[1],
         LedMode::Blink {
-            on_ms: 100,
-            off_ms: 400
+            on: ww_si::Millis::new(100),
+            off: ww_si::Millis::new(400)
         }
     );
 

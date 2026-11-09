@@ -1507,14 +1507,14 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         reg: u8,
-        len: u8,
+        len: ww_si::Bytes<u8>,
     ) -> RpcResult<
         Result<
             wire_weaver::shrink_wrap::MaxLen<wire_weaver::shrink_wrap::RefVec<'_, u8>, 32>,
             donguru_api::DebugError<'_>,
         >,
     > {
-        let (reg, len) = (reg as usize, len as usize);
+        let (reg, len) = (reg as usize, len.get() as usize);
         if len == 0 || len > 32 {
             return Ready(Err(denied(Denied::Invalid {
                 arg: 1,
@@ -1595,7 +1595,7 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _capture: donguru_api::ReplayCapture,
-    ) -> RpcResult<Result<u32, donguru_api::DebugError<'_>>> {
+    ) -> RpcResult<Result<ww_si::Bytes<u32>, donguru_api::DebugError<'_>>> {
         Ready(Err(donguru_api::DebugError::Common(
             CommonError::Unsupported,
         )))

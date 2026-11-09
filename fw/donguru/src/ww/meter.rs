@@ -231,9 +231,9 @@ impl ServerState {
         Value(MeterCalibration {
             calibrated: false,
             vbus_in_offset: Volt::milli(0),
-            vbus_in_gain_ppm: 0,
+            vbus_in_gain: Fixed::new(0),
             current_offset: Ampere::milli(0),
-            current_gain_ppm: 0,
+            current_gain: Fixed::new(0),
         })
     }
 }

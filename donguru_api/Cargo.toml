@@ -34,7 +34,7 @@ defmt = ["wire_weaver/defmt", "dep:defmt"]
 defmt = { version = "1.1", optional = true }
 # local checkout next to this repo (~/git/wire_weaver)
 wire_weaver = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
-ww_si = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false, features = ["time", "electrical", "mechanical", "thermal"] }
+ww_si = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false, features = ["time", "electrical", "mechanical", "thermal", "dimensionless", "information"] }
 # stdlib traits implemented by the API (device contract, indication, IO family)
 ww_adc = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
 ww_board_info = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }

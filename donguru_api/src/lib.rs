@@ -33,6 +33,9 @@ pub type DieTemperature = ww_si::Point<
     ww_si::Fixed<ww_si::units::Kelvin, ww_si::prefix::Milli, i32>,
 >;
 
+/// A gain correction in steps of one part per million of the nominal gain.
+pub type GainCorrection = ww_si::Fixed<ww_si::units::Ratio, ww_si::prefix::Micro, i32>;
+
 /// Donguru: USB Type-C dongle with a hub, power switch and meter, and SWD / UART / I2C / GPIO on the plug SBU lines.
 #[ww_api_root]
 pub trait DonguruApi {
@@ -213,10 +216,10 @@ pub struct MeterCalibration {
     /// From factory data (FW-9); false: nominal values.
     pub calibrated: bool,
     pub vbus_in_offset: Volt,
-    /// Gain correction in parts per million, 0 = nominal.
-    pub vbus_in_gain_ppm: i32,
+    /// Gain correction, 0 = nominal.
+    pub vbus_in_gain: GainCorrection,
     pub current_offset: Ampere,
-    pub current_gain_ppm: i32,
+    pub current_gain: GainCorrection,
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -694,7 +697,10 @@ pub trait Bringup {
     fn boot_pins() -> PinDump<'i>;
     /// SMBus block read from the hub.
     #[errors(Common(Busy, Timeout), Nack)]
-    fn hub_read(reg: u8, len: u8) -> Result<MaxLen<RefVec<'i, u8>, 32>, DebugError<'i>>;
+    fn hub_read(
+        reg: u8,
+        len: ww_si::Bytes<u8>,
+    ) -> Result<MaxLen<RefVec<'i, u8>, 32>, DebugError<'i>>;
     /// SMBus block write to the hub.
     #[errors(Common(Busy, Timeout, Refused), Nack)]
     fn hub_write(reg: u8, data: MaxLen<RefVec<'i, u8>, 32>) -> Result<(), DebugError<'i>>;
@@ -715,7 +721,7 @@ pub trait Bringup {
     /// meanwhile. Answers the capture's length in bytes (0 for `Stop`); `Unsupported` in a firmware built without
     /// the feature `uart-replay`, `InvalidArgument` for a capture it doesn't know.
     #[errors(Common(Unsupported, InvalidArgument))]
-    fn uart_replay(capture: ReplayCapture) -> Result<u32, DebugError<'i>>;
+    fn uart_replay(capture: ReplayCapture) -> Result<ww_si::Bytes<u32>, DebugError<'i>>;
 }
 
 /// A text capture for [`Bringup::uart_replay`], 32 KiB each, as a serial console would send it (CR LF).
@@ -857,8 +863,13 @@ pub enum Led {
 pub enum LedMode {
     Off,
     On,
-    Blink { on_ms: u16, off_ms: u16 },
-    Breath { period_ms: u16 },
+    Blink {
+        on: ww_si::Millis<u16>,
+        off: ww_si::Millis<u16>,
+    },
+    Breath {
+        period: ww_si::Millis<u16>,
+    },
 }
 
 /// Errors of the debug level.

@@ -148,11 +148,12 @@ impl ServerState {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         reg: u8,
-        len: u8,
+        len: ww_si::Bytes<u8>,
     ) -> RpcResult<Result<MaxLen<RefVec<'_, u8>, 32>, DebugError<'_>>> {
         if !cfg!(feature = "debug-api") {
             return RpcResult::Unimplemented;
         }
+        let len = len.get();
         if len == 0 || len as usize > hub::SMBUS_BLOCK_MAX {
             return Ready(Err(invalid(1, "len 1..=32")));
         }
@@ -255,12 +256,12 @@ impl ServerState {
         let mode = match mode {
             LedMode::Off => led::Mode::Off,
             LedMode::On => led::Mode::On,
-            LedMode::Blink { on_ms, off_ms } => led::Mode::Blink {
-                on_ms: on_ms.into(),
-                off_ms: off_ms.into(),
+            LedMode::Blink { on, off } => led::Mode::Blink {
+                on_ms: on.get().into(),
+                off_ms: off.get().into(),
             },
-            LedMode::Breath { period_ms } => led::Mode::Breath {
-                period_ms: period_ms.into(),
+            LedMode::Breath { period } => led::Mode::Breath {
+                period_ms: period.get().into(),
             },
             LedMode::Unknown(_) => return RpcResult::Unimplemented,
         };
@@ -312,7 +313,7 @@ impl ServerState {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         capture: donguru_api::ReplayCapture,
-    ) -> RpcResult<Result<u32, donguru_api::DebugError<'_>>> {
+    ) -> RpcResult<Result<ww_si::Bytes<u32>, donguru_api::DebugError<'_>>> {
         use donguru_api::DebugError;
         if !cfg!(feature = "debug-api") {
             return RpcResult::Unimplemented;
@@ -327,7 +328,7 @@ impl ServerState {
                 })));
             };
             crate::uart::replay(data);
-            Ready(Ok(data.len() as u32))
+            Ready(Ok(ww_si::Fixed::new(data.len() as u32)))
         }
         #[cfg(not(feature = "uart-replay"))]
         {

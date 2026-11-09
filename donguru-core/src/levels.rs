@@ -947,9 +947,11 @@ impl Debug<'_> {
     }
 
     pub async fn hub_read(&self, reg: u8, len: u8) -> Result<Vec<u8>> {
-        let data =
-            call::<_, DebugErrorOwned>("Bringup::hub_read", self.c.debug().hub_read(reg, len))
-                .await?;
+        let data = call::<_, DebugErrorOwned>(
+            "Bringup::hub_read",
+            self.c.debug().hub_read(reg, ww_si::Bytes::new(len)),
+        )
+        .await?;
         Ok(data.into_inner())
     }
 

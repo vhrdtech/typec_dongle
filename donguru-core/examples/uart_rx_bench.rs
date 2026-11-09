@@ -300,9 +300,8 @@ async fn bench(dongle: &Dongle, args: &Args, capture: ReplayCapture, lz4: bool) 
         .uart_replay(capture)
         .call()
         .await
-        .context(
-            "debug.uart_replay (a firmware built without `uart-replay` answers Unsupported)",
-        )?;
+        .context("debug.uart_replay (a firmware built without `uart-replay` answers Unsupported)")?
+        .get();
     if len as usize != data.len() {
         bail!(
             "the dongle's capture is {len} bytes, this program's {}",

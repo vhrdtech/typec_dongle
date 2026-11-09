@@ -198,9 +198,9 @@ impl Default for MockState {
             calibration: MeterCalibration {
                 calibrated: false,
                 vbus_in_offset: Volt::new(Prefix::Milli, 0i32),
-                vbus_in_gain_ppm: 0,
+                vbus_in_gain: Fixed::new(0),
                 current_offset: Ampere::new(Prefix::Milli, 0i32),
-                current_gain_ppm: 0,
+                current_gain: Fixed::new(0),
             },
             plug_vbus: VbusState::Off,
             plug_vbus_mode: VbusMode::ForceOff,
