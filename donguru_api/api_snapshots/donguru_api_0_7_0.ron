@@ -1,6 +1,6 @@
 // donguru_api 0.7.0 traits and types, saved by `ww api save`.
 // Do not edit, bump the crate version and save a new snapshot instead.
-// shrink_wrap sha256: 5b8edd3dc147d35c13e50fdf0af139c7c7e2e1f79ea4c385bbb1a29f24596ee6
+// shrink_wrap sha256: 70c9fd9f3a87282affe180d6764186bd49e5504ebc44a5ee29e0f713847c980a
 (magic: 2837124336, ww_self_version: (major: 0, minor: 3, patch: 0), root: (docs: [
     "WireWeaver API of the donguru firmware (`donguru_api/` in the repo root), served by `fw/donguru/src/ww/`.",
     "",
@@ -1269,14 +1269,14 @@
         247,
     ]),
     SkippedFullVersion(crate_idx: 16, trait_name: "Adc", signature: [
-        64,
-        191,
-        216,
-        155,
-        226,
-        142,
-        56,
-        198,
+        51,
+        85,
+        57,
+        229,
+        249,
+        36,
+        165,
+        244,
     ]),
     InLine(level: (docs: [
         "Bring-up and production test. Refused always: NRST, supply pins, our USB and SWD, PA15, the VBUS enables (use",
