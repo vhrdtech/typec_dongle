@@ -1,9 +1,13 @@
 [package]
 name = "donguru_api"
-version = "0.6.0" # identifies the API on the wire, bump with every change
+version = "0.7.0" # identifies the API on the wire, bump with every change
 edition.workspace = true
 license.workspace = true
 description = "WireWeaver API of the donguru firmware"
+
+[package.metadata.wire_weaver]
+# the API's wire version (WireWeaver EVO-31): what devices and hosts decide on at link setup, docs/evolution/rules.md
+wire = "w1.0"
 
 [features]
 # owned (alloc) variants of the API types, for host-side users

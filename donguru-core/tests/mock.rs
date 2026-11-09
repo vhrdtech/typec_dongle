@@ -210,7 +210,7 @@ async fn meter() {
     );
     assert_eq!(
         meter.temperature().await.unwrap(),
-        DegreeCelsius::new(Prefix::Unit, 30)
+        ww_si::Point::new(ww_si::Fixed::new(30_000))
     );
     assert!(!meter.calibration().await.unwrap().calibrated);
 

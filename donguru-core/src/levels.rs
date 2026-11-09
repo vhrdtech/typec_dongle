@@ -8,6 +8,7 @@
 use std::fmt;
 use std::time::Duration;
 
+use donguru_api::DieTemperature;
 use donguru_api::{
     BoardVariant, ButtonAction, ButtonState, CcRole, CcState, DataPath, DebugErrorOwned, HubState,
     Led, LedMode, McuPin, MeterCalibration, MeterDeadband, MeterReading, MeterTotals, Orientation,
@@ -18,7 +19,7 @@ use wire_weaver::prelude::DeserializeShrinkWrapOwned;
 use wire_weaver::shrink_wrap::MaxLen;
 use wire_weaver::ww_error::{CommonErrorOwned, HasCommon};
 use wire_weaver_client::{CallError, PreparedCall, PreparedRead, PreparedWrite};
-use ww_si::{DegreeCelsius, Second, Volt};
+use ww_si::{Second, Volt};
 
 use crate::client::DonguruClient;
 use crate::client::generated::donguru_api_donguru_api as generated;
@@ -418,7 +419,7 @@ impl Meter<'_> {
         read("PowerMeter::reading", self.c.meter().read_reading()).await
     }
 
-    pub async fn temperature(&self) -> Result<DegreeCelsius> {
+    pub async fn temperature(&self) -> Result<DieTemperature> {
         read("PowerMeter::temperature", self.c.meter().read_temperature()).await
     }
 

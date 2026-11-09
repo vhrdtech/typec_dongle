@@ -37,7 +37,7 @@ const CHANNELS: [(Ch, &str, Unit); 10] = [
     (Ch::VbusIn, "vbus_in", Unit::Volt),
     (Ch::Current, "current", Unit::Ampere),
     (Ch::Vdda, "vdda", Unit::Volt),
-    (Ch::Temperature, "temperature", Unit::Celsius),
+    (Ch::Temperature, "temperature", Unit::Kelvin),
     (Ch::Button, "button", Unit::Volt),
     (Ch::Io9, "io9", Unit::Volt),
     (Ch::Io7, "io7", Unit::Volt),
@@ -50,7 +50,7 @@ const CHANNELS: [(Ch, &str, Unit); 10] = [
 enum Unit {
     Volt,
     Ampere,
-    Celsius,
+    Kelvin,
 }
 
 impl Unit {
@@ -58,7 +58,9 @@ impl Unit {
         match self {
             Unit::Volt => SIExpr::named(<units::Volt as ww_si::Unit>::EXPR),
             Unit::Ampere => SIExpr::named(<units::Ampere as ww_si::Unit>::EXPR),
-            Unit::Celsius => SIExpr::named(<units::DegreeCelsius as ww_si::Unit>::EXPR),
+            // °C is a point on the kelvin scale, which `AnyQuantity` doesn't carry yet (WireWeaver STD-74): the
+            // channel reads kelvins
+            Unit::Kelvin => SIExpr::named(<units::Kelvin as ww_si::Unit>::EXPR),
         }
     }
 }
@@ -69,7 +71,7 @@ fn value_of(ch: Ch, r: &Readings) -> Option<(i32, u16)> {
         Ch::VbusIn => (r.input_voltage_mv as i32, r.raw.input_voltage),
         Ch::Current => (r.input_current_ma as i32, r.raw.input_current),
         Ch::Vdda => (r.vdda_mv as i32, r.raw.vref),
-        Ch::Temperature => (r.temp_cdeg as i32 * 10, r.raw.temp),
+        Ch::Temperature => (r.temp_cdeg as i32 * 10 + 273_150, r.raw.temp),
         Ch::Button => (r.button_switch_mv as i32, r.raw.button_switch),
         Ch::Io9 => (r.p2_mv? as i32, r.raw.p2),
         Ch::Io7 => (r.p0_mv? as i32, r.raw.p0),
@@ -86,7 +88,7 @@ const fn info(index: usize) -> ChannelInfo<'static> {
         Unit::Volt if index == 0 => (0, 25_800),
         Unit::Volt => (0, 3_600),
         Unit::Ampere => (-7_200, 7_200),
-        Unit::Celsius => (-40_000, 125_000),
+        Unit::Kelvin => (233_150, 398_150),
     };
     ChannelInfo {
         name: MaxLen::new_unchecked(name),

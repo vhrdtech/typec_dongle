@@ -24,8 +24,14 @@
 
 use wire_weaver::prelude::*;
 pub use ww_gpio::Level;
-pub use ww_si::{Ampere, Coulomb, DegreeCelsius, Hertz, Joule, Second, Volt, Watt};
+pub use ww_si::{Ampere, Coulomb, Hertz, Joule, Second, Volt, Watt};
 pub use ww_uart::UartConfig;
+
+/// A temperature in steps of 0.001 K on the Celsius scale: its number is thousandths of a degree above 0 °C.
+pub type DieTemperature = ww_si::Point<
+    ww_si::origins::Celsius,
+    ww_si::Fixed<ww_si::units::Kelvin, ww_si::prefix::Milli, i32>,
+>;
 
 /// Donguru: USB Type-C dongle with a hub, power switch and meter, and SWD / UART / I2C / GPIO on the plug SBU lines.
 #[ww_api_root]
@@ -90,11 +96,9 @@ pub trait Device {
     ww_impl!(settings: Settings);
     /// Boot state, confirm, revert, reboot: `reboot(Updater)` goes to the STM32 ROM bootloader (USB DFU), the way
     /// firmware updates come in (API-58, FW-12). The state is always `Confirmed`, there is no image to revert to.
-    #[since = "0.5.1"]
     ww_impl!(boot: ww_dfu::BootControl);
     /// The update node: the firmware in place, written by the ROM bootloader (`Profile::InPlace`, `device.boot`
     /// only), API-58.
-    #[since = "0.5.1"]
     ww_impl!(dfu: Dfu);
 }
 
@@ -155,7 +159,7 @@ pub trait PowerMeter {
     /// 32x oversampled in hardware but not averaged over `window`, with its own time.
     property!(ro+observe+batched reading: MeterReading);
     /// MCU die temperature.
-    property!(ro+observe temperature: DegreeCelsius);
+    property!(ro+observe temperature: DieTemperature);
     /// Charge and energy since boot or `reset_totals`.
     property!(ro+observe totals: MeterTotals);
     /// Restarts `totals` from zero.
@@ -241,7 +245,6 @@ pub trait Plug {
     property!(ro+observe cc: CcState);
     /// USB Power Delivery on the plug CC (UCPD2): Donguru as the source towards the DUT, with every message logged
     /// (API-30).
-    #[since = "0.5.2"]
     ww_impl!(pd: PlugPd);
 }
 
@@ -706,13 +709,11 @@ pub trait Bringup {
     #[errors(Common(Refused, InvalidArgument))]
     fn reg_read(addr: u32, words: u8) -> Result<MaxLen<RefVec<'i, u32>, 32>, DebugError<'i>>;
     /// Logs `count` numbered lines at once, more than the log keeps up with: the host sees how many are lost.
-    #[since = "0.2.1"]
     fn log_flood(count: u32);
     /// Replays a text capture kept in flash out of the header UART's TX (IO7) by DMA, in a loop at the line's rate,
     /// until `Stop`: a full-rate source for `uart[1].rx` with a jumper from IO7 to IO8. The `tx` sink's items wait
     /// meanwhile. Answers the capture's length in bytes (0 for `Stop`); `Unsupported` in a firmware built without
     /// the feature `uart-replay`, `InvalidArgument` for a capture it doesn't know.
-    #[since = "0.4.1"]
     #[errors(Common(Unsupported, InvalidArgument))]
     fn uart_replay(capture: ReplayCapture) -> Result<u32, DebugError<'i>>;
 }

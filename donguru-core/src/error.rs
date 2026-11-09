@@ -196,8 +196,8 @@ impl Error {
             E::DeviceNotFound { .. } | E::AmbiguousDeviceChoice(_) => {
                 Error::NoDevice(e.to_string())
             }
-            E::IncompatibleDeviceProtocol
-            | E::OlderProtocol(..)
+            E::IncompatibleDeviceProtocol { .. }
+            | E::OlderProtocol { .. }
             | E::IncompatibleResource { .. } => Error::Incompatible(e.to_string()),
             e => Error::Link(format!("{item}: {e}")),
         }

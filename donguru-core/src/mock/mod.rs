@@ -45,7 +45,7 @@ use wire_weaver::ww_error::CommonError;
 use wire_weaver::{EventWriter, MessageSink, WireWeaverAsyncApiBackend};
 use wire_weaver_client::in_process::{self, TokioClock};
 use ww_firmware_info::ResetCause;
-use ww_si::{Ampere, Baud, Coulomb, DegreeCelsius, Joule, Prefix, Second, Volt};
+use ww_si::{Ampere, Baud, Coulomb, Fixed, Joule, Point, Prefix, Second, Volt};
 
 use donguru_board::pins::{
     Change, Claims, Denied, Holder, MODE_ANALOG, MODE_INPUT, MODE_OUTPUT, PORTS, Port, Ports,
@@ -124,7 +124,7 @@ pub struct MockState {
     /// `leds.identify` calls.
     pub identified: u32,
     pub reading: MeterReading,
-    pub temperature: DegreeCelsius,
+    pub temperature: donguru_api::DieTemperature,
     pub totals: MeterTotals,
     pub meter_window: Second,
     pub meter_deadband: MeterDeadband,
@@ -191,7 +191,7 @@ impl Default for MockState {
                 vbus_in: Volt::new(Prefix::Milli, 5_000i32),
                 current: Ampere::new(Prefix::Milli, 0i32),
             },
-            temperature: DegreeCelsius::new(Prefix::Unit, 30i32),
+            temperature: Point::new(Fixed::new(30_000)),
             totals: MockState::zero_totals(),
             meter_window: Second::new(Prefix::Milli, 10i32),
             meter_deadband: default_deadband(),
@@ -577,6 +577,7 @@ impl MockDevice {
                 >::new());
                 let config = ww_device::LinkConfig::new(
                     DONGURU_API_FULL_GID,
+                    donguru_api::DONGURU_API_WIRE_VERSION,
                     server::api_impl::api_hash(),
                     image_facts,
                     ww_client_server::COMPACT_VERSION,

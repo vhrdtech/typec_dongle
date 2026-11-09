@@ -610,7 +610,7 @@ impl MockServer {
     async fn get_meter_temperature(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<ww_si::DegreeCelsius, ()> {
+    ) -> GetResult<donguru_api::DieTemperature, ()> {
         Value(self.state.temperature)
     }
 

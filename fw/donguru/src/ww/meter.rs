@@ -3,13 +3,14 @@
 
 use super::ServerState;
 use crate::adc::{self, Readings};
+use donguru_api::DieTemperature;
 use donguru_api::{MeterCalibration, MeterDeadband, MeterReading, MeterTotals};
 use embassy_time::{Duration, Instant, Timer};
 use portable_atomic::{AtomicU32, Ordering};
 use wire_weaver::prelude::*;
 use wire_weaver::ww_error::CommonError;
 use ww_si::ww_numeric::NumericValue;
-use ww_si::{Ampere, Coulomb, DegreeCelsius, Joule, Prefix, Second, Volt};
+use ww_si::{Ampere, Coulomb, Fixed, Joule, Point, Prefix, Second, Volt};
 
 /// `reading` is not marked changed more often than the ADC updates it; `totals` change all the time, so they are
 /// marked this often while observed.
@@ -158,7 +159,7 @@ impl ServerState {
     pub(super) async fn get_meter_temperature(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<DegreeCelsius, ()> {
+    ) -> GetResult<DieTemperature, ()> {
         let Some(r) = readings().await else {
             return GetError(());
         };
@@ -248,9 +249,9 @@ fn reading_from(mv: i32, ma: i32) -> MeterReading {
     }
 }
 
-fn temperature_of(r: &Readings) -> DegreeCelsius {
-    // 0.01 °C -> m°C
-    DegreeCelsius::milli(r.temp_cdeg as i32 * 10)
+fn temperature_of(r: &Readings) -> DieTemperature {
+    // 0.01 °C -> thousandths of a degree above 0 °C
+    Point::new(Fixed::new(r.temp_cdeg as i32 * 10))
 }
 
 fn totals_of(t: &adc::Totals) -> MeterTotals {

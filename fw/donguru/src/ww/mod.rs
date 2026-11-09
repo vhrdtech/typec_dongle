@@ -270,6 +270,7 @@ impl WireWeaverAsyncApiBackend for ServerState {
 fn link_config() -> LinkConfig<'static> {
     LinkConfig::new(
         donguru_api::DONGURU_API_FULL_GID,
+        donguru_api::DONGURU_API_WIRE_VERSION,
         server_impl::api_hash(),
         server_impl::image_facts(),
         ww_client_server::COMPACT_VERSION,
@@ -360,7 +361,7 @@ const _: () = assert!(matches!(DEVICE.string(STRING_API_ID), Some(Str::Runtime))
 
 /// The USB driver, created in `main.rs` and handed to [start].
 pub type UsbDriver = bedrock_usb::v4::Driver<Desc, Mmio>;
-type UsbDevice = Usb<Desc, Mmio, UsbControl>;
+type UsbDevice = Usb<Desc, UsbDriver, UsbControl>;
 type WwTx = FramedTx<'static, bedrock_usb::ww::Sender<BulkIn<Mmio, EP_WW_IN, Double>, Duration>>;
 type WwRx = FramedRx<'static, bedrock_usb::ww::Receiver<BulkOut<Mmio, EP_WW_OUT, Double>>>;
 /// The WireWeaver server on the USB function.

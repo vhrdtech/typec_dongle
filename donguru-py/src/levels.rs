@@ -197,7 +197,10 @@ impl Meter {
     /// Board temperature in °C.
     fn temperature(&self, py: Python<'_>) -> PyResult<f64> {
         self.shared.run(py, async |d| {
-            d.meter().temperature().await.map(|t| t.to_f64())
+            d.meter()
+                .temperature()
+                .await
+                .map(|t| t.raw() as f64 / 1000.0)
         })
     }
 
