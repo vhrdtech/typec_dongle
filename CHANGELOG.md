@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.50] - 2026-11-10
+
 ### Changed
 
 - Tested on B153A, Linux: a host bus reset keeps the hub (FW-68, `bedrock-usb-ch9` 20/20), and a hub reset still recovers within 1 s.
