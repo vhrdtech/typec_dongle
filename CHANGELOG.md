@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.49] - 2026-11-10
+
 ### Fixed
 
 - Firmware: a USB bus reset from the host (bedrock-usb-ch9 bus-reset, `usbreset`, a driver's error recovery) no longer drops the whole hub and every downstream port (FW-68). `UsbControl::reset` asked the hub watchdog to recover on any bus reset after the first configuration, and the watchdog reset U301 unconditionally; it now reads the hub back first (`Hub::check`, FW-46) and recovers only when that confirms a real loss, counting a host-only reset instead (`cnt!(usb_reset_hub_kept)`).
