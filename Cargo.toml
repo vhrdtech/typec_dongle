@@ -54,5 +54,5 @@ incremental = true
 # ww_uart = { path = "../wire_weaver/ww_stdlib/ww_uart" }
 # ww_uid = { path = "../wire_weaver/ww_stdlib/ww_uid" }
 # ww_user_info = { path = "../wire_weaver/ww_stdlib/ww_user_info" }
-# [patch."https://github.com/romixlab/pd_bench"]
+# [patch."ssh://git@github.com/romixlab/pd_bench"]
 # pd_log = { path = "../pd_bench/pd_log" }

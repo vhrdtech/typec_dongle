@@ -1,0 +1,3 @@
+# pd_bench is private, taken by its ssh URL: git runs through the command line with the PC's own ssh key
+[net]
+git-fetch-with-cli = true
