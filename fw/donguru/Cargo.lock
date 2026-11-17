@@ -544,7 +544,6 @@ dependencies = [
 name = "donguru_api"
 version = "0.8.0"
 dependencies = [
- "defmt 1.2.0",
  "ww_adc",
  "ww_api",
  "ww_board_info",

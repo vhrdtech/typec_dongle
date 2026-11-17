@@ -786,10 +786,8 @@ dependencies = [
  "indicatif",
  "insta",
  "pd_log",
- "serde",
  "serde_json",
  "tempfile",
- "thiserror",
  "tokio",
  "toml 0.9.12+spec-1.1.0",
  "wire_weaver",
@@ -858,7 +856,6 @@ dependencies = [
 name = "donguru_api"
 version = "0.8.0"
 dependencies = [
- "defmt",
  "wire_weaver_evolution",
  "ww_adc",
  "ww_api",

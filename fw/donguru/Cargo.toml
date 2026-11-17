@@ -72,6 +72,7 @@ ww_i2c = { git = "https://github.com/vhrdtech/ww_stdlib", default-features = fal
 ww_indication = { git = "https://github.com/vhrdtech/ww_stdlib", default-features = false }
 ww_log = { git = "https://github.com/vhrdtech/ww_stdlib", default-features = false }
 ww_timebase = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+# named by the generated server: `clock.set_time_of_day` takes a `ww_date_time::DateTime`
 ww_date_time = { git = "https://github.com/vhrdtech/ww_base", default-features = false }
 ww_uart = { git = "https://github.com/vhrdtech/ww_stdlib", default-features = false }
 ww_uid = { git = "https://github.com/vhrdtech/ww_stdlib", default-features = false }
@@ -88,6 +89,10 @@ usb251xb = { version = "0.1.0", default-features = false, features = ["async", "
 # Without its "defmt" feature: its trace lines would cost flash, the log ring records every message anyway.
 usbpd = { version = "3.0.0", default-features = false }
 usbpd-traits = { version = "2.0.0", default-features = false }
+
+# ww_date_time is named only by the generated server (ww_codegen!), which cargo machete does not see
+[package.metadata.cargo-machete]
+ignored = ["ww_date_time"]
 
 [features]
 # Off by default since the PD source (API-30) came in: with them the image doesn't fit the 504 KiB (FW-53). Each is a

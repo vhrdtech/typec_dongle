@@ -6,7 +6,6 @@ members = ["donguru-cli", "donguru-core", "donguru-py", "donguru_api", "donguru_
 version = "0.20.50"
 edition = "2024"
 license = "TBD"
-repository = ""
 
 [workspace.dependencies]
 donguru-core = { path = "donguru-core" }

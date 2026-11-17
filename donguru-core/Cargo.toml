@@ -28,6 +28,7 @@ ww_adc = { git = "https://github.com/vhrdtech/ww_stdlib", features = ["std"] }
 ww_board_info = { git = "https://github.com/vhrdtech/ww_stdlib", features = ["std"] }
 ww_counters = { git = "https://github.com/vhrdtech/ww_stdlib", features = ["std", "host"] }
 ww_dfu = { git = "https://github.com/vhrdtech/ww_stdlib", features = ["std"] }
+# named by the generated client: `clock.set_time_of_day` takes a `ww_date_time::DateTime`
 ww_date_time = { git = "https://github.com/vhrdtech/ww_base", features = ["std"] }
 ww_firmware_info = { git = "https://github.com/vhrdtech/ww_stdlib", features = ["std"] }
 ww_gpio = { git = "https://github.com/vhrdtech/ww_stdlib", features = ["std"] }
@@ -48,6 +49,10 @@ cnt_core = "0.5.1"
 # a crash record's call chain as file:line frames (CLT-59), src/crash.rs
 ww_report = { git = "https://github.com/vhrdtech/ww_stdlib" }
 defmt-decoder = "1.1"
+
+# ww_date_time is named only by the generated client and mock server (ww_codegen!), which cargo machete does not see
+[package.metadata.cargo-machete]
+ignored = ["ww_date_time"]
 
 [features]
 # Run the SWD memtest (CORE-5) through a debug probe
