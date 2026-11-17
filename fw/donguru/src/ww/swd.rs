@@ -20,7 +20,7 @@ impl ServerState {
             warn!("swd mode {} unknown, refused", n);
             cnt!(swd_mode_unknown: u32);
             return SetError(CommonError::InvalidArgument {
-                arg: 0,
+                arg: ww_si::Index::new(0),
                 reason: MaxLen::new_unchecked("unknown mode"),
             });
         }
@@ -39,7 +39,7 @@ impl ServerState {
     pub(super) fn get_swd_session(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::SwdSession, ()> {
+    ) -> GetResult<donguru_api::SwdSession, CommonError<'_>> {
         Unimplemented.into()
     }
 }

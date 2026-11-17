@@ -22,7 +22,7 @@ impl ServerState {
     pub(super) fn device_boot_confirm(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> RpcResult<Result<(), Error>> {
+    ) -> RpcResult<Result<(), wire_weaver::Error<'_, Error>>> {
         Ready(Ok(()))
     }
 
@@ -30,8 +30,8 @@ impl ServerState {
     pub(super) fn device_boot_revert(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> RpcResult<Result<(), Error>> {
-        Ready(Err(Error::Unsupported))
+    ) -> RpcResult<Result<(), wire_weaver::Error<'_, Error>>> {
+        Ready(Err(Error::Unsupported.into()))
     }
 
     /// Reset into the firmware or into the STM32 ROM bootloader as the updater. The reply goes out first: the reset
@@ -40,7 +40,7 @@ impl ServerState {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         into: BootTarget,
-    ) -> RpcResult<Result<(), Error>> {
+    ) -> RpcResult<Result<(), wire_weaver::Error<'_, Error>>> {
         REBOOT.signal(match into {
             BootTarget::App => Reboot::App,
             BootTarget::Updater => Reboot::RomBootloader,
@@ -58,11 +58,10 @@ impl ServerState {
             role: Role::App,
             profile: Profile::InPlace,
             product: MaxLen::new_unchecked("Donguru B153"),
-            geometry_id: 0,
-            product_id: 0,
+            geometry: ww_dfu::GeometryId(0),
             seal: Seal::Unsigned,
-            app_version: None,
-            version_floor: 0,
+            app: None,
+            security_floor: ww_dfu::SecurityCounter(0),
             manifest_digest: None,
             boot_state: BootState::Confirmed,
             // the ROM bootloader took over after a boot loop (FW-45); requested updates are not tracked
@@ -72,7 +71,7 @@ impl ServerState {
                 } else {
                     Outcome::Nothing
                 },
-                version: 0,
+                version: None,
             },
             offers: Offers {
                 boot_control: true,

@@ -7,8 +7,8 @@ use donguru_api::DieTemperature;
 use donguru_api::{MeterCalibration, MeterDeadband, MeterReading, MeterTotals};
 use embassy_time::{Duration, Instant, Timer};
 use portable_atomic::{AtomicU32, Ordering};
+use wire_weaver::CommonError;
 use wire_weaver::prelude::*;
-use wire_weaver::ww_error::CommonError;
 use ww_si::ww_numeric::NumericValue;
 use ww_si::{Ampere, Coulomb, Fixed, Joule, Point, Prefix, Second, Volt};
 
@@ -138,7 +138,7 @@ pub(super) const DEADBAND_INVALID: &str =
 
 pub(super) fn invalid(reason: &'static str) -> CommonError<'static> {
     CommonError::InvalidArgument {
-        arg: 0,
+        arg: ww_si::Index::new(0),
         reason: MaxLen::new_unchecked(reason),
     }
 }
@@ -149,9 +149,9 @@ impl ServerState {
     pub(super) async fn get_meter_reading(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<MeterReading, ()> {
+    ) -> GetResult<MeterReading, CommonError<'_>> {
         let Some(r) = readings().await else {
-            return GetError(());
+            return GetError(CommonError::Timeout);
         };
         Value(reading_of(&r))
     }
@@ -159,9 +159,9 @@ impl ServerState {
     pub(super) async fn get_meter_temperature(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<DieTemperature, ()> {
+    ) -> GetResult<DieTemperature, CommonError<'_>> {
         let Some(r) = readings().await else {
-            return GetError(());
+            return GetError(CommonError::Timeout);
         };
         Value(temperature_of(&r))
     }
@@ -169,7 +169,7 @@ impl ServerState {
     pub(super) fn get_meter_totals(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<MeterTotals, ()> {
+    ) -> GetResult<MeterTotals, CommonError<'_>> {
         Value(totals_of(&adc::totals()))
     }
 
@@ -226,7 +226,7 @@ impl ServerState {
     pub(super) fn get_meter_calibration(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<MeterCalibration, ()> {
+    ) -> GetResult<MeterCalibration, CommonError<'_>> {
         // FW-9 brings factory data: nominal values until then
         Value(MeterCalibration {
             calibrated: false,

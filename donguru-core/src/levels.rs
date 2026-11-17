@@ -10,14 +10,13 @@ use std::time::Duration;
 
 use donguru_api::DieTemperature;
 use donguru_api::{
-    BoardVariant, ButtonAction, ButtonState, CcRole, CcState, DataPath, DebugErrorOwned, HubState,
-    Led, LedMode, McuPin, MeterCalibration, MeterDeadband, MeterReading, MeterTotals, Orientation,
-    PinDumpOwned, PinMode, PinState, PowerErrorOwned, SbuErrorOwned, SbuFunction, SwdMode,
-    SwdSession, SwitchPosition, UcpdPort, UcpdState, VbusMode, VbusState,
+    BoardVariant, ButtonAction, ButtonState, CcRole, CcState, DataPath, DebugError, HubState, Led,
+    LedMode, McuPin, MeterCalibration, MeterDeadband, MeterReading, MeterTotals, Orientation,
+    PinDumpOwned, PinMode, PinState, PowerError, SbuFunction, SwdMode, SwdSession, SwitchPosition,
+    UcpdPort, UcpdState, VbusMode, VbusState,
 };
 use wire_weaver::prelude::DeserializeShrinkWrapOwned;
 use wire_weaver::shrink_wrap::MaxLen;
-use wire_weaver::ww_error::{CommonErrorOwned, HasCommon};
 use wire_weaver_client::{CallError, PreparedCall, PreparedRead, PreparedWrite};
 use ww_si::{Second, Volt};
 
@@ -39,12 +38,7 @@ async fn write_plain(item: &str, p: PreparedWrite) -> Result<()> {
 
 async fn write<E>(item: &str, p: PreparedWrite<CallError<E>>) -> Result<()>
 where
-    E: DeserializeShrinkWrapOwned
-        + HasCommon<Common = CommonErrorOwned>
-        + fmt::Display
-        + fmt::Debug
-        + Send
-        + Sync,
+    E: DeserializeShrinkWrapOwned + fmt::Display + fmt::Debug + Send + Sync,
     E: 'static,
 {
     p.write().await.map_err(|e| Error::call(item, e))
@@ -60,12 +54,7 @@ pub(crate) async fn call_plain<T: DeserializeShrinkWrapOwned>(
 pub(crate) async fn call<T, E>(item: &str, p: PreparedCall<T, CallError<E>>) -> Result<T>
 where
     T: DeserializeShrinkWrapOwned,
-    E: DeserializeShrinkWrapOwned
-        + HasCommon<Common = CommonErrorOwned>
-        + fmt::Display
-        + fmt::Debug
-        + Send
-        + Sync,
+    E: DeserializeShrinkWrapOwned + fmt::Display + fmt::Debug + Send + Sync,
     E: 'static,
 {
     p.call().await.map_err(|e| Error::call(item, e))
@@ -199,6 +188,7 @@ impl<'a> Device<'a> {
             self.c.device().last_reset().boot_count(),
         )
         .await
+        .map(|count| count.get())
     }
 
     /// Forgets the crash record and zeroes the boot counter, after the host saved them.
@@ -244,6 +234,7 @@ impl<'a> Device<'a> {
             Err(CallError::Device(ww_dfu::Error::Unsupported)) => Err(Error::Unimplemented {
                 item: "BootControl::reboot".into(),
             }),
+            Err(CallError::Common(common)) => Err(Error::common("BootControl::reboot", common)),
             Err(CallError::Device(e)) => {
                 Err(Error::Link(format!("BootControl::reboot refused: {e:?}")))
             }
@@ -296,7 +287,7 @@ impl Settings<'_> {
 
     pub async fn set_plug_vbus_at_boot(&self, mode: VbusMode) -> Result<()> {
         let p = self.c.device().settings().write_plug_vbus_at_boot(mode);
-        write("Settings::plug_vbus_at_boot", p).await
+        write_plain("Settings::plug_vbus_at_boot", p).await
     }
 
     pub async fn button_action(&self) -> Result<ButtonAction> {
@@ -309,7 +300,7 @@ impl Settings<'_> {
 
     pub async fn set_button_action(&self, action: ButtonAction) -> Result<()> {
         let p = self.c.device().settings().write_button_action(action);
-        write("Settings::button_action", p).await
+        write_plain("Settings::button_action", p).await
     }
 
     pub async fn meter_window(&self) -> Result<Second> {
@@ -322,7 +313,7 @@ impl Settings<'_> {
 
     pub async fn set_meter_window(&self, window: Second) -> Result<()> {
         let p = self.c.device().settings().write_meter_window(window);
-        write("Settings::meter_window", p).await
+        write_plain("Settings::meter_window", p).await
     }
 
     pub async fn meter_deadband(&self) -> Result<MeterDeadband> {
@@ -335,7 +326,7 @@ impl Settings<'_> {
 
     pub async fn set_meter_deadband(&self, deadband: MeterDeadband) -> Result<()> {
         let p = self.c.device().settings().write_meter_deadband(deadband);
-        write("Settings::meter_deadband", p).await
+        write_plain("Settings::meter_deadband", p).await
     }
 
     pub async fn uart_plug(&self) -> Result<ww_uart::UartConfig> {
@@ -348,12 +339,12 @@ impl Settings<'_> {
 
     pub async fn set_uart_plug(&self, config: ww_uart::UartConfig) -> Result<()> {
         let p = self.c.device().settings().write_uart_plug(config);
-        write("Settings::uart_plug", p).await
+        write_plain("Settings::uart_plug", p).await
     }
 
     /// Every setting and the label back to defaults; factory data stays.
     pub async fn reset(&self) -> Result<()> {
-        call("Settings::reset", self.c.device().settings().reset()).await
+        call_plain("Settings::reset", self.c.device().settings().reset()).await
     }
 }
 
@@ -388,7 +379,7 @@ impl<'a> Leds<'a> {
 
     /// Blinks the LEDs for `duration` so the dongle can be found on a bench.
     pub async fn identify(&self, duration: Second) -> Result<()> {
-        call("Indication::identify", self.c.leds().identify(duration)).await
+        call_plain("Indication::identify", self.c.leds().identify(duration)).await
     }
 
     /// [identify](Self::identify) for `secs` seconds, sent as whole milliseconds (the firmware has no float numbers).
@@ -436,7 +427,7 @@ impl Meter<'_> {
     }
 
     pub async fn set_window(&self, window: Second) -> Result<()> {
-        write("PowerMeter::window", self.c.meter().write_window(window)).await
+        write_plain("PowerMeter::window", self.c.meter().write_window(window)).await
     }
 
     pub async fn deadband(&self) -> Result<MeterDeadband> {
@@ -444,7 +435,7 @@ impl Meter<'_> {
     }
 
     pub async fn set_deadband(&self, deadband: MeterDeadband) -> Result<()> {
-        write(
+        write_plain(
             "PowerMeter::deadband",
             self.c.meter().write_deadband(deadband),
         )
@@ -504,7 +495,7 @@ mod samples_tests {
     #[test]
     fn refused_samples_are_unimplemented() {
         let refused = granted(vec![ObserveRefused {
-            index: UNib32(0),
+            index: ww_si::Index::new(UNib32(0)),
             reason: ObserveRefusal::ModeNotSupported,
         }]);
         assert!(matches!(
@@ -535,7 +526,7 @@ impl Plug<'_> {
 
     /// How the firmware drives VBUS; the firmware keeps the limits.
     pub async fn set_vbus_mode(&self, mode: VbusMode) -> Result<()> {
-        write("Plug::vbus_mode", self.c.plug().write_vbus_mode(mode)).await
+        write_plain("Plug::vbus_mode", self.c.plug().write_vbus_mode(mode)).await
     }
 
     /// VBUS off for `off`, then back to the mode; with `release_sbu` SBU goes Hi-Z first. Answered when VBUS is
@@ -547,7 +538,7 @@ impl Plug<'_> {
             .plug()
             .vbus_cycle(off, release_sbu)
             .with_timeout(timeout);
-        call::<_, PowerErrorOwned>("Plug::vbus_cycle", p).await
+        call::<_, PowerError>("Plug::vbus_cycle", p).await
     }
 
     pub async fn data(&self) -> Result<DataPath> {
@@ -555,7 +546,7 @@ impl Plug<'_> {
     }
 
     pub async fn set_data(&self, data: DataPath) -> Result<()> {
-        write("Plug::data", self.c.plug().write_data(data)).await
+        write_plain("Plug::data", self.c.plug().write_data(data)).await
     }
 
     pub async fn orientation(&self) -> Result<Orientation> {
@@ -586,7 +577,7 @@ impl Plug<'_> {
     /// Starts, changes or stops the PD source; build one with [`crate::pd::source`]. While it runs the firmware
     /// refuses `vbus_mode` and `vbus_cycle`.
     pub async fn set_pd_source(&self, source: donguru_api::PdSource) -> Result<()> {
-        write("PlugPd::source", self.c.plug().pd().write_source(source)).await
+        write_plain("PlugPd::source", self.c.plug().pd().write_source(source)).await
     }
 
     /// Where the PD source stands: attach, contract, a sink without PD.
@@ -627,7 +618,7 @@ impl Header<'_> {
     }
 
     pub async fn set_vbus_sw_mode(&self, mode: VbusMode) -> Result<()> {
-        write(
+        write_plain(
             "Header::vbus_sw_mode",
             self.c.header().write_vbus_sw_mode(mode),
         )
@@ -675,12 +666,12 @@ impl Sbu<'_> {
     }
 
     pub async fn set_pullups(&self, enabled: bool) -> Result<()> {
-        write("Sbu::pullups", self.c.sbu().write_pullups(enabled)).await
+        write_plain("Sbu::pullups", self.c.sbu().write_pullups(enabled)).await
     }
 
     /// Plus only: plug SBU to hub port 4.
     pub async fn route_usb(&self, enabled: bool) -> Result<()> {
-        call::<_, SbuErrorOwned>("Sbu::route_usb", self.c.sbu().route_usb(enabled)).await
+        call_plain("Sbu::route_usb", self.c.sbu().route_usb(enabled)).await
     }
 
     pub async fn observe(&self, cfg: SbuObserve) -> Result<Observer<SbuUpdate>> {
@@ -714,7 +705,7 @@ impl<'a> Inputs<'a> {
     }
 
     pub async fn set_button_action(&self, action: ButtonAction) -> Result<()> {
-        write(
+        write_plain(
             "Inputs::button_action",
             self.c.inputs().write_button_action(action),
         )
@@ -762,7 +753,7 @@ impl Swd<'_> {
     }
 
     pub async fn set_mode(&self, mode: SwdMode) -> Result<()> {
-        write("Swd::mode", self.c.swd().write_mode(mode)).await
+        write_plain("Swd::mode", self.c.swd().write_mode(mode)).await
     }
 
     pub async fn session(&self) -> Result<SwdSession> {
@@ -809,7 +800,7 @@ impl<'a> Uart<'a> {
 
     /// Sets the line up, answers what was set: the baud rate the divider settled on, the idle time, the IO level.
     pub async fn configure(&self, config: ww_uart::UartConfig) -> Result<ww_uart::UartConfig> {
-        call::<_, ww_uart::UartErrorOwned>("Uart::configure", self.raw().configure(config)).await
+        call_plain("Uart::configure", self.raw().configure(config)).await
     }
 
     /// The generated client of this UART: configure, tx sink, rx and monitor streams, break.
@@ -831,14 +822,12 @@ impl<'a> I2c<'a> {
     }
 
     pub async fn configure(&self, config: ww_i2c::I2cConfig) -> Result<ww_i2c::I2cConfig> {
-        call::<_, ww_i2c::I2cErrorOwned>("I2c::i2c_configure", self.raw().i2c_configure(config))
-            .await
+        call::<_, ww_i2c::I2cError>("I2c::i2c_configure", self.raw().i2c_configure(config)).await
     }
 
     /// Addresses that acknowledged.
-    pub async fn scan(&self) -> Result<Vec<u8>> {
-        let found =
-            call::<_, ww_i2c::I2cErrorOwned>("I2c::i2c_scan", self.raw().i2c_scan()).await?;
+    pub async fn scan(&self) -> Result<Vec<ww_i2c::I2cAddress>> {
+        let found = call::<_, ww_i2c::I2cError>("I2c::i2c_scan", self.raw().i2c_scan()).await?;
         Ok(found.into_inner())
     }
 
@@ -883,7 +872,7 @@ impl<'a> Gpio<'a> {
         initial: Option<ww_gpio::Level>,
     ) -> Result<()> {
         let p = self.raw().pin(pin).set_mode(mode, initial);
-        call::<_, ww_gpio::GpioErrorOwned>("Pin::set_mode", p).await
+        call::<_, ww_gpio::GpioError>("Pin::set_mode", p).await
     }
 
     /// The generated client of this bank: pins, events, port reads and writes.
@@ -903,7 +892,8 @@ impl<'a> Adc<'a> {
     }
 
     pub async fn read(&self, channel: u8) -> Result<ww_adc::Reading> {
-        call::<_, ww_adc::AdcErrorOwned>("Adc::read", self.c.adc().read(channel)).await
+        let channel = ww_si::Index::new(channel);
+        call::<_, ww_adc::AdcError>("Adc::read", self.c.adc().read(channel)).await
     }
 
     pub fn raw(&self) -> generated::ww_adc_adc::WwAdcAdcClient<'a> {
@@ -926,16 +916,15 @@ impl Debug<'_> {
         mode: PinMode,
         level: Option<ww_gpio::Level>,
     ) -> Result<PinState> {
-        call::<_, DebugErrorOwned>("Bringup::pin_set", self.c.debug().pin_set(pin, mode, level))
-            .await
+        call::<_, DebugError>("Bringup::pin_set", self.c.debug().pin_set(pin, mode, level)).await
     }
 
     pub async fn pin_get(&self, pin: McuPin) -> Result<PinState> {
-        call::<_, DebugErrorOwned>("Bringup::pin_get", self.c.debug().pin_get(pin)).await
+        call::<_, DebugError>("Bringup::pin_get", self.c.debug().pin_get(pin)).await
     }
 
     pub async fn pin_af(&self, pin: McuPin, af: u8) -> Result<PinState> {
-        call::<_, DebugErrorOwned>("Bringup::pin_af", self.c.debug().pin_af(pin, af)).await
+        call::<_, DebugError>("Bringup::pin_af", self.c.debug().pin_af(pin, af)).await
     }
 
     pub async fn pins(&self) -> Result<PinDumpOwned> {
@@ -947,7 +936,7 @@ impl Debug<'_> {
     }
 
     pub async fn hub_read(&self, reg: u8, len: u8) -> Result<Vec<u8>> {
-        let data = call::<_, DebugErrorOwned>(
+        let data = call::<_, DebugError>(
             "Bringup::hub_read",
             self.c.debug().hub_read(reg, ww_si::Bytes::new(len)),
         )
@@ -958,7 +947,7 @@ impl Debug<'_> {
     pub async fn hub_write(&self, reg: u8, data: &[u8]) -> Result<()> {
         let data = MaxLen::new(data.to_vec())
             .map_err(|_| Error::Link(format!("hub write of {} bytes, at most 32", data.len())))?;
-        call::<_, DebugErrorOwned>("Bringup::hub_write", self.c.debug().hub_write(reg, data)).await
+        call::<_, DebugError>("Bringup::hub_write", self.c.debug().hub_write(reg, data)).await
     }
 
     pub async fn ucpd(&self, port: UcpdPort) -> Result<UcpdState> {
@@ -966,7 +955,7 @@ impl Debug<'_> {
     }
 
     pub async fn ucpd_role(&self, port: UcpdPort, role: CcRole) -> Result<UcpdState> {
-        call::<_, DebugErrorOwned>("Bringup::ucpd_role", self.c.debug().ucpd_role(port, role)).await
+        call::<_, DebugError>("Bringup::ucpd_role", self.c.debug().ucpd_role(port, role)).await
     }
 
     pub async fn led_set(&self, led: Led, mode: LedMode) -> Result<()> {
@@ -976,9 +965,8 @@ impl Debug<'_> {
     /// 32-bit words of peripheral space: word aligned, 1..=32, inside a block that holds a peripheral
     /// ([crate::debug::check_reg_read] decides it, as the firmware does).
     pub async fn reg_read(&self, addr: u32, words: u8) -> Result<Vec<u32>> {
-        let data =
-            call::<_, DebugErrorOwned>("Bringup::reg_read", self.c.debug().reg_read(addr, words))
-                .await?;
+        let data = call::<_, DebugError>("Bringup::reg_read", self.c.debug().reg_read(addr, words))
+            .await?;
         Ok(data.into_inner())
     }
 }

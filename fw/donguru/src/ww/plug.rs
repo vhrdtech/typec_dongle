@@ -15,7 +15,7 @@ impl ServerState {
     pub(super) fn get_plug_vbus(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::VbusState, ()> {
+    ) -> GetResult<donguru_api::VbusState, CommonError<'_>> {
         Value(power::state(Which::Plug))
     }
 
@@ -52,16 +52,16 @@ impl ServerState {
         cx: &mut Context<'_, impl EventOut>,
         off: ww_si::Second,
         release_sbu: bool,
-    ) -> RpcResult<Result<donguru_api::VbusState, PowerError<'_>>> {
+    ) -> RpcResult<Result<donguru_api::VbusState, wire_weaver::Error<'_, PowerError>>> {
         if pd::holds_vbus() {
-            return Ready(Err(PowerError::Common(PD_HOLDS_VBUS)));
+            return Ready(Err(wire_weaver::Error::Common(PD_HOLDS_VBUS)));
         }
         match power::start_cycle(&off, release_sbu, cx.reply_to()).await {
             Ok(()) => {
                 self.mark_changed_plug_vbus();
                 Deferred
             }
-            Err(e) => Ready(Err(PowerError::Common(match e {
+            Err(e) => Ready(Err(wire_weaver::Error::Common(match e {
                 CycleError::WrongState => CommonError::WrongState {
                     reason: MaxLen::new_unchecked("vbus_mode is ForceOff"),
                 },
@@ -69,7 +69,7 @@ impl ServerState {
                     reason: MaxLen::new_unchecked("a cycle is running"),
                 },
                 CycleError::Invalid => CommonError::InvalidArgument {
-                    arg: 0,
+                    arg: ww_si::Index::new(0),
                     reason: MaxLen::new_unchecked("off: 0..=60 s"),
                 },
             }))),
@@ -97,7 +97,7 @@ impl ServerState {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         orientation: donguru_api::Orientation,
-    ) -> SetResult<()> {
+    ) -> SetResult<CommonError<'_>> {
         // only SWD uses it so far (FW-15): from its next DAP_Connect, not for a session already connected
         info!("plug orientation set");
         swd::set_orientation(orientation);
@@ -108,14 +108,14 @@ impl ServerState {
     pub(super) fn get_plug_orientation(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::Orientation, ()> {
+    ) -> GetResult<donguru_api::Orientation, CommonError<'_>> {
         Value(swd::orientation())
     }
 
     pub(super) fn get_plug_cc(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::CcState, ()> {
+    ) -> GetResult<donguru_api::CcState, CommonError<'_>> {
         Unimplemented.into()
     }
 }
@@ -139,7 +139,7 @@ impl ServerState {
                 by: MaxLen::new_unchecked(holder.name()),
             }),
             Err(pd::SetError::Invalid(e)) => SetError(CommonError::InvalidArgument {
-                arg: 0,
+                arg: ww_si::Index::new(0),
                 reason: MaxLen::new_unchecked(match e {
                     OfferError::Current => "max_current: 100 mA..=3 A",
                     OfferError::SenderResponse => "sender_response: 24 ms..=1 s",
@@ -159,7 +159,7 @@ impl ServerState {
     pub(super) fn get_plug_pd_state(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::PdState, ()> {
+    ) -> GetResult<donguru_api::PdState, CommonError<'_>> {
         Value(pd::phase().to_api())
     }
 
@@ -213,7 +213,7 @@ const PD_RECORDS_PER_TURN: usize = 8;
 pub(super) fn mode_error(e: ModeError) -> CommonError<'static> {
     match e {
         ModeError::Invalid => CommonError::InvalidArgument {
-            arg: 0,
+            arg: ww_si::Index::new(0),
             reason: MaxLen::new_unchecked("limits must be positive mV / mA / mW, known mode"),
         },
         ModeError::OverVoltage { .. } => CommonError::Refused {
@@ -223,7 +223,7 @@ pub(super) fn mode_error(e: ModeError) -> CommonError<'static> {
             reason: MaxLen::new_unchecked("no VBUS measurement yet"),
         },
         ModeError::CurrentNotMeasured => CommonError::InvalidArgument {
-            arg: 0,
+            arg: ww_si::Index::new(0),
             reason: MaxLen::new_unchecked("Auto: this switch's current isn't measured"),
         },
     }
@@ -232,11 +232,12 @@ pub(super) fn mode_error(e: ModeError) -> CommonError<'static> {
 /// The answer of a deferred `plug.vbus_cycle`.
 pub(super) fn cycle_result(
     result: Result<donguru_api::VbusState, ModeError>,
-) -> Result<donguru_api::VbusState, PowerError<'static>> {
+) -> Result<donguru_api::VbusState, wire_weaver::Error<'static, PowerError>> {
     result.map_err(|e| match e {
         ModeError::OverVoltage { measured_mv } => PowerError::OverVoltage {
             measured: donguru_board::power::volt(measured_mv),
-        },
-        e => PowerError::Common(mode_error(e)),
+        }
+        .into(),
+        e => wire_weaver::Error::Common(mode_error(e)),
     })
 }

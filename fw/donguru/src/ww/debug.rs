@@ -33,10 +33,10 @@ impl DebugState {
 }
 
 /// The API error of a refused change.
-fn denied(d: Denied) -> DebugError<'static> {
-    DebugError::Common(match d {
+fn denied(d: Denied) -> wire_weaver::Error<'static, DebugError> {
+    wire_weaver::Error::Common(match d {
         Denied::Invalid { arg, reason } => CommonError::InvalidArgument {
-            arg,
+            arg: ww_si::Index::new(arg),
             reason: MaxLen::new_unchecked(reason),
         },
         Denied::Refused(reason) => CommonError::Refused {
@@ -48,16 +48,16 @@ fn denied(d: Denied) -> DebugError<'static> {
     })
 }
 
-fn smbus_error(e: hub::SmbusError) -> DebugError<'static> {
+fn smbus_error(e: hub::SmbusError) -> wire_weaver::Error<'static, DebugError> {
     match e {
-        hub::SmbusError::Nack => DebugError::Nack,
-        hub::SmbusError::Timeout => DebugError::Common(CommonError::Timeout),
+        hub::SmbusError::Nack => DebugError::Nack.into(),
+        hub::SmbusError::Timeout => wire_weaver::Error::Common(CommonError::Timeout),
         // arbitration or a bus error: the hub or the watchdog's probe was on the bus
-        hub::SmbusError::Bus => DebugError::Common(CommonError::Busy),
+        hub::SmbusError::Bus => wire_weaver::Error::Common(CommonError::Busy),
     }
 }
 
-fn invalid(arg: u8, reason: &'static str) -> DebugError<'static> {
+fn invalid(arg: u8, reason: &'static str) -> wire_weaver::Error<'static, DebugError> {
     denied(Denied::Invalid { arg, reason })
 }
 
@@ -70,7 +70,7 @@ impl ServerState {
         pin: donguru_api::McuPin,
         mode: donguru_api::PinMode,
         level: Option<ww_gpio::Level>,
-    ) -> RpcResult<Result<PinState, DebugError<'_>>> {
+    ) -> RpcResult<Result<PinState, wire_weaver::Error<'_, DebugError>>> {
         if !cfg!(feature = "debug-api") {
             return RpcResult::Unimplemented;
         }
@@ -89,7 +89,7 @@ impl ServerState {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         pin: donguru_api::McuPin,
-    ) -> RpcResult<Result<PinState, DebugError<'_>>> {
+    ) -> RpcResult<Result<PinState, wire_weaver::Error<'_, DebugError>>> {
         if !cfg!(feature = "debug-api") {
             return RpcResult::Unimplemented;
         }
@@ -101,7 +101,7 @@ impl ServerState {
         _cx: &mut Context<'_, impl EventOut>,
         pin: donguru_api::McuPin,
         af: u8,
-    ) -> RpcResult<Result<PinState, DebugError<'_>>> {
+    ) -> RpcResult<Result<PinState, wire_weaver::Error<'_, DebugError>>> {
         if !cfg!(feature = "debug-api") {
             return RpcResult::Unimplemented;
         }
@@ -149,7 +149,7 @@ impl ServerState {
         _cx: &mut Context<'_, impl EventOut>,
         reg: u8,
         len: ww_si::Bytes<u8>,
-    ) -> RpcResult<Result<MaxLen<RefVec<'_, u8>, 32>, DebugError<'_>>> {
+    ) -> RpcResult<Result<MaxLen<RefVec<'_, u8>, 32>, wire_weaver::Error<'_, DebugError>>> {
         if !cfg!(feature = "debug-api") {
             return RpcResult::Unimplemented;
         }
@@ -181,7 +181,7 @@ impl ServerState {
         _cx: &mut Context<'_, impl EventOut>,
         reg: u8,
         data: MaxLen<RefVec<'_, u8>, 32>,
-    ) -> RpcResult<Result<(), DebugError<'_>>> {
+    ) -> RpcResult<Result<(), wire_weaver::Error<'_, DebugError>>> {
         if !cfg!(feature = "debug-api") {
             return RpcResult::Unimplemented;
         }
@@ -223,7 +223,7 @@ impl ServerState {
         _cx: &mut Context<'_, impl EventOut>,
         port: donguru_api::UcpdPort,
         role: donguru_api::CcRole,
-    ) -> RpcResult<Result<UcpdState, DebugError<'_>>> {
+    ) -> RpcResult<Result<UcpdState, wire_weaver::Error<'_, DebugError>>> {
         if !cfg!(feature = "debug-api") {
             return RpcResult::Unimplemented;
         }
@@ -275,7 +275,7 @@ impl ServerState {
         _cx: &mut Context<'_, impl EventOut>,
         addr: u32,
         words: u8,
-    ) -> RpcResult<Result<MaxLen<RefVec<'_, u32>, 32>, DebugError<'_>>> {
+    ) -> RpcResult<Result<MaxLen<RefVec<'_, u32>, 32>, wire_weaver::Error<'_, DebugError>>> {
         if !cfg!(feature = "debug-api") {
             return RpcResult::Unimplemented;
         }
@@ -313,8 +313,7 @@ impl ServerState {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         capture: donguru_api::ReplayCapture,
-    ) -> RpcResult<Result<ww_si::Bytes<u32>, donguru_api::DebugError<'_>>> {
-        use donguru_api::DebugError;
+    ) -> RpcResult<Result<ww_si::Bytes<u32>, wire_weaver::Error<'_, donguru_api::DebugError>>> {
         if !cfg!(feature = "debug-api") {
             return RpcResult::Unimplemented;
         }
@@ -322,10 +321,12 @@ impl ServerState {
         {
             let Some(data) = crate::uart::capture(capture) else {
                 // a capture of a newer API
-                return Ready(Err(DebugError::Common(CommonError::InvalidArgument {
-                    arg: 0,
-                    reason: MaxLen::new_unchecked("unknown capture"),
-                })));
+                return Ready(Err(wire_weaver::Error::Common(
+                    CommonError::InvalidArgument {
+                        arg: ww_si::Index::new(0),
+                        reason: MaxLen::new_unchecked("unknown capture"),
+                    },
+                )));
             };
             crate::uart::replay(data);
             Ready(Ok(ww_si::Fixed::new(data.len() as u32)))
@@ -333,7 +334,7 @@ impl ServerState {
         #[cfg(not(feature = "uart-replay"))]
         {
             let _ = capture;
-            Ready(Err(DebugError::Common(CommonError::Unsupported)))
+            Ready(Err(wire_weaver::Error::Common(CommonError::Unsupported)))
         }
     }
 }

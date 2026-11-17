@@ -120,7 +120,7 @@ async fn main() -> Result<()> {
         mode: LineMode::Asynchronous,
         prevent_back_feed: false,
         io_level: None,
-        idle_chars: ww_uart::IDLE_CHARS_DEFAULT,
+        idle_chars: ww_si::Fixed::new(ww_uart::IDLE_CHARS_DEFAULT),
     };
     let got = dongle.uart(Side::Header).configure(asked).await?;
     let baud = got.baud_rate.to_f64();

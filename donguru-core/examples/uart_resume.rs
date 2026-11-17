@@ -222,7 +222,7 @@ async fn run(args: &Args) -> Result<()> {
                 mode: ww_uart::Mode::Asynchronous,
                 prevent_back_feed: false,
                 io_level: None,
-                idle_chars: ww_uart::IDLE_CHARS_DEFAULT,
+                idle_chars: ww_si::Fixed::new(ww_uart::IDLE_CHARS_DEFAULT),
             })
             .await
             .context("configuring uart[1]")?;

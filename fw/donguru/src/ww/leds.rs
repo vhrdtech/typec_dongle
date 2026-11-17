@@ -7,8 +7,8 @@ use crate::led::{self, DEFAULT_PEAK, Led};
 use bedrock_led::indication::{Identify, PEAKS, Peaks};
 use cnt::cnt;
 use embassy_time::Instant;
+use wire_weaver::CommonError;
 use wire_weaver::prelude::*;
-use wire_weaver::ww_error::CommonError;
 use ww_indication::{Brightness, Mode};
 use ww_si::ww_numeric::NumericValue;
 use ww_si::{Prefix, Second};
@@ -47,7 +47,7 @@ impl ServerState {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: ww_indication::Mode,
-    ) -> SetResult<()> {
+    ) -> SetResult<CommonError<'_>> {
         let (power, status) = match value {
             Mode::AllOff => (false, false),
             Mode::OnlyEssential => (true, false),
@@ -67,7 +67,7 @@ impl ServerState {
     pub(super) fn get_leds_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<ww_indication::Mode, ()> {
+    ) -> GetResult<ww_indication::Mode, CommonError<'_>> {
         Value(self.leds.mode)
     }
 
@@ -75,7 +75,7 @@ impl ServerState {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: ww_indication::Brightness,
-    ) -> SetResult<()> {
+    ) -> SetResult<CommonError<'_>> {
         let peak = LED_PEAKS.peak(value).unwrap_or_else(|| {
             cnt!(leds_brightness_unknown: u32);
             DEFAULT_PEAK
@@ -88,7 +88,7 @@ impl ServerState {
     pub(super) fn get_leds_brightness(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<ww_indication::Brightness, ()> {
+    ) -> GetResult<ww_indication::Brightness, CommonError<'_>> {
         Value(self.leds.brightness)
     }
 
@@ -97,14 +97,14 @@ impl ServerState {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         duration: ww_si::Second,
-    ) -> RpcResult<Result<(), wire_weaver::ww_error::CommonError<'_>>> {
+    ) -> RpcResult<Result<(), wire_weaver::CommonError<'_>>> {
         let now = Instant::now();
         if self.leds.identify.busy(now) {
             return Ready(Err(CommonError::Busy));
         }
         let Some(ms) = to_ms(&duration) else {
             return Ready(Err(CommonError::InvalidArgument {
-                arg: 0,
+                arg: ww_si::Index::new(0),
                 reason: MaxLen::new_unchecked("not an integer number of s, ms or us"),
             }));
         };

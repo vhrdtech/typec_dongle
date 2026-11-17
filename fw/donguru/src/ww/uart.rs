@@ -8,7 +8,7 @@ use embassy_time::Instant;
 use static_cell::StaticCell;
 use wire_weaver::prelude::*;
 use wire_weaver::shrink_wrap::Error as SwError;
-use ww_client_server::stream::{StreamCodec, StreamCodecs, StreamStatus};
+use ww_client_server::stream::{StreamCodec, StreamStatus};
 #[cfg(feature = "header-uart")]
 use ww_stream::codec::Compressed;
 use ww_stream::codec::CountedState;
@@ -71,27 +71,23 @@ impl CountedState for RxState {
         }
     }
 
-    fn open_offered(
-        &mut self,
-        session: u32,
-        codecs: Option<&StreamCodecs>,
-    ) -> (Opened, Option<StreamCodec>) {
+    fn open_session(&mut self, session: u32, raw: bool) -> (Opened, Option<StreamCodec>) {
         match self {
-            RxState::Unopened(s) => s.open_offered(session, codecs),
+            RxState::Unopened(s) => s.open_session(session, raw),
             #[cfg(feature = "header-uart")]
-            RxState::Header(s) => s.open_offered(session, codecs),
+            RxState::Header(s) => s.open_session(session, raw),
         }
     }
 
-    fn resume_offered(
+    fn resume_session(
         &mut self,
         cursor: StreamCursor,
-        codecs: Option<&StreamCodecs>,
+        raw: bool,
     ) -> Result<(Opened, Option<StreamCodec>), ResumeError<()>> {
         match self {
-            RxState::Unopened(s) => s.resume_offered(cursor, codecs),
+            RxState::Unopened(s) => s.resume_session(cursor, raw),
             #[cfg(feature = "header-uart")]
-            RxState::Header(s) => s.resume_offered(cursor, codecs),
+            RxState::Header(s) => s.resume_session(cursor, raw),
         }
     }
 
@@ -158,9 +154,9 @@ impl ServerState {
     pub(super) fn uart_rx(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        index_chain: [UNib32; 1],
+        index_chain: [ww_client_server::ResourceIndex; 1],
     ) -> RpcResult<()> {
-        if index_chain[0].0 as usize == HEADER {
+        if index_chain[0].get().0 as usize == HEADER {
             Ready(())
         } else {
             RpcResult::Unimplemented
@@ -170,28 +166,31 @@ impl ServerState {
     pub(super) fn close_uart_rx(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
     ) {
     }
 
-    pub(super) fn stream_uart_rx(&mut self, index_chain: [UNib32; 1]) -> &mut RxState {
+    pub(super) fn stream_uart_rx(
+        &mut self,
+        index_chain: [ww_client_server::ResourceIndex; 1],
+    ) -> &mut RxState {
         // the generated code checked the index against `valid_indices_root_uart`
-        &mut self.uart_rx[(index_chain[0].0 as usize).min(COUNT - 1)]
+        &mut self.uart_rx[(index_chain[0].get().0 as usize).min(COUNT - 1)]
     }
 
     pub(super) fn credit_uart_tx(
         &mut self,
-        index_chain: [UNib32; 1],
+        index_chain: [ww_client_server::ResourceIndex; 1],
     ) -> &mut ww_stream::sink::SinkCredit {
         // the generated code checked the index against `valid_indices_root_uart`
-        let i = (index_chain[0].0 as usize).min(COUNT - 1);
+        let i = (index_chain[0].get().0 as usize).min(COUNT - 1);
         &mut self.uart_tx_credit[i]
     }
 
     pub(super) fn sideband_uart_tx(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
         _sideband: ww_client_server::StreamSideband,
     ) -> Option<ww_client_server::StreamSideband> {
         // TODO: None sends no reply
@@ -201,11 +200,11 @@ impl ServerState {
     pub(super) fn write_uart_tx(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        index_chain: [UNib32; 1],
+        index_chain: [ww_client_server::ResourceIndex; 1],
         data: &wire_weaver::shrink_wrap::tail_bytes::TailBytes<'_>,
     ) {
         // the other index has no credit, so nothing arrives for it
-        if index_chain[0].0 as usize == HEADER && uart::tx_write(data.0) < data.0.len() {
+        if index_chain[0].get().0 as usize == HEADER && uart::tx_write(data.0) < data.0.len() {
             // the host kept to its credit, the pipe holds all of it
             cnt::cnt!(uart_tx_overruns: u32, warn);
         }
@@ -214,9 +213,9 @@ impl ServerState {
     pub(super) fn uart_capabilities(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        index_chain: [UNib32; 1],
+        index_chain: [ww_client_server::ResourceIndex; 1],
     ) -> RpcResult<ww_uart::Capabilities<'_>> {
-        if index_chain[0].0 as usize != HEADER {
+        if index_chain[0].get().0 as usize != HEADER {
             return Unimplemented.into();
         }
         Ready(ww_uart::Capabilities {
@@ -232,21 +231,21 @@ impl ServerState {
             high_z_mode: false,
             test_mode: false,
             back_feed_detector: false,
-            rx_buffer: uart::RX_BUF as u32,
-            tx_buffer: uart::TX_BUF as u32,
+            rx_buffer: ww_si::Bytes::new(uart::RX_BUF as u32),
+            tx_buffer: ww_si::Bytes::new(uart::TX_BUF as u32),
         })
     }
 
     pub(super) fn uart_configure(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        index_chain: [UNib32; 1],
+        index_chain: [ww_client_server::ResourceIndex; 1],
         config: ww_uart::UartConfig,
-    ) -> RpcResult<Result<ww_uart::UartConfig, ww_uart::UartError<'_>>> {
-        if index_chain[0].0 as usize != HEADER {
+    ) -> RpcResult<Result<ww_uart::UartConfig, CommonError<'_>>> {
+        if index_chain[0].get().0 as usize != HEADER {
             return Unimplemented.into();
         }
-        let unsupported = Ready(Err(ww_uart::UartError::Common(CommonError::Unsupported)));
+        let unsupported = Ready(Err(CommonError::Unsupported));
         let Some((line, rate)) = line_config(&config) else {
             return unsupported;
         };
@@ -255,7 +254,7 @@ impl ServerState {
             baud_rate: ww_uart::Baud::base(rate),
             io_level: Some(IO_LEVEL),
             // the receiver's IDLE flag: one character time
-            idle_chars: 1,
+            idle_chars: ww_si::Fixed::new(1),
             ..config
         }))
     }
@@ -263,27 +262,27 @@ impl ServerState {
     pub(super) fn uart_set_pin_level(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
         _pin: ww_uart::Pin,
         _is_high: bool,
-    ) -> RpcResult<Result<(), ww_uart::UartError<'_>>> {
+    ) -> RpcResult<Result<(), CommonError<'_>>> {
         Unimplemented.into()
     }
 
     pub(super) fn uart_send_break(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
         _duration: ww_si::Second,
-    ) -> RpcResult<Result<(), ww_uart::UartError<'_>>> {
+    ) -> RpcResult<Result<(), CommonError<'_>>> {
         Unimplemented.into()
     }
 
     pub(super) fn uart_tx_pending(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
-    ) -> RpcResult<u32> {
+        _index_chain: [ww_client_server::ResourceIndex; 1],
+    ) -> RpcResult<ww_si::Bytes<u32>> {
         Unimplemented.into()
     }
 
@@ -291,22 +290,22 @@ impl ServerState {
     pub(super) fn uart_monitor(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
         _config: ww_uart::MonitorConfig,
-    ) -> RpcResult<Result<ww_uart::MonitorConfig, ww_uart::UartError<'_>>> {
+    ) -> RpcResult<Result<ww_uart::MonitorConfig, CommonError<'_>>> {
         Unimplemented.into()
     }
 
     pub(super) fn close_uart_monitor(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
     ) {
     }
 
     pub(super) fn stream_uart_monitor(
         &mut self,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
     ) -> &mut ww_stream::tx::Counted {
         &mut self.unopened
     }

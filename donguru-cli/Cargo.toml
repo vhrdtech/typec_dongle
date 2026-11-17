@@ -27,10 +27,10 @@ indicatif = "0.18.6"
 # `device select` persists the device key in ./donguru.toml (CLI-7)
 toml = "0.9"
 # rendering `device reset-cause` (CLI-19): the types `Device::last_reset` returns
-ww_firmware_info = { git = "https://github.com/vhrdtech/wire_weaver", features = ["std"] }
+ww_firmware_info = { git = "https://github.com/vhrdtech/ww_stdlib", features = ["std"] }
 # `dg settings set uart_plug` / `meter_deadband`: the baud rate, framing and quantity constructors (CLI-47)
-ww_si = { git = "https://github.com/vhrdtech/wire_weaver", features = ["std", "time", "electrical"] }
-ww_uart = { git = "https://github.com/vhrdtech/wire_weaver", features = ["std"] }
+ww_si = { git = "https://github.com/vhrdtech/ww_base", features = ["std", "time", "electrical"] }
+ww_uart = { git = "https://github.com/vhrdtech/ww_stdlib", features = ["std"] }
 # runs the WireWeaver client's event loop; "signal" for Ctrl-C in `power watch`
 tokio = { version = "1", features = ["rt-multi-thread", "signal"] }
 # `dg pd log`'s JSON lines and screen decode (pd_bench LOG-1), the same types `donguru-core::pd` builds

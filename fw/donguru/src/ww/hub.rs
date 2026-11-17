@@ -9,7 +9,7 @@ impl ServerState {
     pub(super) fn get_hub_state(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::HubState, ()> {
+    ) -> GetResult<donguru_api::HubState, CommonError<'_>> {
         Unimplemented.into()
     }
 

@@ -9,7 +9,7 @@
 use donguru_api::{
     CcPolarity, PdContract, PdEvent, PdRecord, PdSop, PdSource, PdState, PdTxOutcome, VbusMode,
 };
-use wire_weaver::prelude::{MaxLen, RefVec};
+use shrink_wrap::prelude::{MaxLen, RefVec};
 use ww_si::ww_numeric::NumericValue;
 use ww_si::{Ampere, Prefix, Second, Watt};
 

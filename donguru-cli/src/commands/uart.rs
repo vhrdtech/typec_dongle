@@ -72,7 +72,7 @@ fn configure(ctx: &Context, args: Configure) -> anyhow::Result<ExitCode> {
         mode: Mode::Asynchronous,
         prevent_back_feed: false,
         io_level: None,
-        idle_chars: ww_uart::IDLE_CHARS_DEFAULT,
+        idle_chars: ww_si::Fixed::new(ww_uart::IDLE_CHARS_DEFAULT),
     };
     let side = Side::from(args.port);
     let got = super::with_dongle(ctx, async |dongle| dongle.uart(side).configure(asked).await)?;
@@ -125,7 +125,7 @@ mod tests {
             mode: Mode::Asynchronous,
             prevent_back_feed: false,
             io_level: None,
-            idle_chars: 1,
+            idle_chars: ww_si::Fixed::new(1),
         };
         assert!((error_pct(6_000_000, &got) - -3.03).abs() < 0.01);
         got.baud_rate = Baud::new(Prefix::Unit, 921_739u32);
@@ -145,7 +145,7 @@ mod tests {
             mode: Mode::Asynchronous,
             prevent_back_feed: false,
             io_level: None,
-            idle_chars: ww_uart::IDLE_CHARS_DEFAULT,
+            idle_chars: ww_si::Fixed::new(ww_uart::IDLE_CHARS_DEFAULT),
         };
         let got = dongle
             .uart(Side::Header)

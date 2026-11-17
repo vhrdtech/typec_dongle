@@ -25,34 +25,40 @@ serde_json = "1"
 inherits = "release"
 incremental = true
 
-# wire_weaver and pd_bench are git dependencies (members' manifests), pinned by Cargo.lock. exact_units (ww_si's units)
-# takes shrink_wrap from the same WireWeaver git URL, so there is one shrink_wrap without a patch. Local development
-# against the sibling checkouts: uncomment these blocks (cargo update -p wire_weaver afterwards). stm32_dfu_host is the
-# package behind the `ww_stm32_dfu` alias in donguru-core.
+# WireWeaver comes by git from four repositories (members' manifests), pinned by Cargo.lock: the framework from
+# wire_weaver, the base types (ww_si, ww_date_time, ...) from ww_base, the standard APIs (ww_adc, ww_uart, ...) from
+# ww_stdlib, shrink_wrap from its own repository; exact_units (ww_si's units) takes shrink_wrap from that same URL, so
+# there is one shrink_wrap without a patch. pd_bench comes by git too. Local development against sibling checkouts:
+# put such blocks in an uncommitted .cargo/config.toml of the worktree (cargo update -p wire_weaver afterwards).
+# stm32_dfu_host is the package behind the `ww_stm32_dfu` alias in donguru-core.
 # [patch."https://github.com/vhrdtech/wire_weaver"]
-# shrink_wrap = { path = "../wire_weaver/shrink_wrap/shrink_wrap" }
 # wire_weaver = { path = "../wire_weaver/wire_weaver" }
 # wire_weaver_client = { path = "../wire_weaver/wire_weaver_client" }
 # wire_weaver_evolution = { path = "../wire_weaver/wire_weaver_evolution" }
 # stm32_dfu_host = { path = "../wire_weaver/stm32_dfu_host" }
-# ww_adc = { path = "../wire_weaver/ww_stdlib/ww_adc" }
-# ww_board_info = { path = "../wire_weaver/ww_stdlib/ww_board_info" }
-# ww_client_server = { path = "../wire_weaver/ww_stdlib/ww_client_server" }
-# ww_counters = { path = "../wire_weaver/ww_stdlib/ww_counters" }
-# ww_date_time = { path = "../wire_weaver/ww_stdlib/ww_date_time" }
+# ww_api = { path = "../wire_weaver/ww_api" }
+# ww_client_server = { path = "../wire_weaver/ww_client_server" }
 # ww_device = { path = "../wire_weaver/ww_device" }
-# ww_dfu = { path = "../wire_weaver/ww_stdlib/ww_dfu" }
-# ww_firmware_info = { path = "../wire_weaver/ww_stdlib/ww_firmware_info" }
-# ww_gpio = { path = "../wire_weaver/ww_stdlib/ww_gpio" }
-# ww_i2c = { path = "../wire_weaver/ww_stdlib/ww_i2c" }
-# ww_indication = { path = "../wire_weaver/ww_stdlib/ww_indication" }
-# ww_log = { path = "../wire_weaver/ww_stdlib/ww_log" }
-# ww_report = { path = "../wire_weaver/ww_report" }
-# ww_si = { path = "../wire_weaver/ww_stdlib/ww_si" }
 # ww_stream = { path = "../wire_weaver/ww_stream" }
-# ww_timebase = { path = "../wire_weaver/ww_stdlib/ww_timebase" }
-# ww_uart = { path = "../wire_weaver/ww_stdlib/ww_uart" }
-# ww_uid = { path = "../wire_weaver/ww_stdlib/ww_uid" }
-# ww_user_info = { path = "../wire_weaver/ww_stdlib/ww_user_info" }
+# ww_timebase = { path = "../wire_weaver/ww_timebase" }
+# [patch."https://github.com/vhrdtech/ww_base"]
+# ww_date_time = { path = "../ww_base/ww_date_time" }
+# ww_si = { path = "../ww_base/ww_si" }
+# [patch."https://github.com/vhrdtech/ww_stdlib"]
+# ww_adc = { path = "../ww_stdlib/ww_adc" }
+# ww_board_info = { path = "../ww_stdlib/ww_board_info" }
+# ww_counters = { path = "../ww_stdlib/ww_counters" }
+# ww_dfu = { path = "../ww_stdlib/ww_dfu" }
+# ww_firmware_info = { path = "../ww_stdlib/ww_firmware_info" }
+# ww_gpio = { path = "../ww_stdlib/ww_gpio" }
+# ww_i2c = { path = "../ww_stdlib/ww_i2c" }
+# ww_indication = { path = "../ww_stdlib/ww_indication" }
+# ww_log = { path = "../ww_stdlib/ww_log" }
+# ww_report = { path = "../ww_stdlib/ww_report" }
+# ww_uart = { path = "../ww_stdlib/ww_uart" }
+# ww_uid = { path = "../ww_stdlib/ww_uid" }
+# ww_user_info = { path = "../ww_stdlib/ww_user_info" }
+# [patch."https://github.com/romixlab/shrink_wrap"]
+# shrink_wrap = { path = "../shrink_wrap/shrink_wrap" }
 # [patch."ssh://git@github.com/romixlab/pd_bench"]
 # pd_log = { path = "../pd_bench/pd_log" }

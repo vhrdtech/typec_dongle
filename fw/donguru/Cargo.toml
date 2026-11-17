@@ -10,7 +10,7 @@ edition = "2024"
 defmt = "1.1"
 # defmt's global logger (API-10): every frame into device.log over WireWeaver, teed to the RTT channel "defmt" that
 # probe-rs / cnt run show as before (src/log.rs)
-ww_defmt_logger = { git = "https://github.com/vhrdtech/wire_weaver", features = ["rtt"] }
+ww_defmt_logger = { git = "https://github.com/vhrdtech/ww_stdlib", features = ["rtt"] }
 rtt-target = "0.6"
 cortex-m = { version = "0.7", features = ["critical-section-single-core"] }
 cortex-m-rt = "0.7"
@@ -50,7 +50,7 @@ donguru_dap = { path = "../../donguru_dap" }
 # board logic, no_std, unit-tested on the host: hub (U301) variant detection and per-variant config, VBUS modes and
 # the guard
 donguru_board = { path = "../../donguru_board", features = ["defmt"] }
-# WireWeaver: API crate in the repo root, served by src/ww.rs. wire_weaver from git
+# WireWeaver: API crate in the repo root, served by src/ww/. wire_weaver from git
 donguru_api = { path = "../../donguru_api", features = ["defmt"] }
 wire_weaver = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false, features = ["defmt"] }
 ww_client_server = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
@@ -61,21 +61,21 @@ ww_stream = { git = "https://github.com/vhrdtech/wire_weaver", default-features 
 # the encoder of `uart[1].rx`; ram: its hot functions run from SRAM, ~30 % fewer cycles than from flash (FW-42)
 ww_lz4 = { git = "https://github.com/vhrdtech/wire_weaver", features = ["ram"] }
 # stdlib traits the API implements (`donguru_api` depends on them too): types in the handler signatures
-ww_si = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false, features = ["time", "electrical", "mechanical", "thermal", "i32", "u32"] }
-ww_adc = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
-ww_board_info = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
-ww_counters = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
-ww_dfu = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false, features = ["defmt"] }
-ww_firmware_info = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false, features = ["build-id", "cortex-m", "defmt"] }
-ww_gpio = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
-ww_i2c = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
-ww_indication = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
-ww_log = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+ww_si = { git = "https://github.com/vhrdtech/ww_base", default-features = false, features = ["time", "electrical", "mechanical", "thermal", "i32", "u32"] }
+ww_adc = { git = "https://github.com/vhrdtech/ww_stdlib", default-features = false }
+ww_board_info = { git = "https://github.com/vhrdtech/ww_stdlib", default-features = false }
+ww_counters = { git = "https://github.com/vhrdtech/ww_stdlib", default-features = false }
+ww_dfu = { git = "https://github.com/vhrdtech/ww_stdlib", default-features = false, features = ["defmt"] }
+ww_firmware_info = { git = "https://github.com/vhrdtech/ww_stdlib", default-features = false, features = ["build-id", "cortex-m", "defmt"] }
+ww_gpio = { git = "https://github.com/vhrdtech/ww_stdlib", default-features = false }
+ww_i2c = { git = "https://github.com/vhrdtech/ww_stdlib", default-features = false }
+ww_indication = { git = "https://github.com/vhrdtech/ww_stdlib", default-features = false }
+ww_log = { git = "https://github.com/vhrdtech/ww_stdlib", default-features = false }
 ww_timebase = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
-ww_date_time = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
-ww_uart = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
-ww_uid = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
-ww_user_info = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
+ww_date_time = { git = "https://github.com/vhrdtech/ww_base", default-features = false }
+ww_uart = { git = "https://github.com/vhrdtech/ww_stdlib", default-features = false }
+ww_uid = { git = "https://github.com/vhrdtech/ww_stdlib", default-features = false }
+ww_user_info = { git = "https://github.com/vhrdtech/ww_stdlib", default-features = false }
 # the WireWeaver server on the USB function (src/ww/mod.rs): link state machine, framing, event loop
 ww_device = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false, features = ["embassy-time", "defmt"] }
 # device.settings and device.label kept in flash (API-19, src/settings.rs): the settings store, reading the flash
@@ -129,7 +129,7 @@ swd-spi = ["swd-host"]
 crash-loop-test = []
 
 [build-dependencies]
-ww_firmware_info = { git = "https://github.com/vhrdtech/wire_weaver", features = ["build"] } # FirmwareInfo facts (build.rs)
+ww_firmware_info = { git = "https://github.com/vhrdtech/ww_stdlib", features = ["build"] } # FirmwareInfo facts (build.rs)
 
 [dev-dependencies]
 # the examples' logger; the firmware has its own (src/log.rs)
@@ -189,21 +189,25 @@ overflow-checks = false
 # comes from the same tree, as embassy-stm32's path dependencies would otherwise clash with the crates.io ones. The
 # code uses main's API (CamelCase PAC enums, unified ADC driver, `usb::Driver::new` interrupt last). The fork's main
 # only moves forward (merges), so Cargo.lock's rev stays fetchable; `cargo update -p embassy-stm32` moves it.
-# wire_weaver and embedded_bedrock are git dependencies, pinned by Cargo.lock. bedrock_led and bedrock_sync take
-# WireWeaver from the same git URL (embedded_bedrock's workspace dependencies), so they and the firmware share one
-# wire_weaver, ww_indication, ww_timebase and shrink_wrap (two copies of a crate are two types: E0308 in ww/leds.rs and
-# ww/clock.rs otherwise) without a patch. Local development against the sibling checkouts: uncomment these two blocks
-# (cargo update -p wire_weaver afterwards).
+# WireWeaver (wire_weaver, ww_base, ww_stdlib, shrink_wrap) and embedded_bedrock are git dependencies, pinned by
+# Cargo.lock. bedrock_led and bedrock_sync take WireWeaver from the same git URLs (embedded_bedrock's workspace
+# dependencies), so they and the firmware share one ww_api, ww_indication, ww_timebase and shrink_wrap (two copies of a
+# crate are two types: E0308 in ww/leds.rs and ww/clock.rs otherwise) without a patch. Local development against the
+# sibling checkouts: these blocks in an uncommitted .cargo/config.toml (cargo update -p ww_api afterwards).
 # [patch."https://github.com/vhrdtech/wire_weaver"]
 # wire_weaver = { path = "../../../wire_weaver/wire_weaver" }
-# # exact_units (ww_si's units) takes shrink_wrap from WireWeaver's git: the checkout's, or its derives are two types
-# shrink_wrap = { path = "../../../wire_weaver/shrink_wrap/shrink_wrap" }
-# ww_date_time = { path = "../../../wire_weaver/ww_stdlib/ww_date_time" }
-# ww_dfu = { path = "../../../wire_weaver/ww_stdlib/ww_dfu" }
-# ww_indication = { path = "../../../wire_weaver/ww_stdlib/ww_indication" }
-# ww_si = { path = "../../../wire_weaver/ww_stdlib/ww_si" }
-# ww_timebase = { path = "../../../wire_weaver/ww_stdlib/ww_timebase" }
-# ww_version = { path = "../../../wire_weaver/ww_stdlib/ww_version" }
+# ww_api = { path = "../../../wire_weaver/ww_api" }
+# ww_timebase = { path = "../../../wire_weaver/ww_timebase" }
+# [patch."https://github.com/vhrdtech/ww_base"]
+# ww_date_time = { path = "../../../ww_base/ww_date_time" }
+# ww_si = { path = "../../../ww_base/ww_si" }
+# ww_version = { path = "../../../ww_base/ww_version" }
+# [patch."https://github.com/vhrdtech/ww_stdlib"]
+# ww_dfu = { path = "../../../ww_stdlib/ww_dfu" }
+# ww_indication = { path = "../../../ww_stdlib/ww_indication" }
+# # exact_units (ww_si's units) takes shrink_wrap from its git URL: the checkout's, or its derives are two types
+# [patch."https://github.com/romixlab/shrink_wrap"]
+# shrink_wrap = { path = "../../../shrink_wrap/shrink_wrap" }
 # [patch."https://github.com/romixlab/embedded_bedrock"]
 # bedrock_crash = { path = "../../../embedded_bedrock/bedrock_crash" }
 # bedrock_led = { path = "../../../embedded_bedrock/bedrock_led" }

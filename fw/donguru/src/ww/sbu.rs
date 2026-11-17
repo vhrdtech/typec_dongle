@@ -12,7 +12,7 @@ impl ServerState {
     pub(super) fn get_sbu_function(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::SbuFunction, ()> {
+    ) -> GetResult<donguru_api::SbuFunction, CommonError<'_>> {
         Unimplemented.into()
     }
 
@@ -30,7 +30,7 @@ impl ServerState {
     pub(super) fn get_sbu_level(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<ww_si::Volt, ()> {
+    ) -> GetResult<ww_si::Volt, CommonError<'_>> {
         Unimplemented.into()
     }
 
@@ -38,14 +38,14 @@ impl ServerState {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _value: bool,
-    ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
+    ) -> SetResult<wire_weaver::CommonError<'_>> {
         Unimplemented.into()
     }
 
     pub(super) fn get_sbu_pullups(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<bool, wire_weaver::ww_error::CommonError<'_>> {
+    ) -> GetResult<bool, wire_weaver::CommonError<'_>> {
         Unimplemented.into()
     }
 
@@ -53,7 +53,7 @@ impl ServerState {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _enabled: bool,
-    ) -> RpcResult<Result<(), donguru_api::SbuError<'_>>> {
+    ) -> RpcResult<Result<(), CommonError<'_>>> {
         Unimplemented.into()
     }
 }

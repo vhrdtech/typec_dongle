@@ -102,7 +102,7 @@ impl Render for Shown<'_> {
             out,
             "{:<W$}{}",
             th.key("boots since crash"),
-            th.value(record.boots_since_crash)
+            th.value(record.boots_since_crash.get())
         )?;
         if let Some(uptime) = record.uptime {
             writeln!(
@@ -201,7 +201,7 @@ mod tests {
             fault: None,
             stack: MaxLen::new_unchecked(vec![]),
             message: MaxLen::new_unchecked(message.to_string()),
-            boots_since_crash: 0,
+            boots_since_crash: ww_si::Count::new(0),
         }
     }
 

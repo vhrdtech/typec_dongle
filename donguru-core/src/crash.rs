@@ -60,7 +60,7 @@ mod tests {
             fault: None,
             stack: MaxLen::new_unchecked(stack),
             message: MaxLen::new_unchecked("index out of bounds".to_string()),
-            boots_since_crash: 0,
+            boots_since_crash: ww_si::Count::new(0),
         }
     }
 

@@ -542,6 +542,10 @@ fn watch(
                     Ok(ObserveEvent::Dropped { events }) => {
                         eprintln!("donguru: {events} update(s) dropped, the queue was full");
                     }
+                    Ok(ObserveEvent::Ended) => {
+                        eprintln!("donguru: the device ended the observation");
+                        break;
+                    }
                     Err(e) => {
                         eprintln!("donguru: {e}");
                         break;

@@ -13,7 +13,7 @@ impl ServerState {
 
     pub(super) fn valid_indices_root_gpio_pin(
         &mut self,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
     ) -> ValidIndices<'_> {
         ValidIndices::range_u32(0..4)
     }
@@ -21,7 +21,7 @@ impl ServerState {
     pub(super) fn gpio_capabilities(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
     ) -> RpcResult<ww_gpio::BankCapabilities<'_>> {
         Unimplemented.into()
     }
@@ -29,16 +29,16 @@ impl ServerState {
     pub(super) fn gpio_configure(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
         _config: ww_gpio::BankConfig,
-    ) -> RpcResult<Result<ww_gpio::BankConfig, ww_gpio::GpioError<'_>>> {
+    ) -> RpcResult<Result<ww_gpio::BankConfig, wire_weaver::Error<'_, ww_gpio::GpioError>>> {
         Unimplemented.into()
     }
 
     pub(super) fn gpio_name(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
     ) -> RpcResult<&'_ str> {
         Unimplemented.into()
     }
@@ -48,7 +48,7 @@ impl ServerState {
     pub(super) fn gpio_pin_set_output_level(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 2],
+        _index_chain: [ww_client_server::ResourceIndex; 2],
         _level: ww_gpio::Level,
     ) -> RpcResult<()> {
         Unimplemented.into()
@@ -57,7 +57,7 @@ impl ServerState {
     pub(super) fn gpio_pin_toggle(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 2],
+        _index_chain: [ww_client_server::ResourceIndex; 2],
     ) -> RpcResult<()> {
         Unimplemented.into()
     }
@@ -65,7 +65,7 @@ impl ServerState {
     pub(super) fn gpio_pin_output_level(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 2],
+        _index_chain: [ww_client_server::ResourceIndex; 2],
     ) -> RpcResult<ww_gpio::Level> {
         Unimplemented.into()
     }
@@ -73,7 +73,7 @@ impl ServerState {
     pub(super) fn gpio_pin_input_level(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 2],
+        _index_chain: [ww_client_server::ResourceIndex; 2],
     ) -> RpcResult<ww_gpio::Level> {
         Unimplemented.into()
     }
@@ -81,22 +81,22 @@ impl ServerState {
     pub(super) fn gpio_pin_event(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 2],
+        _index_chain: [ww_client_server::ResourceIndex; 2],
         _enabled: ww_gpio::IoPinEnabledEvents<'_>,
-    ) -> RpcResult<Result<(), ww_gpio::GpioError<'_>>> {
+    ) -> RpcResult<Result<(), wire_weaver::Error<'_, ww_gpio::GpioError>>> {
         Unimplemented.into()
     }
 
     pub(super) fn close_gpio_pin_event(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 2],
+        _index_chain: [ww_client_server::ResourceIndex; 2],
     ) {
     }
 
     pub(super) fn stream_gpio_pin_event(
         &mut self,
-        _index_chain: [UNib32; 2],
+        _index_chain: [ww_client_server::ResourceIndex; 2],
     ) -> &mut ww_stream::tx::Counted {
         &mut self.unopened
     }
@@ -104,17 +104,17 @@ impl ServerState {
     pub(super) fn gpio_pin_set_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 2],
+        _index_chain: [ww_client_server::ResourceIndex; 2],
         _mode: ww_gpio::Mode,
         _initial: Option<ww_gpio::Level>,
-    ) -> RpcResult<Result<(), ww_gpio::GpioError<'_>>> {
+    ) -> RpcResult<Result<(), wire_weaver::Error<'_, ww_gpio::GpioError>>> {
         Unimplemented.into()
     }
 
     pub(super) fn gpio_pin_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 2],
+        _index_chain: [ww_client_server::ResourceIndex; 2],
     ) -> RpcResult<ww_gpio::Mode> {
         Unimplemented.into()
     }
@@ -122,41 +122,41 @@ impl ServerState {
     pub(super) fn set_gpio_pin_pull(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 2],
+        _index_chain: [ww_client_server::ResourceIndex; 2],
         _value: ww_gpio::Pull,
-    ) -> SetResult<ww_gpio::GpioError<'_>> {
+    ) -> SetResult<wire_weaver::Error<'_, ww_gpio::GpioError>> {
         Unimplemented.into()
     }
 
     pub(super) fn get_gpio_pin_pull(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 2],
-    ) -> GetResult<ww_gpio::Pull, ww_gpio::GpioError<'_>> {
+        _index_chain: [ww_client_server::ResourceIndex; 2],
+    ) -> GetResult<ww_gpio::Pull, wire_weaver::Error<'_, ww_gpio::GpioError>> {
         Unimplemented.into()
     }
 
     pub(super) fn set_gpio_pin_speed(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 2],
+        _index_chain: [ww_client_server::ResourceIndex; 2],
         _value: ww_gpio::Speed,
-    ) -> SetResult<ww_gpio::GpioError<'_>> {
+    ) -> SetResult<wire_weaver::Error<'_, ww_gpio::GpioError>> {
         Unimplemented.into()
     }
 
     pub(super) fn get_gpio_pin_speed(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 2],
-    ) -> GetResult<ww_gpio::Speed, ww_gpio::GpioError<'_>> {
+        _index_chain: [ww_client_server::ResourceIndex; 2],
+    ) -> GetResult<ww_gpio::Speed, wire_weaver::Error<'_, ww_gpio::GpioError>> {
         Unimplemented.into()
     }
 
     pub(super) fn gpio_pin_capabilities(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 2],
+        _index_chain: [ww_client_server::ResourceIndex; 2],
     ) -> RpcResult<ww_gpio::PinCapabilities<'_>> {
         Unimplemented.into()
     }

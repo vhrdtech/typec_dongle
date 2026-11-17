@@ -10,9 +10,9 @@ use defmt::{info, warn};
 use donguru_api::BoardVariant;
 use donguru_board::power::Limits;
 use embassy_time::Instant;
+use wire_weaver::CommonError;
 use wire_weaver::prelude::*;
 use wire_weaver::shrink_wrap::ArrayString;
-use wire_weaver::ww_error::CommonError;
 use ww_board_info::{BoardSummary, RevisionSource};
 use ww_counters::{BufferInfo, CountersInfo};
 use ww_counters::{CounterBuffer, read_words, reset_words};
@@ -28,7 +28,7 @@ impl ServerState {
     pub(super) fn get_device_variant(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::BoardVariant, ()> {
+    ) -> GetResult<donguru_api::BoardVariant, CommonError<'_>> {
         Value(hub::board_variant())
     }
 
@@ -46,8 +46,8 @@ impl ServerState {
     pub(super) fn device_last_reset_boot_count(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> RpcResult<u32> {
-        Ready(self.last_reset.boot_count())
+    ) -> RpcResult<ww_si::Count<ww_firmware_info::Boot, u32>> {
+        Ready(ww_si::Count::new(self.last_reset.boot_count()))
     }
 
     pub(super) fn device_last_reset_clear(
@@ -68,7 +68,7 @@ impl ServerState {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: wire_weaver::shrink_wrap::MaxLen<&'_ str, 32>,
-    ) -> SetResult<ww_user_info::UserInfoError<'_>> {
+    ) -> SetResult<wire_weaver::Error<'_, ww_user_info::UserInfoError>> {
         // the bound is checked when the request is read (MaxLen), so this never cuts
         let name = ArrayString::try_from(*value).unwrap_or_default();
         self.user.set(now_ms(), |s| s.label = name);
@@ -81,8 +81,10 @@ impl ServerState {
     pub(super) async fn get_device_label_name(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<wire_weaver::shrink_wrap::MaxLen<&'_ str, 32>, ww_user_info::UserInfoError<'_>>
-    {
+    ) -> GetResult<
+        wire_weaver::shrink_wrap::MaxLen<&'_ str, 32>,
+        wire_weaver::Error<'_, ww_user_info::UserInfoError>,
+    > {
         Value(MaxLen::new_unchecked(self.user.get().label.as_str()))
     }
 
@@ -91,7 +93,7 @@ impl ServerState {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: wire_weaver::shrink_wrap::MaxLen<&'_ str, 256>,
-    ) -> SetResult<ww_user_info::UserInfoError<'_>> {
+    ) -> SetResult<wire_weaver::Error<'_, ww_user_info::UserInfoError>> {
         let notes = ArrayString::try_from(*value).unwrap_or_default();
         self.user.set(now_ms(), |s| s.notes = notes);
         match self.persist_settings().await {
@@ -103,8 +105,10 @@ impl ServerState {
     pub(super) async fn get_device_label_notes(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<wire_weaver::shrink_wrap::MaxLen<&'_ str, 256>, ww_user_info::UserInfoError<'_>>
-    {
+    ) -> GetResult<
+        wire_weaver::shrink_wrap::MaxLen<&'_ str, 256>,
+        wire_weaver::Error<'_, ww_user_info::UserInfoError>,
+    > {
         Value(MaxLen::new_unchecked(self.user.get().notes.as_str()))
     }
 
@@ -114,25 +118,30 @@ impl ServerState {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         buffer: ww_counters::CounterBuffer,
-        offset: u16,
+        offset: ww_si::Index<ww_si::units::Word, u16>,
     ) -> RpcResult<
         Result<
             wire_weaver::shrink_wrap::MaxLen<
                 wire_weaver::shrink_wrap::RefVec<'_, wire_weaver::shrink_wrap::UVlq32>,
                 64,
             >,
-            ww_counters::CountersError<'_>,
+            CommonError<'_>,
         >,
     > {
         let (words, used) = counter_buffer(buffer);
-        Ready(read_words(words, used, offset, &mut self.counters_page))
+        Ready(read_words(
+            words,
+            used,
+            offset.get(),
+            &mut self.counters_page,
+        ))
     }
 
     pub(super) fn device_counters_reset(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         buffer: ww_counters::CounterBuffer,
-    ) -> RpcResult<Result<(), ww_counters::CountersError<'_>>> {
+    ) -> RpcResult<Result<(), CommonError<'_>>> {
         reset_words(counter_buffer(buffer).0);
         Ready(Ok(()))
     }
@@ -142,7 +151,7 @@ impl ServerState {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _period: ww_si::Second,
-    ) -> RpcResult<Result<ww_si::Second, ww_counters::CountersError<'_>>> {
+    ) -> RpcResult<Result<ww_si::Second, CommonError<'_>>> {
         Unimplemented.into()
     }
 
@@ -158,7 +167,7 @@ impl ServerState {
     pub(super) fn device_log_frames(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> RpcResult<Result<(), ww_log::LogError<'_>>> {
+    ) -> RpcResult<Result<(), CommonError<'_>>> {
         Ready(Ok(()))
     }
 
@@ -388,8 +397,8 @@ impl super::server_impl::DonguruApiConsts for ServerState {
 
     // kept in the settings store (API-19)
     const DEVICE_LABEL_CAPABILITIES: UserInfoCaps = UserInfoCaps {
-        name_max: MAX_NAME_LEN as u16,
-        notes_max: MAX_NOTES_LEN as u16,
+        name_max: ww_user_info::NameMax::bounded(MAX_NAME_LEN as u8),
+        notes_max: ww_user_info::NotesMax::bounded(MAX_NOTES_LEN as u16),
         persistent: true,
     };
 

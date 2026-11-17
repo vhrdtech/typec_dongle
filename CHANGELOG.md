@@ -6,6 +6,19 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Changed
+
+- `donguru_api` 0.8.0, wire `w2.0`: common errors leave the error enums; firmware and CLI update together (API-66).
+- WireWeaver crates come from their new repositories: wire_weaver, ww_base, ww_stdlib, shrink_wrap (API-66).
+- Host library: a common error is `DeviceError::typed::<CommonErrorOwned>()`; item errors lose `Owned` (`PowerError`, `DebugError`) (API-66).
+- Host library: `I2c::scan` returns `ww_i2c::I2cAddress` values instead of bytes (API-66).
+- `meter.reading` and `meter.temperature` answer `Timeout` when the ADC has no reading yet (API-66).
+- Firmware release text 249,692 to 244,900 B, RAM unchanged; tested on mock only, not on a board (API-66).
+
+### Removed
+
+- `donguru_api::SbuError`: `sbu.route_usb` fails only with common errors (API-66).
+
 ## [0.20.50] - 2026-11-10
 
 ### Changed

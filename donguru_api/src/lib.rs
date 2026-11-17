@@ -20,9 +20,13 @@
 //! STM32 ROM bootloader (FW-12). Wire-compatible: older hosts and devices keep connecting.
 //!
 //! 0.5.2 adds `plug.pd` (API-30): the PD source on the plug CC with its message log. Wire-compatible.
+//!
+//! 0.8.0, wire line `w2.0`: common errors leave the error enums (WireWeaver STD-16). `PowerError` and `DebugError`
+//! keep their own variants, `SbuError` is gone; items that fail only with common errors have no error type. The
+//! stdlib traits moved to new wire lines too, so firmware and host move to 0.8 together.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use wire_weaver::prelude::*;
+use ww_api::prelude::*;
 pub use ww_gpio::Level;
 pub use ww_si::{Ampere, Coulomb, Hertz, Joule, Second, Volt, Watt};
 pub use ww_uart::UartConfig;
@@ -132,23 +136,23 @@ pub enum BoardVariant {
 #[ww_trait]
 pub trait Settings {
     /// `plug.vbus_mode` at boot, default `ForceOff`.
-    #[errors(InvalidArgument, Fault)]
-    property!(rw plug_vbus_at_boot: VbusMode, CommonError<'i>);
+    #[errors(CommonError(InvalidArgument, Fault))]
+    property!(rw plug_vbus_at_boot: VbusMode);
     /// Boot value of `inputs.button_action`.
-    #[errors(InvalidArgument, Fault)]
-    property!(rw button_action: ButtonAction, CommonError<'i>);
+    #[errors(CommonError(InvalidArgument, Fault))]
+    property!(rw button_action: ButtonAction);
     /// Boot value of `meter.window`.
-    #[errors(InvalidArgument, Fault)]
-    property!(rw meter_window: Second, CommonError<'i>);
+    #[errors(CommonError(InvalidArgument, Fault))]
+    property!(rw meter_window: Second);
     /// Boot value of `meter.deadband`.
-    #[errors(InvalidArgument, Fault)]
-    property!(rw meter_deadband: MeterDeadband, CommonError<'i>);
+    #[errors(CommonError(InvalidArgument, Fault))]
+    property!(rw meter_deadband: MeterDeadband);
     /// Default config of `uart[0]`, also used by CDC-ACM until the tty sets its line coding.
-    #[errors(InvalidArgument, Fault)]
-    property!(rw uart_plug: UartConfig, CommonError<'i>);
+    #[errors(CommonError(InvalidArgument, Fault))]
+    property!(rw uart_plug: UartConfig);
     /// Every setting back to its default, the label too. Factory data (calibration) stays.
-    #[errors(Fault)]
-    fn reset() -> Result<(), CommonError<'i>>;
+    #[errors(CommonError(Fault))]
+    fn reset();
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -168,11 +172,11 @@ pub trait PowerMeter {
     /// Restarts `totals` from zero.
     fn reset_totals();
     /// Averaging window behind `reading`, default 10 ms.
-    #[errors(InvalidArgument)]
-    property!(rw window: Second, CommonError<'i>);
+    #[errors(CommonError(InvalidArgument))]
+    property!(rw window: Second);
     /// The change that counts for `OnChange` observers, default 20 mV and 10 mA.
-    #[errors(InvalidArgument)]
-    property!(rw deadband: MeterDeadband, CommonError<'i>);
+    #[errors(CommonError(InvalidArgument))]
+    property!(rw deadband: MeterDeadband);
     /// Calibration in use: offset and gain per channel, defaults until FW-9.
     property!(ro calibration: MeterCalibration);
 }
@@ -232,15 +236,15 @@ pub trait Plug {
     property!(ro+observe vbus: VbusState);
     /// How the firmware drives plug VBUS (U601). The limits are kept by the firmware: a software trip takes
     /// milliseconds, it is no fuse. A mode from a newer host is refused.
-    #[errors(InvalidArgument, Refused)]
-    property!(rw+observe vbus_mode: VbusMode, CommonError<'i>);
+    #[errors(CommonError(InvalidArgument, Refused))]
+    property!(rw+observe vbus_mode: VbusMode);
     /// Off for `off`, then back to `vbus_mode`; with `release_sbu` SBU goes to Hi-Z first so nothing back-powers the
     /// DUT. Answered when VBUS is back on. `WrongState` in `ForceOff`.
-    #[errors(Common(Refused, InvalidArgument, WrongState), OverVoltage)]
-    fn vbus_cycle(off: Second, release_sbu: bool) -> Result<VbusState, PowerError<'i>>;
+    #[errors(CommonError(Refused, InvalidArgument, WrongState), OverVoltage)]
+    fn vbus_cycle(off: Second, release_sbu: bool) -> Result<VbusState, PowerError>;
     /// USB data to the DUT (U701, DATA_CUT PA9).
-    #[errors(Refused)]
-    property!(rw+observe data: DataPath, CommonError<'i>);
+    #[errors(CommonError(Refused))]
+    property!(rw+observe data: DataPath);
     /// Cable orientation for everything on SBU (SWD, UART, I2C, GPIO). Takes effect on the next connect or
     /// configure. `Auto` acts as `Normal` until CC detection (`cc`) works.
     property!(rw+observe orientation: Orientation);
@@ -261,8 +265,8 @@ pub trait PlugPd {
     /// only between an attach (Rd seen) and the detach, off during a hard reset. `Off` turns VBUS off and the CC
     /// lines open. A current above what the receptacle side can give, or a sender-response time out of range, is
     /// `InvalidArgument`.
-    #[errors(InvalidArgument, Refused, InUse)]
-    property!(rw+observe source: PdSource, CommonError<'i>);
+    #[errors(CommonError(InvalidArgument, Refused, InUse))]
+    property!(rw+observe source: PdSource);
     /// Where the source stands: attach, contract, a sink without PD.
     property!(ro+observe state: PdState);
     /// Every message sent and received on the plug CC, raw, and the attach, VBUS and hard-reset events between them,
@@ -380,8 +384,8 @@ pub trait Header {
     /// VBUS_SW switch (J101 pin 10, Q102, PD1) state, with the trip reason.
     property!(ro+observe vbus_sw: VbusState);
     /// How the firmware drives VBUS_SW, as [`Plug::vbus_mode`].
-    #[errors(InvalidArgument, Refused)]
-    property!(rw+observe vbus_sw_mode: VbusMode, CommonError<'i>);
+    #[errors(CommonError(InvalidArgument, Refused))]
+    property!(rw+observe vbus_sw_mode: VbusMode);
     /// Relay U101 closed (PA5).
     property!(rw+observe relay: bool);
 }
@@ -425,18 +429,18 @@ pub enum VbusMode {
 
 /// Errors of the VBUS switches.
 #[derive_shrink_wrap(
+    borrowed,
     owned(feature = "std"),
     derive(Clone, Debug, PartialEq),
     ww_repr = unib32,
     display
 )]
-pub enum PowerError<'i> {
-    /// {0}
-    #[common]
-    Common(CommonError<'i>),
+pub enum PowerError {
     /// VBUS_IN is above the mode's maximum.
     OverVoltage { measured: Volt },
 }
+
+ww_api::api_error!(PowerError);
 
 /// The plug's USB data lines to the DUT.
 #[derive_shrink_wrap(borrowed, owned(feature = "std"), derive(Copy, Clone, Debug, PartialEq, Eq), ww_repr = nib, no_future_version)]
@@ -501,11 +505,11 @@ pub trait Sbu {
     /// V_SBU as selected (PD3), set through `io_level` of a function.
     property!(ro+observe level: Volt);
     /// 3K3 pull-ups to V_SBU (PC15).
-    #[errors(InUse)]
-    property!(rw pullups: bool, CommonError<'i>);
+    #[errors(CommonError(InUse))]
+    property!(rw pullups: bool);
     /// Plus: plug SBU to hub port 4 as USB. Main: `Unsupported`.
-    #[errors(Common(InUse, Unsupported))]
-    fn route_usb(enabled: bool) -> Result<(), SbuError<'i>>;
+    #[errors(CommonError(InUse, Unsupported))]
+    fn route_usb(enabled: bool);
 }
 
 /// Who owns the plug SBU lines.
@@ -530,19 +534,6 @@ pub enum UartOwner {
     Acm,
 }
 
-/// Errors of the SBU level.
-#[derive_shrink_wrap(
-    owned(feature = "std"),
-    derive(Clone, Debug, PartialEq, Eq),
-    ww_repr = unib32,
-    display
-)]
-pub enum SbuError<'i> {
-    /// {0}
-    #[common]
-    Common(CommonError<'i>),
-}
-
 // ---------------------------------------------------------------------------------------------------------------
 // inputs, hub, swd
 
@@ -557,8 +548,8 @@ pub trait Inputs {
     #[counted]
     stream!(events: InputEvent);
     /// What a button press does on the device itself, default nothing.
-    #[errors(InvalidArgument)]
-    property!(rw button_action: ButtonAction, CommonError<'i>);
+    #[errors(CommonError(InvalidArgument))]
+    property!(rw button_action: ButtonAction);
 }
 
 /// Button state.
@@ -644,8 +635,8 @@ pub enum HubLoss {
 pub trait Swd {
     /// How the SWD-host drives the plug SBU lines (FW-21), from the next transfer on. A mode from a newer host
     /// is refused.
-    #[errors(InvalidArgument)]
-    property!(rw mode: SwdMode, CommonError<'i>);
+    #[errors(CommonError(InvalidArgument))]
+    property!(rw mode: SwdMode);
     /// CMSIS-DAP session.
     property!(ro+observe session: SwdSession);
 }
@@ -679,49 +670,42 @@ pub enum SwdSession {
 #[ww_trait]
 pub trait Bringup {
     /// Sets a pin's mode and, for outputs, its level.
-    #[errors(Common(Refused, InUse, InvalidArgument))]
-    fn pin_set(
-        pin: McuPin,
-        mode: PinMode,
-        level: Option<Level>,
-    ) -> Result<PinState, DebugError<'i>>;
+    #[errors(CommonError(Refused, InUse, InvalidArgument))]
+    fn pin_set(pin: McuPin, mode: PinMode, level: Option<Level>) -> Result<PinState, DebugError>;
     /// Reads a pin's registers.
-    #[errors(Common(InvalidArgument))]
-    fn pin_get(pin: McuPin) -> Result<PinState, DebugError<'i>>;
+    #[errors(CommonError(InvalidArgument))]
+    fn pin_get(pin: McuPin) -> Result<PinState, DebugError>;
     /// Puts a pin on alternate function `af`.
-    #[errors(Common(Refused, InUse, InvalidArgument))]
-    fn pin_af(pin: McuPin, af: u8) -> Result<PinState, DebugError<'i>>;
+    #[errors(CommonError(Refused, InUse, InvalidArgument))]
+    fn pin_af(pin: McuPin, af: u8) -> Result<PinState, DebugError>;
     /// GPIOA..F registers now.
     fn pins() -> PinDump<'i>;
     /// GPIOA..F registers as captured first thing in main, before init.
     fn boot_pins() -> PinDump<'i>;
     /// SMBus block read from the hub.
-    #[errors(Common(Busy, Timeout), Nack)]
-    fn hub_read(
-        reg: u8,
-        len: ww_si::Bytes<u8>,
-    ) -> Result<MaxLen<RefVec<'i, u8>, 32>, DebugError<'i>>;
+    #[errors(CommonError(Busy, Timeout), Nack)]
+    fn hub_read(reg: u8, len: ww_si::Bytes<u8>) -> Result<MaxLen<RefVec<'i, u8>, 32>, DebugError>;
     /// SMBus block write to the hub.
-    #[errors(Common(Busy, Timeout, Refused), Nack)]
-    fn hub_write(reg: u8, data: MaxLen<RefVec<'i, u8>, 32>) -> Result<(), DebugError<'i>>;
+    #[errors(CommonError(Busy, Timeout, Refused), Nack)]
+    fn hub_write(reg: u8, data: MaxLen<RefVec<'i, u8>, 32>) -> Result<(), DebugError>;
     /// UCPD registers and CC line states.
     fn ucpd(port: UcpdPort) -> UcpdState;
     /// Sets a UCPD port's CC role. `Rp` refused on UCPD1 on rev A.
-    #[errors(Common(Refused))]
-    fn ucpd_role(port: UcpdPort, role: CcRole) -> Result<UcpdState, DebugError<'i>>;
+    #[errors(CommonError(Refused))]
+    fn ucpd_role(port: UcpdPort, role: CcRole) -> Result<UcpdState, DebugError>;
     /// Drives one LED directly.
     fn led_set(led: Led, mode: LedMode);
     /// Reads 32-bit words of peripheral space (0x4000_0000..0x5000_2000) only.
-    #[errors(Common(Refused, InvalidArgument))]
-    fn reg_read(addr: u32, words: u8) -> Result<MaxLen<RefVec<'i, u32>, 32>, DebugError<'i>>;
+    #[errors(CommonError(Refused, InvalidArgument))]
+    fn reg_read(addr: u32, words: u8) -> Result<MaxLen<RefVec<'i, u32>, 32>, DebugError>;
     /// Logs `count` numbered lines at once, more than the log keeps up with: the host sees how many are lost.
     fn log_flood(count: u32);
     /// Replays a text capture kept in flash out of the header UART's TX (IO7) by DMA, in a loop at the line's rate,
     /// until `Stop`: a full-rate source for `uart[1].rx` with a jumper from IO7 to IO8. The `tx` sink's items wait
     /// meanwhile. Answers the capture's length in bytes (0 for `Stop`); `Unsupported` in a firmware built without
     /// the feature `uart-replay`, `InvalidArgument` for a capture it doesn't know.
-    #[errors(Common(Unsupported, InvalidArgument))]
-    fn uart_replay(capture: ReplayCapture) -> Result<ww_si::Bytes<u32>, DebugError<'i>>;
+    #[errors(CommonError(Unsupported, InvalidArgument))]
+    fn uart_replay(capture: ReplayCapture) -> Result<ww_si::Bytes<u32>, DebugError>;
 }
 
 /// A text capture for [`Bringup::uart_replay`], 32 KiB each, as a serial console would send it (CR LF).
@@ -874,15 +858,15 @@ pub enum LedMode {
 
 /// Errors of the debug level.
 #[derive_shrink_wrap(
+    borrowed,
     owned(feature = "std"),
     derive(Clone, Debug, PartialEq, Eq),
     ww_repr = unib32,
     display
 )]
-pub enum DebugError<'i> {
-    /// {0}
-    #[common]
-    Common(CommonError<'i>),
+pub enum DebugError {
     /// The hub did not acknowledge.
     Nack,
 }
+
+ww_api::api_error!(DebugError);

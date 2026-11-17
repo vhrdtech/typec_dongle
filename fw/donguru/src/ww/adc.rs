@@ -9,8 +9,8 @@ use super::ServerState;
 use super::meter::readings;
 use crate::adc::{self, ChannelSet, Readings};
 use embassy_time::{Duration, Instant, Timer};
+use wire_weaver::CommonError;
 use wire_weaver::prelude::*;
-use wire_weaver::ww_error::CommonError;
 use ww_adc::{AdcCapabilities, AdcError, ChannelInfo, Reading};
 use ww_si::ww_numeric::NumericValue;
 use ww_si::{Prefix, SIExpr, Second, units};
@@ -96,7 +96,7 @@ const fn info(index: usize) -> ChannelInfo<'static> {
         prefix: Prefix::Milli,
         min: NumericValue::I32(min),
         max: NumericValue::I32(max),
-        bits: 12,
+        bits: ww_si::Fixed::new(12),
         // nominal until FW-9
         calibrated: false,
         // streams and captures don't exist yet (AdcStream, later)
@@ -123,13 +123,13 @@ impl ServerState {
     pub(super) async fn adc_read(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        channel: u8,
-    ) -> RpcResult<Result<Reading, AdcError<'_>>> {
-        let Some(&(ch, _, _)) = CHANNELS.get(channel as usize) else {
-            return Ready(Err(AdcError::NoSuchChannel));
+        channel: ww_si::Index<ww_si::units::Channel, u8>,
+    ) -> RpcResult<Result<Reading, wire_weaver::Error<'_, AdcError>>> {
+        let Some(&(ch, _, _)) = CHANNELS.get(channel.get() as usize) else {
+            return Ready(Err(AdcError::NoSuchChannel.into()));
         };
         if matches!(ch, Ch::Sbu1 | Ch::Sbu2) {
-            return Ready(Err(AdcError::Common(CommonError::Busy)));
+            return Ready(Err(wire_weaver::Error::Common(CommonError::Busy)));
         }
         let mut r = readings().await;
         if matches!(ch, Ch::Io9 | Ch::Io7 | Ch::Io10)
@@ -150,10 +150,10 @@ impl ServerState {
             };
         }
         let Some(r) = r else {
-            return Ready(Err(AdcError::Common(CommonError::Timeout)));
+            return Ready(Err(wire_weaver::Error::Common(CommonError::Timeout)));
         };
         let Some((value, raw)) = value_of(ch, &r) else {
-            return Ready(Err(AdcError::Common(CommonError::Timeout)));
+            return Ready(Err(wire_weaver::Error::Common(CommonError::Timeout)));
         };
         let t_ms = r.t_ms;
         Ready(Ok(Reading {

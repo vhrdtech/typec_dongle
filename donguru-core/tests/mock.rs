@@ -258,8 +258,8 @@ async fn plug_vbus_guard_and_cycle() {
     assert_eq!(item, "Plug::vbus_cycle");
     assert_eq!(error.kind, DeviceErrorKind::Specific);
     assert_eq!(
-        error.typed::<PowerErrorOwned>(),
-        Some(&PowerErrorOwned::OverVoltage {
+        error.typed::<PowerError>(),
+        Some(&PowerError::OverVoltage {
             measured: mv(9_000)
         })
     );
@@ -509,10 +509,7 @@ async fn debug() {
     let Error::Device { error, .. } = &e else {
         panic!("{e:?}")
     };
-    assert_eq!(
-        error.typed::<DebugErrorOwned>(),
-        Some(&DebugErrorOwned::Nack)
-    );
+    assert_eq!(error.typed::<DebugError>(), Some(&DebugError::Nack));
     assert!(
         debug.hub_write(0, &[0; 33]).await.is_err(),
         "at most 32 bytes"

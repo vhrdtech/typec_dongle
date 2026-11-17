@@ -40,8 +40,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use donguru_api::*;
 use tokio::sync::{mpsc, oneshot};
+use wire_weaver::CommonError;
 use wire_weaver::prelude::*;
-use wire_weaver::ww_error::CommonError;
 use wire_weaver::{EventWriter, MessageSink, WireWeaverAsyncApiBackend};
 use wire_weaver_client::in_process::{self, TokioClock};
 use ww_firmware_info::ResetCause;
@@ -88,7 +88,7 @@ impl Default for MockSettings {
                 mode: ww_uart::Mode::Asynchronous,
                 prevent_back_feed: true,
                 io_level: None,
-                idle_chars: ww_uart::IDLE_CHARS_DEFAULT,
+                idle_chars: ww_si::Fixed::new(ww_uart::IDLE_CHARS_DEFAULT),
             },
         }
     }
@@ -444,10 +444,10 @@ impl MockState {
 }
 
 /// The API error of a refused change, as the firmware answers it.
-fn denied(d: Denied) -> DebugError<'static> {
-    DebugError::Common(match d {
+fn denied(d: Denied) -> wire_weaver::Error<'static, DebugError> {
+    wire_weaver::Error::Common(match d {
         Denied::Invalid { arg, reason } => CommonError::InvalidArgument {
-            arg,
+            arg: ww_si::Index::new(arg),
             reason: MaxLen::new_unchecked(reason),
         },
         Denied::Refused(reason) => CommonError::Refused {
@@ -498,12 +498,12 @@ fn check_mode(mode: &VbusMode) -> core::result::Result<(), CommonError<'static>>
             Ok(())
         }
         VbusMode::ForceOn { .. } | VbusMode::Auto { .. } => Err(CommonError::InvalidArgument {
-            arg: 0,
+            arg: ww_si::Index::new(0),
             reason: MaxLen::new_unchecked("max_voltage 0..=21 V"),
         }),
         #[allow(unreachable_patterns)] // a mode from a newer host
         _ => Err(CommonError::InvalidArgument {
-            arg: 0,
+            arg: ww_si::Index::new(0),
             reason: MaxLen::new_unchecked("unknown mode"),
         }),
     }
@@ -514,7 +514,7 @@ fn check_window(window: Second) -> core::result::Result<(), CommonError<'static>
         Ok(())
     } else {
         Err(CommonError::InvalidArgument {
-            arg: 0,
+            arg: ww_si::Index::new(0),
             reason: MaxLen::new_unchecked("window 1 ms..=1 s"),
         })
     }

@@ -496,7 +496,7 @@ impl UartConfig {
             mode,
             prevent_back_feed: self.prevent_back_feed,
             io_level,
-            idle_chars: self.idle_chars,
+            idle_chars: ww_si::Fixed::new(self.idle_chars),
         })
     }
 }
@@ -536,7 +536,7 @@ impl From<&ww_uart::UartConfig> for UartConfig {
             flow: flow.to_string(),
             prevent_back_feed: c.prevent_back_feed,
             io_level: c.io_level.as_ref().map(|v| v.to_f64()),
-            idle_chars: c.idle_chars,
+            idle_chars: c.idle_chars.get(),
         }
     }
 }

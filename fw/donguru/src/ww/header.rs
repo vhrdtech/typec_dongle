@@ -10,7 +10,7 @@ impl ServerState {
     pub(super) fn get_header_vbus_sw(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::VbusState, ()> {
+    ) -> GetResult<donguru_api::VbusState, CommonError<'_>> {
         Value(power::state(Which::Header))
     }
 
@@ -40,7 +40,7 @@ impl ServerState {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: bool,
-    ) -> SetResult<()> {
+    ) -> SetResult<CommonError<'_>> {
         power::set_relay(value);
         self.mark_changed_header_relay();
         Set
@@ -49,7 +49,7 @@ impl ServerState {
     pub(super) fn get_header_relay(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<bool, ()> {
+    ) -> GetResult<bool, CommonError<'_>> {
         Value(power::relay())
     }
 }

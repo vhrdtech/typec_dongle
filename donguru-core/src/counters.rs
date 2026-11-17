@@ -8,7 +8,7 @@ use serde::Serialize;
 use ww_counters::CounterBuffer;
 
 use crate::client::generated::donguru_api_donguru_api::donguru_api_device::DonguruApiDeviceClient;
-use crate::levels::{call, read};
+use crate::levels::{call_plain, read};
 use crate::{Error, Result};
 
 /// One decoded counter.
@@ -44,9 +44,9 @@ async fn read_buffer(
     let mut words = Vec::with_capacity(used_words as usize);
     while (words.len() as u16) < used_words {
         let counters = client.counters();
-        let page = call::<_, ww_counters::CountersErrorOwned>(
+        let page = call_plain(
             "Counters::read",
-            counters.read(buffer, words.len() as u16),
+            counters.read(buffer, ww_si::Index::new(words.len() as u16)),
         )
         .await?;
         let page: Vec<u32> = page.into_inner().iter().map(|w| w.0).collect();
@@ -96,7 +96,7 @@ pub async fn report(
 ) -> Result<CountersReport> {
     let info = read("Counters::INFO", client.counters().read_INFO()).await?;
     let build_id: Vec<u8> = info.build_id.as_slice().to_vec();
-    if info.ram.used_words == 0 && info.backup.is_none_or(|b| b.used_words == 0) {
+    if info.ram.used_words.get() == 0 && info.backup.is_none_or(|b| b.used_words.get() == 0) {
         // nothing to decode: don't even ask for an ELF (the device may not have linked one with `cnt` yet)
         return Ok(CountersReport {
             elf: String::new(),
@@ -110,9 +110,9 @@ pub async fn report(
     let mut counters = Counters::load_elf(&resolved.path)
         .map_err(|e| Error::Link(format!("{}: {e:#}", resolved.path.display())))?;
 
-    let ram = read_buffer(&client, CounterBuffer::Ram, info.ram.used_words).await?;
+    let ram = read_buffer(&client, CounterBuffer::Ram, info.ram.used_words.get()).await?;
     let bkp = match info.backup {
-        Some(b) => Some(read_buffer(&client, CounterBuffer::Backup, b.used_words).await?),
+        Some(b) => Some(read_buffer(&client, CounterBuffer::Backup, b.used_words.get()).await?),
         None => None,
     };
     let mut source = Preloaded { ram, bkp };

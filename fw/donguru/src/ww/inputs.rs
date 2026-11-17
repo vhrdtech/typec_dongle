@@ -9,14 +9,14 @@ impl ServerState {
     pub(super) fn get_inputs_button(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::ButtonState, ()> {
+    ) -> GetResult<donguru_api::ButtonState, CommonError<'_>> {
         Unimplemented.into()
     }
 
     pub(super) fn get_inputs_switch(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::SwitchPosition, ()> {
+    ) -> GetResult<donguru_api::SwitchPosition, CommonError<'_>> {
         Unimplemented.into()
     }
 
@@ -34,14 +34,14 @@ impl ServerState {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _value: donguru_api::ButtonAction,
-    ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
+    ) -> SetResult<wire_weaver::CommonError<'_>> {
         Unimplemented.into()
     }
 
     pub(super) fn get_inputs_button_action(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::ButtonAction, wire_weaver::ww_error::CommonError<'_>> {
+    ) -> GetResult<donguru_api::ButtonAction, wire_weaver::CommonError<'_>> {
         Unimplemented.into()
     }
 }

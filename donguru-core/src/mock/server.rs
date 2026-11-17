@@ -3,8 +3,8 @@
 //! a firmware that doesn't have them yet.
 
 use donguru_api::*;
+use wire_weaver::CommonError;
 use wire_weaver::prelude::*;
-use wire_weaver::ww_error::CommonError;
 use ww_board_info::{BoardSummary, RevisionSource};
 use ww_firmware_info::{BuildProfile, FirmwareSummary, Version};
 
@@ -127,7 +127,7 @@ impl MockServer {
     async fn get_device_variant(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::BoardVariant, ()> {
+    ) -> GetResult<donguru_api::BoardVariant, CommonError<'_>> {
         Value(self.state.variant)
     }
 
@@ -146,15 +146,15 @@ impl MockServer {
             fault: None,
             stack: MaxLen::new_unchecked(RefVec::Slice { slice: &[] }),
             message: MaxLen::new_unchecked(self.state.last_reset_message.as_str()),
-            boots_since_crash: self.state.last_reset_boots_since_crash,
+            boots_since_crash: ww_si::Fixed::new(self.state.last_reset_boots_since_crash),
         })
     }
 
     async fn device_last_reset_boot_count(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> RpcResult<u32> {
-        Ready(self.state.boot_count)
+    ) -> RpcResult<ww_si::Count<ww_firmware_info::Boot, u32>> {
+        Ready(ww_si::Count::new(self.state.boot_count))
     }
 
     async fn device_last_reset_clear(
@@ -180,22 +180,22 @@ impl MockServer {
     async fn device_boot_confirm(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> RpcResult<Result<(), ww_dfu::Error>> {
+    ) -> RpcResult<Result<(), wire_weaver::Error<'_, ww_dfu::Error>>> {
         Ready(Ok(()))
     }
 
     async fn device_boot_revert(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> RpcResult<Result<(), ww_dfu::Error>> {
-        Ready(Err(ww_dfu::Error::Unsupported))
+    ) -> RpcResult<Result<(), wire_weaver::Error<'_, ww_dfu::Error>>> {
+        Ready(Err(ww_dfu::Error::Unsupported.into()))
     }
 
     async fn device_boot_reboot(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         into: ww_dfu::BootTarget,
-    ) -> RpcResult<Result<(), ww_dfu::Error>> {
+    ) -> RpcResult<Result<(), wire_weaver::Error<'_, ww_dfu::Error>>> {
         self.state.reboots.push(into);
         Ready(Ok(()))
     }
@@ -208,16 +208,15 @@ impl MockServer {
             role: ww_dfu::Role::App,
             profile: ww_dfu::Profile::InPlace,
             product: MaxLen::new_unchecked("Donguru B153"),
-            geometry_id: 0,
-            product_id: 0,
+            geometry: ww_dfu::GeometryId(0),
             seal: ww_dfu::Seal::Unsigned,
-            app_version: None,
-            version_floor: 0,
+            app: None,
+            security_floor: ww_dfu::SecurityCounter(0),
             manifest_digest: None,
             boot_state: ww_dfu::BootState::Confirmed,
             last_result: ww_dfu::LastResult {
                 outcome: ww_dfu::Outcome::Nothing,
-                version: 0,
+                version: None,
             },
             offers: ww_dfu::Offers {
                 boot_control: true,
@@ -238,7 +237,7 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: wire_weaver::shrink_wrap::MaxLen<&'_ str, 32>,
-    ) -> SetResult<ww_user_info::UserInfoError<'_>> {
+    ) -> SetResult<wire_weaver::Error<'_, ww_user_info::UserInfoError>> {
         self.state.label = value.to_string();
         Set
     }
@@ -246,8 +245,10 @@ impl MockServer {
     async fn get_device_label_name(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<wire_weaver::shrink_wrap::MaxLen<&'_ str, 32>, ww_user_info::UserInfoError<'_>>
-    {
+    ) -> GetResult<
+        wire_weaver::shrink_wrap::MaxLen<&'_ str, 32>,
+        wire_weaver::Error<'_, ww_user_info::UserInfoError>,
+    > {
         Value(MaxLen::new_unchecked(self.state.label.as_str()))
     }
 
@@ -256,7 +257,7 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: wire_weaver::shrink_wrap::MaxLen<&'_ str, 256>,
-    ) -> SetResult<ww_user_info::UserInfoError<'_>> {
+    ) -> SetResult<wire_weaver::Error<'_, ww_user_info::UserInfoError>> {
         self.state.label_notes = value.to_string();
         Set
     }
@@ -264,8 +265,10 @@ impl MockServer {
     async fn get_device_label_notes(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<wire_weaver::shrink_wrap::MaxLen<&'_ str, 256>, ww_user_info::UserInfoError<'_>>
-    {
+    ) -> GetResult<
+        wire_weaver::shrink_wrap::MaxLen<&'_ str, 256>,
+        wire_weaver::Error<'_, ww_user_info::UserInfoError>,
+    > {
         Value(MaxLen::new_unchecked(self.state.label_notes.as_str()))
     }
 
@@ -275,14 +278,14 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _buffer: ww_counters::CounterBuffer,
-        _offset: u16,
+        _offset: ww_si::Index<ww_si::units::Word, u16>,
     ) -> RpcResult<
         Result<
             wire_weaver::shrink_wrap::MaxLen<
                 wire_weaver::shrink_wrap::RefVec<'_, wire_weaver::shrink_wrap::UVlq32>,
                 64,
             >,
-            ww_counters::CountersError<'_>,
+            CommonError<'_>,
         >,
     > {
         Unimplemented.into()
@@ -292,7 +295,7 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _buffer: ww_counters::CounterBuffer,
-    ) -> RpcResult<Result<(), ww_counters::CountersError<'_>>> {
+    ) -> RpcResult<Result<(), CommonError<'_>>> {
         Unimplemented.into()
     }
 
@@ -301,7 +304,7 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _period: ww_si::Second,
-    ) -> RpcResult<Result<ww_si::Second, ww_counters::CountersError<'_>>> {
+    ) -> RpcResult<Result<ww_si::Second, CommonError<'_>>> {
         Unimplemented.into()
     }
 
@@ -316,7 +319,7 @@ impl MockServer {
     async fn device_log_frames(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> RpcResult<Result<(), ww_log::LogError<'_>>> {
+    ) -> RpcResult<Result<(), CommonError<'_>>> {
         Unimplemented.into()
     }
 
@@ -334,7 +337,7 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: donguru_api::VbusMode,
-    ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
+    ) -> SetResult<wire_weaver::CommonError<'_>> {
         if let Some(code) = self.state.settings_fault {
             return SetError(CommonError::Fault { code });
         }
@@ -348,7 +351,7 @@ impl MockServer {
     async fn get_device_settings_plug_vbus_at_boot(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::VbusMode, wire_weaver::ww_error::CommonError<'_>> {
+    ) -> GetResult<donguru_api::VbusMode, wire_weaver::CommonError<'_>> {
         Value(self.state.settings.plug_vbus_at_boot.clone())
     }
 
@@ -356,7 +359,7 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: donguru_api::ButtonAction,
-    ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
+    ) -> SetResult<wire_weaver::CommonError<'_>> {
         if let Some(code) = self.state.settings_fault {
             return SetError(CommonError::Fault { code });
         }
@@ -368,7 +371,7 @@ impl MockServer {
     async fn get_device_settings_button_action(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::ButtonAction, wire_weaver::ww_error::CommonError<'_>> {
+    ) -> GetResult<donguru_api::ButtonAction, wire_weaver::CommonError<'_>> {
         Value(self.state.settings.button_action)
     }
 
@@ -376,7 +379,7 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: ww_si::Second,
-    ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
+    ) -> SetResult<wire_weaver::CommonError<'_>> {
         if let Some(code) = self.state.settings_fault {
             return SetError(CommonError::Fault { code });
         }
@@ -391,7 +394,7 @@ impl MockServer {
     async fn get_device_settings_meter_window(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<ww_si::Second, wire_weaver::ww_error::CommonError<'_>> {
+    ) -> GetResult<ww_si::Second, wire_weaver::CommonError<'_>> {
         Value(self.state.settings.meter_window)
     }
 
@@ -399,7 +402,7 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: donguru_api::MeterDeadband,
-    ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
+    ) -> SetResult<wire_weaver::CommonError<'_>> {
         if let Some(code) = self.state.settings_fault {
             return SetError(CommonError::Fault { code });
         }
@@ -411,7 +414,7 @@ impl MockServer {
     async fn get_device_settings_meter_deadband(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::MeterDeadband, wire_weaver::ww_error::CommonError<'_>> {
+    ) -> GetResult<donguru_api::MeterDeadband, wire_weaver::CommonError<'_>> {
         Value(self.state.settings.meter_deadband.clone())
     }
 
@@ -419,7 +422,7 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: ww_uart::UartConfig,
-    ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
+    ) -> SetResult<wire_weaver::CommonError<'_>> {
         if let Some(code) = self.state.settings_fault {
             return SetError(CommonError::Fault { code });
         }
@@ -430,14 +433,14 @@ impl MockServer {
     async fn get_device_settings_uart_plug(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<ww_uart::UartConfig, wire_weaver::ww_error::CommonError<'_>> {
+    ) -> GetResult<ww_uart::UartConfig, wire_weaver::CommonError<'_>> {
         Value(self.state.settings.uart_plug.clone())
     }
 
     async fn device_settings_reset(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> RpcResult<Result<(), wire_weaver::ww_error::CommonError<'_>>> {
+    ) -> RpcResult<Result<(), wire_weaver::CommonError<'_>>> {
         if let Some(code) = self.state.settings_fault {
             return Ready(Err(CommonError::Fault { code }));
         }
@@ -481,7 +484,7 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _config: ww_timebase::SyncConfig,
-    ) -> RpcResult<Result<(), ww_timebase::ClockError<'_>>> {
+    ) -> RpcResult<Result<(), CommonError<'_>>> {
         Unimplemented.into()
     }
 
@@ -503,7 +506,7 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _t: ww_timebase::DateTime,
-    ) -> RpcResult<Result<(), ww_timebase::ClockError<'_>>> {
+    ) -> RpcResult<Result<(), CommonError<'_>>> {
         Unimplemented.into()
     }
 
@@ -511,14 +514,14 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _point: ww_timebase::SteerPoint<'_>,
-    ) -> RpcResult<Result<Option<ww_timebase::SyncSource>, ww_timebase::ClockError<'_>>> {
+    ) -> RpcResult<Result<Option<ww_timebase::SyncSource>, CommonError<'_>>> {
         Unimplemented.into()
     }
 
     async fn clock_shared_now(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> RpcResult<Option<u64>> {
+    ) -> RpcResult<Option<ww_timebase::UnixMicros<u64>>> {
         Unimplemented.into()
     }
 
@@ -531,7 +534,7 @@ impl MockServer {
                 8,
             >,
         >,
-    ) -> RpcResult<Result<(), ww_timebase::ClockError<'_>>> {
+    ) -> RpcResult<Result<(), CommonError<'_>>> {
         Unimplemented.into()
     }
 
@@ -555,7 +558,7 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: ww_indication::Mode,
-    ) -> SetResult<()> {
+    ) -> SetResult<CommonError<'_>> {
         self.state.leds_mode = value;
         Set
     }
@@ -563,7 +566,7 @@ impl MockServer {
     async fn get_leds_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<ww_indication::Mode, ()> {
+    ) -> GetResult<ww_indication::Mode, CommonError<'_>> {
         Value(self.state.leds_mode)
     }
 
@@ -572,7 +575,7 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: ww_indication::Brightness,
-    ) -> SetResult<()> {
+    ) -> SetResult<CommonError<'_>> {
         self.state.leds_brightness = value;
         Set
     }
@@ -580,7 +583,7 @@ impl MockServer {
     async fn get_leds_brightness(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<ww_indication::Brightness, ()> {
+    ) -> GetResult<ww_indication::Brightness, CommonError<'_>> {
         Value(self.state.leds_brightness)
     }
 
@@ -589,7 +592,7 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         duration: ww_si::Second,
-    ) -> RpcResult<Result<(), wire_weaver::ww_error::CommonError<'_>>> {
+    ) -> RpcResult<Result<(), wire_weaver::CommonError<'_>>> {
         if duration.to_f64() > 60.0 {
             // a range this device doesn't do; identify lists only Unsupported and Busy
             return Ready(Err(CommonError::Unsupported));
@@ -603,21 +606,21 @@ impl MockServer {
     async fn get_meter_reading(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::MeterReading, ()> {
+    ) -> GetResult<donguru_api::MeterReading, CommonError<'_>> {
         Value(self.state.reading.clone())
     }
 
     async fn get_meter_temperature(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::DieTemperature, ()> {
+    ) -> GetResult<donguru_api::DieTemperature, CommonError<'_>> {
         Value(self.state.temperature)
     }
 
     async fn get_meter_totals(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::MeterTotals, ()> {
+    ) -> GetResult<donguru_api::MeterTotals, CommonError<'_>> {
         Value(self.state.totals.clone())
     }
 
@@ -631,7 +634,7 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: ww_si::Second,
-    ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
+    ) -> SetResult<wire_weaver::CommonError<'_>> {
         if let Err(e) = check_window(value) {
             return SetError(e);
         }
@@ -642,7 +645,7 @@ impl MockServer {
     async fn get_meter_window(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<ww_si::Second, wire_weaver::ww_error::CommonError<'_>> {
+    ) -> GetResult<ww_si::Second, wire_weaver::CommonError<'_>> {
         Value(self.state.meter_window)
     }
 
@@ -650,7 +653,7 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: donguru_api::MeterDeadband,
-    ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
+    ) -> SetResult<wire_weaver::CommonError<'_>> {
         self.state.meter_deadband = value;
         Set
     }
@@ -658,14 +661,14 @@ impl MockServer {
     async fn get_meter_deadband(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::MeterDeadband, wire_weaver::ww_error::CommonError<'_>> {
+    ) -> GetResult<donguru_api::MeterDeadband, wire_weaver::CommonError<'_>> {
         Value(self.state.meter_deadband.clone())
     }
 
     async fn get_meter_calibration(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::MeterCalibration, ()> {
+    ) -> GetResult<donguru_api::MeterCalibration, CommonError<'_>> {
         Value(self.state.calibration.clone())
     }
 
@@ -674,7 +677,7 @@ impl MockServer {
     async fn get_plug_vbus(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::VbusState, ()> {
+    ) -> GetResult<donguru_api::VbusState, CommonError<'_>> {
         Value(self.state.plug_vbus)
     }
 
@@ -682,7 +685,7 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: donguru_api::VbusMode,
-    ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
+    ) -> SetResult<wire_weaver::CommonError<'_>> {
         if let Err(e) = check_mode(&value) {
             return SetError(e);
         }
@@ -699,7 +702,7 @@ impl MockServer {
     async fn get_plug_vbus_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::VbusMode, wire_weaver::ww_error::CommonError<'_>> {
+    ) -> GetResult<donguru_api::VbusMode, wire_weaver::CommonError<'_>> {
         Value(self.state.plug_vbus_mode.clone())
     }
 
@@ -708,23 +711,27 @@ impl MockServer {
         _cx: &mut Context<'_, impl EventOut>,
         off: ww_si::Second,
         release_sbu: bool,
-    ) -> RpcResult<Result<donguru_api::VbusState, donguru_api::PowerError<'_>>> {
+    ) -> RpcResult<Result<donguru_api::VbusState, wire_weaver::Error<'_, donguru_api::PowerError>>>
+    {
         if matches!(self.state.plug_vbus_mode, VbusMode::ForceOff) {
-            return Ready(Err(PowerError::Common(CommonError::WrongState {
+            return Ready(Err(wire_weaver::Error::Common(CommonError::WrongState {
                 reason: MaxLen::new_unchecked("vbus_mode is ForceOff"),
             })));
         }
         if off.to_f64() < 0.0 || off.to_f64() > 10.0 {
-            return Ready(Err(PowerError::Common(CommonError::InvalidArgument {
-                arg: 0,
-                reason: MaxLen::new_unchecked("0 to 10 s"),
-            })));
+            return Ready(Err(wire_weaver::Error::Common(
+                CommonError::InvalidArgument {
+                    arg: ww_si::Index::new(0),
+                    reason: MaxLen::new_unchecked("0 to 10 s"),
+                },
+            )));
         }
         let max = max_voltage(&self.state.plug_vbus_mode);
         if self.state.reading.vbus_in.to_f64() > max {
             return Ready(Err(PowerError::OverVoltage {
                 measured: self.state.reading.vbus_in,
-            }));
+            }
+            .into()));
         }
         if release_sbu {
             self.state.sbu_function = SbuFunction::Off;
@@ -740,7 +747,7 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: donguru_api::DataPath,
-    ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
+    ) -> SetResult<wire_weaver::CommonError<'_>> {
         self.state.plug_data = value;
         self.mark_changed_plug_data();
         Set
@@ -749,7 +756,7 @@ impl MockServer {
     async fn get_plug_data(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::DataPath, wire_weaver::ww_error::CommonError<'_>> {
+    ) -> GetResult<donguru_api::DataPath, wire_weaver::CommonError<'_>> {
         Value(self.state.plug_data)
     }
 
@@ -757,7 +764,7 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: donguru_api::Orientation,
-    ) -> SetResult<()> {
+    ) -> SetResult<CommonError<'_>> {
         self.state.orientation = value;
         self.mark_changed_plug_orientation();
         Set
@@ -766,14 +773,14 @@ impl MockServer {
     async fn get_plug_orientation(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::Orientation, ()> {
+    ) -> GetResult<donguru_api::Orientation, CommonError<'_>> {
         Value(self.state.orientation)
     }
 
     async fn get_plug_cc(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::CcState, ()> {
+    ) -> GetResult<donguru_api::CcState, CommonError<'_>> {
         Value(self.state.cc)
     }
 
@@ -783,7 +790,7 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: donguru_api::PdSource,
-    ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
+    ) -> SetResult<wire_weaver::CommonError<'_>> {
         self.state.pd_source = value;
         Set
     }
@@ -791,14 +798,14 @@ impl MockServer {
     async fn get_plug_pd_source(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::PdSource, wire_weaver::ww_error::CommonError<'_>> {
+    ) -> GetResult<donguru_api::PdSource, wire_weaver::CommonError<'_>> {
         Value(self.state.pd_source.clone())
     }
 
     async fn get_plug_pd_state(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::PdState, ()> {
+    ) -> GetResult<donguru_api::PdState, CommonError<'_>> {
         Value(match self.state.pd_source {
             donguru_api::PdSource::Off => donguru_api::PdState::Off,
             _ => donguru_api::PdState::Unattached,
@@ -820,7 +827,7 @@ impl MockServer {
     async fn get_header_vbus_sw(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::VbusState, ()> {
+    ) -> GetResult<donguru_api::VbusState, CommonError<'_>> {
         Value(self.state.header_vbus)
     }
 
@@ -828,7 +835,7 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: donguru_api::VbusMode,
-    ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
+    ) -> SetResult<wire_weaver::CommonError<'_>> {
         if let Err(e) = check_mode(&value) {
             return SetError(e);
         }
@@ -845,7 +852,7 @@ impl MockServer {
     async fn get_header_vbus_sw_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::VbusMode, wire_weaver::ww_error::CommonError<'_>> {
+    ) -> GetResult<donguru_api::VbusMode, wire_weaver::CommonError<'_>> {
         Value(self.state.header_vbus_mode.clone())
     }
 
@@ -853,7 +860,7 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: bool,
-    ) -> SetResult<()> {
+    ) -> SetResult<CommonError<'_>> {
         self.state.relay = value;
         self.mark_changed_header_relay();
         Set
@@ -862,7 +869,7 @@ impl MockServer {
     async fn get_header_relay(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<bool, ()> {
+    ) -> GetResult<bool, CommonError<'_>> {
         Value(self.state.relay)
     }
 
@@ -871,7 +878,7 @@ impl MockServer {
     async fn get_sbu_function(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::SbuFunction, ()> {
+    ) -> GetResult<donguru_api::SbuFunction, CommonError<'_>> {
         Value(self.state.sbu_function)
     }
 
@@ -885,7 +892,7 @@ impl MockServer {
     async fn get_sbu_level(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<ww_si::Volt, ()> {
+    ) -> GetResult<ww_si::Volt, CommonError<'_>> {
         Value(self.state.sbu_level)
     }
 
@@ -893,7 +900,7 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: bool,
-    ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
+    ) -> SetResult<wire_weaver::CommonError<'_>> {
         if matches!(self.state.sbu_function, SbuFunction::Swd) {
             return SetError(CommonError::InUse {
                 by: MaxLen::new_unchecked("swd"),
@@ -906,7 +913,7 @@ impl MockServer {
     async fn get_sbu_pullups(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<bool, wire_weaver::ww_error::CommonError<'_>> {
+    ) -> GetResult<bool, wire_weaver::CommonError<'_>> {
         Value(self.state.sbu_pullups)
     }
 
@@ -914,7 +921,7 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         enabled: bool,
-    ) -> RpcResult<Result<(), donguru_api::SbuError<'_>>> {
+    ) -> RpcResult<Result<(), CommonError<'_>>> {
         match self.state.variant {
             BoardVariant::Plus => {
                 self.state.sbu_function = if enabled {
@@ -925,7 +932,7 @@ impl MockServer {
                 self.mark_changed_sbu_function();
                 Ready(Ok(()))
             }
-            _ => Ready(Err(SbuError::Common(CommonError::Unsupported))),
+            _ => Ready(Err(CommonError::Unsupported)),
         }
     }
 
@@ -934,14 +941,14 @@ impl MockServer {
     async fn get_inputs_button(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::ButtonState, ()> {
+    ) -> GetResult<donguru_api::ButtonState, CommonError<'_>> {
         Value(self.state.button.clone())
     }
 
     async fn get_inputs_switch(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::SwitchPosition, ()> {
+    ) -> GetResult<donguru_api::SwitchPosition, CommonError<'_>> {
         Value(self.state.switch)
     }
 
@@ -959,7 +966,7 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: donguru_api::ButtonAction,
-    ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
+    ) -> SetResult<wire_weaver::CommonError<'_>> {
         self.state.button_action = value;
         Set
     }
@@ -967,7 +974,7 @@ impl MockServer {
     async fn get_inputs_button_action(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::ButtonAction, wire_weaver::ww_error::CommonError<'_>> {
+    ) -> GetResult<donguru_api::ButtonAction, wire_weaver::CommonError<'_>> {
         Value(self.state.button_action)
     }
 
@@ -976,7 +983,7 @@ impl MockServer {
     async fn get_hub_state(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::HubState, ()> {
+    ) -> GetResult<donguru_api::HubState, CommonError<'_>> {
         Value(self.state.hub)
     }
 
@@ -993,7 +1000,7 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         value: donguru_api::SwdMode,
-    ) -> SetResult<wire_weaver::ww_error::CommonError<'_>> {
+    ) -> SetResult<wire_weaver::CommonError<'_>> {
         self.state.swd_mode = value;
         Set
     }
@@ -1001,14 +1008,14 @@ impl MockServer {
     async fn get_swd_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::SwdMode, wire_weaver::ww_error::CommonError<'_>> {
+    ) -> GetResult<donguru_api::SwdMode, wire_weaver::CommonError<'_>> {
         Value(self.state.swd_mode)
     }
 
     async fn get_swd_session(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::SwdSession, ()> {
+    ) -> GetResult<donguru_api::SwdSession, CommonError<'_>> {
         Value(self.state.swd_session.clone())
     }
 
@@ -1017,9 +1024,9 @@ impl MockServer {
     async fn uart_rx(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        index_chain: [UNib32; 1],
+        index_chain: [ww_client_server::ResourceIndex; 1],
     ) -> RpcResult<()> {
-        if index_chain[0].0 == 1 {
+        if index_chain[0].get().0 == 1 {
             RpcResult::Ready(())
         } else {
             RpcResult::Unimplemented
@@ -1029,26 +1036,32 @@ impl MockServer {
     async fn close_uart_rx(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
     ) {
     }
 
-    async fn stream_uart_rx(&mut self, index_chain: [UNib32; 1]) -> &mut ww_stream::tx::Counted {
-        if index_chain[0].0 == 1 {
+    async fn stream_uart_rx(
+        &mut self,
+        index_chain: [ww_client_server::ResourceIndex; 1],
+    ) -> &mut ww_stream::tx::Counted {
+        if index_chain[0].get().0 == 1 {
             &mut self.uart_rx
         } else {
             &mut self.unopened
         }
     }
 
-    fn credit_uart_tx(&mut self, index_chain: [UNib32; 1]) -> &mut ww_stream::sink::SinkCredit {
-        &mut self.uart_tx_credit[(index_chain[0].0 as usize).min(1)]
+    fn credit_uart_tx(
+        &mut self,
+        index_chain: [ww_client_server::ResourceIndex; 1],
+    ) -> &mut ww_stream::sink::SinkCredit {
+        &mut self.uart_tx_credit[(index_chain[0].get().0 as usize).min(1)]
     }
 
     async fn sideband_uart_tx(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
         _sideband: ww_client_server::StreamSideband,
     ) -> Option<ww_client_server::StreamSideband> {
         // TODO: None sends no reply
@@ -1058,11 +1071,11 @@ impl MockServer {
     async fn write_uart_tx(
         &mut self,
         cx: &mut Context<'_, impl EventOut>,
-        index_chain: [UNib32; 1],
+        index_chain: [ww_client_server::ResourceIndex; 1],
         data: &wire_weaver::shrink_wrap::tail_bytes::TailBytes<'_>,
     ) {
         // `uart[0]` has no credit; `uart[1]` is looped back to its rx at once
-        if index_chain[0].0 != 1 {
+        if index_chain[0].get().0 != 1 {
             return;
         }
         self.uart_tx_credit[1].free(data.0.len() as u32);
@@ -1080,7 +1093,7 @@ impl MockServer {
     async fn uart_capabilities(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
     ) -> RpcResult<ww_uart::Capabilities<'_>> {
         Unimplemented.into()
     }
@@ -1088,10 +1101,10 @@ impl MockServer {
     async fn uart_configure(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        index_chain: [UNib32; 1],
+        index_chain: [ww_client_server::ResourceIndex; 1],
         config: ww_uart::UartConfig,
-    ) -> RpcResult<Result<ww_uart::UartConfig, ww_uart::UartError<'_>>> {
-        if index_chain[0].0 != 1 {
+    ) -> RpcResult<Result<ww_uart::UartConfig, CommonError<'_>>> {
+        if index_chain[0].get().0 != 1 {
             return Unimplemented.into();
         }
         // the firmware's divider on 64 MHz, 8 Mbaud at most, 8N1-style framings only
@@ -1100,7 +1113,7 @@ impl MockServer {
             ww_si::Rounding::Truncate,
             ww_si::Overflow::Checked,
         ) else {
-            return Ready(Err(ww_uart::UartError::Common(CommonError::Unsupported)));
+            return Ready(Err(CommonError::Unsupported));
         };
         let div = (64_000_000 + baud / 2) / baud.max(1);
         let supported = (8..0x1_0000).contains(&div)
@@ -1110,11 +1123,11 @@ impl MockServer {
             )
             && config.mode == ww_uart::Mode::Asynchronous;
         if !supported {
-            return Ready(Err(ww_uart::UartError::Common(CommonError::Unsupported)));
+            return Ready(Err(CommonError::Unsupported));
         }
         Ready(Ok(ww_uart::UartConfig {
             baud_rate: ww_si::Baud::base((64_000_000 + div / 2) / div),
-            idle_chars: 1,
+            idle_chars: ww_si::Fixed::new(1),
             ..config
         }))
     }
@@ -1122,27 +1135,27 @@ impl MockServer {
     async fn uart_set_pin_level(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
         _pin: ww_uart::Pin,
         _is_high: bool,
-    ) -> RpcResult<Result<(), ww_uart::UartError<'_>>> {
+    ) -> RpcResult<Result<(), CommonError<'_>>> {
         Unimplemented.into()
     }
 
     async fn uart_send_break(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
         _duration: ww_si::Second,
-    ) -> RpcResult<Result<(), ww_uart::UartError<'_>>> {
+    ) -> RpcResult<Result<(), CommonError<'_>>> {
         Unimplemented.into()
     }
 
     async fn uart_tx_pending(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
-    ) -> RpcResult<u32> {
+        _index_chain: [ww_client_server::ResourceIndex; 1],
+    ) -> RpcResult<ww_si::Bytes<u32>> {
         Unimplemented.into()
     }
 
@@ -1150,22 +1163,22 @@ impl MockServer {
     async fn uart_monitor(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
         _config: ww_uart::MonitorConfig,
-    ) -> RpcResult<Result<ww_uart::MonitorConfig, ww_uart::UartError<'_>>> {
+    ) -> RpcResult<Result<ww_uart::MonitorConfig, CommonError<'_>>> {
         Unimplemented.into()
     }
 
     async fn close_uart_monitor(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
     ) {
     }
 
     async fn stream_uart_monitor(
         &mut self,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
     ) -> &mut ww_stream::tx::Counted {
         &mut self.unopened
     }
@@ -1175,7 +1188,7 @@ impl MockServer {
     async fn i2c_i2c_capabilities(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
     ) -> RpcResult<ww_i2c::I2cCapabilities<'_>> {
         Unimplemented.into()
     }
@@ -1183,43 +1196,48 @@ impl MockServer {
     async fn i2c_i2c_configure(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
         _config: ww_i2c::I2cConfig,
-    ) -> RpcResult<Result<ww_i2c::I2cConfig, ww_i2c::I2cError<'_>>> {
+    ) -> RpcResult<Result<ww_i2c::I2cConfig, wire_weaver::Error<'_, ww_i2c::I2cError>>> {
         Unimplemented.into()
     }
 
     async fn i2c_i2c_write(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
         _addr: ww_i2c::I2cAddress,
         _data: wire_weaver::shrink_wrap::MaxLen<wire_weaver::shrink_wrap::RefVec<'_, u8>, 512>,
         _delay_after: Option<ww_si::Second>,
-    ) -> RpcResult<Result<ww_i2c::I2cTransactionTimeRange, ww_i2c::I2cError<'_>>> {
+    ) -> RpcResult<Result<ww_i2c::I2cTransactionTimeRange, wire_weaver::Error<'_, ww_i2c::I2cError>>>
+    {
         Unimplemented.into()
     }
 
     async fn i2c_i2c_read(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
         _addr: ww_i2c::I2cAddress,
         _kind: ww_i2c::I2cReadKind<'_>,
-        _len: u16,
+        _len: ww_si::Bytes<u16>,
         _delay_after: Option<ww_si::Second>,
-    ) -> RpcResult<Result<ww_i2c::I2cReadEnvelope<'_>, ww_i2c::I2cError<'_>>> {
+    ) -> RpcResult<Result<ww_i2c::I2cReadEnvelope<'_>, wire_weaver::Error<'_, ww_i2c::I2cError>>>
+    {
         Unimplemented.into()
     }
 
     async fn i2c_i2c_scan(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
     ) -> RpcResult<
         Result<
-            wire_weaver::shrink_wrap::MaxLen<wire_weaver::shrink_wrap::RefVec<'_, u8>, 128>,
-            ww_i2c::I2cError<'_>,
+            wire_weaver::shrink_wrap::MaxLen<
+                wire_weaver::shrink_wrap::RefVec<'_, ww_i2c::I2cAddress>,
+                128,
+            >,
+            wire_weaver::Error<'_, ww_i2c::I2cError>,
         >,
     > {
         Unimplemented.into()
@@ -1228,20 +1246,21 @@ impl MockServer {
     async fn i2c_i2c_transaction(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
         _addr: ww_i2c::I2cAddress,
         _ops: wire_weaver::shrink_wrap::MaxLen<
             wire_weaver::shrink_wrap::RefVec<'_, ww_i2c::I2cOp<'_>>,
             16,
         >,
-    ) -> RpcResult<Result<ww_i2c::I2cTransactionResult<'_>, ww_i2c::I2cError<'_>>> {
+    ) -> RpcResult<Result<ww_i2c::I2cTransactionResult<'_>, wire_weaver::Error<'_, ww_i2c::I2cError>>>
+    {
         Unimplemented.into()
     }
 
     async fn i2c_i2c_lines_state(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
     ) -> RpcResult<ww_i2c::I2cLinesState> {
         Unimplemented.into()
     }
@@ -1249,39 +1268,42 @@ impl MockServer {
     async fn i2c_i2c_wiggle_clock(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
-        _count: u8,
-    ) -> RpcResult<Result<ww_i2c::I2cLinesState, ww_i2c::I2cError<'_>>> {
+        _index_chain: [ww_client_server::ResourceIndex; 1],
+        _count: ww_si::Count<ww_si::units::Cycle, u8>,
+    ) -> RpcResult<Result<ww_i2c::I2cLinesState, wire_weaver::Error<'_, ww_i2c::I2cError>>> {
         Unimplemented.into()
     }
 
     async fn i2c_i2c_set_pullups(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
         _enabled: bool,
-    ) -> RpcResult<Result<(), ww_i2c::I2cError<'_>>> {
+    ) -> RpcResult<Result<(), wire_weaver::Error<'_, ww_i2c::I2cError>>> {
         Unimplemented.into()
     }
 
     async fn i2c_i2c_pullups(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
     ) -> RpcResult<bool> {
         Unimplemented.into()
     }
 
     // ---- ww_gpio::Bank at gpio[] ----
 
-    fn valid_indices_root_gpio_pin(&mut self, _index_chain: [UNib32; 1]) -> ValidIndices<'_> {
+    fn valid_indices_root_gpio_pin(
+        &mut self,
+        _index_chain: [ww_client_server::ResourceIndex; 1],
+    ) -> ValidIndices<'_> {
         ValidIndices::range_u32(0..4)
     }
 
     async fn gpio_capabilities(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
     ) -> RpcResult<ww_gpio::BankCapabilities<'_>> {
         Unimplemented.into()
     }
@@ -1289,16 +1311,16 @@ impl MockServer {
     async fn gpio_configure(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
         _config: ww_gpio::BankConfig,
-    ) -> RpcResult<Result<ww_gpio::BankConfig, ww_gpio::GpioError<'_>>> {
+    ) -> RpcResult<Result<ww_gpio::BankConfig, wire_weaver::Error<'_, ww_gpio::GpioError>>> {
         Unimplemented.into()
     }
 
     async fn gpio_name(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 1],
+        _index_chain: [ww_client_server::ResourceIndex; 1],
     ) -> RpcResult<&'_ str> {
         Unimplemented.into()
     }
@@ -1308,7 +1330,7 @@ impl MockServer {
     async fn gpio_pin_set_output_level(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 2],
+        _index_chain: [ww_client_server::ResourceIndex; 2],
         _level: ww_gpio::Level,
     ) -> RpcResult<()> {
         Unimplemented.into()
@@ -1317,7 +1339,7 @@ impl MockServer {
     async fn gpio_pin_toggle(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 2],
+        _index_chain: [ww_client_server::ResourceIndex; 2],
     ) -> RpcResult<()> {
         Unimplemented.into()
     }
@@ -1325,7 +1347,7 @@ impl MockServer {
     async fn gpio_pin_output_level(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 2],
+        _index_chain: [ww_client_server::ResourceIndex; 2],
     ) -> RpcResult<ww_gpio::Level> {
         Unimplemented.into()
     }
@@ -1333,7 +1355,7 @@ impl MockServer {
     async fn gpio_pin_input_level(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 2],
+        _index_chain: [ww_client_server::ResourceIndex; 2],
     ) -> RpcResult<ww_gpio::Level> {
         Unimplemented.into()
     }
@@ -1341,22 +1363,22 @@ impl MockServer {
     async fn gpio_pin_event(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 2],
+        _index_chain: [ww_client_server::ResourceIndex; 2],
         _enabled: ww_gpio::IoPinEnabledEvents<'_>,
-    ) -> RpcResult<Result<(), ww_gpio::GpioError<'_>>> {
+    ) -> RpcResult<Result<(), wire_weaver::Error<'_, ww_gpio::GpioError>>> {
         Unimplemented.into()
     }
 
     async fn close_gpio_pin_event(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 2],
+        _index_chain: [ww_client_server::ResourceIndex; 2],
     ) {
     }
 
     async fn stream_gpio_pin_event(
         &mut self,
-        _index_chain: [UNib32; 2],
+        _index_chain: [ww_client_server::ResourceIndex; 2],
     ) -> &mut ww_stream::tx::Counted {
         &mut self.unopened
     }
@@ -1364,17 +1386,17 @@ impl MockServer {
     async fn gpio_pin_set_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 2],
+        _index_chain: [ww_client_server::ResourceIndex; 2],
         _mode: ww_gpio::Mode,
         _initial: Option<ww_gpio::Level>,
-    ) -> RpcResult<Result<(), ww_gpio::GpioError<'_>>> {
+    ) -> RpcResult<Result<(), wire_weaver::Error<'_, ww_gpio::GpioError>>> {
         Unimplemented.into()
     }
 
     async fn gpio_pin_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 2],
+        _index_chain: [ww_client_server::ResourceIndex; 2],
     ) -> RpcResult<ww_gpio::Mode> {
         Unimplemented.into()
     }
@@ -1382,41 +1404,41 @@ impl MockServer {
     async fn set_gpio_pin_pull(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 2],
+        _index_chain: [ww_client_server::ResourceIndex; 2],
         _value: ww_gpio::Pull,
-    ) -> SetResult<ww_gpio::GpioError<'_>> {
+    ) -> SetResult<wire_weaver::Error<'_, ww_gpio::GpioError>> {
         Unimplemented.into()
     }
 
     async fn get_gpio_pin_pull(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 2],
-    ) -> GetResult<ww_gpio::Pull, ww_gpio::GpioError<'_>> {
+        _index_chain: [ww_client_server::ResourceIndex; 2],
+    ) -> GetResult<ww_gpio::Pull, wire_weaver::Error<'_, ww_gpio::GpioError>> {
         Unimplemented.into()
     }
 
     async fn set_gpio_pin_speed(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 2],
+        _index_chain: [ww_client_server::ResourceIndex; 2],
         _value: ww_gpio::Speed,
-    ) -> SetResult<ww_gpio::GpioError<'_>> {
+    ) -> SetResult<wire_weaver::Error<'_, ww_gpio::GpioError>> {
         Unimplemented.into()
     }
 
     async fn get_gpio_pin_speed(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 2],
-    ) -> GetResult<ww_gpio::Speed, ww_gpio::GpioError<'_>> {
+        _index_chain: [ww_client_server::ResourceIndex; 2],
+    ) -> GetResult<ww_gpio::Speed, wire_weaver::Error<'_, ww_gpio::GpioError>> {
         Unimplemented.into()
     }
 
     async fn gpio_pin_capabilities(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _index_chain: [UNib32; 2],
+        _index_chain: [ww_client_server::ResourceIndex; 2],
     ) -> RpcResult<ww_gpio::PinCapabilities<'_>> {
         Unimplemented.into()
     }
@@ -1426,8 +1448,8 @@ impl MockServer {
     async fn adc_read(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _channel: u8,
-    ) -> RpcResult<Result<ww_adc::Reading, ww_adc::AdcError<'_>>> {
+        _channel: ww_si::Index<ww_si::units::Channel, u8>,
+    ) -> RpcResult<Result<ww_adc::Reading, wire_weaver::Error<'_, ww_adc::AdcError>>> {
         Unimplemented.into()
     }
 
@@ -1446,7 +1468,8 @@ impl MockServer {
         pin: donguru_api::McuPin,
         mode: donguru_api::PinMode,
         level: Option<ww_gpio::Level>,
-    ) -> RpcResult<Result<donguru_api::PinState, donguru_api::DebugError<'_>>> {
+    ) -> RpcResult<Result<donguru_api::PinState, wire_weaver::Error<'_, donguru_api::DebugError>>>
+    {
         let level = match level {
             None => None,
             Some(Level::Low) => Some(false),
@@ -1470,7 +1493,8 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         pin: donguru_api::McuPin,
-    ) -> RpcResult<Result<donguru_api::PinState, donguru_api::DebugError<'_>>> {
+    ) -> RpcResult<Result<donguru_api::PinState, wire_weaver::Error<'_, donguru_api::DebugError>>>
+    {
         Ready(self.state.pin_get(pin).map_err(denied))
     }
 
@@ -1479,7 +1503,8 @@ impl MockServer {
         _cx: &mut Context<'_, impl EventOut>,
         pin: donguru_api::McuPin,
         af: u8,
-    ) -> RpcResult<Result<donguru_api::PinState, donguru_api::DebugError<'_>>> {
+    ) -> RpcResult<Result<donguru_api::PinState, wire_weaver::Error<'_, donguru_api::DebugError>>>
+    {
         Ready(self.state.pin_change(pin, Change::Af(af)).map_err(denied))
     }
 
@@ -1511,7 +1536,7 @@ impl MockServer {
     ) -> RpcResult<
         Result<
             wire_weaver::shrink_wrap::MaxLen<wire_weaver::shrink_wrap::RefVec<'_, u8>, 32>,
-            donguru_api::DebugError<'_>,
+            wire_weaver::Error<'_, donguru_api::DebugError>,
         >,
     > {
         let (reg, len) = (reg as usize, len.get() as usize);
@@ -1522,7 +1547,7 @@ impl MockServer {
             })));
         }
         if reg + len > self.state.hub_regs.len() {
-            return Ready(Err(DebugError::Nack));
+            return Ready(Err(DebugError::Nack.into()));
         }
         Ready(Ok(MaxLen::new_unchecked(RefVec::new_bytes(
             &self.state.hub_regs[reg..reg + len],
@@ -1534,7 +1559,7 @@ impl MockServer {
         _cx: &mut Context<'_, impl EventOut>,
         reg: u8,
         data: wire_weaver::shrink_wrap::MaxLen<wire_weaver::shrink_wrap::RefVec<'_, u8>, 32>,
-    ) -> RpcResult<Result<(), donguru_api::DebugError<'_>>> {
+    ) -> RpcResult<Result<(), wire_weaver::Error<'_, donguru_api::DebugError>>> {
         if reg == HUB_REG_STATUS_COMMAND {
             return Ready(Err(denied(Denied::Refused(
                 "STATUS/COMMAND drops our own USB: use hub.recover",
@@ -1542,7 +1567,7 @@ impl MockServer {
         }
         let reg = reg as usize;
         if reg + data.len() > self.state.hub_regs.len() {
-            return Ready(Err(DebugError::Nack));
+            return Ready(Err(DebugError::Nack.into()));
         }
         self.state.hub_regs[reg..reg + data.len()].copy_from_slice(data.as_slice());
         Ready(Ok(()))
@@ -1561,7 +1586,8 @@ impl MockServer {
         _cx: &mut Context<'_, impl EventOut>,
         port: donguru_api::UcpdPort,
         role: donguru_api::CcRole,
-    ) -> RpcResult<Result<donguru_api::UcpdState, donguru_api::DebugError<'_>>> {
+    ) -> RpcResult<Result<donguru_api::UcpdState, wire_weaver::Error<'_, donguru_api::DebugError>>>
+    {
         Ready(self.state.ucpd_role(port, role).map_err(|d| match d {
             Denied::InUse(Holder::SwdCc) => {
                 denied(Denied::Refused("CC pins in use by an SWD session"))
@@ -1595,10 +1621,8 @@ impl MockServer {
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
         _capture: donguru_api::ReplayCapture,
-    ) -> RpcResult<Result<ww_si::Bytes<u32>, donguru_api::DebugError<'_>>> {
-        Ready(Err(donguru_api::DebugError::Common(
-            CommonError::Unsupported,
-        )))
+    ) -> RpcResult<Result<ww_si::Bytes<u32>, wire_weaver::Error<'_, donguru_api::DebugError>>> {
+        Ready(Err(wire_weaver::Error::Common(CommonError::Unsupported)))
     }
 
     async fn debug_reg_read(
@@ -1609,7 +1633,7 @@ impl MockServer {
     ) -> RpcResult<
         Result<
             wire_weaver::shrink_wrap::MaxLen<wire_weaver::shrink_wrap::RefVec<'_, u32>, 32>,
-            donguru_api::DebugError<'_>,
+            wire_weaver::Error<'_, donguru_api::DebugError>,
         >,
     > {
         if let Err(d) = check_reg_read(addr, words) {
@@ -1672,8 +1696,8 @@ impl api_impl::DonguruApiConsts for MockServer {
     }
 
     const DEVICE_LABEL_CAPABILITIES: ww_user_info::UserInfoCaps = ww_user_info::UserInfoCaps {
-        name_max: 32,
-        notes_max: 256,
+        name_max: ww_user_info::NameMax::bounded(32),
+        notes_max: ww_user_info::NotesMax::bounded(256),
         persistent: false,
     };
 
@@ -1681,8 +1705,8 @@ impl api_impl::DonguruApiConsts for MockServer {
         ww_counters::CountersInfo {
             format: 2,
             ram: ww_counters::BufferInfo {
-                used_words: 0,
-                capacity_words: 0,
+                used_words: ww_si::Fixed::new(0),
+                capacity_words: ww_si::Fixed::new(0),
             },
             backup: None,
             build_id: MaxLen::new_unchecked(RefVec::new_bytes(&[])),

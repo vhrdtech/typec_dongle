@@ -6,7 +6,7 @@
 use std::any::Any;
 use std::fmt;
 
-use wire_weaver::ww_error::{CommonErrorOwned, HasCommon};
+use wire_weaver::ww_api::ww_error::CommonErrorOwned;
 use wire_weaver_client::CallError;
 
 /// Convenience alias
@@ -52,15 +52,16 @@ pub enum Error {
 
 /// An error the dongle answered with: its category and the typed error of the API.
 pub struct DeviceError {
-    /// The category, from the `CommonError` part of the item's error.
+    /// The category: the `CommonError` the device answered with, or `Specific` for the item's own error.
     pub kind: DeviceErrorKind,
     message: String,
-    /// The owned error type of the item (`PowerErrorOwned`, `CommonErrorOwned`, `ww_uart::UartErrorOwned`, ...).
+    /// The error the device answered with: the item's own error type (`PowerError`, `ww_i2c::I2cError`, ...) or
+    /// `CommonErrorOwned`.
     typed: Box<dyn Any + Send + Sync>,
 }
 
 impl DeviceError {
-    /// The item's own error type, e.g. `err.typed::<donguru_api::PowerErrorOwned>()` for `OverVoltage { measured }`.
+    /// The item's own error type, e.g. `err.typed::<donguru_api::PowerError>()` for `OverVoltage { measured }`.
     pub fn typed<E: 'static>(&self) -> Option<&E> {
         self.typed.downcast_ref()
     }
@@ -119,20 +120,19 @@ impl DeviceErrorKind {
         }
     }
 
-    fn of(common: Option<&CommonErrorOwned>) -> Self {
+    fn of(common: &CommonErrorOwned) -> Self {
         match common {
-            None => DeviceErrorKind::Specific,
-            Some(CommonErrorOwned::Unsupported) => DeviceErrorKind::Unsupported,
-            Some(CommonErrorOwned::InvalidArgument { .. }) => DeviceErrorKind::InvalidArgument,
-            Some(CommonErrorOwned::InUse { .. }) => DeviceErrorKind::InUse,
-            Some(CommonErrorOwned::Busy) => DeviceErrorKind::Busy,
-            Some(CommonErrorOwned::WrongState { .. }) => DeviceErrorKind::WrongState,
-            Some(CommonErrorOwned::NoPower { .. }) => DeviceErrorKind::NoPower,
-            Some(CommonErrorOwned::Refused { .. }) => DeviceErrorKind::Refused,
-            Some(CommonErrorOwned::Timeout) => DeviceErrorKind::Timeout,
-            Some(CommonErrorOwned::Fault { .. }) => DeviceErrorKind::Fault,
+            CommonErrorOwned::Unsupported => DeviceErrorKind::Unsupported,
+            CommonErrorOwned::InvalidArgument { .. } => DeviceErrorKind::InvalidArgument,
+            CommonErrorOwned::InUse { .. } => DeviceErrorKind::InUse,
+            CommonErrorOwned::Busy => DeviceErrorKind::Busy,
+            CommonErrorOwned::WrongState { .. } => DeviceErrorKind::WrongState,
+            CommonErrorOwned::NoPower { .. } => DeviceErrorKind::NoPower,
+            CommonErrorOwned::Refused { .. } => DeviceErrorKind::Refused,
+            CommonErrorOwned::Timeout => DeviceErrorKind::Timeout,
+            CommonErrorOwned::Fault { .. } => DeviceErrorKind::Fault,
             #[allow(unreachable_patterns)] // future variants of CommonError
-            Some(_) => DeviceErrorKind::Other,
+            _ => DeviceErrorKind::Other,
         }
     }
 }
@@ -183,11 +183,15 @@ impl Error {
         }
     }
 
-    /// From an error of the client for `item`, an item without an error type.
+    /// From an error of the client for `item`, an item without an error type: a common error the device answered
+    /// with is [Error::Device].
     pub(crate) fn client(item: &str, e: wire_weaver_client::Error) -> Self {
         use wire_weaver_client::Error as E;
         if e.is_unimplemented() {
             return Error::Unimplemented { item: item.into() };
+        }
+        if let Some(common) = e.common() {
+            return Error::common(item, common.clone());
         }
         match e {
             E::Timeout | E::LinkSetupTimeout | E::NoPingFromDevice => {
@@ -211,20 +215,33 @@ impl Error {
         }
     }
 
+    /// From a common error the device answered `item` with.
+    pub(crate) fn common(item: &str, common: CommonErrorOwned) -> Self {
+        Error::Device {
+            item: item.into(),
+            error: DeviceError {
+                kind: DeviceErrorKind::of(&common),
+                message: common.to_string(),
+                typed: Box::new(common),
+            },
+        }
+    }
+
     /// From a [CallError] of `item`, an item with an error type.
     pub(crate) fn call<E>(item: &str, e: CallError<E>) -> Self
     where
-        E: HasCommon<Common = CommonErrorOwned> + fmt::Display + Send + Sync + 'static,
+        E: fmt::Display + Send + Sync + 'static,
     {
         match e {
             CallError::Device(e) => Error::Device {
                 item: item.into(),
                 error: DeviceError {
-                    kind: DeviceErrorKind::of(e.common()),
+                    kind: DeviceErrorKind::Specific,
                     message: e.to_string(),
                     typed: Box::new(e),
                 },
             },
+            CallError::Common(common) => Error::common(item, common),
             CallError::Unimplemented { .. } => Error::Unimplemented { item: item.into() },
             CallError::Client(e) => Error::client(item, e),
         }
