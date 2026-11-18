@@ -563,7 +563,7 @@ dependencies = [
 
 [[package]]
 name = "donguru_board"
-version = "0.20.50"
+version = "0.20.51"
 dependencies = [
  "defmt 1.2.0",
  "donguru_api",
@@ -574,7 +574,7 @@ dependencies = [
 
 [[package]]
 name = "donguru_dap"
-version = "0.20.50"
+version = "0.20.51"
 
 [[package]]
 name = "dsp-fixedpoint"

@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.51] - 2026-11-18
+
 ### Changed
 
 - `donguru_api` 0.8.0, wire `w2.0`: common errors leave the error enums; firmware and CLI update together (API-66).
