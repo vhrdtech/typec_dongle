@@ -1,7 +1,7 @@
 // donguru_api 0.7.0 traits and types, saved by `ww api save`.
 // Do not edit, bump the crate version and save a new snapshot instead.
-// shrink_wrap sha256: bf8563e8a96f14c83f96fdf0202e2461b468e2a5157e53d594199c0b302b658e
-(magic: 2837124336, ww_self_version: (major: 0, minor: 3, patch: 0), root: (docs: [
+// shrink_wrap sha256: 0aeb6eaabd2243551e626426e6c1af82f8ddea3193ff5dccbd0866852a916633
+(magic: 2837124336, ww_self_version: (major: 0, minor: 4, patch: 0), root: (docs: [
     "WireWeaver API of the donguru firmware (`donguru_api/` in the repo root), served by `fw/donguru/src/ww/`.",
     "",
     "The crate name and version identify the API on the wire (`DONGURU_API_FULL_GID`), so bump the version with every",
@@ -25,19 +25,19 @@
     "",
     "0.5.2 adds `plug.pd` (API-30): the PD source on the plug CC with its message log. Wire-compatible.",
 ], crate_idx: 0, trait_name: "donguru_api", items: [
-    (id: 0, kind: Trait(trait_idx: 27, omitted: None), multiplicity: Flat, since: None, ident: "DonguruApi", docs: [], optional: None, meta: None),
-    (id: 1, kind: Trait(trait_idx: 11, omitted: None), multiplicity: Flat, since: None, ident: "Device", docs: [], optional: None, meta: None),
-    (id: 2, kind: Trait(trait_idx: 10, omitted: None), multiplicity: Flat, since: None, ident: "Dfu", docs: [], optional: None, meta: None),
-    (id: 3, kind: Trait(trait_idx: 7, omitted: None), multiplicity: Flat, since: None, ident: "Settings", docs: [], optional: None, meta: None),
-    (id: 4, kind: Trait(trait_idx: 14, omitted: None), multiplicity: Flat, since: None, ident: "PowerMeter", docs: [], optional: None, meta: None),
-    (id: 5, kind: Trait(trait_idx: 16, omitted: None), multiplicity: Flat, since: None, ident: "Plug", docs: [], optional: None, meta: None),
-    (id: 6, kind: Trait(trait_idx: 15, omitted: None), multiplicity: Flat, since: None, ident: "PlugPd", docs: [], optional: None, meta: None),
-    (id: 7, kind: Trait(trait_idx: 17, omitted: None), multiplicity: Flat, since: None, ident: "Header", docs: [], optional: None, meta: None),
-    (id: 8, kind: Trait(trait_idx: 18, omitted: None), multiplicity: Flat, since: None, ident: "Sbu", docs: [], optional: None, meta: None),
-    (id: 9, kind: Trait(trait_idx: 19, omitted: None), multiplicity: Flat, since: None, ident: "Inputs", docs: [], optional: None, meta: None),
-    (id: 10, kind: Trait(trait_idx: 20, omitted: None), multiplicity: Flat, since: None, ident: "Hub", docs: [], optional: None, meta: None),
-    (id: 11, kind: Trait(trait_idx: 21, omitted: None), multiplicity: Flat, since: None, ident: "Swd", docs: [], optional: None, meta: None),
-    (id: 12, kind: Trait(trait_idx: 26, omitted: None), multiplicity: Flat, since: None, ident: "Bringup", docs: [], optional: None, meta: None),
+    (id: 0, kind: Trait(trait_idx: 27, omitted: None), multiplicity: Flat, since: None, ident: "DonguruApi", docs: [], optional: None, meta: None, identity: None),
+    (id: 1, kind: Trait(trait_idx: 11, omitted: None), multiplicity: Flat, since: None, ident: "Device", docs: [], optional: None, meta: None, identity: None),
+    (id: 2, kind: Trait(trait_idx: 10, omitted: None), multiplicity: Flat, since: None, ident: "Dfu", docs: [], optional: None, meta: None, identity: None),
+    (id: 3, kind: Trait(trait_idx: 7, omitted: None), multiplicity: Flat, since: None, ident: "Settings", docs: [], optional: None, meta: None, identity: None),
+    (id: 4, kind: Trait(trait_idx: 14, omitted: None), multiplicity: Flat, since: None, ident: "PowerMeter", docs: [], optional: None, meta: None, identity: None),
+    (id: 5, kind: Trait(trait_idx: 16, omitted: None), multiplicity: Flat, since: None, ident: "Plug", docs: [], optional: None, meta: None, identity: None),
+    (id: 6, kind: Trait(trait_idx: 15, omitted: None), multiplicity: Flat, since: None, ident: "PlugPd", docs: [], optional: None, meta: None, identity: None),
+    (id: 7, kind: Trait(trait_idx: 17, omitted: None), multiplicity: Flat, since: None, ident: "Header", docs: [], optional: None, meta: None, identity: None),
+    (id: 8, kind: Trait(trait_idx: 18, omitted: None), multiplicity: Flat, since: None, ident: "Sbu", docs: [], optional: None, meta: None, identity: None),
+    (id: 9, kind: Trait(trait_idx: 19, omitted: None), multiplicity: Flat, since: None, ident: "Inputs", docs: [], optional: None, meta: None, identity: None),
+    (id: 10, kind: Trait(trait_idx: 20, omitted: None), multiplicity: Flat, since: None, ident: "Hub", docs: [], optional: None, meta: None, identity: None),
+    (id: 11, kind: Trait(trait_idx: 21, omitted: None), multiplicity: Flat, since: None, ident: "Swd", docs: [], optional: None, meta: None, identity: None),
+    (id: 12, kind: Trait(trait_idx: 26, omitted: None), multiplicity: Flat, since: None, ident: "Bringup", docs: [], optional: None, meta: None, identity: None),
 ], compact_id: None, meta: None), types: [
     SkippedFullVersion(crate_idx: 2, type_name: "units::Second", signature: [
         167,
@@ -978,13 +978,13 @@
             (ident: "Fault", nested: None),
         ]), batched: None), multiplicity: Flat, since: None, ident: "plug_vbus_at_boot", docs: [
             "`plug.vbus_mode` at boot, default `ForceOff`.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 1, kind: Property(ty: OutOfLine(type_idx: 9), access: ReadWrite(observe: false), write_err_ty: Some(OutOfLine(type_idx: 3)), errors: Some([
             (ident: "InvalidArgument", nested: None),
             (ident: "Fault", nested: None),
         ]), batched: None), multiplicity: Flat, since: None, ident: "button_action", docs: [
             "Boot value of `inputs.button_action`.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 2, kind: Property(ty: Instance(type_idx: 2, args: [
             Type(OutOfLine(type_idx: 0)),
             Type(OutOfLine(type_idx: 1)),
@@ -993,24 +993,24 @@
             (ident: "Fault", nested: None),
         ]), batched: None), multiplicity: Flat, since: None, ident: "meter_window", docs: [
             "Boot value of `meter.window`.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 3, kind: Property(ty: OutOfLine(type_idx: 10), access: ReadWrite(observe: false), write_err_ty: Some(OutOfLine(type_idx: 3)), errors: Some([
             (ident: "InvalidArgument", nested: None),
             (ident: "Fault", nested: None),
         ]), batched: None), multiplicity: Flat, since: None, ident: "meter_deadband", docs: [
             "Boot value of `meter.deadband`.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 4, kind: Property(ty: OutOfLine(type_idx: 11), access: ReadWrite(observe: false), write_err_ty: Some(OutOfLine(type_idx: 3)), errors: Some([
             (ident: "InvalidArgument", nested: None),
             (ident: "Fault", nested: None),
         ]), batched: None), multiplicity: Flat, since: None, ident: "uart_plug", docs: [
             "Default config of `uart[0]`, also used by CDC-ACM until the tty sets its line coding.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 5, kind: Method(args: [], return_ty: Some(Result(ok_ty: Tuple([]), err_ty: OutOfLine(type_idx: 3))), errors: Some([
             (ident: "Fault", nested: None),
         ])), multiplicity: Flat, since: None, ident: "reset", docs: [
             "Every setting back to its default, the label too. Factory data (calibration) stays.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
     ], compact_id: None, meta: None), crate_idx: 0),
     SkippedFullVersion(crate_idx: 11, trait_name: "BootControl", signature: [
         234,
@@ -1038,47 +1038,47 @@
     ], crate_idx: 0, trait_name: "Dfu", items: [
         (id: 0, kind: Trait(trait_idx: 9, omitted: None), multiplicity: Flat, since: None, ident: "node", docs: [
             "Who this node is: product, profile, boot state, last result.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
     ], compact_id: None, meta: None), crate_idx: 0),
     InLine(level: (docs: [
         "The device contract: what every WireWeaver device answers, so generic host tools (`ww info`, `ww log`) work.",
     ], crate_idx: 0, trait_name: "Device", items: [
         (id: 0, kind: Trait(trait_idx: 0, omitted: None), multiplicity: Flat, since: None, ident: "firmware", docs: [
             "Firmware name, version, git, build id.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 1, kind: Trait(trait_idx: 1, omitted: None), multiplicity: Flat, since: None, ident: "last_reset", docs: [
             "Why the firmware last started, boot count.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 2, kind: Trait(trait_idx: 2, omitted: None), multiplicity: Flat, since: None, ident: "board", docs: [
             "Board name, revision and variant.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 3, kind: Trait(trait_idx: 3, omitted: None), multiplicity: Flat, since: None, ident: "uid", docs: [
             "STM32 96-bit unique id. The USB serial number is derived from it: the form the STM32 ROM bootloader reports",
             "(FW-12), 12 hex digits.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 4, kind: Trait(trait_idx: 4, omitted: None), multiplicity: Flat, since: None, ident: "label", docs: [
             "User label and notes, kept in the settings store (API-19).",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 5, kind: Trait(trait_idx: 5, omitted: None), multiplicity: Flat, since: None, ident: "counters", docs: [
             "`cnt` counters: RAM and backup registers.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 6, kind: Trait(trait_idx: 6, omitted: None), multiplicity: Flat, since: None, ident: "log", docs: [
             "defmt log (API-10).",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 7, kind: Property(ty: OutOfLine(type_idx: 4), access: ReadOnly(observe: false), write_err_ty: None, errors: None, batched: None), multiplicity: Flat, since: None, ident: "variant", docs: [
             "Board variant from the hub PID (FW-22), typed.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 8, kind: Trait(trait_idx: 7, omitted: None), multiplicity: Flat, since: None, ident: "settings", docs: [
             "Settings kept in flash (API-19).",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 9, kind: Trait(trait_idx: 8, omitted: None), multiplicity: Flat, since: None, ident: "boot", docs: [
             "Boot state, confirm, revert, reboot: `reboot(Updater)` goes to the STM32 ROM bootloader (USB DFU), the way",
             "firmware updates come in (API-58, FW-12). The state is always `Confirmed`, there is no image to revert to.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 10, kind: Trait(trait_idx: 10, omitted: None), multiplicity: Flat, since: None, ident: "dfu", docs: [
             "The update node: the firmware in place, written by the ROM bootloader (`Profile::InPlace`, `device.boot`",
             "only), API-58.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
     ], compact_id: None, meta: None), crate_idx: 0),
     SkippedFullVersion(crate_idx: 12, trait_name: "Clock", signature: [
         0,
@@ -1107,7 +1107,7 @@
             "The latest reading, averaged over `window`. `OnChange` means a move beyond `deadband`. Observed in",
             "`Samples` mode: every ADC sequence (622 µs, ~1.6 kHz; 898 µs while `adc` samples the extended set), each",
             "32x oversampled in hardware but not averaged over `window`, with its own time.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 1, kind: Property(ty: Instance(type_idx: 17, args: [
             Type(OutOfLine(type_idx: 14)),
             Type(Instance(type_idx: 16, args: [
@@ -1118,13 +1118,13 @@
             ])),
         ]), access: ReadOnly(observe: true), write_err_ty: None, errors: None, batched: None), multiplicity: Flat, since: None, ident: "temperature", docs: [
             "MCU die temperature.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 2, kind: Property(ty: OutOfLine(type_idx: 20), access: ReadOnly(observe: true), write_err_ty: None, errors: None, batched: None), multiplicity: Flat, since: None, ident: "totals", docs: [
             "Charge and energy since boot or `reset_totals`.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 3, kind: Method(args: [], return_ty: None, errors: None), multiplicity: Flat, since: None, ident: "reset_totals", docs: [
             "Restarts `totals` from zero.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 4, kind: Property(ty: Instance(type_idx: 2, args: [
             Type(OutOfLine(type_idx: 0)),
             Type(OutOfLine(type_idx: 1)),
@@ -1132,15 +1132,15 @@
             (ident: "InvalidArgument", nested: None),
         ]), batched: None), multiplicity: Flat, since: None, ident: "window", docs: [
             "Averaging window behind `reading`, default 10 ms.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 5, kind: Property(ty: OutOfLine(type_idx: 10), access: ReadWrite(observe: false), write_err_ty: Some(OutOfLine(type_idx: 3)), errors: Some([
             (ident: "InvalidArgument", nested: None),
         ]), batched: None), multiplicity: Flat, since: None, ident: "deadband", docs: [
             "The change that counts for `OnChange` observers, default 20 mV and 10 mA.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 6, kind: Property(ty: OutOfLine(type_idx: 23), access: ReadOnly(observe: false), write_err_ty: None, errors: None, batched: None), multiplicity: Flat, since: None, ident: "calibration", docs: [
             "Calibration in use: offset and gain per channel, defaults until FW-9.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
     ], compact_id: None, meta: None), crate_idx: 0),
     InLine(level: (docs: [
         "USB PD on the plug CC lines (UCPD2), Donguru as the source (API-30). The source offers one PDO, vSafe5V from the",
@@ -1157,28 +1157,28 @@
             "only between an attach (Rd seen) and the detach, off during a hard reset. `Off` turns VBUS off and the CC",
             "lines open. A current above what the receptacle side can give, or a sender-response time out of range, is",
             "`InvalidArgument`.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 1, kind: Property(ty: OutOfLine(type_idx: 34), access: ReadOnly(observe: true), write_err_ty: None, errors: None, batched: None), multiplicity: Flat, since: None, ident: "state", docs: [
             "Where the source stands: attach, contract, a sink without PD.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 2, kind: StreamFn(ty: OutOfLine(type_idx: 38), delivery: Counted, args: [], return_ty: None, errors: None, batched: None, batch_item_ty: None), multiplicity: Flat, since: None, ident: "messages", docs: [
             "Every message sent and received on the plug CC, raw, and the attach, VBUS and hard-reset events between them,",
             "with the device time. Unit: one record.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
     ], compact_id: None, meta: None), crate_idx: 0),
     InLine(level: (docs: [
         "DUT side of the dongle: plug VBUS (U601), data switch (U701), orientation of everything on SBU, CC.",
     ], crate_idx: 0, trait_name: "Plug", items: [
         (id: 0, kind: Property(ty: OutOfLine(type_idx: 25), access: ReadOnly(observe: true), write_err_ty: None, errors: None, batched: None), multiplicity: Flat, since: None, ident: "vbus", docs: [
             "Plug VBUS switch state, with the trip reason when the firmware cut it.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 1, kind: Property(ty: OutOfLine(type_idx: 8), access: ReadWrite(observe: true), write_err_ty: Some(OutOfLine(type_idx: 3)), errors: Some([
             (ident: "InvalidArgument", nested: None),
             (ident: "Refused", nested: None),
         ]), batched: None), multiplicity: Flat, since: None, ident: "vbus_mode", docs: [
             "How the firmware drives plug VBUS (U601). The limits are kept by the firmware: a software trip takes",
             "milliseconds, it is no fuse. A mode from a newer host is refused.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 2, kind: Method(args: [
             (ident: "off", ty: Instance(type_idx: 2, args: [
                 Type(OutOfLine(type_idx: 0)),
@@ -1195,39 +1195,39 @@
         ])), multiplicity: Flat, since: None, ident: "vbus_cycle", docs: [
             "Off for `off`, then back to `vbus_mode`; with `release_sbu` SBU goes to Hi-Z first so nothing back-powers the",
             "DUT. Answered when VBUS is back on. `WrongState` in `ForceOff`.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 3, kind: Property(ty: OutOfLine(type_idx: 27), access: ReadWrite(observe: true), write_err_ty: Some(OutOfLine(type_idx: 3)), errors: Some([
             (ident: "Refused", nested: None),
         ]), batched: None), multiplicity: Flat, since: None, ident: "data", docs: [
             "USB data to the DUT (U701, DATA_CUT PA9).",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 4, kind: Property(ty: OutOfLine(type_idx: 28), access: ReadWrite(observe: true), write_err_ty: None, errors: None, batched: None), multiplicity: Flat, since: None, ident: "orientation", docs: [
             "Cable orientation for everything on SBU (SWD, UART, I2C, GPIO). Takes effect on the next connect or",
             "configure. `Auto` acts as `Normal` until CC detection (`cc`) works.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 5, kind: Property(ty: OutOfLine(type_idx: 31), access: ReadOnly(observe: true), write_err_ty: None, errors: None, batched: None), multiplicity: Flat, since: None, ident: "cc", docs: [
             "Detected CC polarity and pull, `Unknown` until UCPD2 is used.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 6, kind: Trait(trait_idx: 15, omitted: None), multiplicity: Flat, since: None, ident: "pd", docs: [
             "USB Power Delivery on the plug CC (UCPD2): Donguru as the source towards the DUT, with every message logged",
             "(API-30).",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
     ], compact_id: None, meta: None), crate_idx: 0),
     InLine(level: (docs: [
         "Header J101: the VBUS_SW output and the photo-MOS relay.",
     ], crate_idx: 0, trait_name: "Header", items: [
         (id: 0, kind: Property(ty: OutOfLine(type_idx: 25), access: ReadOnly(observe: true), write_err_ty: None, errors: None, batched: None), multiplicity: Flat, since: None, ident: "vbus_sw", docs: [
             "VBUS_SW switch (J101 pin 10, Q102, PD1) state, with the trip reason.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 1, kind: Property(ty: OutOfLine(type_idx: 8), access: ReadWrite(observe: true), write_err_ty: Some(OutOfLine(type_idx: 3)), errors: Some([
             (ident: "InvalidArgument", nested: None),
             (ident: "Refused", nested: None),
         ]), batched: None), multiplicity: Flat, since: None, ident: "vbus_sw_mode", docs: [
             "How the firmware drives VBUS_SW, as [`Plug::vbus_mode`].",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 2, kind: Property(ty: Bool, access: ReadWrite(observe: true), write_err_ty: None, errors: None, batched: None), multiplicity: Flat, since: None, ident: "relay", docs: [
             "Relay U101 closed (PA5).",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
     ], compact_id: None, meta: None), crate_idx: 0),
     InLine(level: (docs: [
         "The plug SBU lines: one function owns them at a time. A function\'s `configure` takes them when they are free and",
@@ -1235,22 +1235,22 @@
     ], crate_idx: 0, trait_name: "Sbu", items: [
         (id: 0, kind: Property(ty: OutOfLine(type_idx: 40), access: ReadOnly(observe: true), write_err_ty: None, errors: None, batched: None), multiplicity: Flat, since: None, ident: "function", docs: [
             "Who has SBU now.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 1, kind: Method(args: [], return_ty: None, errors: None), multiplicity: Flat, since: None, ident: "release", docs: [
             "All SBU pins Hi-Z, level shifter off, pull-ups off, CC drive off; ends a CMSIS-DAP session and either UART",
             "owner.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 2, kind: Property(ty: Instance(type_idx: 2, args: [
             Type(OutOfLine(type_idx: 5)),
             Type(OutOfLine(type_idx: 1)),
         ]), access: ReadOnly(observe: true), write_err_ty: None, errors: None, batched: None), multiplicity: Flat, since: None, ident: "level", docs: [
             "V_SBU as selected (PD3), set through `io_level` of a function.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 3, kind: Property(ty: Bool, access: ReadWrite(observe: false), write_err_ty: Some(OutOfLine(type_idx: 3)), errors: Some([
             (ident: "InUse", nested: None),
         ]), batched: None), multiplicity: Flat, since: None, ident: "pullups", docs: [
             "3K3 pull-ups to V_SBU (PC15).",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 4, kind: Method(args: [
             (ident: "enabled", ty: Bool, default: None, flatten: false),
         ], return_ty: Some(Result(ok_ty: Tuple([]), err_ty: OutOfLine(type_idx: 41))), errors: Some([
@@ -1260,35 +1260,35 @@
             ])),
         ])), multiplicity: Flat, since: None, ident: "route_usb", docs: [
             "Plus: plug SBU to hub port 4 as USB. Main: `Unsupported`.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
     ], compact_id: None, meta: None), crate_idx: 0),
     InLine(level: (docs: [
         "The button and the slide switch SW101.",
     ], crate_idx: 0, trait_name: "Inputs", items: [
         (id: 0, kind: Property(ty: OutOfLine(type_idx: 42), access: ReadOnly(observe: true), write_err_ty: None, errors: None, batched: None), multiplicity: Flat, since: None, ident: "button", docs: [
             "Button state, with a press count so no click is lost between updates.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 1, kind: Property(ty: OutOfLine(type_idx: 43), access: ReadOnly(observe: true), write_err_ty: None, errors: None, batched: None), multiplicity: Flat, since: None, ident: "switch", docs: [
             "Slide switch position.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 2, kind: StreamFn(ty: OutOfLine(type_idx: 44), delivery: Counted, args: [], return_ty: None, errors: None, batched: None, batch_item_ty: None), multiplicity: Flat, since: None, ident: "events", docs: [
             "Exact edges. Unit: one event.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 3, kind: Property(ty: OutOfLine(type_idx: 9), access: ReadWrite(observe: false), write_err_ty: Some(OutOfLine(type_idx: 3)), errors: Some([
             (ident: "InvalidArgument", nested: None),
         ]), batched: None), multiplicity: Flat, since: None, ident: "button_action", docs: [
             "What a button press does on the device itself, default nothing.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
     ], compact_id: None, meta: None), crate_idx: 0),
     InLine(level: (docs: [
         "The USB hub U301; the MCU\'s own USB is on its port 1.",
     ], crate_idx: 0, trait_name: "Hub", items: [
         (id: 0, kind: Property(ty: OutOfLine(type_idx: 47), access: ReadOnly(observe: true), write_err_ty: None, errors: None, batched: None), multiplicity: Flat, since: None, ident: "state", docs: [
             "Hub state and recoveries (FW-18).",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 1, kind: Method(args: [], return_ty: None, errors: None), multiplicity: Flat, since: None, ident: "recover", docs: [
             "Reset, configure and attach the hub. Answered first, done 100 ms later: our own USB link drops for ~2 s.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
     ], compact_id: None, meta: None), crate_idx: 0),
     InLine(level: (docs: [
         "SWD-host settings and session; the transfers go through the CMSIS-DAP v2 interface.",
@@ -1298,10 +1298,10 @@
         ]), batched: None), multiplicity: Flat, since: None, ident: "mode", docs: [
             "How the SWD-host drives the plug SBU lines (FW-21), from the next transfer on. A mode from a newer host",
             "is refused.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 1, kind: Property(ty: OutOfLine(type_idx: 50), access: ReadOnly(observe: true), write_err_ty: None, errors: None, batched: None), multiplicity: Flat, since: None, ident: "session", docs: [
             "CMSIS-DAP session.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
     ], compact_id: None, meta: None), crate_idx: 0),
     SkippedFullVersion(crate_idx: 10, trait_name: "Uart", signature: [
         98,
@@ -1359,7 +1359,7 @@
             ])),
         ])), multiplicity: Flat, since: None, ident: "pin_set", docs: [
             "Sets a pin\'s mode and, for outputs, its level.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 1, kind: Method(args: [
             (ident: "pin", ty: OutOfLine(type_idx: 53), default: None, flatten: false),
         ], return_ty: Some(Result(ok_ty: OutOfLine(type_idx: 55), err_ty: OutOfLine(type_idx: 56))), errors: Some([
@@ -1368,7 +1368,7 @@
             ])),
         ])), multiplicity: Flat, since: None, ident: "pin_get", docs: [
             "Reads a pin\'s registers.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 2, kind: Method(args: [
             (ident: "pin", ty: OutOfLine(type_idx: 53), default: None, flatten: false),
             (ident: "af", ty: NumericAny(Base(U8)), default: None, flatten: false),
@@ -1380,13 +1380,13 @@
             ])),
         ])), multiplicity: Flat, since: None, ident: "pin_af", docs: [
             "Puts a pin on alternate function `af`.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 3, kind: Method(args: [], return_ty: Some(OutOfLine(type_idx: 58)), errors: None), multiplicity: Flat, since: None, ident: "pins", docs: [
             "GPIOA..F registers now.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 4, kind: Method(args: [], return_ty: Some(OutOfLine(type_idx: 58)), errors: None), multiplicity: Flat, since: None, ident: "boot_pins", docs: [
             "GPIOA..F registers as captured first thing in main, before init.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 5, kind: Method(args: [
             (ident: "reg", ty: NumericAny(Base(U8)), default: None, flatten: false),
             (ident: "len", ty: Instance(type_idx: 16, args: [
@@ -1403,7 +1403,7 @@
             (ident: "Nack", nested: None),
         ])), multiplicity: Flat, since: None, ident: "hub_read", docs: [
             "SMBus block read from the hub.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 6, kind: Method(args: [
             (ident: "reg", ty: NumericAny(Base(U8)), default: None, flatten: false),
             (ident: "data", ty: MaxLen(max_len: Fixed(32), ty: Vec(NumericAny(Base(U8)))), default: Some("Default::default()"), flatten: false),
@@ -1416,12 +1416,12 @@
             (ident: "Nack", nested: None),
         ])), multiplicity: Flat, since: None, ident: "hub_write", docs: [
             "SMBus block write to the hub.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 7, kind: Method(args: [
             (ident: "port", ty: OutOfLine(type_idx: 61), default: None, flatten: false),
         ], return_ty: Some(OutOfLine(type_idx: 62)), errors: None), multiplicity: Flat, since: None, ident: "ucpd", docs: [
             "UCPD registers and CC line states.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 8, kind: Method(args: [
             (ident: "port", ty: OutOfLine(type_idx: 61), default: None, flatten: false),
             (ident: "role", ty: OutOfLine(type_idx: 63), default: None, flatten: false),
@@ -1431,13 +1431,13 @@
             ])),
         ])), multiplicity: Flat, since: None, ident: "ucpd_role", docs: [
             "Sets a UCPD port\'s CC role. `Rp` refused on UCPD1 on rev A.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 9, kind: Method(args: [
             (ident: "led", ty: OutOfLine(type_idx: 64), default: None, flatten: false),
             (ident: "mode", ty: OutOfLine(type_idx: 65), default: None, flatten: false),
         ], return_ty: None, errors: None), multiplicity: Flat, since: None, ident: "led_set", docs: [
             "Drives one LED directly.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 10, kind: Method(args: [
             (ident: "addr", ty: NumericAny(Base(U32)), default: None, flatten: false),
             (ident: "words", ty: NumericAny(Base(U8)), default: None, flatten: false),
@@ -1448,12 +1448,12 @@
             ])),
         ])), multiplicity: Flat, since: None, ident: "reg_read", docs: [
             "Reads 32-bit words of peripheral space (0x4000_0000..0x5000_2000) only.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 11, kind: Method(args: [
             (ident: "count", ty: NumericAny(Base(U32)), default: None, flatten: false),
         ], return_ty: None, errors: None), multiplicity: Flat, since: None, ident: "log_flood", docs: [
             "Logs `count` numbered lines at once, more than the log keeps up with: the host sees how many are lost.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 12, kind: Method(args: [
             (ident: "capture", ty: OutOfLine(type_idx: 66), default: None, flatten: false),
         ], return_ty: Some(Result(ok_ty: Instance(type_idx: 16, args: [
@@ -1471,57 +1471,57 @@
             "until `Stop`: a full-rate source for `uart[1].rx` with a jumper from IO7 to IO8. The `tx` sink\'s items wait",
             "meanwhile. Answers the capture\'s length in bytes (0 for `Stop`); `Unsupported` in a firmware built without",
             "the feature `uart-replay`, `InvalidArgument` for a capture it doesn\'t know.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
     ], compact_id: None, meta: None), crate_idx: 0),
     InLine(level: (docs: [
         "Donguru: USB Type-C dongle with a hub, power switch and meter, and SWD / UART / I2C / GPIO on the plug SBU lines.",
     ], crate_idx: 0, trait_name: "DonguruApi", items: [
         (id: 0, kind: Trait(trait_idx: 11, omitted: None), multiplicity: Flat, since: None, ident: "device", docs: [
             "Device contract: firmware, last reset, board, ids, label, counters, log, settings (API-9, API-10, API-19).",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 1, kind: Trait(trait_idx: 12, omitted: None), multiplicity: Flat, since: None, ident: "clock", docs: [
             "Device clock: local time, host sync onto UTC, the status LEDs\' shared time (API-57, FW-44). No sync line.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 2, kind: Trait(trait_idx: 13, omitted: None), multiplicity: Flat, since: None, ident: "leds", docs: [
             "The power and status LEDs as one indication: mode, brightness, identify (API-9).",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 3, kind: Trait(trait_idx: 14, omitted: None), multiplicity: Flat, since: None, ident: "meter", docs: [
             "Power meter on the receptacle VBUS, in SI units (API-12).",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 4, kind: Trait(trait_idx: 16, omitted: None), multiplicity: Flat, since: None, ident: "plug", docs: [
             "DUT side: plug VBUS switch, data switch, orientation, CC (API-11).",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 5, kind: Trait(trait_idx: 17, omitted: None), multiplicity: Flat, since: None, ident: "header", docs: [
             "Header J101: VBUS_SW switch and the relay (API-11).",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 6, kind: Trait(trait_idx: 18, omitted: None), multiplicity: Flat, since: None, ident: "sbu", docs: [
             "Plug SBU lines: who owns them, V_SBU, pull-ups, release (API-14).",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 7, kind: Trait(trait_idx: 19, omitted: None), multiplicity: Flat, since: None, ident: "inputs", docs: [
             "Button and slide switch (API-13).",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 8, kind: Trait(trait_idx: 20, omitted: None), multiplicity: Flat, since: None, ident: "hub", docs: [
             "The USB hub (U301) (API-17).",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 9, kind: Trait(trait_idx: 21, omitted: None), multiplicity: Flat, since: None, ident: "swd", docs: [
             "SWD-host on the plug SBU lines, used through the CMSIS-DAP v2 interface (API-17).",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 10, kind: Trait(trait_idx: 22, omitted: None), multiplicity: Array(index_type_idx: None), since: None, ident: "uart", docs: [
             "UARTs: 0 = plug SBU (USART3 / USART1), 1 = header IO7/IO8 (USART5) (API-14).",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 11, kind: Trait(trait_idx: 23, omitted: None), multiplicity: Array(index_type_idx: None), since: None, ident: "i2c", docs: [
             "I2C buses: 0 = plug SBU (I2C1 through the TXS0102), 1 = header IO7/IO8 (I2C3) (API-16).",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 12, kind: Trait(trait_idx: 24, omitted: None), multiplicity: Array(index_type_idx: None), since: None, ident: "gpio", docs: [
             "GPIO banks: 0 = plug SBU1, SBU2, A2, B2; 1 = header IO7..IO10 (API-15).",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 13, kind: Trait(trait_idx: 25, omitted: None), multiplicity: Flat, since: None, ident: "adc", docs: [
             "ADC1 channels by index, with names in the capabilities (API-12).",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
         (id: 14, kind: Trait(trait_idx: 26, omitted: None), multiplicity: Flat, since: None, ident: "debug", docs: [
             "Bring-up and production test: raw pins, hub registers, UCPD, LEDs (API-18). `Unimplemented` in a firmware",
             "built without the `debug-api` feature.",
-        ], optional: None, meta: None),
+        ], optional: None, meta: None, identity: None),
     ], compact_id: None, meta: None), crate_idx: 0),
 ], ext_crates: [
     (crate_id: "donguru_api", version: (major: 0, minor: 7, patch: 0, pre: None, build: None)),

@@ -1,7 +1,7 @@
 // donguru_api 0.8.0 traits and types, saved by `ww api save`.
 // Do not edit, bump the crate version and save a new snapshot instead.
-// shrink_wrap sha256: 3bb854703f03273d08a9694faa5aec636bb4bb98e9332bbe5dde340b7e73a122
-(magic: 2837124336, ww_self_version: (major: 0, minor: 3, patch: 0), root: (docs: [
+// shrink_wrap sha256: c78aff5bcb580f009786ba973b7ec7c418737b1d6bcf37fbdc4f588a16d1b296
+(magic: 2837124336, ww_self_version: (major: 0, minor: 4, patch: 0), root: (docs: [
     "WireWeaver API of the donguru firmware (`donguru_api/` in the repo root), served by `fw/donguru/src/ww/`.",
     "",
     "The crate name and version identify the API on the wire (`DONGURU_API_FULL_GID`), so bump the version with every",
