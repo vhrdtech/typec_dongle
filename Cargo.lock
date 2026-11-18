@@ -1844,7 +1844,7 @@ dependencies = [
 [[package]]
 name = "pd_log"
 version = "0.3.1"
-source = "git+ssh://git@github.com/romixlab/pd_bench#edf3499a7512562af443027ea7c38d3c5f0bf226"
+source = "git+ssh://git@github.com/romixlab/pd_bench#d4b9c51db0528038ee7012af277676b425b480a4"
 dependencies = [
  "anstream",
  "anstyle",
