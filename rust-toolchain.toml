@@ -4,6 +4,6 @@
 #
 # The workspace uses edition 2024, which requires Rust 1.85 or newer.
 [toolchain]
-channel = "stable"
+channel = "1.100.0"
 components = ["rustfmt", "clippy"]
 profile = "minimal"
