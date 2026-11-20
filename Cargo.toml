@@ -3,7 +3,7 @@ resolver = "3"
 members = ["portwright-cli", "portwright-core", "portwright-py", "portwright_api", "portwright_board", "portwright_dap", "xtask"]
 
 [workspace.package]
-version = "0.20.51"
+version = "0.20.52"
 edition = "2024"
 license = "TBD"
 

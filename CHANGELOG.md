@@ -6,6 +6,8 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+## [0.20.52] - 2026-11-20
+
 ### Changed
 
 - The product is now Portwright: binary `portwright`, short link `pw`, crates and Python module `portwright*` (PKG-10).
