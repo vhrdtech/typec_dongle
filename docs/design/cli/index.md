@@ -4,7 +4,7 @@ icon: lucide/terminal
 
 # CLI Design
 
-This document describes the design of the **Donguru command-line interface**:
+This document describes the design of the **Portwright command-line interface**:
 its goals, its command surface, how it is configured, and how it composes with
 other Unix tools.
 
@@ -18,7 +18,7 @@ other Unix tools.
 
 ## Goals
 
-The CLI is the primary way a user interacts with a [Donguru](../../index.md)
+The CLI is the primary way a user interacts with a [Portwright](../../index.md)
 dongle from a host computer. It must be:
 
 - **Unix-native** — line-oriented, pipeable, and scriptable. It reads from
@@ -43,7 +43,7 @@ dongle from a host computer. It must be:
 
 ## What the CLI controls
 
-The Donguru dongle exposes several subsystems. The CLI groups its commands to
+The Portwright dongle exposes several subsystems. The CLI groups its commands to
 match them:
 
 | Subsystem        | Responsibility                                                               |
@@ -76,7 +76,7 @@ flowchart LR
 Design Notes:
 
 - Commands are tested against an **in-process mock** instead of a hand-written transport trait (CORE-3,
-  `donguru-core/src/mock/`): the generated `DonguruApi` server runs on WireWeaver's own `in_process` transport, so
+  `portwright-core/src/mock/`): the generated `PortwrightApi` server runs on WireWeaver's own `in_process` transport, so
   tests exercise the same host stack (link setup, version check, timeouts, observe) as the real USB link, with no
   parallel abstraction to keep in sync.
 - Firmware update is exposed through the same front end even though its underlying mechanism (CLI-10, FW-12) isn't
@@ -84,15 +84,15 @@ Design Notes:
 
 ## Many small tools behind a single front end
 
-Like `git`, Donguru presents a **single, user-facing front end** while the
+Like `git`, Portwright presents a **single, user-facing front end** while the
 project itself is assembled from many small, targeted tools (binaries, scripts,
-…) such as `donguru-gpio`, `donguru-update`, and so on.
+…) such as `portwright-gpio`, `portwright-update`, and so on.
 
 The front-end binary that assembles the full subcommand tree is named
-**`donguru`**, with a short alias **`dg`**. It is the single point of contact
+**`portwright`**, with a short alias **`pw`**. It is the single point of contact
 for a regular user. Rationale:
 
-- **One thing to install, discover (`donguru help`), and version.**
+- **One thing to install, discover (`portwright help`), and version.**
 - **Shared behaviour lives in one place.** Configuration, device selection, and
   output formatting are implemented once in the front end instead of being
   duplicated in every tool.
@@ -108,67 +108,67 @@ mechanism.
 
 ### Naming
 
-- **Canonical binary:** `donguru`.
-- **Short alias:** `dg` (installed alongside, the same executable under two
+- **Canonical binary:** `portwright`.
+- **Short alias:** `pw` (installed alongside, the same executable under two
   names).
 - **Subcommands** are short, lowercase verbs and nouns. Prefer `noun verb`
   grouping where a subsystem has several actions (e.g. `gpio read`,
   `power on`), and a bare verb where there is only one obvious action.
 - **Third-party extensions** are encouraged to add a two-letter namespace after
-  the `donguru-` prefix to avoid future collisions with built-ins that do not
-  exist yet — e.g. `donguru-vh-scan` is invoked as `donguru vh-scan`.
+  the `portwright-` prefix to avoid future collisions with built-ins that do not
+  exist yet — e.g. `portwright-vh-scan` is invoked as `portwright vh-scan`.
 
 ## Command tree
 
 The following is the full v1 surface (design kept in our internal design notes), built up one piece at a time;
-FEATURES.md's `CLI-*` ids say which of it exists today. `dg` is the short alias for `donguru`. Every command accepts
+FEATURES.md's `CLI-*` ids say which of it exists today. `pw` is the short alias for `portwright`. Every command accepts
 `--format text|json|jsonl`; a `watch`-style command polls at `--interval` until WireWeaver's observe lands on the
 host side (CLT-28), then switches to observe with no change to its output.
 
 ```text
-dg info                                   # contract summary: firmware, board/variant, uid, label, last reset (CLI-7)
-dg device list | info | select            # enumeration, identity, pin a default device for this project (CLI-7)
-dg device label [NAME] [--notes ..]       # the user_info name and free-text notes (CLI-19)
-dg device log [--follow]                  # stored defmt log, decoded with the ELF found by its build id (CLI-19)
-dg device counters [--watch]              # cnt counters, decoded with the ELF found by its build id (CLI-19)
-dg device reset-cause [--clear] [--elf F] # cause of the last reset, crash record and its call chain (CLI-19, FW-63)
-dg power status                           # plug VBUS + header VBUS_SW + meter in one table (CLI-11)
-dg power on|off [--allow-voltage 20V] [--trip 2A]
-dg power cycle [--off 500ms] [--release-sbu]
-dg power meter                            # one reading: V, I, P, T, totals
-dg power watch [--interval 100ms|--on-change]
-dg power totals [--reset]
-dg usb status | connect | disconnect      # plug data switch (U701) (CLI-6)
-dg header vbus on|off|status [--allow-voltage V]   # CLI-16 warning + confirmation above 5.5 V
-dg header relay on|off|status
-dg sbu status | release                   # who owns SBU, V_SBU, pull-ups (CLI-20)
-dg sbu orientation [auto|normal|swapped]
-dg uart open [--baud 115200 --parity none ..]   # terminal; stdin -> tx, rx -> stdout, works in pipes (CLI-20)
-dg uart monitor                           # both SBU lines, tagged A / B
-dg uart pty                               # a pty for tools that want a tty (picocom, pyserial)
-dg uart break [--for 250ms]
-dg i2c scan | read | write | transfer [--bus plug|header]   (CLI-12)
-dg gpio read|write|mode|watch <pin>       # pins: io7..io10, sbu1, sbu2, a2, b2 (CLI-5)
-dg adc read [CHANNEL..] [--raw]           # named channels (CLI-22)
-dg input status | watch                   # button, switch, events (CLI-22)
-dg hub status | recover                   # (CLI-22)
-dg led mode all-off|essential|normal | brightness LEVEL | identify [5s]   (CLI-21)
-dg swd status | mode | release(-> sbu release) | memtest   (CLI-17, CLI-18)
-dg pd source on [--current A] [--sender-response-ms N]
-dg pd source off
-dg pd status
-dg pd log [--restart] [--for SECONDS]
-dg fw version | update                    # CLI-10
-dg debug pin get|set|af NAME              # net names from hw_b153a.md: dg debug pin set RELAY_EN high (CLI-23)
-dg debug pins [--boot] [--diff]           # dump, diff against the expected reset state
-dg debug hub read|write REG
-dg debug ucpd [1|2] [--role rd|rp1a5|off]
-dg debug reg ADDR [N]
-dg settings show | set KEY VALUE | reset [--factory]   # device.settings
-dg udev generate | install | uninstall | status        # Linux udev rule (CLI-8)
-dg config generate | show | path | validate             # layered configuration (CLI-9)
-dg completions <shell>                    # shell completions (CLI-3)
-dg top                                    # 💡 live dashboard of every observed level (CLI-24, idea)
+pw info                                   # contract summary: firmware, board/variant, uid, label, last reset (CLI-7)
+pw device list | info | select            # enumeration, identity, pin a default device for this project (CLI-7)
+pw device label [NAME] [--notes ..]       # the user_info name and free-text notes (CLI-19)
+pw device log [--follow]                  # stored defmt log, decoded with the ELF found by its build id (CLI-19)
+pw device counters [--watch]              # cnt counters, decoded with the ELF found by its build id (CLI-19)
+pw device reset-cause [--clear] [--elf F] # cause of the last reset, crash record and its call chain (CLI-19, FW-63)
+pw power status                           # plug VBUS + header VBUS_SW + meter in one table (CLI-11)
+pw power on|off [--allow-voltage 20V] [--trip 2A]
+pw power cycle [--off 500ms] [--release-sbu]
+pw power meter                            # one reading: V, I, P, T, totals
+pw power watch [--interval 100ms|--on-change]
+pw power totals [--reset]
+pw usb status | connect | disconnect      # plug data switch (U701) (CLI-6)
+pw header vbus on|off|status [--allow-voltage V]   # CLI-16 warning + confirmation above 5.5 V
+pw header relay on|off|status
+pw sbu status | release                   # who owns SBU, V_SBU, pull-ups (CLI-20)
+pw sbu orientation [auto|normal|swapped]
+pw uart open [--baud 115200 --parity none ..]   # terminal; stdin -> tx, rx -> stdout, works in pipes (CLI-20)
+pw uart monitor                           # both SBU lines, tagged A / B
+pw uart pty                               # a pty for tools that want a tty (picocom, pyserial)
+pw uart break [--for 250ms]
+pw i2c scan | read | write | transfer [--bus plug|header]   (CLI-12)
+pw gpio read|write|mode|watch <pin>       # pins: io7..io10, sbu1, sbu2, a2, b2 (CLI-5)
+pw adc read [CHANNEL..] [--raw]           # named channels (CLI-22)
+pw input status | watch                   # button, switch, events (CLI-22)
+pw hub status | recover                   # (CLI-22)
+pw led mode all-off|essential|normal | brightness LEVEL | identify [5s]   (CLI-21)
+pw swd status | mode | release(-> sbu release) | memtest   (CLI-17, CLI-18)
+pw pd source on [--current A] [--sender-response-ms N]
+pw pd source off
+pw pd status
+pw pd log [--restart] [--for SECONDS]
+pw fw version | update                    # CLI-10
+pw debug pin get|set|af NAME              # net names from hw_b153a.md: pw debug pin set RELAY_EN high (CLI-23)
+pw debug pins [--boot] [--diff]           # dump, diff against the expected reset state
+pw debug hub read|write REG
+pw debug ucpd [1|2] [--role rd|rp1a5|off]
+pw debug reg ADDR [N]
+pw settings show | set KEY VALUE | reset [--factory]   # device.settings
+pw udev generate | install | uninstall | status        # Linux udev rule (CLI-8)
+pw config generate | show | path | validate             # layered configuration (CLI-9)
+pw completions <shell>                    # shell completions (CLI-3)
+pw top                                    # 💡 live dashboard of every observed level (CLI-24, idea)
 ```
 
 ## Global flags
@@ -185,14 +185,14 @@ focused on their own arguments.
 | `-v, --verbose`         | Increase diagnostic detail on stderr (repeatable, e.g. `-vv`). |
 | `-q, --quiet`           | Suppress non-essential stderr output.                          |
 | `-h, --help`            | Show help for the current command.                             |
-| `-V, --version`         | Print the `donguru` version and exit.                          |
+| `-V, --version`         | Print the `portwright` version and exit.                          |
 
 ## Unix-philosophy
 
 The CLI is built to be a good citizen in pipelines.
 
 - **stdout is data, stderr is diagnostics.** Only requested results go to
-  stdout. Progress, warnings, and errors go to stderr, so `donguru … | jq`
+  stdout. Progress, warnings, and errors go to stderr, so `portwright … | jq`
   never sees log noise.
 - **Exit codes are meaningful.** `0` success; non-zero on failure with distinct
   codes for categories (usage error, no device, device error, timeout), see
@@ -215,10 +215,10 @@ Example pipelines:
 
 ```bash
 # Machine-readable power reading fed to jq
-dg power meter -f json | jq .current_ma
+pw power meter -f json | jq .current_ma
 
 # Stream GPIO changes into a log
-dg gpio watch 3 -f jsonl >> gpio.log
+pw gpio watch 3 -f jsonl >> gpio.log
 ```
 
 ## Configuration
@@ -245,36 +245,36 @@ layer omits.
 | Priority       | Layer                 | Source                                     |
 | -------------- | --------------------- | ------------------------------------------ |
 | 0 (lowest)     | Built-in defaults     | Compiled-in fallback values.               |
-| 1              | Config file: global   | System-wide (e.g. `/etc/donguru/config.toml`). |
-| 2              | Config file: user     | Per-user (e.g. `~/.config/donguru/config.toml`). |
-| 3              | Config file: project  | `donguru.toml` found by walking up from the CWD. |
-| 4              | Environment variables | `DONGURU_`-prefixed variables.             |
+| 1              | Config file: global   | System-wide (e.g. `/etc/portwright/config.toml`). |
+| 2              | Config file: user     | Per-user (e.g. `~/.config/portwright/config.toml`). |
+| 3              | Config file: project  | `portwright.toml` found by walking up from the CWD. |
+| 4              | Environment variables | `PORTWRIGHT_`-prefixed variables.             |
 | 5 (highest)    | Command-line flags    | Explicit flags.                            |
 
 Higher priority numbers override lower ones on a per-key basis.
 
 - **Config files** use a documented format (TOML) and are searched in three
   scopes, merged in order:
-    - **global** — system-wide (e.g. `/etc/donguru/config.toml`).
+    - **global** — system-wide (e.g. `/etc/portwright/config.toml`).
     - **user** — per-user, via the platform config dir
-      (e.g. `~/.config/donguru/config.toml`).
-    - **project** — a `donguru.toml` discovered by walking up from the current
+      (e.g. `~/.config/portwright/config.toml`).
+    - **project** — a `portwright.toml` discovered by walking up from the current
       directory, so a repository can pin settings such as a default device
       (written by `device select`).
-- **Environment variables** use a `DONGURU_` prefix and mirror the key path
-  (e.g. `DONGURU_DEVICE`, `DONGURU_OUTPUT`, `DONGURU_COLOR`).
+- **Environment variables** use a `PORTWRIGHT_` prefix and mirror the key path
+  (e.g. `PORTWRIGHT_DEVICE`, `PORTWRIGHT_OUTPUT`, `PORTWRIGHT_COLOR`).
 - **Command-line flags** always win.
 
 Configurable keys today: `device` (default device selector), `output` (default format) and `color`.
-`donguru config show --origin` prints each value with the layer it comes from.
+`portwright config show --origin` prints each value with the layer it comes from.
 
 ## Device selection
 
 With multiple dongles connected, a single device is chosen by, in order (CORE-1, CLI-7):
 
 1. `--device/-d <selector>` flag,
-2. `DONGURU_DEVICE` environment variable (the flag's `env`, so it wins at the same priority as the flag itself),
-3. the `device` key of the nearest `./donguru.toml` found by walking up from the current directory, written by
+2. `PORTWRIGHT_DEVICE` environment variable (the flag's `env`, so it wins at the same priority as the flag itself),
+3. the `device` key of the nearest `./portwright.toml` found by walking up from the current directory, written by
    `device select SELECTOR`,
 4. auto-selection when exactly one dongle is present.
 
@@ -288,15 +288,15 @@ since it survives a replug on a different port). If no selector resolves to exac
 ## Extensibility
 
 The core is extended with a **Git/Cargo-style external subcommand** mechanism.
-When `donguru foo` is run and `foo` is not a built-in subcommand, the CLI
-searches `PATH` for an executable named `donguru-foo` and executes it,
+When `portwright foo` is run and `foo` is not a built-in subcommand, the CLI
+searches `PATH` for an executable named `portwright-foo` and executes it,
 forwarding the remaining arguments and the resolved context (selected device,
-output format) via the environment variables `DONGURU_DEVICE` and
-`DONGURU_OUTPUT`.
+output format) via the environment variables `PORTWRIGHT_DEVICE` and
+`PORTWRIGHT_OUTPUT`.
 
 - Plugins are ordinary executables in any language.
-- `donguru help` lists discovered plugins alongside built-ins.
-- Naming convention: `donguru-<name>` → `donguru <name>` (mirrors
+- `portwright help` lists discovered plugins alongside built-ins.
+- Naming convention: `portwright-<name>` → `portwright <name>` (mirrors
   `git-<x>`/`cargo-<x>`).
 
 This preserves the single-front-end user experience while letting features be
@@ -304,7 +304,7 @@ developed, shipped, and versioned independently.
 
 ## Exit codes
 
-A public contract once shipped (`donguru-cli/src/exit.rs`): keep these stable and documented. A new category takes
+A public contract once shipped (`portwright-cli/src/exit.rs`): keep these stable and documented. A new category takes
 the next free number; an existing one is never renumbered. The name is what an error under `--format json` carries
 (see [Errors under json](#errors-under-json)).
 
@@ -322,7 +322,7 @@ it becomes `6`.
 
 ## Errors under json
 
-`donguru-cli/src/output.rs` (`report_error`): under `--format text` an error is one line on stderr, `donguru: error:
+`portwright-cli/src/output.rs` (`report_error`): under `--format text` an error is one line on stderr, `portwright: error:
 ...`. Under `json` and `jsonl` it is one JSON object on one line, also on **stderr**:
 
 ```json
@@ -335,6 +335,6 @@ people, not parsed), `kind` the dongle's own error kind (`DeviceErrorKind::name`
 
 Why stderr and not stdout: "stdout is data, stderr is diagnostics" holds for errors too. A script reading a `jsonl`
 stream then never has to tell a record from an error, a stream that fails halfway leaves only whole records on
-stdout, and `dg ... -f json | jq` fails on the exit code instead of feeding jq an object of another shape. A script
+stdout, and `pw ... -f json | jq` fails on the exit code instead of feeding jq an object of another shape. A script
 that wants the error captures stderr (`2>err.json`). Usage errors from clap stay clap's text, before the format is
 known to apply. The user-facing description is `docs/user/scripting.md`.

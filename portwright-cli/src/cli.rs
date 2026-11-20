@@ -1,7 +1,7 @@
 //! Command-line interface, global settings and built-in command tree.
 //!
 //! Every node supports `--help`, unknown top-level subcommands are captured for external
-//! plugin dispatch (`donguru my-command` → `donguru-my-command` on `PATH`).
+//! plugin dispatch (`portwright my-command` → `portwright-my-command` on `PATH`).
 
 use std::ffi::OsString;
 
@@ -14,19 +14,19 @@ use clap_complete::engine::ArgValueCandidates;
 pub const VERSION: &str = concat!(
     env!("CARGO_PKG_VERSION"),
     " (",
-    env!("DONGURU_GIT"),
+    env!("PORTWRIGHT_GIT"),
     ", built ",
-    env!("DONGURU_BUILT"),
+    env!("PORTWRIGHT_BUILT"),
     ")"
 );
 
-/// Command-line interface for the Donguru USB-C dongle.
+/// Command-line interface for the Portwright USB-C dongle.
 #[derive(Debug, Parser)]
 #[command(
-    name = "donguru",
-    bin_name = "donguru",
+    name = "portwright",
+    bin_name = "portwright",
     version = VERSION,
-    about = "Interact with a Donguru USB-dongle",
+    about = "Interact with a Portwright USB-dongle",
     subcommand_required = true,
     arg_required_else_help = true,
     allow_external_subcommands = true
@@ -94,7 +94,7 @@ impl Explicit {
     }
 }
 
-/// `donguru help`, `donguru -h`, `donguru --help`: the cases where the plugin list is worth a scan of `PATH`.
+/// `portwright help`, `portwright -h`, `portwright --help`: the cases where the plugin list is worth a scan of `PATH`.
 fn asks_for_help(args: impl Iterator<Item = OsString>) -> bool {
     args.take_while(|a| a != "--")
         .any(|a| a == "help" || a == "-h" || a == "--help")
@@ -108,7 +108,7 @@ pub struct GlobalSettings {
         short,
         long,
         global = true,
-        env = "DONGURU_DEVICE",
+        env = "PORTWRIGHT_DEVICE",
         value_name = "SELECTOR",
         add = ArgValueCandidates::new(completion::devices)
     )]
@@ -119,7 +119,7 @@ pub struct GlobalSettings {
         short,
         long,
         global = true,
-        env = "DONGURU_OUTPUT",
+        env = "PORTWRIGHT_OUTPUT",
         value_enum,
         default_value_t = Format::Text
     )]
@@ -224,7 +224,7 @@ pub enum Command {
     #[command(display_order = 90)]
     Completions(crate::commands::completions::Completions),
 
-    /// External plugin: `donguru my-command ...` runs `donguru-my-command ...` from PATH
+    /// External plugin: `portwright my-command ...` runs `portwright-my-command ...` from PATH
     #[command(external_subcommand)]
     External(Vec<OsString>),
 }

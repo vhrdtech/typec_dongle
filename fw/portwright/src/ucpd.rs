@@ -1,5 +1,5 @@
 //! UCPD1 (receptacle) and UCPD2 (plug) for the `debug` level (`ucpd`, `ucpd_role`, API-18): the CC PHY only, no PD
-//! messages. Which role a port may take is `donguru_board::ucpd`'s; this sets the registers.
+//! messages. Which role a port may take is `portwright_board::ucpd`'s; this sets the registers.
 //!
 //! A role turns the port's clock and UCPD on (CFGR1 as embassy's driver sets it: HSI16 / 2, half-bit / 13, ...) and
 //! holds its CC pins in the claim table (`src/pins.rs`), analog for the CC PHY; `Off` turns the CC PHY and UCPD off
@@ -7,11 +7,11 @@
 //! role and left set: UCPD1's is set at boot already (`src/hub.rs`, the PA10 strap).
 
 use crate::pins;
-use donguru_api::{CcRole, UcpdPort, UcpdState};
-use donguru_board::pins::{Denied, Holder};
-use donguru_board::ucpd::{holder, role_fields};
 use embassy_stm32::pac;
 use embassy_stm32::pac::ucpd::Ucpd;
+use portwright_api::{CcRole, UcpdPort, UcpdState};
+use portwright_board::pins::{Denied, Holder};
+use portwright_board::ucpd::{holder, role_fields};
 
 const fn regs(port: UcpdPort) -> Ucpd {
     match port {

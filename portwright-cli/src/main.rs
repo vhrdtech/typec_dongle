@@ -1,4 +1,4 @@
-use donguru_cli::{cli, commands, completion, context, exit, output};
+use portwright_cli::{cli, commands, completion, context, exit, output};
 
 fn main() -> std::process::ExitCode {
     completion::complete_if_asked();
@@ -7,7 +7,7 @@ fn main() -> std::process::ExitCode {
 
     let exit_code = match commands::dispatch(&ctx, cli.command) {
         Ok(code) => code,
-        // `dg power status | head -2`: a reader that went away is not an error (CLI-48)
+        // `pw power status | head -2`: a reader that went away is not an error (CLI-48)
         Err(err) if exit::is_broken_pipe(&err) => exit::ExitCode::Success,
         Err(err) => {
             let code = exit::ExitCode::from(&err);

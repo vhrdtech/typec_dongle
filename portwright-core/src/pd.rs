@@ -1,12 +1,12 @@
 //! `plug.pd` settings from plain numbers (API-30), as [`crate::vbus`] does for the VBUS modes: integer milliamps and
 //! milliseconds, never floats, as the firmware reads them. Also `plug.pd.messages` as `pd_log::Record`s (LOG-1), for
-//! `dg pd log`'s JSON lines file and its screen decode, shared with rePort's sink log.
+//! `pw pd log`'s JSON lines file and its screen decode, shared with rePort's sink log.
 
-use donguru_api::{PdEventOwned, PdRecordOwned, PdSop, PdSource, PdTxOutcome};
+use portwright_api::{PdEventOwned, PdRecordOwned, PdSop, PdSource, PdTxOutcome};
 use ww_si::{Ampere, Overflow, Prefix, Rounding, Second};
 
 /// This device's label in a `pd_log` record ([`pd_log::Source`]).
-pub const LOG_SOURCE: &str = "donguru";
+pub const LOG_SOURCE: &str = "portwright";
 
 /// `plug.pd` device time (µs, wraps every 71.6 min) as a plain integer for [`pd_log::Record::device_time_us`]: a
 /// pass-through of the firmware's own counter, not unwrapped (one log file is one capture, not a stream spanning a
@@ -172,7 +172,7 @@ mod tests {
         };
         for event in [
             PdEventOwned::Attached {
-                cc: donguru_api::CcPolarity::Cc1,
+                cc: portwright_api::CcPolarity::Cc1,
             },
             PdEventOwned::Detached,
             PdEventOwned::Vbus { on: true },

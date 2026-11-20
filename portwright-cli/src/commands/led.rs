@@ -1,4 +1,4 @@
-//! `donguru led` - the power and status LEDs as one indication: mode, brightness and a blink to find the dongle on
+//! `portwright led` - the power and status LEDs as one indication: mode, brightness and a blink to find the dongle on
 //! a bench (CLI-21, API-9). Items an older firmware doesn't have answer `Unimplemented`: "firmware does not support
 //! this yet", exit code 4.
 
@@ -6,8 +6,8 @@ use crate::commands::power::parse_quantity;
 use crate::context::Context;
 use crate::exit::ExitCode;
 use clap::{Subcommand, ValueEnum};
-use donguru_core::Dongle;
-use donguru_core::ww_indication::{Brightness, Mode};
+use portwright_core::Dongle;
+use portwright_core::ww_indication::{Brightness, Mode};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum ModeArg {
@@ -109,7 +109,7 @@ fn fmt_brightness(b: Brightness) -> &'static str {
     }
 }
 
-async fn mode_on(dongle: &Dongle, wanted: Option<ModeArg>) -> donguru_core::Result<Mode> {
+async fn mode_on(dongle: &Dongle, wanted: Option<ModeArg>) -> portwright_core::Result<Mode> {
     if let Some(wanted) = wanted {
         dongle.leds().set_mode(wanted.into()).await?;
     }
@@ -119,7 +119,7 @@ async fn mode_on(dongle: &Dongle, wanted: Option<ModeArg>) -> donguru_core::Resu
 async fn brightness_on(
     dongle: &Dongle,
     wanted: Option<BrightnessArg>,
-) -> donguru_core::Result<Brightness> {
+) -> portwright_core::Result<Brightness> {
     if let Some(wanted) = wanted {
         dongle.leds().set_brightness(wanted.into()).await?;
     }
@@ -161,7 +161,7 @@ pub fn run(ctx: &Context, command: Led) -> anyhow::Result<ExitCode> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use donguru_core::mock::MockDevice;
+    use portwright_core::mock::MockDevice;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn mode_brightness_identify() {

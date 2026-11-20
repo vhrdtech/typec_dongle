@@ -1,5 +1,5 @@
 ---
-source: donguru-cli/src/commands/device/reset_cause.rs
+source: portwright-cli/src/commands/device/reset_cause.rs
 expression: "String::from_utf8(text).unwrap()"
 ---
 cause              PowerOn

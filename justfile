@@ -35,7 +35,7 @@ build-labs:
 [group: 'docs']
 labs-book:
     mkdir -p target/labs
-    typst compile {{ labs-flags }} labs/book.typ target/labs/donguru-lab-book.pdf
+    typst compile {{ labs-flags }} labs/book.typ target/labs/portwright-lab-book.pdf
 
 # One lab as PDF, rebuilt on every save while writing it, e.g. `just lab phone-charging`
 [group: 'docs']
@@ -97,32 +97,32 @@ test-all:
     cargo test --workspace --all-features --locked
     {{just_executable()}} py-test
 
-# Compare donguru_api with its snapshots (api_snapshots/): fails without the current version's snapshot, or on a
+# Compare portwright_api with its snapshots (api_snapshots/): fails without the current version's snapshot, or on a
 # change without the version bump it needs (docs/evolution/checker_tool.md in wire_weaver)
 [group: 'rust']
 api-check:
-    cargo test -p donguru_api --test evolution
+    cargo test -p portwright_api --test evolution
 
-# Save (or refresh) donguru_api's current version snapshot; refuses a version not bumped enough. Commit
-# donguru_api/api_snapshots/ with it
+# Save (or refresh) portwright_api's current version snapshot; refuses a version not bumped enough. Commit
+# portwright_api/api_snapshots/ with it
 [group: 'rust']
 api-save:
-    WW_API_SAVE=1 cargo test -p donguru_api --test evolution -- --nocapture
+    WW_API_SAVE=1 cargo test -p portwright_api --test evolution -- --nocapture
 
-# Python package `donguru` (donguru-py): build it with maturin and run pytest against the mock
+# Python package `portwright` (portwright-py): build it with maturin and run pytest against the mock
 [group: 'python']
 py-test *ARGS:
-    uv run --project donguru-py pytest donguru-py/tests {{ARGS}}
+    uv run --project portwright-py pytest portwright-py/tests {{ARGS}}
 
-# Python wheel of `donguru` for this platform, into target/dist
+# Python wheel of `portwright` for this platform, into target/dist
 [group: 'python']
 py-build:
-    uv build --wheel --out-dir target/dist donguru-py
+    uv build --wheel --out-dir target/dist portwright-py
 
 # Firmware format check and clippy (warnings are errors): the default build, every feature, and rev B's (no default
 # features), so a feature-gated path can't rot unnoticed (FW-23)
 [group: 'fw']
-[working-directory('fw/donguru')]
+[working-directory('fw/portwright')]
 fw-lint:
     cargo fmt --check
     cargo clippy --locked --bins --examples -- -D warnings
@@ -168,28 +168,28 @@ ww := "ww"
 # Update the firmware over USB without a probe (FW-12): build, reboot into the STM32 ROM bootloader, write, back.
 # SERIAL is the full USB serial (`ww list`), the same in the firmware and in the ROM.
 [group: 'fw']
-[working-directory('fw/donguru')]
+[working-directory('fw/portwright')]
 update SERIAL:
     cargo build --release
     {{ ww }} dfu -s {{ SERIAL }} reboot
-    {{ ww }} dfu stm32 -s {{ SERIAL }} flash target/thumbv6m-none-eabi/release/donguru --wait 10 --follow
+    {{ ww }} dfu stm32 -s {{ SERIAL }} flash target/thumbv6m-none-eabi/release/portwright --wait 10 --follow
 
 # Build firmware in release, print FLASH/RAM usage (limits from memory.x) and top 25 symbols
 [group: 'fw']
-[working-directory('fw/donguru')]
+[working-directory('fw/portwright')]
 fw-size:
     #!/usr/bin/env bash
     set -euo pipefail
     # size report only: hide rustc warnings (does not invalidate the build cache)
     export CARGO_BUILD_WARNINGS=allow
     cargo build --release
-    elf=target/thumbv6m-none-eabi/release/donguru
+    elf=target/thumbv6m-none-eabi/release/portwright
     uv run --quiet scripts/size.py "$elf" memory.x
     if ! cargo bloat --version >/dev/null 2>&1; then
         echo "cargo-bloat not found: cargo install cargo-bloat" >&2
         exit 1
     fi
-    cargo bloat --release --bin donguru -n 25
+    cargo bloat --release --bin portwright -n 25
     if ! cnt --help >/dev/null 2>&1; then
         echo "cnt not found: cargo install cnt_cli" >&2
         exit 1
@@ -198,22 +198,22 @@ fw-size:
     cnt list "$elf"
     cnt elf add "$elf"
 
-# Build and install `donguru` on this PC, `dg` as a link to the same executable beside it, and the shell completions
+# Build and install `portwright` on this PC, `pw` as a link to the same executable beside it, and the shell completions
 [group: 'install']
 install:
     #!/usr/bin/env bash
     set -euo pipefail
-    cargo build --profile deploy --locked -p donguru-cli
+    cargo build --profile deploy --locked -p portwright-cli
     # With tpm on PATH: tpm install (kept-releases stack, one copy on PATH); otherwise: cargo install
     if command -v tpm >/dev/null; then
-        tpm install target/deploy/donguru
+        tpm install target/deploy/portwright
         bin="$HOME/.local/bin"
     else
-        cargo install --path donguru-cli --locked
+        cargo install --path portwright-cli --locked
         bin="${CARGO_INSTALL_ROOT:-${CARGO_HOME:-$HOME/.cargo}}/bin"
     fi
-    ln -sf donguru "$bin/dg"
-    "$bin/donguru" completions --install
+    ln -sf portwright "$bin/pw"
+    "$bin/portwright" completions --install
 
 # Bring this PC up to main: pull, update the sibling checkouts, install, check the installed version is this commit
 [group: 'install']
@@ -222,8 +222,8 @@ deploy:
     git pull --ff-only
     just deps-pull
     just install
-    donguru --version | grep -qF "($(git rev-parse --short HEAD),"
-    donguru --version
+    portwright --version | grep -qF "($(git rev-parse --short HEAD),"
+    portwright --version
 
 # Fast-forward the sibling checkouts (wire_weaver, embedded_bedrock): only matters when the [patch] blocks in Cargo.toml are uncommented
 [group: 'rust']
@@ -234,10 +234,10 @@ deps-pull:
 # Build .deb and .rpm packages: release binary, man pages, completions and the udev rule (PKG-3)
 [group: 'package']
 package:
-    cargo build --release --locked -p donguru-cli
+    cargo build --release --locked -p portwright-cli
     cargo run -p xtask -- man
     cargo run -p xtask -- completions
     # needs `cargo install cargo-deb cargo-generate-rpm` (docs/user/installation.md); both fail
     # clearly if missing
-    cargo deb --no-build -p donguru-cli
-    cargo generate-rpm -p donguru-cli
+    cargo deb --no-build -p portwright-cli
+    cargo generate-rpm -p portwright-cli

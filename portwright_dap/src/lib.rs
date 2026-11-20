@@ -1,4 +1,4 @@
-//! CMSIS-DAP v2 request framing for the donguru firmware (`fw/donguru/src/cmsis_dap.rs`, FW-19): a DAP packet of
+//! CMSIS-DAP v2 request framing for the portwright firmware (`fw/portwright/src/cmsis_dap.rs`, FW-19): a DAP packet of
 //! [`DAP_PACKET_SIZE`] bytes carried over full-speed bulk endpoints, so one request or response spans several USB
 //! packets. No hardware and no USB stack in here: the firmware reads and writes the packets and asks this crate
 //! what they mean, which is what lets the logic be unit-tested on the host.

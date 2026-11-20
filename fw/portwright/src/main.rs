@@ -92,7 +92,7 @@ assign_resources! {
         pa5: PA5,
     }
     swd: SwdResources {
-        /// SBU1 net, plug side of the level shifter (hw_b153a.md §8): SWCLK in [`donguru_api::Orientation::Normal`],
+        /// SBU1 net, plug side of the level shifter (hw_b153a.md §8): SWCLK in [`portwright_api::Orientation::Normal`],
         /// SWDIO swapped. R211/R212 (the 0 Ω bypass to PB8/PB6) are not fitted on B153A (checked on the bench 12 Oct
         /// 2026), so this is the only MCU pin wired straight to the plug SBU1. PB8 is the SPI mode's, below.
         pa1: PA1,
@@ -172,7 +172,7 @@ fn main() -> ! {
 
 #[embassy_executor::task]
 async fn boot(spawner: embassy_executor::Spawner, start: boot::Start) {
-    info!("donguru starting...");
+    info!("portwright starting...");
     let last_reset = last_reset::boot(); // reset cause and crash record (src/last_reset.rs), logged
     // the hub may have run through anything but a power cycle (FW-46)
     let warm = !matches!(

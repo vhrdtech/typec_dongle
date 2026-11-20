@@ -1,4 +1,4 @@
-//! `donguru device` - enumerate and inspect dongles.
+//! `portwright device` - enumerate and inspect dongles.
 
 use std::io::{self, Write};
 use std::path::PathBuf;
@@ -12,8 +12,8 @@ use crate::project_config;
 use crate::theme::Theme;
 use clap::Subcommand;
 use clap_complete::engine::ArgValueCandidates;
-use donguru_core::levels::DeviceSummary;
-use donguru_core::{DeviceEntry, Dongle, Selector};
+use portwright_core::levels::DeviceSummary;
+use portwright_core::{DeviceEntry, Dongle, Selector};
 
 mod counters;
 mod label;
@@ -35,7 +35,7 @@ pub enum Device {
     /// Persist a default device for this project
     ///
     /// Resolves SELECTOR against the connected dongles and writes its serial number to the `device` key of
-    /// `./donguru.toml`, so later commands in this directory (and below it) pick it without `--device`.
+    /// `./portwright.toml`, so later commands in this directory (and below it) pick it without `--device`.
     Select {
         /// Device selector (serial number, index or USB path)
         #[arg(add = ArgValueCandidates::new(completion::devices))]
@@ -54,10 +54,10 @@ pub enum Device {
 pub fn run(ctx: &Context, command: Device) -> anyhow::Result<ExitCode> {
     match command {
         Device::List => {
-            let entries = runtime()?.block_on(donguru_core::device::list())?;
+            let entries = runtime()?.block_on(portwright_core::device::list())?;
             Output::stdout(ctx).emit(&List(&entries))?;
             if entries.is_empty() && ctx.format == Format::Text && !ctx.quiet {
-                eprintln!("donguru: no Donguru connected");
+                eprintln!("portwright: no Portwright connected");
             }
             Ok(ExitCode::Success)
         }
@@ -68,15 +68,15 @@ pub fn run(ctx: &Context, command: Device) -> anyhow::Result<ExitCode> {
                 let summary = dongle.device().summary().await?;
                 let entry = dongle.entry().clone();
                 dongle.close().await?;
-                Ok::<_, donguru_core::Error>((entry, summary))
+                Ok::<_, portwright_core::Error>((entry, summary))
             })?;
             Output::stdout(ctx).emit(&Info::new(&entry, &summary))?;
             Ok(ExitCode::Success)
         }
         Device::Select { selector } => {
             let parsed: Selector = selector.parse()?;
-            let entries = runtime()?.block_on(donguru_core::device::list())?;
-            let entry = donguru_core::device::select(&entries, Some(&parsed))?;
+            let entries = runtime()?.block_on(portwright_core::device::list())?;
+            let entry = portwright_core::device::select(&entries, Some(&parsed))?;
             let pin = Selector::Serial(entry.serial.clone());
             let path = project_config::set_device_selector(&pin.to_string())?;
             Output::stdout(ctx).emit(&Selected { pin, path })?;
@@ -110,7 +110,7 @@ impl Render for Selected {
     }
 }
 
-/// The device selector from `--device` / `DONGURU_DEVICE` / `./donguru.toml`, parsed; `None` auto-selects the only
+/// The device selector from `--device` / `PORTWRIGHT_DEVICE` / `./portwright.toml`, parsed; `None` auto-selects the only
 /// connected dongle.
 pub(crate) fn selector(ctx: &Context) -> anyhow::Result<Option<Selector>> {
     Ok(ctx
@@ -201,7 +201,7 @@ impl Render for List<'_> {
     }
 }
 
-/// Shared by `dg info` and `dg device info`: the device contract in one read (firmware, board/variant, uid,
+/// Shared by `pw info` and `pw device info`: the device contract in one read (firmware, board/variant, uid,
 /// label, last reset; CLI-7).
 pub(crate) struct Info {
     path: String,
@@ -283,7 +283,7 @@ impl Render for Info {
 mod tests {
     use super::*;
     use crate::output::render;
-    use donguru_core::mock::MockDevice;
+    use portwright_core::mock::MockDevice;
 
     #[test]
     fn info_from_the_mock() {

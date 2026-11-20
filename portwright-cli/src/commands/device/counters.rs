@@ -1,4 +1,4 @@
-//! `donguru device counters` - the `cnt` counters, decoded with the firmware's ELF found by its build id (CLI-19,
+//! `portwright device counters` - the `cnt` counters, decoded with the firmware's ELF found by its build id (CLI-19,
 //! API-9).
 
 use std::io::{self, Write};
@@ -8,7 +8,7 @@ use std::time::Duration;
 use crate::completion;
 use clap::Args;
 use clap_complete::engine::ArgValueCompleter;
-use donguru_core::counters::CountersReport;
+use portwright_core::counters::CountersReport;
 
 use crate::cli::Format;
 use crate::context::Context;
@@ -61,8 +61,8 @@ pub fn run(ctx: &Context, args: Counters) -> anyhow::Result<ExitCode> {
                 && !ctx.quiet
             {
                 match &spinner {
-                    Some(spinner) => spinner.suspend(|| eprintln!("donguru: {w}")),
-                    None => eprintln!("donguru: {w}"),
+                    Some(spinner) => spinner.suspend(|| eprintln!("portwright: {w}")),
+                    None => eprintln!("portwright: {w}"),
                 }
             }
             if args.watch {
@@ -135,7 +135,7 @@ impl Render for CountersReport {
 mod tests {
     use super::*;
     use crate::output::render;
-    use donguru_core::counters::CounterValue;
+    use portwright_core::counters::CounterValue;
 
     fn report(counters: Vec<CounterValue>) -> CountersReport {
         CountersReport {

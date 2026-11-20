@@ -3,7 +3,7 @@
 #show: lab.with(
   title: [Is the SWD link clean?],
   time: "10 min",
-  needs: ([Donguru], [a board with SWD on SBU]),
+  needs: ([Portwright], [a board with SWD on SBU]),
   features: ("CLI-18", "CORE-5"),
 )
 
@@ -16,12 +16,12 @@ test patterns at several SWD speeds and find the fastest clean one.
 
 #steps(cli: [
   ```sh
-  dg swd memtest --chip STM32G0B1CETx --speed 400,1000,2000,3000 --passes 3
+  pw swd memtest --chip STM32G0B1CETx --speed 400,1000,2000,3000 --passes 3
   #  400 kHz   ok   144 KiB × 3 · 10 patterns
   #  1000 kHz  ok
   #  2000 kHz  ok
   #  3000 kHz  3 errors (bit 7 at 0x20004a10, ...)
-  dg swd memtest --chip STM32G0B1CETx --speed 2000 -f json | jq .errors
+  pw swd memtest --chip STM32G0B1CETx --speed 2000 -f json | jq .errors
   ```
 ])
 

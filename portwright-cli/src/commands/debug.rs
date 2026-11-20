@@ -1,4 +1,4 @@
-//! `donguru debug` - bring-up and production test on the `debug` level (CLI-23, API-18): MCU pins by net name,
+//! `portwright debug` - bring-up and production test on the `debug` level (CLI-23, API-18): MCU pins by net name,
 //! the boot pin capture, the hub's SMBus registers, the UCPD ports, peripheral registers. See `docs/user/debug.md`.
 //!
 //! The firmware decides what may be changed (refused pins, pins a running function holds, pin states that fight
@@ -8,9 +8,9 @@ use std::io::Write;
 
 use clap::{Args, Subcommand, ValueEnum};
 use clap_complete::engine::ArgValueCandidates;
-use donguru_core::api::{CcRole, Level, McuPin, PinMode, PinState, PortRegs, UcpdPort};
-use donguru_core::debug::{self, Pin};
-use donguru_core::nets;
+use portwright_core::api::{CcRole, Level, McuPin, PinMode, PinState, PortRegs, UcpdPort};
+use portwright_core::debug::{self, Pin};
+use portwright_core::nets;
 
 use crate::cli::Format;
 use crate::completion;
@@ -20,7 +20,7 @@ use crate::exit::ExitCode;
 /// An MCU pin by net name (`RELAY_EN`, `~PWR_FLT`) or port pin (`PA5`).
 fn parse_pin(s: &str) -> Result<McuPin, String> {
     nets::pin(s).ok_or_else(|| {
-        format!("{s:?} is neither a net of the B153A (`dg debug pins` lists them) nor a port pin like PA5")
+        format!("{s:?} is neither a net of the B153A (`pw debug pins` lists them) nor a port pin like PA5")
     })
 }
 
@@ -123,8 +123,8 @@ pub enum DebugPin {
     Get(PinArg),
     /// Set a pin up: `high` / `low` (push-pull output), or a mode with an optional level
     ///
-    /// Refused always: NRST, supply pins, our own USB and SWD, CC_DA_EN, the VBUS enables (use `dg power` /
-    /// `dg header`), the hub's reset and I2C (use `dg debug hub`). Refused while a function runs on them: the
+    /// Refused always: NRST, supply pins, our own USB and SWD, CC_DA_EN, the VBUS enables (use `pw power` /
+    /// `pw header`), the hub's reset and I2C (use `pw debug hub`). Refused while a function runs on them: the
     /// LEDs, the meter and button inputs, the header UART, V_SBU select, an SWD session, a UCPD role. Refused when
     /// the change would make two pins fight on the board (tied nets, SBU_OE with PA0 / PA1).
     Set {
@@ -158,7 +158,7 @@ pub enum DebugHub {
         #[arg(value_name = "LEN", default_value = "1", value_parser = clap::value_parser!(u8).range(1..=32))]
         len: u8,
     },
-    /// Write registers of the hub over SMBus (STATUS/COMMAND 0xFF is refused: use `dg hub recover`)
+    /// Write registers of the hub over SMBus (STATUS/COMMAND 0xFF is refused: use `pw hub recover`)
     Write {
         /// First register, decimal or 0x hex
         #[arg(value_name = "REG", value_parser = parse_u8)]
@@ -264,7 +264,7 @@ pub fn run(ctx: &Context, cmd: Debug) -> anyhow::Result<ExitCode> {
             let (mode, level) = match mode_level(setting, level) {
                 Ok(v) => v,
                 Err(e) => {
-                    eprintln!("donguru: {e}");
+                    eprintln!("portwright: {e}");
                     return Ok(ExitCode::BadArgs);
                 }
             };
@@ -300,7 +300,7 @@ pub fn run(ctx: &Context, cmd: Debug) -> anyhow::Result<ExitCode> {
             super::with_dongle(ctx, async |d| d.debug().hub_write(reg, &data).await)?;
             if !ctx.quiet {
                 eprintln!(
-                    "donguru: wrote {} byte(s) at hub register 0x{reg:02X}",
+                    "portwright: wrote {} byte(s) at hub register 0x{reg:02X}",
                     data.len()
                 );
             }
@@ -507,7 +507,7 @@ fn print_reg(format: Format, addr: u32, words: &[u32], out: &mut impl Write) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use donguru_core::mock::MockDevice;
+    use portwright_core::mock::MockDevice;
 
     fn rt() -> tokio::runtime::Runtime {
         tokio::runtime::Builder::new_multi_thread()

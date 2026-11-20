@@ -1,13 +1,13 @@
-//! donguru-core against the in-process mock (CORE-3): every level through the typed facade, device errors with
+//! portwright-core against the in-process mock (CORE-3): every level through the typed facade, device errors with
 //! their category and typed value, `Unimplemented`, link failures and observe.
 
 use std::time::Duration;
 
-use donguru_core::api::*;
-use donguru_core::client::observe::{BatchedOwned, PlugObserve, PowerMeterObserve, on_change};
-use donguru_core::levels::Side;
-use donguru_core::mock::MockDevice;
-use donguru_core::{DeviceErrorKind, Dongle, Error};
+use portwright_core::api::*;
+use portwright_core::client::observe::{BatchedOwned, PlugObserve, PowerMeterObserve, on_change};
+use portwright_core::levels::Side;
+use portwright_core::mock::MockDevice;
+use portwright_core::{DeviceErrorKind, Dongle, Error};
 use ww_si::Prefix;
 
 fn mv(v: i32) -> Volt {
@@ -33,7 +33,7 @@ fn device_kind(e: Error) -> DeviceErrorKind {
 }
 
 #[track_caller]
-fn unimplemented<T: std::fmt::Debug>(r: donguru_core::Result<T>) {
+fn unimplemented<T: std::fmt::Debug>(r: portwright_core::Result<T>) {
     match r {
         Err(e) if e.is_unimplemented() => {}
         other => panic!("expected Unimplemented, got {other:?}"),
@@ -48,12 +48,12 @@ async fn device_contract() {
     let board = device.board().await.unwrap();
     assert_eq!(
         (board.name.as_str(), board.revision.as_str()),
-        ("Donguru B153", "A")
+        ("Portwright B153", "A")
     );
     assert_eq!(device.uid().await.unwrap(), "0049002A3133510B37363436");
     assert_eq!(
         device.firmware().await.unwrap().name.as_str(),
-        "donguru-mock"
+        "portwright-mock"
     );
 
     device.set_label("bench 2").await.unwrap();
@@ -122,7 +122,7 @@ async fn settings() {
     settings.set_uart_plug(uart).await.unwrap();
 
     // the settings store answers Fault on a flash failure (1), a newer firmware's record (2) or a record too big
-    // (3); CLI-47 maps these to clear messages (donguru-core/src/error.rs)
+    // (3); CLI-47 maps these to clear messages (portwright-core/src/error.rs)
     for (code, note) in [
         (1u32, "the flash write failed; the value was not saved"),
         (
@@ -264,7 +264,7 @@ async fn plug_vbus_guard_and_cycle() {
         })
     );
 
-    // switching on above the limit is refused and changes nothing, as `donguru_board::power` does (CORE-6)
+    // switching on above the limit is refused and changes nothing, as `portwright_board::power` does (CORE-6)
     let before = plug.vbus_mode().await.unwrap();
     let e = plug
         .set_vbus_mode(VbusMode::ForceOn {
@@ -426,7 +426,7 @@ async fn io_levels_unimplemented() {
 async fn debug() {
     let (mock, dongle) = start("core/debug").await;
     let debug = dongle.debug();
-    let relay_en = donguru_core::nets::pin("RELAY_EN").expect("RELAY_EN in the table");
+    let relay_en = portwright_core::nets::pin("RELAY_EN").expect("RELAY_EN in the table");
     let state = debug
         .pin_set(relay_en, PinMode::PushPull, Some(Level::High))
         .await
@@ -438,7 +438,7 @@ async fn debug() {
 
     let e = debug.pin_af(relay_en, 8).await.unwrap_err();
     assert_eq!(device_kind(e), DeviceErrorKind::InvalidArgument, "AF 0..=7");
-    let led = donguru_core::nets::pin("LED_RED").expect("LED_RED in the table");
+    let led = portwright_core::nets::pin("LED_RED").expect("LED_RED in the table");
     let e = debug.pin_set(led, PinMode::Input, None).await.unwrap_err();
     assert_eq!(device_kind(e), DeviceErrorKind::InUse, "the LEDs hold PF0");
     // PB1 and PB3 are both IO7: PB3 belongs to the header UART, PB1 is held with it
@@ -471,7 +471,7 @@ async fn debug() {
 
     for refused in ["NRST", "USB_DP", "SWDIO", "PWR_EN"] {
         let pin =
-            donguru_core::nets::pin(refused).unwrap_or_else(|| panic!("{refused} in the table"));
+            portwright_core::nets::pin(refused).unwrap_or_else(|| panic!("{refused} in the table"));
         let e = debug.pin_set(pin, PinMode::Input, None).await.unwrap_err();
         assert_eq!(device_kind(e), DeviceErrorKind::Refused, "{refused}");
     }
@@ -532,7 +532,7 @@ async fn debug() {
         "CCENABLE both, ANAMODE sink"
     );
     let cr = debug.ucpd(UcpdPort::Ucpd2).await.unwrap().cr;
-    assert_eq!(donguru_core::debug::role_of(cr), Some(CcRole::Rd));
+    assert_eq!(portwright_core::debug::role_of(cr), Some(CcRole::Rd));
 
     debug
         .led_set(
@@ -688,7 +688,7 @@ async fn stuck_device_times_out() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn open_missing_in_process_device() {
-    let entry = donguru_core::DeviceEntry::in_process("core/nobody");
+    let entry = portwright_core::DeviceEntry::in_process("core/nobody");
     let Err(e) = Dongle::open_entry(entry).await else {
         panic!("opened a device that isn't there");
     };

@@ -1,6 +1,6 @@
 //! MCU pins for the `debug` level (API-18): the GPIO registers as the reset left them ([capture_boot]), the pin
-//! claim table ([CLAIMS], `donguru_board::pins::Claims`) and the pin changes a host asks for ([set]), checked by
-//! `donguru_board::pins::check` (refused pins, pins a running function holds, pin states that fight the board).
+//! claim table ([CLAIMS], `portwright_board::pins::Claims`) and the pin changes a host asks for ([set]), checked by
+//! `portwright_board::pins::check` (refused pins, pins a running function holds, pin states that fight the board).
 //!
 //! The writes go to the GPIO registers directly, in one critical section with the check (the claim table's lock): the pins `debug` may
 //! change are the ones no driver holds, and embassy's own GPIO writes take a critical section too, so a
@@ -8,12 +8,12 @@
 
 use core::cell::{Cell, RefCell};
 
-use donguru_api::{GpioPort, McuPin, PinState, PortRegs};
-use donguru_board::pins::{self as rules, Change, Claims, Denied, Holder, PORTS, Port, Ports};
 use embassy_stm32::pac;
 use embassy_stm32::pac::gpio::Gpio;
 use embassy_sync::blocking_mutex::Mutex;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+use portwright_api::{GpioPort, McuPin, PinState, PortRegs};
+use portwright_board::pins::{self as rules, Change, Claims, Denied, Holder, PORTS, Port, Ports};
 
 /// Who holds which pin now: what runs from boot, and an SWD session or a UCPD role while it runs.
 static CLAIMS: Mutex<CriticalSectionRawMutex, RefCell<Claims>> =

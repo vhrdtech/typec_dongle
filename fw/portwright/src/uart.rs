@@ -74,8 +74,8 @@ static REPLAY: Signal<CriticalSectionRawMutex, &'static [u8]> = Signal::new();
 
 /// The text captures [replay] sends (`None` for one this firmware doesn't know), 32 KiB each (`replay/`, CR LF line ends as from a serial console).
 #[cfg(feature = "uart-replay")]
-pub fn capture(which: donguru_api::ReplayCapture) -> Option<&'static [u8]> {
-    use donguru_api::ReplayCapture;
+pub fn capture(which: portwright_api::ReplayCapture) -> Option<&'static [u8]> {
+    use portwright_api::ReplayCapture;
     Some(match which {
         ReplayCapture::Stop => &[],
         ReplayCapture::Boot => include_bytes!("../replay/boot.txt"),

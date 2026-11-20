@@ -1,12 +1,12 @@
 //! The PD source on the plug CC (UCPD2, `plug.pd`, API-30): what the firmware's policy-engine glue
-//! (`fw/donguru/src/pd.rs`) decides without hardware, unit-tested on the host.
+//! (`fw/portwright/src/pd.rs`) decides without hardware, unit-tested on the host.
 //!
 //! - [`Offer`]: a `plug.pd.source` setting checked and turned into the PDO, the Rp, the guard limits of plug VBUS and
 //!   the SenderResponseTimer.
 //! - [`Offer::accepts`]: the answer to a sink's Request.
 //! - [`Ring`]: the message log, raw records with the device time until the server sends them.
 
-use donguru_api::{
+use portwright_api::{
     CcPolarity, PdContract, PdEvent, PdRecord, PdSop, PdSource, PdState, PdTxOutcome, VbusMode,
 };
 use shrink_wrap::prelude::{MaxLen, RefVec};

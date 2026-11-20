@@ -2,11 +2,11 @@
 //! constructors to drive `plug.vbus_mode` / `header.vbus_sw_mode` (API-11, `docs/user/power.md`).
 //!
 //! Values are built as integer millivolts/milliamps/milliwatts, never floats: the firmware's `ww_si` has only the
-//! `i32`/`u32` number types (`fw/donguru/Cargo.toml`, flash and no FPU reasons, `AGENTS.md` "M0+ rules"), so a
+//! `i32`/`u32` number types (`fw/portwright/Cargo.toml`, flash and no FPU reasons, `AGENTS.md` "M0+ rules"), so a
 //! `NumericValue::F32` a host sends doesn't decode there at all (`PropertyDesFailed`, found testing CLI-11 on
 //! B153A: `Volt::volts_f32` passed the mock, which has no such restriction, but not the real firmware).
 
-use donguru_api::VbusMode;
+use portwright_api::VbusMode;
 use ww_si::{Ampere, Prefix, Volt, Watt};
 
 /// `max_voltage` hosts use for [`force_on`] / [`auto`] unless told otherwise: enough for a plain USB VBUS, refuses

@@ -27,15 +27,15 @@ just hooks-install
 ## Installing the CLI on this PC
 
 ```bash
-just install    # donguru, dg (a link to the same executable) and the shell completions
+just install    # portwright, pw (a link to the same executable) and the shell completions
 just deploy     # pull main, update the sibling checkouts, install, check the version
-donguru --version   # donguru 0.20.20 (a1b2c3d, built 21 Oct 2026 18:20 UTC)
+portwright --version   # portwright 0.20.20 (a1b2c3d, built 21 Oct 2026 18:20 UTC)
 ```
 
 `-dirty` after the commit means the build had uncommitted changes. Completions are live: Tab after `--device` lists
 the dongles plugged in right now (serial or USB path, label as the help text), `fw update` and `--elf` offer ELF
-files. `dg completions --install` writes the scripts for bash, zsh and fish into the per-user directories
-(zsh needs `~/.local/share/zsh/site-functions` in `$fpath`); `dg completions SHELL` prints one for other places.
+files. `pw completions --install` writes the scripts for bash, zsh and fish into the per-user directories
+(zsh needs `~/.local/share/zsh/site-functions` in `$fpath`); `pw completions SHELL` prints one for other places.
 
 ## Just Tasks
 Generally you find automations or entry points for automated tasks in the `justfile`.
@@ -63,10 +63,10 @@ authoring content.
 
 ## Hardware: testing SWD-host (FW-15)
 
-The dongle's firmware now hosts SWD over the plug SBU lines (CMSIS-DAP v2, `fw/donguru/src/swd.rs` and
+The dongle's firmware now hosts SWD over the plug SBU lines (CMSIS-DAP v2, `fw/portwright/src/swd.rs` and
 `src/cmsis_dap.rs`): built and `cargo build`-checked, **not yet run on hardware**. This is the checklist for the
 first bring-up, once a board is on the bench. Target: a B129 CANnify Micro (STM32G0B1CET, same family as
-Donguru's own MCU) wired through a USB-C breakout to Donguru's plug, as the DUT for the chunky-ota
+Portwright's own MCU) wired through a USB-C breakout to Portwright's plug, as the DUT for the chunky-ota
 power-cut bench.
 
 ### Wiring
@@ -82,10 +82,10 @@ connect/program cycle relies on the target's own power-on or a software reset, n
 1. **Continuity first, power off**: with a multimeter, confirm which USB-C breakout pins are SBU1/SBU2 before
    powering anything, and that they reach the intended CANnify Micro test points and nothing else (no short to
    VBUS/GND).
-2. **Firmware builds and flashes**: `cd fw/donguru && cargo build && cargo build --release`, then flash via
-   Donguru's own SWD (receptacle side, PA14/PA13, unrelated to this feature) or `cargo run` with a probe on the
-   Donguru board itself.
-3. **USB enumeration**: plug Donguru into the host, `ww list` should still show the WireWeaver interface; `lsusb -v`
+2. **Firmware builds and flashes**: `cd fw/portwright && cargo build && cargo build --release`, then flash via
+   Portwright's own SWD (receptacle side, PA14/PA13, unrelated to this feature) or `cargo run` with a probe on the
+   Portwright board itself.
+3. **USB enumeration**: plug Portwright into the host, `ww list` should still show the WireWeaver interface; `lsusb -v`
    (Linux) or Device Manager (Windows) should show a second interface string containing `CMSIS-DAP`
    (`src/cmsis_dap.rs`'s `INTERFACE_STRING`).
 4. **Orientation, normal first**: with the breakout in its first orientation, try the `probe-rs` command below. If
@@ -98,7 +98,7 @@ connect/program cycle relies on the target's own power-on or a software reset, n
 6. **`DAP_Disconnect` / Hi-Z**: after a `probe-rs` session, confirm with the scope or a multimeter that SWCLK and
    SWDIO float (no driven level) once probe-rs disconnects, and again after `swd_release` (once CLI-17 or `ww`
    raw calls can trigger it) — this is what the power-cut bench relies on.
-7. **Power-cut bench dry run**: with the DUT connected only through Donguru's switched VBUS (Q102) and
+7. **Power-cut bench dry run**: with the DUT connected only through Portwright's switched VBUS (Q102) and
    SWD as above: start a `probe-rs` session, call `swd_release`, then cut VBUS, and confirm on the scope that
    SWCLK/SWDIO stay released (no back-powering the DUT through them) through the cut.
 8. **Plug CC drive (FW-17, stopgap)**: with a multimeter or scope on the plug's CC1/CC2 (PD0/PD2), confirm both
@@ -115,13 +115,13 @@ database):
 probe-rs chip list | grep -i G0B1
 ```
 
-Then, with Donguru's CMSIS-DAP v2 interface enumerated (step 3 above) and a `DapLink`/generic CMSIS-DAP probe
+Then, with Portwright's CMSIS-DAP v2 interface enumerated (step 3 above) and a `DapLink`/generic CMSIS-DAP probe
 selection:
 
 ```bash
 probe-rs info --chip STM32G0B1CETx --probe <VID:PID or serial from `probe-rs list`>
 ```
 
-`probe-rs list` should show Donguru's CMSIS-DAP interface (VID:PID `c0de:cafe` unless changed, see `src/ww.rs`) if
+`probe-rs list` should show Portwright's CMSIS-DAP interface (VID:PID `c0de:cafe` unless changed, see `src/ww.rs`) if
 step 3 passed. `probe-rs info` is a good first smoke test: it only needs `DAP_Connect`, a few DP/AP reads and
 `DAP_Disconnect`, so a successful run exercises most of `src/swd.rs` without touching the target's flash.

@@ -1,4 +1,4 @@
-# Types of the extension module (donguru-py/src): keep in step with the #[pymethods] there.
+# Types of the extension module (portwright-py/src): keep in step with the #[pymethods] there.
 
 import builtins
 from types import TracebackType

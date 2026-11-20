@@ -4,25 +4,25 @@ use super::ServerState;
 use crate::power::{self, Which};
 use crate::{pd, swd};
 use defmt::info;
-use donguru_api::{DataPath, PowerError};
-use donguru_board::pd::OfferError;
-use donguru_board::power::{CycleError, ModeError};
+use portwright_api::{DataPath, PowerError};
+use portwright_board::pd::OfferError;
+use portwright_board::power::{CycleError, ModeError};
 use wire_weaver::prelude::*;
 
 impl ServerState {
-    // donguru_api::Plug at plug
+    // portwright_api::Plug at plug
 
     pub(super) fn get_plug_vbus(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::VbusState, CommonError<'_>> {
+    ) -> GetResult<portwright_api::VbusState, CommonError<'_>> {
         Value(power::state(Which::Plug))
     }
 
     pub(super) fn set_plug_vbus_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        value: donguru_api::VbusMode,
+        value: portwright_api::VbusMode,
     ) -> SetResult<CommonError<'_>> {
         if pd::holds_vbus() {
             return SetError(PD_HOLDS_VBUS);
@@ -42,7 +42,7 @@ impl ServerState {
     pub(super) fn get_plug_vbus_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::VbusMode, CommonError<'_>> {
+    ) -> GetResult<portwright_api::VbusMode, CommonError<'_>> {
         Value(power::mode(Which::Plug))
     }
 
@@ -52,7 +52,7 @@ impl ServerState {
         cx: &mut Context<'_, impl EventOut>,
         off: ww_si::Second,
         release_sbu: bool,
-    ) -> RpcResult<Result<donguru_api::VbusState, wire_weaver::Error<'_, PowerError>>> {
+    ) -> RpcResult<Result<portwright_api::VbusState, wire_weaver::Error<'_, PowerError>>> {
         if pd::holds_vbus() {
             return Ready(Err(wire_weaver::Error::Common(PD_HOLDS_VBUS)));
         }
@@ -96,7 +96,7 @@ impl ServerState {
     pub(super) fn set_plug_orientation(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        orientation: donguru_api::Orientation,
+        orientation: portwright_api::Orientation,
     ) -> SetResult<CommonError<'_>> {
         // only SWD uses it so far (FW-15): from its next DAP_Connect, not for a session already connected
         info!("plug orientation set");
@@ -108,14 +108,14 @@ impl ServerState {
     pub(super) fn get_plug_orientation(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::Orientation, CommonError<'_>> {
+    ) -> GetResult<portwright_api::Orientation, CommonError<'_>> {
         Value(swd::orientation())
     }
 
     pub(super) fn get_plug_cc(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::CcState, CommonError<'_>> {
+    ) -> GetResult<portwright_api::CcState, CommonError<'_>> {
         Unimplemented.into()
     }
 }
@@ -126,12 +126,12 @@ const PD_HOLDS_VBUS: CommonError<'static> = CommonError::Refused {
 };
 
 impl ServerState {
-    // donguru_api::PlugPd at plug.pd
+    // portwright_api::PlugPd at plug.pd
 
     pub(super) fn set_plug_pd_source(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        value: donguru_api::PdSource,
+        value: portwright_api::PdSource,
     ) -> SetResult<CommonError<'_>> {
         match pd::set(&value) {
             Ok(()) => Set,
@@ -152,14 +152,14 @@ impl ServerState {
     pub(super) fn get_plug_pd_source(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::PdSource, CommonError<'_>> {
+    ) -> GetResult<portwright_api::PdSource, CommonError<'_>> {
         Value(pd::setting())
     }
 
     pub(super) fn get_plug_pd_state(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::PdState, CommonError<'_>> {
+    ) -> GetResult<portwright_api::PdState, CommonError<'_>> {
         Value(pd::phase().to_api())
     }
 
@@ -231,11 +231,11 @@ pub(super) fn mode_error(e: ModeError) -> CommonError<'static> {
 
 /// The answer of a deferred `plug.vbus_cycle`.
 pub(super) fn cycle_result(
-    result: Result<donguru_api::VbusState, ModeError>,
-) -> Result<donguru_api::VbusState, wire_weaver::Error<'static, PowerError>> {
+    result: Result<portwright_api::VbusState, ModeError>,
+) -> Result<portwright_api::VbusState, wire_weaver::Error<'static, PowerError>> {
     result.map_err(|e| match e {
         ModeError::OverVoltage { measured_mv } => PowerError::OverVoltage {
-            measured: donguru_board::power::volt(measured_mv),
+            measured: portwright_board::power::volt(measured_mv),
         }
         .into(),
         e => wire_weaver::Error::Common(mode_error(e)),

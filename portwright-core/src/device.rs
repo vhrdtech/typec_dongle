@@ -1,7 +1,7 @@
 //! Device enumeration and selection (CORE-1).
 //!
-//! A Donguru is a USB device with VID:PID `c0de:cafe` whose WireWeaver API id (read from the USB descriptors, no
-//! open needed) is `donguru_api`; other WireWeaver devices share the VID:PID. A [Selector] picks one of them by
+//! A Portwright is a USB device with VID:PID `c0de:cafe` whose WireWeaver API id (read from the USB descriptors, no
+//! open needed) is `portwright_api`; other WireWeaver devices share the VID:PID. A [Selector] picks one of them by
 //! index, serial number (the chip UID) or USB path; without one, the only connected dongle is taken.
 
 use std::fmt;
@@ -9,14 +9,14 @@ use std::str::FromStr;
 
 use wire_weaver_client::DeviceInfo;
 
-use crate::client::DonguruClient;
+use crate::client::PortwrightClient;
 use crate::{Error, Result};
 
-/// USB VID:PID of WireWeaver devices, Donguru among them.
+/// USB VID:PID of WireWeaver devices, Portwright among them.
 pub const USB_VID: u16 = 0xc0de;
 pub const USB_PID: u16 = 0xcafe;
-/// API crate name a Donguru reports in its USB descriptors.
-pub const API_GID: &str = "donguru_api";
+/// API crate name a Portwright reports in its USB descriptors.
+pub const API_GID: &str = "portwright_api";
 
 /// A connected dongle as seen on USB, before it is opened.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,7 +27,7 @@ pub struct DeviceEntry {
     pub serial: String,
     /// USB path, `<bus>-<port>.<port>...` as in Linux sysfs, e.g. `3-1.2`.
     pub path: String,
-    /// `donguru_api` version the firmware reports.
+    /// `portwright_api` version the firmware reports.
     pub api_version: Option<String>,
     /// User label from the descriptors, empty if not set.
     pub label: String,
@@ -48,7 +48,7 @@ pub(crate) enum ConnectTo {
 }
 
 impl DeviceEntry {
-    /// An entry for a WireWeaver device, `None` if it isn't a Donguru.
+    /// An entry for a WireWeaver device, `None` if it isn't a Portwright.
     fn from_info(info: &DeviceInfo) -> Option<Self> {
         let usb = info.usb.as_ref()?;
         let api = info.api.as_ref()?;
@@ -180,7 +180,7 @@ pub async fn list() -> Result<Vec<DeviceEntry>> {
     Ok(entries(&devices))
 }
 
-/// The Donguru entries among `devices`, sorted by path and numbered.
+/// The Portwright entries among `devices`, sorted by path and numbered.
 fn entries(devices: &[DeviceInfo]) -> Vec<DeviceEntry> {
     let mut entries: Vec<DeviceEntry> = devices.iter().filter_map(DeviceEntry::from_info).collect();
     entries.sort_by_key(|e| path_key(&e.connect));
@@ -205,10 +205,10 @@ pub fn select<'e>(
 ) -> Result<&'e DeviceEntry> {
     let Some(selector) = selector else {
         return match entries {
-            [] => Err(Error::NoDevice("no Donguru connected".into())),
+            [] => Err(Error::NoDevice("no Portwright connected".into())),
             [one] => Ok(one),
             many => Err(Error::NoDevice(format!(
-                "{} Donguru connected, pick one with --device:{}",
+                "{} Portwright connected, pick one with --device:{}",
                 many.len(),
                 describe(many)
             ))),
@@ -246,15 +246,15 @@ pub fn select<'e>(
     };
     match found.as_slice() {
         [one] => Ok(one),
-        [] if entries.is_empty() => {
-            Err(Error::NoDevice(format!("{selector}: no Donguru connected")))
-        }
+        [] if entries.is_empty() => Err(Error::NoDevice(format!(
+            "{selector}: no Portwright connected"
+        ))),
         [] => Err(Error::NoDevice(format!(
-            "{selector} matches none of the connected Donguru:{}",
+            "{selector} matches none of the connected Portwright:{}",
             describe(entries)
         ))),
         many => Err(Error::NoDevice(format!(
-            "{selector} matches {} Donguru, give more of the serial:{}",
+            "{selector} matches {} Portwright, give more of the serial:{}",
             many.len(),
             describe(&many.iter().map(|e| (*e).clone()).collect::<Vec<_>>())
         ))),
@@ -286,7 +286,7 @@ fn describe(entries: &[DeviceEntry]) -> String {
 /// A connected dongle: the levels of the API tree through [Dongle::plug], [Dongle::meter], ... (see
 /// [crate::levels]), the generated client through [Dongle::client].
 pub struct Dongle {
-    pub(crate) client: DonguruClient,
+    pub(crate) client: PortwrightClient,
     entry: DeviceEntry,
 }
 
@@ -298,17 +298,19 @@ impl Dongle {
         Dongle::open_entry(entry.clone()).await
     }
 
-    /// Opens a listed dongle. Checks the firmware's `donguru_api` version: before 1.0 major and minor must match.
+    /// Opens a listed dongle. Checks the firmware's `portwright_api` version: before 1.0 major and minor must match.
     pub async fn open_entry(entry: DeviceEntry) -> Result<Dongle> {
         let connection = match &entry.connect {
             ConnectTo::Usb { bus_id, port_chain } => {
                 let (bus_id, port_chain) = (bus_id.clone(), port_chain.clone());
-                DonguruClient::config(move |c| c.usb_port_chain(bus_id.clone(), port_chain.clone()))
+                PortwrightClient::config(move |c| {
+                    c.usb_port_chain(bus_id.clone(), port_chain.clone())
+                })
             }
             #[cfg(feature = "mock")]
             ConnectTo::InProcess(path) => {
                 let path = path.clone();
-                DonguruClient::config(move |c| c.in_process_path(path.clone()))
+                PortwrightClient::config(move |c| c.in_process_path(path.clone()))
             }
         };
         let client = connection
@@ -324,7 +326,7 @@ impl Dongle {
     }
 
     /// The generated client, for what the facade doesn't cover.
-    pub fn client(&self) -> &DonguruClient {
+    pub fn client(&self) -> &PortwrightClient {
         &self.client
     }
 
@@ -458,7 +460,7 @@ mod tests {
         DeviceInfo {
             location: format!("usb 3-{ports:?}"),
             manufacturer: "vhrd.tech".into(),
-            product: "Donguru".into(),
+            product: "Portwright".into(),
             serials: vec![serial.into()],
             user_label: String::new(),
             api: Some(wire_weaver_client::ApiInfo {
@@ -476,7 +478,7 @@ mod tests {
     }
 
     #[test]
-    fn only_donguru_listed_sorted_by_path() {
+    fn only_portwright_listed_sorted_by_path() {
         let devices = vec![
             info(USB_VID, API_GID, "B", vec![1, 3]),
             info(USB_VID, "report_api", "X", vec![1, 1]),

@@ -1,4 +1,4 @@
-# donguru
+# portwright
 
 Firmware for **STM32G0B1CE** (thumbv6m-none-eabi), framework: `embassy`, logging: `defmt`.
 
@@ -32,11 +32,11 @@ CARGO_PROFILE_DEV_OPT_LEVEL=s cargo run   # 444,864 B of 516,096 B, assertions a
 ## WireWeaver API
 
 The device serves a [WireWeaver](https://github.com/vhrdtech/wire_weaver) API over USB (VID:PID `c0de:cafe`).
-The API is defined in `donguru_api/` in the repo root, implemented in `src/ww.rs`. `ww list` shows the device,
+The API is defined in `portwright_api/` in the repo root, implemented in `src/ww.rs`. `ww list` shows the device,
 `ww introspect` prints the API tree (`ww` = `wire_weaver_cli` from the WireWeaver repository).
 
-To change the API: edit `DonguruApi` in `donguru_api/src/lib.rs`, implement it on `ServerState` in `src/ww.rs`
-(the compiler lists what is missing) and bump the `donguru_api` version.
+To change the API: edit `PortwrightApi` in `portwright_api/src/lib.rs`, implement it on `ServerState` in `src/ww.rs`
+(the compiler lists what is missing) and bump the `portwright_api` version.
 
 ## Memory layout
 

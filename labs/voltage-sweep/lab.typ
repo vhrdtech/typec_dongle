@@ -3,7 +3,7 @@
 #show: lab.with(
   title: [Down to the last volt],
   time: "30 min",
-  needs: ([Donguru], [a USB-C charger with PPS (programmable supply)], [a device that runs from VBUS]),
+  needs: ([Portwright], [a USB-C charger with PPS (programmable supply)], [a device that runs from VBUS]),
   features: ("API-23", "FW-28", "FW-33", "FW-29", "CLI-37"),
 )
 
@@ -14,22 +14,22 @@ the brown-out behaviour you'd otherwise need a lab power supply and a script for
 
 == Setup
 
-A PPS charger can be asked for any voltage from 3.3 V to 5.9 V (and higher) in 20 mV steps. Donguru asks for a sweep
+A PPS charger can be asked for any voltage from 3.3 V to 5.9 V (and higher) in 20 mV steps. Portwright asks for a sweep
 while the device runs, logs the meter and the device's current, and you read the result afterwards. Because the
-charger takes the receptacle, Donguru runs the sweep on its own.
+charger takes the receptacle, Portwright runs the sweep on its own.
 
-#photo[A PPS charger, Donguru and a dev board on the desk; no computer]
+#photo[A PPS charger, Portwright and a dev board on the desk; no computer]
 
 == Steps
 
 #steps(cli: [
   ```sh
   # write the sweep into the dongle while it is on the computer
-  dg seq load sweep.toml          # steps: PPS 5.0 V, then -50 mV every 2 s down to 3.3 V, then back up
-  dg settings set standalone run-seq
-  # move Donguru to the PPS charger with the device on its plug, wait for the green LED, then back:
-  dg seq result -f csv > sweep.csv
-  dg power plot sweep.csv --x voltage --y current
+  pw seq load sweep.toml          # steps: PPS 5.0 V, then -50 mV every 2 s down to 3.3 V, then back up
+  pw settings set standalone run-seq
+  # move Portwright to the PPS charger with the device on its plug, wait for the green LED, then back:
+  pw seq result -f csv > sweep.csv
+  pw power plot sweep.csv --x voltage --y current
   ```
   ```toml
   # sweep.toml

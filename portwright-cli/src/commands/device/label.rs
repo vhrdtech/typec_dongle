@@ -1,4 +1,4 @@
-//! `donguru device label` - the user label (`UserInfo`): a short name and free-text notes (CLI-19, API-9).
+//! `portwright device label` - the user label (`UserInfo`): a short name and free-text notes (CLI-19, API-9).
 
 use std::io::{self, Write};
 

@@ -3,7 +3,7 @@
 #show: lab.with(
   title: [Energy per operation],
   time: "20 min",
-  needs: ([Donguru], [a device you can trigger from the computer: an OTA update, a photo, a sync]),
+  needs: ([Portwright], [a device you can trigger from the computer: an OTA update, a photo, a sync]),
   features: ("API-12", "CLI-34", "CORE-4"),
 )
 
@@ -16,15 +16,15 @@ when a new firmware gets hungrier.
 
 #steps(cli: [
   ```sh
-  dg power measure -- ./trigger-ota.sh   # runs the command, meters exactly that span
+  pw power measure -- ./trigger-ota.sh   # runs the command, meters exactly that span
   #  23.4 s · 1.02 Wh · 196 mAh · peak 0.81 A · mean 0.16 A   (exit 0)
-  dg power measure --repeat 5 -f json -- ./take-photo.sh | jq .energy_wh
+  pw power measure --repeat 5 -f json -- ./take-photo.sh | jq .energy_wh
   ```
 ], python: [
   ```python
-  import donguru
-  dg = donguru.open()
-  with dg.meter.measure() as m:
+  import portwright
+  pw = portwright.open()
+  with pw.meter.measure() as m:
       take_photo()
   print(f"{m.energy_wh*1000:.1f} mWh, peak {m.peak_current:.2f} A")
   assert m.energy_wh < 0.002, "a photo should cost under 2 mWh"

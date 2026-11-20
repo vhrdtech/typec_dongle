@@ -4,8 +4,8 @@ icon: lucide/book-open-check
 
 # Documentation
 
-End-user documentation for using a [Donguru](../index.md) dongle with the
-`donguru` command-line interface.
+End-user documentation for using a [Portwright](../index.md) dongle with the
+`portwright` command-line interface.
 
 !!! note "To be documented"
 

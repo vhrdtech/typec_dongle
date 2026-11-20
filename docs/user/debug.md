@@ -4,9 +4,9 @@ icon: lucide/bug
 
 # Bring-up and debug
 
-`dg debug` reaches below the functions: the MCU's pins one by one, the pins as they were at boot, the hub's
+`pw debug` reaches below the functions: the MCU's pins one by one, the pins as they were at boot, the hub's
 registers, the two UCPD ports and the peripheral registers. It is for bringing up a board and for production
-tests, not for normal use: a pin changed here can disagree with what `dg power` or `dg header` report until they
+tests, not for normal use: a pin changed here can disagree with what `pw power` or `pw header` report until they
 write it again.
 
 The firmware decides what may change; a refusal comes back with its reason and exit code 4.
@@ -17,11 +17,11 @@ Pins go by their net name from the schematic (B153A, `hw_b153a.md` §11) or by p
 nets with their pin and what they do.
 
 ```sh
-dg debug pin get RELAY_EN          # PA5 RELAY_EN: analog, reads low
-dg debug pin set RELAY_EN high     # push-pull output, high: the relay clicks
-dg debug pin set PB12 input-pull-up
-dg debug pin set SBU1 open-drain low
-dg debug pin af IO9 1              # alternate function 0..=7
+pw debug pin get RELAY_EN          # PA5 RELAY_EN: analog, reads low
+pw debug pin set RELAY_EN high     # push-pull output, high: the relay clicks
+pw debug pin set PB12 input-pull-up
+pw debug pin set SBU1 open-drain low
+pw debug pin af IO9 1              # alternate function 0..=7
 ```
 
 `set` takes `high` / `low` (a push-pull output at that level) or a mode: `analog`, `input`, `input-pull-up`,
@@ -30,8 +30,8 @@ dg debug pin af IO9 1              # alternate function 0..=7
 What is refused:
 
 - **Always**: NRST, the pins tied to a supply, our own USB and SWD, `CC_DA_EN` (Rp on the computer's CC on rev A),
-  the VBUS enables (use `dg power` and `dg header`, they keep the guard), the hub's reset and I2C (use
-  `dg debug hub` and `dg hub recover`).
+  the VBUS enables (use `pw power` and `pw header`, they keep the guard), the hub's reset and I2C (use
+  `pw debug hub` and `pw hub recover`).
 - **While a function holds the pin**: the LEDs, the meter and button inputs, the header UART (IO7 / IO8 and PB1,
   which is tied to IO7), V_SBU select, an SWD session (the SBU pins, the level shifter's OE, the pull-ups, the plug
   CC drive) and a UCPD role (its CC pins). The error names the function.
@@ -44,9 +44,9 @@ An SWD session starting (`DAP_Connect`) takes its pins back as it needs them.
 ## Pin dump and the boot state
 
 ```sh
-dg debug pins                  # every bonded pin: net, mode, the level it reads
-dg debug pins --diff           # only the pins not in their reset state
-dg debug pins --boot --diff    # the pins as captured at boot, against the reset state: empty on a healthy board
+pw debug pins                  # every bonded pin: net, mode, the level it reads
+pw debug pins --diff           # only the pins not in their reset state
+pw debug pins --boot --diff    # the pins as captured at boot, against the reset state: empty on a healthy board
 ```
 
 The firmware reads GPIOA..F first thing after reset, before it sets anything up. `--boot --diff` printing
@@ -58,20 +58,20 @@ The level a pin reads (IDR) is not compared. `--format json` / `jsonl` give one 
 The hub (U301) on its SMBus, through the firmware, which owns that bus:
 
 ```sh
-dg debug hub read 0x00 4       # VID and PID, low byte first
-dg debug hub write 0x07 0x00 0x00   # REG BYTE...
+pw debug hub read 0x00 4       # VID and PID, low byte first
+pw debug hub write 0x07 0x00 0x00   # REG BYTE...
 ```
 
 `read` takes 1..=32 bytes, `write` 1..=32. STATUS/COMMAND (0xFF) is refused: its reset and attach bits drop the
-dongle's own USB link; `dg hub recover` does that on purpose. A NAK from the hub is a device error, a busy bus
+dongle's own USB link; `pw hub recover` does that on purpose. A NAK from the hub is a device error, a busy bus
 (the watchdog probing the hub) answers busy, try again.
 
 ## UCPD
 
 ```sh
-dg debug ucpd                  # both ports: role, CC1 / CC2 state, CR and SR
-dg debug ucpd 2 --role rd      # plug side as a sink
-dg debug ucpd 2 --role off
+pw debug ucpd                  # both ports: role, CC1 / CC2 state, CR and SR
+pw debug ucpd 2 --role rd      # plug side as a sink
+pw debug ucpd 2 --role off
 ```
 
 UCPD1 is the receptacle (to the computer), UCPD2 the plug (to the device under test). Roles: `off`, `rd`,
@@ -82,8 +82,8 @@ role is refused while it runs.
 ## Peripheral registers
 
 ```sh
-dg debug reg 0x50000000 10     # GPIOA, 10 words
-dg debug reg 0x40021000        # RCC_CR
+pw debug reg 0x50000000 10     # GPIOA, 10 words
+pw debug reg 0x40021000        # RCC_CR
 ```
 
 Reads only, word aligned, 1..=32 words, and only inside the blocks of the memory map that hold a peripheral (a

@@ -3,10 +3,10 @@
 
 use super::ServerState;
 use crate::adc::{self, Readings};
-use donguru_api::DieTemperature;
-use donguru_api::{MeterCalibration, MeterDeadband, MeterReading, MeterTotals};
 use embassy_time::{Duration, Instant, Timer};
 use portable_atomic::{AtomicU32, Ordering};
+use portwright_api::DieTemperature;
+use portwright_api::{MeterCalibration, MeterDeadband, MeterReading, MeterTotals};
 use wire_weaver::CommonError;
 use wire_weaver::prelude::*;
 use ww_si::ww_numeric::NumericValue;
@@ -144,7 +144,7 @@ pub(super) fn invalid(reason: &'static str) -> CommonError<'static> {
 }
 
 impl ServerState {
-    // donguru_api::PowerMeter at meter
+    // portwright_api::PowerMeter at meter
 
     pub(super) async fn get_meter_reading(
         &mut self,

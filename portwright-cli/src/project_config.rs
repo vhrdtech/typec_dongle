@@ -1,4 +1,4 @@
-//! The project config file, `./donguru.toml` (see [docs/design/cli](../../../docs/design/cli/index.md)).
+//! The project config file, `./portwright.toml` (see [docs/design/cli](../../../docs/design/cli/index.md)).
 //!
 //! Full layering (defaults, system, user, project, env, flags) is CLI-9, still a stub. This piece only persists
 //! the `device` key `device select` writes (CLI-7), read back as the lowest-priority fallback for `--device`.
@@ -6,9 +6,9 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-pub const FILE_NAME: &str = "donguru.toml";
+pub const FILE_NAME: &str = "portwright.toml";
 
-/// Walks up from `start` looking for `donguru.toml`, the way git finds `.git`.
+/// Walks up from `start` looking for `portwright.toml`, the way git finds `.git`.
 fn find_from(start: &Path) -> Option<PathBuf> {
     let mut dir = Some(start);
     while let Some(d) = dir {
@@ -28,7 +28,7 @@ fn device_selector_from(start: &Path) -> Option<String> {
     doc.get("device")?.as_str().map(str::to_string)
 }
 
-/// The `device` key of the nearest `donguru.toml` above the current directory, if there is one.
+/// The `device` key of the nearest `portwright.toml` above the current directory, if there is one.
 pub fn device_selector() -> Option<String> {
     device_selector_from(&std::env::current_dir().ok()?)
 }
@@ -48,7 +48,7 @@ fn set_device_selector_in(dir: &Path, selector: &str) -> anyhow::Result<PathBuf>
     Ok(path)
 }
 
-/// Writes (or updates) the `device` key of `./donguru.toml`, creating the file if it doesn't exist yet. Always the
+/// Writes (or updates) the `device` key of `./portwright.toml`, creating the file if it doesn't exist yet. Always the
 /// current directory, not a file found by walking up: `device select` pins a device for the project rooted here.
 pub fn set_device_selector(selector: &str) -> anyhow::Result<PathBuf> {
     set_device_selector_in(&std::env::current_dir()?, selector)

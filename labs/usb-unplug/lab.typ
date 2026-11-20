@@ -3,7 +3,7 @@
 #show: lab.with(
   title: [Unplug without unplugging],
   time: "10 min",
-  needs: ([Donguru], [a USB device: a flash drive, a keyboard, a dev board]),
+  needs: ([Portwright], [a USB device: a flash drive, a keyboard, a dev board]),
   features: ("CLI-6", "CLI-26"),
 )
 
@@ -14,23 +14,23 @@ system and your application cope with a device that goes away.
 
 == Setup
 
-#photo[A USB flash drive on Donguru's plug, the file manager open next to it]
+#photo[A USB flash drive on Portwright's plug, the file manager open next to it]
 
 == Steps
 
 #steps(cli: [
   ```sh
-  dg power on
-  dg usb disconnect             # data lines cut: the OS sees an unplug, the device keeps power
-  dg usb connect                # it enumerates again
-  dg usb cycle --off 1s --wait 0bda:9210   # cut, reconnect, wait until the OS lists that VID:PID again
-  dg usb cycle --off 1s --with-power       # a real unplug: data and VBUS together
+  pw power on
+  pw usb disconnect             # data lines cut: the OS sees an unplug, the device keeps power
+  pw usb connect                # it enumerates again
+  pw usb cycle --off 1s --wait 0bda:9210   # cut, reconnect, wait until the OS lists that VID:PID again
+  pw usb cycle --off 1s --with-power       # a real unplug: data and VBUS together
   ```
 ], python: [
   ```python
-  import donguru
-  dg = donguru.open()
-  t = dg.usb.cycle(off=1.0, wait_for="0bda:9210")   # seconds until the OS saw it again
+  import portwright
+  pw = portwright.open()
+  t = pw.usb.cycle(off=1.0, wait_for="0bda:9210")   # seconds until the OS saw it again
   print(f"re-enumerated after {t:.2f} s")
   ```
 ])
@@ -38,7 +38,7 @@ system and your application cope with a device that goes away.
 == What you should see
 
 On `disconnect` the file manager drops the drive; `dmesg` (Linux) shows a USB disconnect. With power kept on, a
-device with its own state (a dev board running firmware) carries on and only its USB restarts. `dg usb cycle
+device with its own state (a dev board running firmware) carries on and only its USB restarts. `pw usb cycle
 --wait` prints how long the OS took to see the device again: usually 0.3 to 1.5 s.
 
 #safety[Cutting data while a drive is being written can corrupt its file system: that is the point of the test, so

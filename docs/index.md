@@ -5,13 +5,13 @@ hide:
   - toc
 ---
 
-# Donguru — ドングル { style="text-align:center" }
+# Portwright { style="text-align:center" }
 
 A USB-Type-C dongle with a **USB Hub**, **UART / I2C / GPIO / ADC**, a
 **power switch** and a **power meter**
 { style="text-align:center" }
 
-![The Donguru USB-Type-C dongle](assets/images/donguru.png){ width="420" style="display:block;margin:0 auto" }
+![The Portwright USB-Type-C dongle](assets/images/portwright.png){ width="420" style="display:block;margin:0 auto" }
 
 Plus a fast, scriptable command-line interface to drive it all.
 { style="text-align:center" }
@@ -31,7 +31,7 @@ Plus a fast, scriptable command-line interface to drive it all.
 
     ---
 
-    Not enough ports on your machine? Donguru puts a small test rack worth of equipment on just one cable.
+    Not enough ports on your machine? Portwright puts a small test rack worth of equipment on just one cable.
 
 -   :material-usb: __Full control of Type-C plug__
 
@@ -73,7 +73,7 @@ Plus a fast, scriptable command-line interface to drive it all.
 
     ---
 
-    Quickstart and everyday usage of the `donguru` (`dg`) CLI from an end-user
+    Quickstart and everyday usage of the `portwright` (`pw`) CLI from an end-user
     point of view.
 
     [:octicons-arrow-right-24: Start here](user/quickstart.md)
@@ -82,7 +82,7 @@ Plus a fast, scriptable command-line interface to drive it all.
 
     ---
 
-    Understand the `donguru` (`dg`) command-line interface: design, command tree and
+    Understand the `portwright` (`pw`) command-line interface: design, command tree and
     it's unixi archtitecture.
 
     [:octicons-arrow-right-24: Read the design](design/cli/index.md)
@@ -115,7 +115,7 @@ Plus a fast, scriptable command-line interface to drive it all.
 
     ---
 
-    What Donguru is, its feature set, and where to go next.
+    What Portwright is, its feature set, and where to go next.
 
     [:octicons-arrow-right-24: Learn more](about/index.md)
 

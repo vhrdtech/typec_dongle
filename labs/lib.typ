@@ -1,4 +1,4 @@
-// Donguru lab book template. A lab is `<slug>/lab.typ`:
+// Portwright lab book template. A lab is `<slug>/lab.typ`:
 //
 //   #import "../lib.typ": *
 //   #show: lab.with(title: [...], time: "10 min", needs: (...), features: ("API-12", "CLI-11"))
@@ -111,7 +111,7 @@
   }
   let missing = features.filter(id => not built(id))
   if missing.len() > 0 {
-    _note("info", [Preview], [This lab describes Donguru as it will be: it uses #missing.map(raw).join[, ], not
+    _note("info", [Preview], [This lab describes Portwright as it will be: it uses #missing.map(raw).join[, ], not
       built yet (status from FEATURES.md). Commands and output may still change.])
   }
 }
@@ -152,13 +152,13 @@
 
 // Paged look for the book and the one-lab preview: vhrd colours, A4, header and footer with the build stamp.
 #let book-style(docrev: none, body) = {
-  set document(title: "Donguru lab book", author: "VHRD Tech")
+  set document(title: "Portwright lab book", author: "VHRD Tech")
   set text(font: ("Noto Sans", "Liberation Sans", "DejaVu Sans", "Noto Color Emoji"), size: 10pt, fill: brand.black)
   set par(justify: true, leading: 0.65em)
   set page(paper: "a4", margin: (x: 2cm, top: 2.2cm, bottom: 2cm),
     header: context if counter(page).get().first() > 1 [
       #set text(8pt, brand.grey)
-      Donguru lab book #h(1fr) #{
+      Portwright lab book #h(1fr) #{
         let labs = query(heading.where(level: 1)).filter(h => h.location().page() <= here().page())
         if labs.len() > 0 and labs.last().supplement == [Lab] [
           Lab #lab-counter.at(labs.last().location()).first(): #labs.last().body

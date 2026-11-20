@@ -1,11 +1,11 @@
-//! `donguru config` - generate, locate and inspect the configuration.
+//! `portwright config` - generate, locate and inspect the configuration.
 //!
 //! Settings are merged from several sources, with later ones overriding earlier
-//! ones: built-in defaults, the system config file (`/etc/donguru/donguru.toml`),
-//! the users config file (`$XDG_CONFIG_HOME/donguru/donguru.toml`), the project file
-//! (`./donguru.toml`), the `DONGURU_*` environment variables and finally the command line.
+//! ones: built-in defaults, the system config file (`/etc/portwright/portwright.toml`),
+//! the users config file (`$XDG_CONFIG_HOME/portwright/portwright.toml`), the project file
+//! (`./portwright.toml`), the `PORTWRIGHT_*` environment variables and finally the command line.
 //! Because of that layering it is often hard to tell which value a command actually uses,
-//! in case of doubt use `donguru config show` answers that question.
+//! in case of doubt use `portwright config show` answers that question.
 
 use std::path::PathBuf;
 
@@ -16,30 +16,30 @@ use crate::output::{Output, Render};
 use crate::theme::Theme;
 use anyhow::Context as _;
 use clap::{Subcommand, ValueEnum};
-use donguru_core::config::{self, Layer};
+use portwright_core::config::{self, Layer};
 use std::io::{self, Write};
 
 /// One of the configuration files in the search path.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum Scope {
-    /// `./donguru.toml` - settings for the current project
+    /// `./portwright.toml` - settings for the current project
     #[value(
         alias = "local",
-        help = "Project configuration, ./donguru.toml [alias: local]"
+        help = "Project configuration, ./portwright.toml [alias: local]"
     )]
     Project,
 
-    /// `$XDG_CONFIG_HOME/donguru/donguru.toml` - settings for the current user
+    /// `$XDG_CONFIG_HOME/portwright/portwright.toml` - settings for the current user
     #[value(
         alias = "global",
-        help = "User configuration, $XDG_CONFIG_HOME/donguru/donguru.toml [alias: global]"
+        help = "User configuration, $XDG_CONFIG_HOME/portwright/portwright.toml [alias: global]"
     )]
     User,
 
-    /// `/etc/donguru/donguru.toml` - settings for every user on the machine
+    /// `/etc/portwright/portwright.toml` - settings for every user on the machine
     #[value(
         alias = "etc",
-        help = "System configuration, /etc/donguru/donguru.toml [alias: etc]"
+        help = "System configuration, /etc/portwright/portwright.toml [alias: etc]"
     )]
     System,
 }
@@ -51,7 +51,7 @@ pub enum Config {
     /// Without `--output` the file is printed to stdout, so it can be reviewed
     /// or redirected before it is installed:
     ///
-    ///   donguru config generate > donguru.toml
+    ///   portwright config generate > portwright.toml
     #[command(alias = "init", verbatim_doc_comment)]
     Generate {
         /// Write to a file instead of stdout
@@ -65,13 +65,13 @@ pub enum Config {
 
     /// Show the effective configuration and where every value comes from
     ///
-    /// Merges the defaults, the configuration files, the `DONGURU_*` environment
+    /// Merges the defaults, the configuration files, the `PORTWRIGHT_*` environment
     /// variables and the global command line flags, then prints the result -
     /// this is exactly what the other commands see.
     ///
     /// Pass a KEY to print a single value, which makes it usable in scripts:
     ///
-    ///   donguru config show usb.port
+    ///   portwright config show usb.port
     #[command(aliases = ["effective", "get"], verbatim_doc_comment)]
     Show {
         /// Print only this key, e.g. `usb.port` or `udev.access`
@@ -148,7 +148,7 @@ fn generate(output: Option<PathBuf>, force: bool) -> anyhow::Result<ExitCode> {
     };
     if path.exists() && !force {
         eprintln!(
-            "donguru: {} exists; `--force` overwrites it",
+            "portwright: {} exists; `--force` overwrites it",
             path.display()
         );
         return Ok(ExitCode::Failure);
@@ -157,7 +157,7 @@ fn generate(output: Option<PathBuf>, force: bool) -> anyhow::Result<ExitCode> {
         std::fs::create_dir_all(dir).with_context(|| format!("cannot create {}", dir.display()))?;
     }
     std::fs::write(&path, text).with_context(|| format!("cannot write {}", path.display()))?;
-    eprintln!("donguru: wrote {}", path.display());
+    eprintln!("portwright: wrote {}", path.display());
     Ok(ExitCode::Success)
 }
 
@@ -241,7 +241,7 @@ fn show(ctx: &Context, key: Option<String>, origin: bool) -> anyhow::Result<Exit
     if let Some(name) = key {
         let Some(entry) = ctx.config.iter().find(|e| e.key.name == name) else {
             eprintln!(
-                "donguru: unknown key `{name}` (known: {})",
+                "portwright: unknown key `{name}` (known: {})",
                 config::KEYS
                     .iter()
                     .map(|k| k.name)
@@ -259,7 +259,7 @@ fn show(ctx: &Context, key: Option<String>, origin: bool) -> anyhow::Result<Exit
                 println!("{}", serde_json::json!(v));
                 ExitCode::Success
             }
-            // set nowhere: exit 1 with no output, so `if v=$(dg config show device)` works
+            // set nowhere: exit 1 with no output, so `if v=$(pw config show device)` works
             (None, _) => ExitCode::Failure,
         });
     }
@@ -278,7 +278,7 @@ fn path(ctx: &Context, scope: Option<Scope>) -> anyhow::Result<ExitCode> {
             return Ok(ExitCode::Success);
         }
         eprintln!(
-            "donguru: no {} configuration directory (HOME is not set)",
+            "portwright: no {} configuration directory (HOME is not set)",
             fmt_enum(scope)
         );
         return Ok(ExitCode::Failure);
@@ -308,13 +308,13 @@ fn validate(path: Option<PathBuf>) -> anyhow::Result<ExitCode> {
             Ok(_) => println!("{}: ok", file.display()),
             Err(e) => {
                 bad = true;
-                eprintln!("donguru: {e}");
+                eprintln!("portwright: {e}");
             }
         }
     }
     if files.is_empty() {
         eprintln!(
-            "donguru: no configuration file found; `donguru config path` lists where they are looked for"
+            "portwright: no configuration file found; `portwright config path` lists where they are looked for"
         );
     }
     Ok(if bad {
@@ -345,7 +345,7 @@ mod tests {
     #[test]
     fn generate_refuses_to_overwrite_without_force() {
         let dir = tempfile::tempdir().unwrap();
-        let file = dir.path().join("sub/donguru.toml");
+        let file = dir.path().join("sub/portwright.toml");
         assert!(matches!(
             generate(Some(file.clone()), false).unwrap(),
             ExitCode::Success

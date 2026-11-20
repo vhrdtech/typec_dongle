@@ -1,5 +1,5 @@
 //! `clock`: `ww_timebase::Clock` (API-57), served through embedded_bedrock's `bedrock_sync` (DEV-13): the host's
-//! `steer` points discipline Donguru's local clock onto UTC, which `src/led.rs` then aligns the status LEDs to
+//! `steer` points discipline Portwright's local clock onto UTC, which `src/led.rs` then aligns the status LEDs to
 //! (FW-44, `crate::sync::SYNC`). No sync line on this board (`ClockServer::NO_LINE`, so `configure_sync` always
 //! answers `Unsupported` and `set_time_of_day` always `WrongState`) and no oscillator backend (HSI16 trim is too
 //! coarse, decided 21 Oct 2026).
@@ -99,7 +99,7 @@ impl ServerState {
         Ready(SYNC.with(|clock, now_us| self.clock.server.sync_status(clock, now_us)))
     }
 
-    /// Donguru is never a sync master (no line): always `WrongState`.
+    /// Portwright is never a sync master (no line): always `WrongState`.
     pub(super) fn clock_set_time_of_day(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,

@@ -1,6 +1,6 @@
 //! Firmware update through the STM32 ROM bootloader (FW-12): the early boot that runs first thing in `main`, before
 //! clocks and embassy, and the reboots `device.boot.reboot` asks for (`src/ww/boot.rs`). The decisions are
-//! `donguru_board::boot`'s, host-tested; this module does the register accesses.
+//! `portwright_board::boot`'s, host-tested; this module does the register accesses.
 //!
 //! - `reboot(Updater)`: [reboot] writes the ROM request into the boot word (TAMP_BKP4R) and resets. [early] finds it,
 //!   clears it and jumps to the ROM bootloader from the reset state (AN2606 §4.1): USB DFU behind the hub, which
@@ -18,16 +18,16 @@ use core::mem::MaybeUninit;
 use core::sync::atomic::{AtomicBool, Ordering};
 use cortex_m::peripheral::SCB;
 use defmt::{error, info, unwrap, warn};
-pub use donguru_board::boot::Start;
-use donguru_board::boot::{
-    BOOT_LOOP_LIMIT, BootWord, Entered, HEALTHY_AFTER_S, ROM_BOOTLOADER, SERIAL_LEN, TAMP_BKP_BOOT,
-    rom_serial,
-};
 use embassy_futures::select::{Either, select};
 use embassy_stm32::pac;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::signal::Signal;
 use embassy_time::Timer;
+pub use portwright_board::boot::Start;
+use portwright_board::boot::{
+    BOOT_LOOP_LIMIT, BootWord, Entered, HEALTHY_AFTER_S, ROM_BOOTLOADER, SERIAL_LEN, TAMP_BKP_BOOT,
+    rom_serial,
+};
 use static_cell::StaticCell;
 
 /// What [early] saw before it reset because the firmware was not entered by a reset: kept across that one reset
@@ -42,7 +42,7 @@ struct Jumped {
 /// "JUMP" in ASCII.
 const JUMPED: u32 = 0x4A55_4D50;
 
-#[unsafe(link_section = ".uninit.donguru_boot")]
+#[unsafe(link_section = ".uninit.portwright_boot")]
 static mut BEFORE_RESET: MaybeUninit<Jumped> = MaybeUninit::uninit();
 
 /// Takes what [BEFORE_RESET] holds, if valid, and invalidates it.
@@ -255,7 +255,7 @@ pub async fn reboot_task() {
     SCB::sys_reset()
 }
 
-/// The USB serial number: the one the ROM bootloader reports for this chip (`donguru_board::boot::rom_serial`), so a
+/// The USB serial number: the one the ROM bootloader reports for this chip (`portwright_board::boot::rom_serial`), so a
 /// host follows the board into the ROM and back by it. The full UID stays in `device.uid`.
 pub fn usb_serial() -> &'static str {
     static SERIAL: StaticCell<[u8; SERIAL_LEN]> = StaticCell::new();

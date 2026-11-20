@@ -7,9 +7,9 @@ use crate::{hub, last_reset};
 use cnt::cnt;
 use core::sync::atomic::AtomicU32;
 use defmt::{info, warn};
-use donguru_api::BoardVariant;
-use donguru_board::power::Limits;
 use embassy_time::Instant;
+use portwright_api::BoardVariant;
+use portwright_board::power::Limits;
 use wire_weaver::CommonError;
 use wire_weaver::prelude::*;
 use wire_weaver::shrink_wrap::ArrayString;
@@ -23,12 +23,12 @@ use ww_uid::UniqueId;
 use ww_user_info::{MAX_NAME_LEN, MAX_NOTES_LEN, UserInfoCaps};
 
 impl ServerState {
-    // donguru_api::Device at device
+    // portwright_api::Device at device
 
     pub(super) fn get_device_variant(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::BoardVariant, CommonError<'_>> {
+    ) -> GetResult<portwright_api::BoardVariant, CommonError<'_>> {
         Value(hub::board_variant())
     }
 
@@ -177,12 +177,12 @@ impl ServerState {
         &mut self.log_frames
     }
 
-    // donguru_api::Settings at device.settings
+    // portwright_api::Settings at device.settings
 
     pub(super) async fn set_device_settings_plug_vbus_at_boot(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        value: donguru_api::VbusMode,
+        value: portwright_api::VbusMode,
     ) -> SetResult<CommonError<'_>> {
         // what plug.vbus_mode would refuse whatever VBUS is; the voltage is checked at boot
         if Limits::from_mode(&value).is_err() {
@@ -198,7 +198,7 @@ impl ServerState {
     pub(super) async fn get_device_settings_plug_vbus_at_boot(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::VbusMode, CommonError<'_>> {
+    ) -> GetResult<portwright_api::VbusMode, CommonError<'_>> {
         Value(self.user.get().plug_vbus_at_boot.clone())
     }
 
@@ -206,7 +206,7 @@ impl ServerState {
     pub(super) async fn set_device_settings_button_action(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        value: donguru_api::ButtonAction,
+        value: portwright_api::ButtonAction,
     ) -> SetResult<CommonError<'_>> {
         self.user.set(now_ms(), |s| s.button_action = value);
         match self.persist_settings().await {
@@ -218,7 +218,7 @@ impl ServerState {
     pub(super) async fn get_device_settings_button_action(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::ButtonAction, CommonError<'_>> {
+    ) -> GetResult<portwright_api::ButtonAction, CommonError<'_>> {
         Value(self.user.get().button_action)
     }
 
@@ -248,7 +248,7 @@ impl ServerState {
     pub(super) async fn set_device_settings_meter_deadband(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        value: donguru_api::MeterDeadband,
+        value: portwright_api::MeterDeadband,
     ) -> SetResult<CommonError<'_>> {
         let Some((mv, ma)) = meter::deadband_of(&value) else {
             return SetError(meter::invalid(meter::DEADBAND_INVALID));
@@ -264,7 +264,7 @@ impl ServerState {
     pub(super) async fn get_device_settings_meter_deadband(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::MeterDeadband, CommonError<'_>> {
+    ) -> GetResult<portwright_api::MeterDeadband, CommonError<'_>> {
         Value(self.user.get().meter_deadband.clone())
     }
 
@@ -334,7 +334,7 @@ impl ServerState {
             crate::adc::set_window_us(us);
         }
         let mode = self.user.get().plug_vbus_at_boot.clone();
-        if mode != donguru_api::VbusMode::ForceOff {
+        if mode != portwright_api::VbusMode::ForceOff {
             let _ = meter::readings().await;
             if power::set_mode(Which::Plug, mode).is_err() {
                 cnt::bkp_cnt!(plug_vbus_at_boot_refused: u32, warn);
@@ -362,7 +362,7 @@ fn now_ms() -> u64 {
 }
 
 /// Values of the `const` items, served without a handler and read once per connection by a host.
-impl super::server_impl::DonguruApiConsts for ServerState {
+impl super::server_impl::PortwrightApiConsts for ServerState {
     // name, version, git commit, build time and profile, from build.rs (ww_firmware_info::build::emit())
     const DEVICE_FIRMWARE_FIRMWARE: FirmwareSummary<'static> =
         ww_firmware_info::firmware_summary!();
@@ -381,7 +381,7 @@ impl super::server_impl::DonguruApiConsts for ServerState {
             _ => "Unknown",
         };
         BoardSummary {
-            name: MaxLen::new_unchecked("Donguru B153"),
+            name: MaxLen::new_unchecked("Portwright B153"),
             revision: MaxLen::new_unchecked(if cfg!(feature = "rev_a") { "A" } else { "B" }),
             revision_source: RevisionSource::Assumed,
             variant: MaxLen::new_unchecked(variant),

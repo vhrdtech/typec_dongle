@@ -9,10 +9,10 @@
 //! gaps with an exact count, and are reported.
 //!
 //! ```sh
-//! cargo run -p donguru-core --example uart_resume --release -- --mode plain
-//! cargo run -p donguru-core --example uart_resume --release -- --mode plain --baud 6000000
-//! cargo run -p donguru-core --example uart_resume --release -- --mode reconnect --drops 3
-//! cargo run -p donguru-core --example uart_resume --release -- --mode restart
+//! cargo run -p portwright-core --example uart_resume --release -- --mode plain
+//! cargo run -p portwright-core --example uart_resume --release -- --mode plain --baud 6000000
+//! cargo run -p portwright-core --example uart_resume --release -- --mode reconnect --drops 3
+//! cargo run -p portwright-core --example uart_resume --release -- --mode restart
 //! ```
 //!
 //! * `plain`: no drop, the baseline rate. With `--baud` the line is set to that rate (8N1) first: what comes back
@@ -24,8 +24,8 @@
 
 use anyhow::{Context, Result, bail};
 use clap::{Parser, ValueEnum};
-use donguru_core::mock::MockDevice;
-use donguru_core::{Dongle, Selector};
+use portwright_core::mock::MockDevice;
+use portwright_core::{Dongle, Selector};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -48,9 +48,9 @@ enum Mode {
 }
 
 #[derive(Parser)]
-#[command(about = "Credit sink resume on the Donguru header UART (TEST-26)")]
+#[command(about = "Credit sink resume on the Portwright header UART (TEST-26)")]
 struct Args {
-    /// Which dongle (as `dg --device`), when more than one is connected
+    /// Which dongle (as `pw --device`), when more than one is connected
     #[arg(long)]
     device: Option<Selector>,
     #[arg(long, value_enum, default_value = "reconnect")]
@@ -213,7 +213,7 @@ async fn run(args: &Args) -> Result<()> {
     };
     if let (Some(baud), false) = (args.baud, args.resume) {
         let got = dongle
-            .uart(donguru_core::levels::Side::Header)
+            .uart(portwright_core::levels::Side::Header)
             .configure(ww_uart::UartConfig {
                 baud_rate: ww_si::Baud::base(baud),
                 data_bits: ww_uart::DataBits::Eight,

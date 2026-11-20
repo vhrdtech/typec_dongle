@@ -1,7 +1,7 @@
 //! Plug VBUS (U601 AOZ1375, PA6 / FLTB PC14), header VBUS_SW (Q102, PD1), plug data switch (U701, PA9) and the
 //! relay (U101, PA5): API-11, FW-8, FW-14.
 //!
-//! The modes, states and the guard are `donguru_board::power::Switch`, unit-tested on the host; this module owns the pins,
+//! The modes, states and the guard are `portwright_board::power::Switch`, unit-tested on the host; this module owns the pins,
 //! feeds the guard from every ADC update ([`on_adc`], called by the ADC task, ~15 ms) and runs `plug.vbus_cycle`'s
 //! off time in [`power_task`]. Changes the server didn't make itself (a trip, a fault, the end of a cycle) mark the
 //! observed property changed through the observe signal (`crate::ww::OBSERVE`, WireWeaver SRV-25), which also wakes
@@ -14,8 +14,6 @@ use core::cell::RefCell;
 
 use cnt::cnt;
 use defmt::{info, warn};
-use donguru_api::{DataPath, GuardTrip, VbusMode, VbusState};
-use donguru_board::power::{CycleError, ModeError, Sample, Switch};
 use embassy_futures::select::{Either, select};
 use embassy_stm32::gpio::{Input, Level, Output, Pull, Speed};
 use embassy_sync::blocking_mutex::Mutex;
@@ -23,6 +21,8 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::channel::Channel;
 use embassy_sync::signal::Signal;
 use embassy_time::{Duration, Instant, Timer};
+use portwright_api::{DataPath, GuardTrip, VbusMode, VbusState};
+use portwright_board::power::{CycleError, ModeError, Sample, Switch};
 use wire_weaver::ReplyTo;
 use ww_si::Second;
 

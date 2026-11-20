@@ -1,22 +1,22 @@
 //! `debug`: bring-up and production test (`Bringup`, API-18). Behind the `debug-api` cargo feature (on by default,
 //! decision D2): without it every handler answers `Unimplemented` and the API stays the same.
 //!
-//! Pins go through `src/pins.rs` (refused list, claim table, electrical rules from `donguru_board::pins`), the hub's
+//! Pins go through `src/pins.rs` (refused list, claim table, electrical rules from `portwright_board::pins`), the hub's
 //! SMBus through the hub watchdog task that owns the bus (`src/hub.rs`), UCPD through `src/ucpd.rs`. No memory
 //! writes: `reg_read` reads peripheral space only.
 
 use super::ServerState;
 use crate::{hub, led, pins, ucpd};
 use cnt::cnt;
-use donguru_api::{DebugError, LedMode, PinDump, PinState, PortRegs, UcpdState};
-use donguru_board::pins::{Change, Denied, HUB_REG_STATUS_COMMAND, check_reg_read};
+use portwright_api::{DebugError, LedMode, PinDump, PinState, PortRegs, UcpdState};
+use portwright_board::pins::{Change, Denied, HUB_REG_STATUS_COMMAND, check_reg_read};
 use wire_weaver::prelude::*;
 
 /// Answer buffers of the debug level: the handlers answer borrowed slices of these.
 pub(super) struct DebugState {
     ports: [PortRegs; 6],
     bytes: [u8; hub::SMBUS_BLOCK_MAX],
-    words: [u32; donguru_board::pins::REG_READ_MAX_WORDS as usize],
+    words: [u32; portwright_board::pins::REG_READ_MAX_WORDS as usize],
     /// Number of the last SMBus request, to tell its answer from a late one.
     seq: u8,
 }
@@ -26,7 +26,7 @@ impl DebugState {
         DebugState {
             ports: pins::dump(),
             bytes: [0; hub::SMBUS_BLOCK_MAX],
-            words: [0; donguru_board::pins::REG_READ_MAX_WORDS as usize],
+            words: [0; portwright_board::pins::REG_READ_MAX_WORDS as usize],
             seq: 0,
         }
     }
@@ -62,13 +62,13 @@ fn invalid(arg: u8, reason: &'static str) -> wire_weaver::Error<'static, DebugEr
 }
 
 impl ServerState {
-    // donguru_api::Bringup at debug
+    // portwright_api::Bringup at debug
 
     pub(super) fn debug_pin_set(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        pin: donguru_api::McuPin,
-        mode: donguru_api::PinMode,
+        pin: portwright_api::McuPin,
+        mode: portwright_api::PinMode,
         level: Option<ww_gpio::Level>,
     ) -> RpcResult<Result<PinState, wire_weaver::Error<'_, DebugError>>> {
         if !cfg!(feature = "debug-api") {
@@ -88,7 +88,7 @@ impl ServerState {
     pub(super) fn debug_pin_get(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        pin: donguru_api::McuPin,
+        pin: portwright_api::McuPin,
     ) -> RpcResult<Result<PinState, wire_weaver::Error<'_, DebugError>>> {
         if !cfg!(feature = "debug-api") {
             return RpcResult::Unimplemented;
@@ -99,7 +99,7 @@ impl ServerState {
     pub(super) fn debug_pin_af(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        pin: donguru_api::McuPin,
+        pin: portwright_api::McuPin,
         af: u8,
     ) -> RpcResult<Result<PinState, wire_weaver::Error<'_, DebugError>>> {
         if !cfg!(feature = "debug-api") {
@@ -210,7 +210,7 @@ impl ServerState {
     pub(super) fn debug_ucpd(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        port: donguru_api::UcpdPort,
+        port: portwright_api::UcpdPort,
     ) -> RpcResult<UcpdState> {
         if !cfg!(feature = "debug-api") {
             return RpcResult::Unimplemented;
@@ -221,8 +221,8 @@ impl ServerState {
     pub(super) fn debug_ucpd_role(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        port: donguru_api::UcpdPort,
-        role: donguru_api::CcRole,
+        port: portwright_api::UcpdPort,
+        role: portwright_api::CcRole,
     ) -> RpcResult<Result<UcpdState, wire_weaver::Error<'_, DebugError>>> {
         if !cfg!(feature = "debug-api") {
             return RpcResult::Unimplemented;
@@ -231,8 +231,8 @@ impl ServerState {
         Ready(ucpd::set_role(port, role).map_err(|d| match d {
             // the CC pins of a running function: an SWD session's stopgap CC drive (FW-17)
             Denied::InUse(holder) => denied(Denied::Refused(match holder {
-                donguru_board::pins::Holder::SwdCc => "CC pins in use by an SWD session",
-                donguru_board::pins::Holder::PdSource => "CC pins in use by the PD source",
+                portwright_board::pins::Holder::SwdCc => "CC pins in use by an SWD session",
+                portwright_board::pins::Holder::PdSource => "CC pins in use by the PD source",
                 _ => "CC pins in use",
             })),
             d => denied(d),
@@ -242,16 +242,16 @@ impl ServerState {
     pub(super) fn debug_led_set(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        led: donguru_api::Led,
-        mode: donguru_api::LedMode,
+        led: portwright_api::Led,
+        mode: portwright_api::LedMode,
     ) -> RpcResult<()> {
         if !cfg!(feature = "debug-api") {
             return RpcResult::Unimplemented;
         }
         let led = match led {
-            donguru_api::Led::Power => led::Led::Power,
-            donguru_api::Led::Status => led::Led::Status,
-            donguru_api::Led::Unknown(_) => return RpcResult::Unimplemented,
+            portwright_api::Led::Power => led::Led::Power,
+            portwright_api::Led::Status => led::Led::Status,
+            portwright_api::Led::Unknown(_) => return RpcResult::Unimplemented,
         };
         let mode = match mode {
             LedMode::Off => led::Mode::Off,
@@ -312,8 +312,9 @@ impl ServerState {
     pub(super) fn debug_uart_replay(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        capture: donguru_api::ReplayCapture,
-    ) -> RpcResult<Result<ww_si::Bytes<u32>, wire_weaver::Error<'_, donguru_api::DebugError>>> {
+        capture: portwright_api::ReplayCapture,
+    ) -> RpcResult<Result<ww_si::Bytes<u32>, wire_weaver::Error<'_, portwright_api::DebugError>>>
+    {
         if !cfg!(feature = "debug-api") {
             return RpcResult::Unimplemented;
         }

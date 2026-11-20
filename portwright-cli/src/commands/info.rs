@@ -1,6 +1,6 @@
-//! `donguru info` - the device contract in one read: firmware, board/variant, uid, label, last reset (CLI-7).
+//! `portwright info` - the device contract in one read: firmware, board/variant, uid, label, last reset (CLI-7).
 //!
-//! The same summary as `donguru device info`; this is the short top-level spelling.
+//! The same summary as `portwright device info`; this is the short top-level spelling.
 
 use crate::context::Context;
 use crate::exit::ExitCode;

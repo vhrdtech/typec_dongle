@@ -28,8 +28,8 @@
 //! [`crate::cmsis_dap`] feeds it raw packets instead.
 //!
 //! The bit-bang kernels and how their timing is calibrated: see "Bit-bang kernels" below (FW-20). This crate has no
-//! test target (`fw/donguru/Cargo.toml`, like the rest of the firmware): the timing arithmetic is unit-tested in
-//! `donguru_dap::swclk`, the real clock can only be checked with a scope or logic analyzer on hardware.
+//! test target (`fw/portwright/Cargo.toml`, like the rest of the firmware): the timing arithmetic is unit-tested in
+//! `portwright_dap::swclk`, the real clock can only be checked with a scope or logic analyzer on hardware.
 //!
 //! **Plug CC drive, stopgap (FW-17)**: a downstream board such as B129A gates its SBU->SWD
 //! mux on CC voltage (comparators on both CC lines, switching a 74LVC1G08 `SWD_SEL`), so without a driven CC it
@@ -52,8 +52,6 @@ use dap_rs::dap::{Dap, DapLeds, HostStatus};
 use dap_rs::swd::{self, APnDP, DPRegister, RnW};
 use dap_rs::swj::{self, Dependencies};
 use dap_rs::{jtag, swo};
-use donguru_api::{Orientation, SwdMode};
-use donguru_dap::swclk::{Halves, KernelCost, spi_prescaler};
 use embassy_stm32::Peri;
 use embassy_stm32::gpio::{Flex, Level, Output, Pull, Speed};
 use embassy_stm32::pac;
@@ -63,10 +61,12 @@ use embassy_stm32::peripherals::SPI2;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::signal::Signal;
 use embassy_time::Delay;
+use portwright_api::{Orientation, SwdMode};
+use portwright_dap::swclk::{Halves, KernelCost, spi_prescaler};
 
 use crate::SwdResources;
 use crate::pins;
-use donguru_board::pins::Holder;
+use portwright_board::pins::Holder;
 
 const SYSCLK_HZ: u32 = 64_000_000;
 /// Floor on SWCLK: slow enough that bit-bang jitter (task scheduling, interrupts) cannot matter.
@@ -294,7 +294,7 @@ fn in_bits(bus: Bus, h: Halves, nbits: u32) -> u32 {
 /// for PA0/PA1, which reach no pin while the mode is input, so the plug sees nothing. Interrupts are off for the
 /// few microseconds it takes. Per kernel, bits are timed in two batch sizes (the difference drops the call and
 /// SysTick read overhead) with two spin counts per half (the difference is the spin cost); the arithmetic is
-/// `donguru_dap::swclk`, unit-tested on the host.
+/// `portwright_dap::swclk`, unit-tested on the host.
 #[derive(Clone, Copy)]
 struct Calibration {
     out: KernelCost,
@@ -1053,7 +1053,7 @@ impl swo::Swo for NoSwo {
     }
 }
 
-/// The donguru status LED already carries device heartbeat / USB state (`src/led.rs`); not repurposing it here
+/// The portwright status LED already carries device heartbeat / USB state (`src/led.rs`); not repurposing it here
 /// without a design decision, so host-connect / host-running status from CMSIS-DAP is only logged.
 pub(crate) struct NoLeds;
 
@@ -1107,7 +1107,7 @@ impl SwdHost {
         cc1.set_as_input(Pull::None);
         cc2.set_as_input(Pull::None);
         SwdHost {
-            dap: Dap::new(pins, NoLeds, Delay, None, "donguru-swd 0.1"),
+            dap: Dap::new(pins, NoLeds, Delay, None, "portwright-swd 0.1"),
             pu_en,
             cc1,
             cc2,

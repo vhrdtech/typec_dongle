@@ -11,7 +11,7 @@ use crate::context::Context;
 use crate::exit::ExitCode;
 
 /// The two names the same executable answers to.
-const NAMES: [&str; 2] = ["donguru", "dg"];
+const NAMES: [&str; 2] = ["portwright", "pw"];
 
 #[derive(Debug, Args)]
 pub struct Completions {
@@ -19,7 +19,7 @@ pub struct Completions {
     #[arg(value_enum, required_unless_present = "install")]
     shell: Option<Shell>,
 
-    /// Write the scripts for `donguru` and `dg` into the shell's per-user completion directory instead of printing
+    /// Write the scripts for `portwright` and `pw` into the shell's per-user completion directory instead of printing
     #[arg(long)]
     install: bool,
 
@@ -27,7 +27,7 @@ pub struct Completions {
     #[arg(
         long,
         value_name = "NAME",
-        default_value = "donguru",
+        default_value = "portwright",
         conflicts_with = "install"
     )]
     bin: String,
@@ -83,10 +83,12 @@ fn install(shell: Shell) -> anyhow::Result<()> {
         std::fs::File::create(&path)
             .and_then(|mut f| f.write_all(&script))
             .with_context(|| format!("writing {}", path.display()))?;
-        eprintln!("donguru: wrote {}", path.display());
+        eprintln!("portwright: wrote {}", path.display());
     }
     if shell == Shell::Zsh {
-        eprintln!("donguru: zsh needs ~/.local/share/zsh/site-functions in $fpath before compinit");
+        eprintln!(
+            "portwright: zsh needs ~/.local/share/zsh/site-functions in $fpath before compinit"
+        );
     }
     Ok(())
 }

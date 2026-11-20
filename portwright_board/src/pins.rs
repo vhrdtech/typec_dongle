@@ -16,9 +16,9 @@
 //!    doesn't block fixing it.
 //!
 //! No embassy and no GPIO in here: the firmware reads the registers into [`Ports`], asks [`check`], and writes the
-//! [`PinWrite`] it gets; the mock in `donguru-core` does the same on its register model.
+//! [`PinWrite`] it gets; the mock in `portwright-core` does the same on its register model.
 
-use donguru_api::{GpioPort, McuPin, PinMode};
+use portwright_api::{GpioPort, McuPin, PinMode};
 
 /// GPIOA..F.
 pub const PORTS: [GpioPort; 6] = [

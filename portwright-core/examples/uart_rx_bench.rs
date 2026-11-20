@@ -10,16 +10,16 @@
 //! as they are.
 //!
 //! ```sh
-//! cargo run -p donguru-core --example uart_rx_bench --release -- \
-//!     --elf fw/donguru/target/thumbv6m-none-eabi/release/donguru
-//! cargo run -p donguru-core --example uart_rx_bench --release -- --capture top --mode lz4 --secs 10
+//! cargo run -p portwright-core --example uart_rx_bench --release -- \
+//!     --elf fw/portwright/target/thumbv6m-none-eabi/release/portwright
+//! cargo run -p portwright-core --example uart_rx_bench --release -- --capture top --mode lz4 --secs 10
 //! ```
 
 use anyhow::{Context, Result, bail};
 use clap::{Parser, ValueEnum};
-use donguru_api::ReplayCapture;
-use donguru_core::levels::Side;
-use donguru_core::{Dongle, Selector};
+use portwright_api::ReplayCapture;
+use portwright_core::levels::Side;
+use portwright_core::{Dongle, Selector};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 use wire_weaver_client::StreamEvent;
@@ -51,7 +51,7 @@ enum Mode {
     about = "Header UART receive path at full line rate, with and without compression (FW-42)"
 )]
 struct Args {
-    /// Which dongle (as `dg --device`), when more than one is connected
+    /// Which dongle (as `pw --device`), when more than one is connected
     #[arg(long)]
     device: Option<Selector>,
     /// Line rate, 8N1; the dongle sets the nearest it can (6 Mbaud gives 5.818)
@@ -72,12 +72,12 @@ struct Args {
     elf: Option<PathBuf>,
 }
 
-/// The captures the firmware replays (`fw/donguru/replay/`).
+/// The captures the firmware replays (`fw/portwright/replay/`).
 fn capture_bytes(c: ReplayCapture) -> &'static [u8] {
     match c {
-        ReplayCapture::Boot => include_bytes!("../../fw/donguru/replay/boot.txt"),
-        ReplayCapture::Ls => include_bytes!("../../fw/donguru/replay/ls.txt"),
-        ReplayCapture::Top => include_bytes!("../../fw/donguru/replay/top.txt"),
+        ReplayCapture::Boot => include_bytes!("../../fw/portwright/replay/boot.txt"),
+        ReplayCapture::Ls => include_bytes!("../../fw/portwright/replay/ls.txt"),
+        ReplayCapture::Top => include_bytes!("../../fw/portwright/replay/top.txt"),
         _ => &[],
     }
 }

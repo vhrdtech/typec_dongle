@@ -1,13 +1,13 @@
 [package]
-name = "donguru_board"
+name = "portwright_board"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Board logic of the donguru firmware (B153): early boot, USB hub configuration, VBUS switch guard; no_std, unit-tested on the host"
+description = "Board logic of the portwright firmware (B153): early boot, USB hub configuration, VBUS switch guard; no_std, unit-tested on the host"
 
 [dependencies]
 defmt = { version = "1.1", optional = true }
-donguru_api = { path = "../donguru_api" }
+portwright_api = { path = "../portwright_api" }
 usb251xb = { version = "0.1.0", default-features = false }
 # MaxLen / RefVec of the PD log records (`pd`)
 shrink_wrap = { git = "https://github.com/romixlab/shrink_wrap", default-features = false }

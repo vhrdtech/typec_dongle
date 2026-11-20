@@ -1,5 +1,5 @@
 ---
-source: donguru-cli/src/commands/debug.rs
+source: portwright-cli/src/commands/debug.rs
 expression: "text(|o| print_hub(Format::Text, 0x00, &hub, o))"
 ---
 0x00  0x00

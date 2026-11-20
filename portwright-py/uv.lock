@@ -12,7 +12,7 @@ wheels = [
 ]
 
 [[package]]
-name = "donguru"
+name = "portwright"
 source = { editable = "." }
 
 [package.dev-dependencies]

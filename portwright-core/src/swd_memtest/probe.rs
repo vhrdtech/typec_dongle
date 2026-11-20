@@ -6,8 +6,8 @@ use probe_rs::probe::{DebugProbeSelector, list::Lister};
 use probe_rs::{Core, MemoryInterface, Permissions, Session};
 use std::time::Duration;
 
-/// Donguru's CMSIS-DAP v2 interface (FW-15).
-pub const DONGURU_PROBE: &str = "c0de:cafe";
+/// Portwright's CMSIS-DAP v2 interface (FW-15).
+pub const PORTWRIGHT_PROBE: &str = "c0de:cafe";
 
 impl WordMemory for Core<'_> {
     type Error = probe_rs::Error;

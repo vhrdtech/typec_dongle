@@ -1,15 +1,17 @@
 //! What calls answer and take, as small Python classes with SI floats (V, A, W, s, C, J) and plain strings for the
 //! API's enums.
 
-use donguru_core::api::{GuardTrip, MeterDeadband, MeterReading, MeterTotals, VbusMode, VbusState};
-use donguru_core::levels::DeviceSummary;
-use donguru_core::{DeviceEntry, vbus};
+use portwright_core::api::{
+    GuardTrip, MeterDeadband, MeterReading, MeterTotals, VbusMode, VbusState,
+};
+use portwright_core::levels::DeviceSummary;
+use portwright_core::{DeviceEntry, vbus};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use ww_si::{Ampere, Baud, Prefix, Volt};
 use ww_uart::{DataBits, Parity, StopBits};
 
-/// A value in thousandths as the firmware's `i32` quantities take it (it has no floats, `donguru_core::vbus`).
+/// A value in thousandths as the firmware's `i32` quantities take it (it has no floats, `portwright_core::vbus`).
 pub(crate) fn milli(v: f64, what: &str) -> PyResult<i32> {
     let m = (v * 1000.0).round();
     if !m.is_finite() || m < i32::MIN as f64 || m > i32::MAX as f64 {
@@ -19,7 +21,7 @@ pub(crate) fn milli(v: f64, what: &str) -> PyResult<i32> {
 }
 
 /// A dongle as `list()` sees it on USB, before it is opened.
-#[pyclass(module = "donguru", frozen, get_all, skip_from_py_object)]
+#[pyclass(module = "portwright", frozen, get_all, skip_from_py_object)]
 #[derive(Clone)]
 pub(crate) struct DeviceInfo {
     /// Position in `list()`, sorted by USB path.
@@ -30,7 +32,7 @@ pub(crate) struct DeviceInfo {
     pub path: String,
     /// User label, `""` when not set.
     pub label: String,
-    /// `donguru_api` version the firmware reports.
+    /// `portwright_api` version the firmware reports.
     pub api_version: Option<String>,
     /// Where it is (`usb 3-1.2 c0de:cafe`).
     pub location: String,
@@ -60,14 +62,14 @@ impl DeviceInfo {
 }
 
 /// `Dongle.info()`: the device contract in one read. What the firmware doesn't report yet is `None`.
-#[pyclass(module = "donguru", frozen, get_all, skip_from_py_object)]
+#[pyclass(module = "portwright", frozen, get_all, skip_from_py_object)]
 #[derive(Clone)]
 pub(crate) struct Info {
     /// Board variant from the hub: `"Main"`, `"Plus"` or `"Unknown"`.
     pub variant: String,
-    /// `"donguru 0.20.27"`.
+    /// `"portwright 0.20.27"`.
     pub firmware: Option<String>,
-    /// `"Donguru B153 rev A"`.
+    /// `"Portwright B153 rev A"`.
     pub board: Option<String>,
     pub uid: Option<String>,
     pub label: Option<String>,
@@ -119,7 +121,7 @@ fn py_opt(s: &Option<String>) -> String {
 
 /// One meter reading: `voltage` (VBUS_IN, V), `current` (A, positive towards the DUT), `power` (W). `t` is the
 /// device time in s of an observed reading when the device sends one, else `None`.
-#[pyclass(module = "donguru", frozen, get_all, skip_from_py_object)]
+#[pyclass(module = "portwright", frozen, get_all, skip_from_py_object)]
 #[derive(Clone)]
 pub(crate) struct Reading {
     pub voltage: f64,
@@ -133,7 +135,7 @@ impl Reading {
         Reading {
             voltage: r.vbus_in.to_f64(),
             current: r.current.to_f64(),
-            power: donguru_core::reading_power_w(r),
+            power: portwright_core::reading_power_w(r),
             t,
         }
     }
@@ -151,7 +153,7 @@ impl Reading {
 
 /// Charge (C), energy (J) and peak current (A) since boot or `meter.reset_totals()`, over `since` seconds;
 /// `charge_mah` and `energy_wh` in the units chargers print.
-#[pyclass(module = "donguru", frozen, get_all, skip_from_py_object)]
+#[pyclass(module = "portwright", frozen, get_all, skip_from_py_object)]
 #[derive(Clone)]
 pub(crate) struct Totals {
     pub charge: f64,
@@ -196,7 +198,7 @@ impl Totals {
 
 /// State of a VBUS switch: `state` is `"off"`, `"on"`, `"fault"` (latched by the switch; switching on again
 /// re-arms it), `"tripped"` (cut by the firmware, `trip_reason` says why) or `"unknown"` (a newer firmware's).
-#[pyclass(module = "donguru", frozen, get_all, eq, skip_from_py_object)]
+#[pyclass(module = "portwright", frozen, get_all, eq, skip_from_py_object)]
 #[derive(Clone, PartialEq)]
 pub(crate) struct VbusStatus {
     pub state: &'static str,
@@ -255,7 +257,7 @@ impl VbusStatus {
 /// How the firmware drives a VBUS switch. Build one with `VbusMode.off()`, `VbusMode.on(max_voltage=5.5)` or
 /// `VbusMode.auto(max_voltage, max_current)`; `mode` is `"off"`, `"on"`, `"auto"` or `"unknown"`, the limits in V,
 /// A, W where the mode has them.
-#[pyclass(name = "VbusMode", module = "donguru", frozen, eq, from_py_object)]
+#[pyclass(name = "VbusMode", module = "portwright", frozen, eq, from_py_object)]
 #[derive(Clone, PartialEq)]
 pub(crate) struct PyVbusMode(pub(crate) VbusMode);
 
@@ -341,7 +343,7 @@ impl PyVbusMode {
 }
 
 /// The meter's change threshold for `watch(on_change=True)`: `voltage` (V) and `current` (A).
-#[pyclass(module = "donguru", frozen, get_all, eq, from_py_object)]
+#[pyclass(module = "portwright", frozen, get_all, eq, from_py_object)]
 #[derive(Clone, PartialEq)]
 pub(crate) struct Deadband {
     pub voltage: f64,
@@ -384,7 +386,7 @@ impl From<&MeterDeadband> for Deadband {
 /// Line settings of a UART: `baud`, `data_bits` (5..9), `parity` (`"none"`, `"odd"`, `"even"`), `stop_bits` (1, 2),
 /// `flow` (`"none"`, `"hardware"`, `"software"`, `"high_z"`, `"test"`), `prevent_back_feed`, `io_level` (V, `None`:
 /// as it is) and `idle_chars` (RX idle time that ends a chunk, in character times).
-#[pyclass(module = "donguru", frozen, get_all, eq, from_py_object)]
+#[pyclass(module = "portwright", frozen, get_all, eq, from_py_object)]
 #[derive(Clone, PartialEq)]
 pub(crate) struct UartConfig {
     pub baud: u32,

@@ -1,5 +1,5 @@
 ---
-source: donguru-cli/src/commands/device/reset_cause.rs
+source: portwright-cli/src/commands/device/reset_cause.rs
 assertion_line: 227
 expression: "render(Format::Json, &shown)"
 ---

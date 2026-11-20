@@ -1,6 +1,6 @@
-//! Host library for Donguru dongles: enumeration and selection ([device]), the generated `donguru_api` client
+//! Host library for Portwright dongles: enumeration and selection ([device]), the generated `portwright_api` client
 //! ([client]) and a typed facade per level of the API tree ([levels]) for the CLI, the GUI and the Python
-//! bindings. With the `mock` feature, [mock] serves `DonguruApi` in the same process, as the test double.
+//! bindings. With the `mock` feature, [mock] serves `PortwrightApi` in the same process, as the test double.
 
 pub mod client;
 pub mod config;
@@ -21,8 +21,8 @@ pub mod update;
 pub mod vbus;
 
 pub use device::{DeviceEntry, Dongle, Selector};
-pub use donguru_api as api;
 pub use error::{DeviceError, DeviceErrorKind, Error, Result};
+pub use portwright_api as api;
 pub use ww_indication;
 
 /// Power into the DUT of a meter reading, in W: `vbus_in` x `current` (the device doesn't send it, it is exactly

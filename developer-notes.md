@@ -28,7 +28,7 @@
 ## Error handling and exit codes
 
 - Core returns typed `thiserror` errors; the binary maps them to stable exit codes so scripts can branch on the
-  failure category. The table and the mapping live in `donguru-cli/src/exit.rs`, documented in
+  failure category. The table and the mapping live in `portwright-cli/src/exit.rs`, documented in
   `docs/design/cli/index.md` ("Exit codes") and `docs/user/scripting.md`; a new category gets the next free number,
   an existing one is never renumbered.
 
@@ -37,10 +37,10 @@
 ## External subcommand dispatch
 
 - Enable `clap`’s external subcommand capture. When the first argument is not a
-  known subcommand `X`, search `PATH` for `donguru-X` and `exec` it.
-- Forward remaining args verbatim and pass resolved context via environment (e.g. `DONGURU_DEVICE`, `DONGURU_OUTPUT`)
+  known subcommand `X`, search `PATH` for `portwright-X` and `exec` it.
+- Forward remaining args verbatim and pass resolved context via environment (e.g. `PORTWRIGHT_DEVICE`, `PORTWRIGHT_OUTPUT`)
   so plugins inherit selection and format.
-- `donguru help` augments its listing by scanning `PATH` for `donguru-*` executables.
+- `portwright help` augments its listing by scanning `PATH` for `portwright-*` executables.
 
 ## Testing
 - UnitTest

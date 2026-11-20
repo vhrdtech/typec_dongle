@@ -1,13 +1,13 @@
-//! A Donguru in the same process (CORE-3): the generated `DonguruApi` server on [ww_device::Server], reached through
+//! A Portwright in the same process (CORE-3): the generated `PortwrightApi` server on [ww_device::Server], reached through
 //! wire_weaver_client's `in_process` transport. The host side is exactly the one used over USB (link setup, version
 //! check, timeouts, observe), so the CLI, the GUI and the Python bindings are tested against it instead of a
 //! hand-written transport trait.
 //!
 //! ```no_run
-//! # async fn demo() -> donguru_core::Result<()> {
-//! let mock = donguru_core::mock::MockDevice::start("tests/plug");
+//! # async fn demo() -> portwright_core::Result<()> {
+//! let mock = portwright_core::mock::MockDevice::start("tests/plug");
 //! let dongle = mock.open().await?;
-//! assert_eq!(dongle.device().variant().await?, donguru_core::api::BoardVariant::Main);
+//! assert_eq!(dongle.device().variant().await?, portwright_core::api::BoardVariant::Main);
 //! # Ok(()) }
 //! ```
 //!
@@ -24,7 +24,7 @@
 //!   (`WrongState` in `ForceOff`, `OverVoltage` above the limit), data, orientation, relay.
 //! - `sbu`: function, release, pull-ups (`InUse` while SWD holds SBU), `route_usb` (`Unsupported` on Main).
 //! - `inputs`, `hub`, `swd`: state, button action, recover, mode.
-//! - `debug`: a register model of the pins under the firmware's own rules (`donguru_board::pins`: refused pins,
+//! - `debug`: a register model of the pins under the firmware's own rules (`portwright_board::pins`: refused pins,
 //!   the claim table with what runs at boot and an SWD session, the electrical rules), hub registers (`hub_write`
 //!   refuses STATUS/COMMAND), UCPD roles with the real UCPD_CR bits (`Rp` on UCPD1 refused, rev A), `reg_read` in
 //!   the firmware's peripheral blocks (GPIO from the model, other words answer their address).
@@ -38,7 +38,7 @@ mod server;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use donguru_api::*;
+use portwright_api::*;
 use tokio::sync::{mpsc, oneshot};
 use wire_weaver::CommonError;
 use wire_weaver::prelude::*;
@@ -47,11 +47,11 @@ use wire_weaver_client::in_process::{self, TokioClock};
 use ww_firmware_info::ResetCause;
 use ww_si::{Ampere, Baud, Coulomb, Fixed, Joule, Point, Prefix, Second, Volt};
 
-use donguru_board::pins::{
+use portwright_board::pins::{
     Change, Claims, Denied, Holder, MODE_ANALOG, MODE_INPUT, MODE_OUTPUT, PORTS, Port, Ports,
     bonded, check, port_index, reset_state,
 };
-use donguru_board::ucpd::{self, role_fields};
+use portwright_board::ucpd::{self, role_fields};
 
 use crate::device::DeviceEntry;
 use crate::{Dongle, Result};
@@ -124,7 +124,7 @@ pub struct MockState {
     /// `leds.identify` calls.
     pub identified: u32,
     pub reading: MeterReading,
-    pub temperature: donguru_api::DieTemperature,
+    pub temperature: portwright_api::DieTemperature,
     pub totals: MeterTotals,
     pub meter_window: Second,
     pub meter_deadband: MeterDeadband,
@@ -137,7 +137,7 @@ pub struct MockState {
     pub orientation: Orientation,
     pub cc: CcState,
     /// `plug.pd.source`; the mock has no sink, so a running source stays `Unattached`.
-    pub pd_source: donguru_api::PdSource,
+    pub pd_source: portwright_api::PdSource,
     pub header_vbus: VbusState,
     pub header_vbus_mode: VbusMode,
     pub relay: bool,
@@ -211,7 +211,7 @@ impl Default for MockState {
                 polarity: CcPolarity::Unknown,
                 pull: CcPull::Unknown,
             },
-            pd_source: donguru_api::PdSource::Off,
+            pd_source: portwright_api::PdSource::Off,
             header_vbus: VbusState::Off,
             header_vbus_mode: VbusMode::ForceOff,
             relay: false,
@@ -252,7 +252,7 @@ impl MockState {
         }
     }
 
-    /// What a VBUS switch does in `mode` with the receptacle at `reading.vbus_in`, as `donguru_board::power`'s
+    /// What a VBUS switch does in `mode` with the receptacle at `reading.vbus_in`, as `portwright_board::power`'s
     /// `Switch::set_mode`: a guarded mode over its `max_voltage` is `Refused` and changes nothing.
     fn apply(&self, mode: &VbusMode) -> core::result::Result<VbusState, CommonError<'static>> {
         match mode {
@@ -312,7 +312,7 @@ impl MockState {
         Ok(self.pin(pin))
     }
 
-    /// `pin_set` / `pin_af` under the firmware's rules ([donguru_board::pins::check]).
+    /// `pin_set` / `pin_af` under the firmware's rules ([portwright_board::pins::check]).
     fn pin_change(
         &mut self,
         pin: McuPin,
@@ -573,11 +573,11 @@ impl MockDevice {
                 let mut event_scratch = [0u8; MAX_MESSAGE_LEN];
                 let mut observe_buf = [0u8; OBSERVE_BUF_LEN];
                 let mut observe_scratch = Box::new(ww_stream::batch::Scratch::<
-                    { ww_stream::batch::scratch_bytes::<donguru_api::MeterReading>(server::api_impl::OBSERVE_BATCH) },
+                    { ww_stream::batch::scratch_bytes::<portwright_api::MeterReading>(server::api_impl::OBSERVE_BATCH) },
                 >::new());
                 let config = ww_device::LinkConfig::new(
-                    DONGURU_API_FULL_GID,
-                    donguru_api::DONGURU_API_WIRE_VERSION,
+                    PORTWRIGHT_API_FULL_GID,
+                    portwright_api::PORTWRIGHT_API_WIRE_VERSION,
                     server::api_impl::api_hash(),
                     image_facts,
                     ww_client_server::COMPACT_VERSION,
@@ -682,6 +682,6 @@ impl WireWeaverAsyncApiBackend for Backend {
     }
 
     fn version(&self) -> wire_weaver::ww_version::FullVersion<'_> {
-        DONGURU_API_FULL_GID
+        PORTWRIGHT_API_FULL_GID
     }
 }

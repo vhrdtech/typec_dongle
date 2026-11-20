@@ -1,11 +1,11 @@
-//! WireWeaver server: implements `donguru_api::DonguruApi` (defined in `donguru_api/src/lib.rs` in the repo root) for
+//! WireWeaver server: implements `portwright_api::PortwrightApi` (defined in `portwright_api/src/lib.rs` in the repo root) for
 //! [ServerState] and serves it over USB, on a composite device built by [start] that also carries the CMSIS-DAP
 //! v2 interface (`src/cmsis_dap.rs`, FW-15). The USB driver is created in `main.rs` and handed to [start].
 //!
 //! The handlers live in one module per level of the API tree (`device.rs`, `plug.rs`, ...), each an
 //! `impl ServerState` block: a piece of work on one level touches one file. To add an item: declare it in the API
 //! trait, then implement it in its level's module; `ww_codegen!` below regenerates the dispatch code and the compiler
-//! lists what is missing (`ww api scaffold donguru_api --use-async --server ServerState` prints every handler). Items
+//! lists what is missing (`ww api scaffold portwright_api --use-async --server ServerState` prints every handler). Items
 //! not implemented yet answer `Unimplemented`. See https://github.com/vhrdtech/wire_weaver (`docs/`).
 
 mod adc;
@@ -87,7 +87,7 @@ static OBSERVE_STATE: StaticCell<ObserveState> = StaticCell::new();
 /// One column of a batch while it is encoded: the biggest is `meter.reading`'s.
 #[cfg(feature = "meter-samples")]
 const OBSERVE_SCRATCH: usize =
-    ww_stream::batch::scratch_bytes::<donguru_api::MeterReading>(server_impl::OBSERVE_BATCH);
+    ww_stream::batch::scratch_bytes::<portwright_api::MeterReading>(server_impl::OBSERVE_BATCH);
 #[cfg(feature = "meter-samples")]
 static SCRATCH: StaticCell<ww_stream::batch::Scratch<OBSERVE_SCRATCH>> = StaticCell::new();
 /// Biggest item of a reliable stream: `device.log.frames`' `DefmtFrames` (512 B of frames and its length).
@@ -210,7 +210,7 @@ mod server_impl {
     macro_rules! server {
         ($introspect:tt, $($cells:tt)*) => {
             wire_weaver::ww_codegen!(
-                donguru_api :: DonguruApi for super::ServerState,
+                portwright_api :: PortwrightApi for super::ServerState,
                 server = true, no_alloc = true, use_async = true,
                 // handlers that await (flash writes, ADC readings, the VBUS cycle, the log flood, clock.steer's time_map
                 // push) are async, all others plain `fn`s (SRV-21): an `async fn` that never awaits still costs flash as a
@@ -220,7 +220,7 @@ mod server_impl {
                 property_model = "_=get_set",
                 $($cells)*
                 const_model = "BOARD|IDS|INFO|BUILD_ID|DEFMT=fn",
-                // no I2C slave mode on Donguru (ww_i2c STD-35): the group answers Unimplemented, clients see it omitted;
+                // no I2C slave mode on Portwright (ww_i2c STD-35): the group answers Unimplemented, clients see it omitted;
                 // the board's reworks list (ww_board_info STD-24, STD-98) isn't served yet
                 omit = ["device.board.REWORKS", "device.board.set_reworks", "device.firmware.BUILD_RECORD", "i2c.slave"],
                 introspect = $introspect,
@@ -263,14 +263,14 @@ impl WireWeaverAsyncApiBackend for ServerState {
     }
 
     fn version(&self) -> FullVersion<'_> {
-        donguru_api::DONGURU_API_FULL_GID
+        portwright_api::PORTWRIGHT_API_FULL_GID
     }
 }
 
 fn link_config() -> LinkConfig<'static> {
     LinkConfig::new(
-        donguru_api::DONGURU_API_FULL_GID,
-        donguru_api::DONGURU_API_WIRE_VERSION,
+        portwright_api::PORTWRIGHT_API_FULL_GID,
+        portwright_api::PORTWRIGHT_API_WIRE_VERSION,
         server_impl::api_hash(),
         server_impl::image_facts(),
         ww_client_server::COMPACT_VERSION,
@@ -328,11 +328,11 @@ const MAX_USB_PACKET_LEN: usize = 64; // Full Speed
 /// instead of making the host retry (through the board's hub that costs ~half the throughput, FW-24).
 const WW_FUNCTION: Function = bedrock_usb::ww_function! {
     out: EP_WW_OUT, in: EP_WW_IN, max_packet: MAX_USB_PACKET_LEN as u16, buffering: bedrock_usb::Buffering::Double,
-    user_crate: donguru_api::DONGURU_API_FULL_GID.crate_id,
+    user_crate: portwright_api::PORTWRIGHT_API_FULL_GID.crate_id,
     user_version: (
-        donguru_api::DONGURU_API_FULL_GID.version.major.0,
-        donguru_api::DONGURU_API_FULL_GID.version.minor.0,
-        donguru_api::DONGURU_API_FULL_GID.version.patch.0
+        portwright_api::PORTWRIGHT_API_FULL_GID.version.major.0,
+        portwright_api::PORTWRIGHT_API_FULL_GID.version.minor.0,
+        portwright_api::PORTWRIGHT_API_FULL_GID.version.patch.0
     ),
     api_id: Str::Runtime,
 };
@@ -344,8 +344,8 @@ const FUNCTIONS: &[Function] = &[WW_FUNCTION];
 /// The composite USB device, WireWeaver and CMSIS-DAP v2 (`src/cmsis_dap.rs`): descriptors, endpoint registers
 /// and USB SRAM are fixed at build time (bedrock_usb). One IAD per function, as Windows needs for a composite device.
 const DEVICE: Device = Device {
-    manufacturer: Str::Const("donguru"),
-    product: Str::Const("donguru"),
+    manufacturer: Str::Const("vhrd.tech"),
+    product: Str::Const("Portwright"),
     serial: Str::Runtime,
     // WinUSB on the WireWeaver function, at device level and in its function subset
     ms_os_20: Some(bedrock_usb::ww::MS_OS_20),

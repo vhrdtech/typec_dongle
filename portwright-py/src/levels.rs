@@ -1,16 +1,16 @@
-//! The levels of a dongle as Python objects (`dg.power`, `dg.meter`, ...), each a thin layer over the typed facade
-//! of `donguru_core::levels`: arguments in SI floats, results as the classes of [crate::values].
+//! The levels of a dongle as Python objects (`pw.power`, `pw.meter`, ...), each a thin layer over the typed facade
+//! of `portwright_core::levels`: arguments in SI floats, results as the classes of [crate::values].
 
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use donguru_core::api::{ButtonAction, DataPath, VbusMode};
-use donguru_core::client::observe::{
+use portwright_core::api::{ButtonAction, DataPath, VbusMode};
+use portwright_core::client::observe::{
     BatchedOwned, ObserveEvent, Observer, PowerMeterObserve, PowerMeterUpdate, on_change, periodic,
 };
-use donguru_core::levels::Side;
-use donguru_core::vbus;
+use portwright_core::levels::Side;
+use portwright_core::vbus;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use ww_si::Second;
@@ -47,7 +47,7 @@ fn on_mode(max_voltage: f64, trip: Option<f64>) -> PyResult<VbusMode> {
 macro_rules! level {
     ($(#[$doc:meta])* $name:ident, $py:literal) => {
         $(#[$doc])*
-        #[pyclass(name = $py, module = "donguru", frozen, skip_from_py_object)]
+        #[pyclass(name = $py, module = "portwright", frozen, skip_from_py_object)]
         pub(crate) struct $name {
             shared: Arc<Shared>,
         }
@@ -63,7 +63,7 @@ macro_rules! level {
 // ---------------------------------------------------------------------------------------------------------------
 
 level!(
-    /// Plug VBUS to the DUT (switch U601), as `dg power` drives it. `on`, `off` and `cycle` answer the state the switch
+    /// Plug VBUS to the DUT (switch U601), as `pw power` drives it. `on`, `off` and `cycle` answer the state the switch
     /// ended up in: check `.on` (a trip or a fault is not an exception).
     Power,
     "Power"
@@ -246,7 +246,7 @@ struct WatchState {
 const SIGNAL_CHECK: Duration = Duration::from_millis(100);
 
 /// The iterator of `meter.watch()`.
-#[pyclass(module = "donguru", frozen, skip_from_py_object)]
+#[pyclass(module = "portwright", frozen, skip_from_py_object)]
 pub(crate) struct MeterWatch {
     /// Keeps the dongle's link alive while observing.
     _shared: Arc<Shared>,
@@ -350,7 +350,7 @@ impl MeterWatch {
 // ---------------------------------------------------------------------------------------------------------------
 
 level!(
-    /// USB data (D+/D-) to the DUT through switch U701, as `dg usb` drives it; VBUS is `power`.
+    /// USB data (D+/D-) to the DUT through switch U701, as `pw usb` drives it; VBUS is `power`.
     Usb,
     "Usb"
 );
@@ -398,7 +398,7 @@ impl Usb {
 // ---------------------------------------------------------------------------------------------------------------
 
 level!(
-    /// Header J101: its switched VBUS_SW and relay U101, as `dg header` drives them.
+    /// Header J101: its switched VBUS_SW and relay U101, as `pw header` drives them.
     Header,
     "Header"
 );
@@ -484,7 +484,7 @@ impl Uarts {
 }
 
 /// One UART.
-#[pyclass(module = "donguru", frozen, skip_from_py_object)]
+#[pyclass(module = "portwright", frozen, skip_from_py_object)]
 pub(crate) struct UartPort {
     shared: Arc<Shared>,
     side: Side,

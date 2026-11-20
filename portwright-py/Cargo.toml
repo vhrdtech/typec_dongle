@@ -1,20 +1,20 @@
 [package]
-name = "donguru-py"
+name = "portwright-py"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Python bindings of donguru-core (CORE-4): the `donguru` package"
+description = "Python bindings of portwright-core (CORE-4): the `portwright` package"
 publish = false
 
 [lib]
-name = "_donguru"
+name = "_portwright"
 crate-type = ["cdylib"]
 # tested from Python: `just py-test` (pytest against the mock)
 test = false
 doctest = false
 
 [dependencies]
-donguru-core.workspace = true
+portwright-core.workspace = true
 # abi3: one wheel for every CPython from 3.10 on. `extension-module` comes from maturin (pyproject.toml), so
 # `cargo test --workspace --all-features` doesn't build this crate without libpython.
 pyo3 = { version = "0.29", features = ["abi3-py310"] }
@@ -23,5 +23,5 @@ ww_si = { git = "https://github.com/vhrdtech/ww_base", features = ["std", "time"
 ww_uart = { git = "https://github.com/vhrdtech/ww_stdlib", features = ["std"] }
 
 [features]
-# `donguru.mock`: a dongle in the same process (donguru-core's CORE-3 mock), for tests of scripts without hardware
-mock = ["donguru-core/mock"]
+# `portwright.mock`: a dongle in the same process (portwright-core's CORE-3 mock), for tests of scripts without hardware
+mock = ["portwright-core/mock"]

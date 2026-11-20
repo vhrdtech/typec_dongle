@@ -1,6 +1,6 @@
 [project]
 site_url = "https://www.example.com/"
-site_name = "Donguru"
+site_name = "Portwright"
 site_description = "USB-Type-C dongle with a USB Hub, USART/I2C/GPIO/ADC, power switch and power meter."
 # site_author = "Your name"
 

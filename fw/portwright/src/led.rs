@@ -3,7 +3,7 @@
 //! brightness for both, and [`identify`], which blinks both for a while and then returns to the animations. The
 //! animation, its math and the driver loop are embedded_bedrock's `bedrock_led` (DEV-12, host-tested there); this
 //! module sets up the timers. While `crate::sync::SYNC` has shared time (host-steered, FW-44), breath and blink
-//! align to it (`run_with`), so Donguru's LEDs breathe in phase with other boards on the same host; free-running
+//! align to it (`run_with`), so Portwright's LEDs breathe in phase with other boards on the same host; free-running
 //! otherwise, as before.
 //!
 //! NOTE: The 64-bit multiply and divide routines have one caller left, embassy's calculate_psc_arr. That function runs once, when

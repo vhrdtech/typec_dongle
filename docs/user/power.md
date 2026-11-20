@@ -4,7 +4,7 @@ icon: lucide/power
 
 # Power and data switches
 
-Donguru switches the power and the USB data going to the device under test (DUT), and the switched VBUS on the
+Portwright switches the power and the USB data going to the device under test (DUT), and the switched VBUS on the
 header. The firmware keeps the limits, so a script or a host that hangs can't leave a DUT on a voltage it didn't
 ask for.
 

@@ -3,13 +3,13 @@
 //! bindings handle `Unimplemented`, device errors and link failures the same way.
 //!
 //! Levels made of a stdlib trait (`uart[]`, `i2c[]`, `gpio[]`, `adc`, `leds`, the contract under `device`) have the
-//! calls Donguru's tools use here, and the generated client of the level through `raw()` for everything else.
+//! calls Portwright's tools use here, and the generated client of the level through `raw()` for everything else.
 
 use std::fmt;
 use std::time::Duration;
 
-use donguru_api::DieTemperature;
-use donguru_api::{
+use portwright_api::DieTemperature;
+use portwright_api::{
     BoardVariant, ButtonAction, ButtonState, CcRole, CcState, DataPath, DebugError, HubState, Led,
     LedMode, McuPin, MeterCalibration, MeterDeadband, MeterReading, MeterTotals, Orientation,
     PinDumpOwned, PinMode, PinState, PowerError, SbuFunction, SwdMode, SwdSession, SwitchPosition,
@@ -20,8 +20,8 @@ use wire_weaver::shrink_wrap::MaxLen;
 use wire_weaver_client::{CallError, PreparedCall, PreparedRead, PreparedWrite};
 use ww_si::{Second, Volt};
 
-use crate::client::DonguruClient;
-use crate::client::generated::donguru_api_donguru_api as generated;
+use crate::client::PortwrightClient;
+use crate::client::generated::portwright_api_portwright_api as generated;
 use crate::client::observe::*;
 use crate::{Error, Result};
 
@@ -77,11 +77,11 @@ macro_rules! level {
         $(#[$doc])*
         #[derive(Copy, Clone)]
         pub struct $name<'a> {
-            c: &'a DonguruClient,
+            c: &'a PortwrightClient,
         }
 
         impl<'a> $name<'a> {
-            pub(crate) fn new(c: &'a DonguruClient) -> Self {
+            pub(crate) fn new(c: &'a PortwrightClient) -> Self {
                 Self { c }
             }
         }
@@ -96,7 +96,7 @@ level!(
     Device
 );
 
-/// What `dg info` shows: the contract in one read. A part the firmware doesn't have yet is `None`.
+/// What `pw info` shows: the contract in one read. A part the firmware doesn't have yet is `None`.
 #[derive(Clone, Debug)]
 pub struct DeviceSummary {
     pub variant: BoardVariant,
@@ -262,7 +262,7 @@ impl<'a> Device<'a> {
     }
 
     /// The generated client of `device`, for the stdlib contract traits (counters, log, ...).
-    pub fn raw(&self) -> generated::donguru_api_device::DonguruApiDeviceClient<'a> {
+    pub fn raw(&self) -> generated::portwright_api_device::PortwrightApiDeviceClient<'a> {
         self.c.device()
     }
 }
@@ -570,18 +570,18 @@ impl Plug<'_> {
     }
 
     /// The PD source's setting (`plug.pd.source`, API-30).
-    pub async fn pd_source(&self) -> Result<donguru_api::PdSource> {
+    pub async fn pd_source(&self) -> Result<portwright_api::PdSource> {
         read("PlugPd::source", self.c.plug().pd().read_source()).await
     }
 
     /// Starts, changes or stops the PD source; build one with [`crate::pd::source`]. While it runs the firmware
     /// refuses `vbus_mode` and `vbus_cycle`.
-    pub async fn set_pd_source(&self, source: donguru_api::PdSource) -> Result<()> {
+    pub async fn set_pd_source(&self, source: portwright_api::PdSource) -> Result<()> {
         write_plain("PlugPd::source", self.c.plug().pd().write_source(source)).await
     }
 
     /// Where the PD source stands: attach, contract, a sink without PD.
-    pub async fn pd_state(&self) -> Result<donguru_api::PdState> {
+    pub async fn pd_state(&self) -> Result<portwright_api::PdState> {
         read("PlugPd::state", self.c.plug().pd().read_state()).await
     }
 
@@ -589,7 +589,7 @@ impl Plug<'_> {
     /// into `pd_log::Record`s.
     pub async fn pd_messages(
         &self,
-    ) -> Result<wire_weaver_client::PositionedStream<donguru_api::PdRecordOwned>> {
+    ) -> Result<wire_weaver_client::PositionedStream<portwright_api::PdRecordOwned>> {
         self.c
             .plug()
             .pd()
@@ -717,7 +717,7 @@ impl<'a> Inputs<'a> {
     }
 
     /// The generated client, for the `events` stream.
-    pub fn raw(&self) -> generated::donguru_api_inputs::DonguruApiInputsClient<'a> {
+    pub fn raw(&self) -> generated::portwright_api_inputs::PortwrightApiInputsClient<'a> {
         self.c.inputs()
     }
 }
@@ -789,7 +789,7 @@ impl Side {
 /// `uart[side]`: `ww_uart::Uart`.
 #[derive(Copy, Clone)]
 pub struct Uart<'a> {
-    c: &'a DonguruClient,
+    c: &'a PortwrightClient,
     side: Side,
 }
 
@@ -812,7 +812,7 @@ impl<'a> Uart<'a> {
 /// `i2c[side]`: `ww_i2c::I2c`.
 #[derive(Copy, Clone)]
 pub struct I2c<'a> {
-    c: &'a DonguruClient,
+    c: &'a PortwrightClient,
     side: Side,
 }
 
@@ -840,7 +840,7 @@ impl<'a> I2c<'a> {
 /// `gpio[side]`: `ww_gpio::Bank`.
 #[derive(Copy, Clone)]
 pub struct Gpio<'a> {
-    c: &'a DonguruClient,
+    c: &'a PortwrightClient,
     side: Side,
 }
 

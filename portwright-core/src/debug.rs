@@ -1,12 +1,14 @@
 //! Host side of the `debug` level (API-18, CLI-23): pin registers in words, a pin dump compared with the reset
 //! state, the UCPD registers decoded. The calls are on [crate::levels::Debug], net names in [crate::nets]; the
-//! rules the firmware applies (refused pins, the claim table, UCPD roles) are `donguru_board`'s, shared with it.
+//! rules the firmware applies (refused pins, the claim table, UCPD roles) are `portwright_board`'s, shared with it.
 
-use donguru_api::{CcRole, McuPin, PinState, PortRegs, UcpdState};
+use portwright_api::{CcRole, McuPin, PinState, PortRegs, UcpdState};
 use serde::Serialize;
 
-pub use donguru_board::pins::{REG_READ_MAX_WORDS, bonded, check_reg_read, refused, reset_state};
-pub use donguru_board::ucpd::role_of;
+pub use portwright_board::pins::{
+    REG_READ_MAX_WORDS, bonded, check_reg_read, refused, reset_state,
+};
+pub use portwright_board::ucpd::role_of;
 
 use crate::nets;
 
@@ -98,7 +100,7 @@ pub fn diff_reset(ports: &[PortRegs]) -> Vec<PinDiff> {
     pins(ports)
         .into_iter()
         .filter_map(|pin| {
-            let r = &reset[donguru_board::pins::port_index(pin.pin.port)];
+            let r = &reset[portwright_board::pins::port_index(pin.pin.port)];
             let mut reset = PinState {
                 moder: r.mode(pin.pin.pin),
                 open_drain: r.open_drain(pin.pin.pin),
@@ -114,7 +116,7 @@ pub fn diff_reset(ports: &[PortRegs]) -> Vec<PinDiff> {
         .collect()
 }
 
-/// `rd`, `rp1a5`, ... as `dg debug ucpd --role` takes them.
+/// `rd`, `rp1a5`, ... as `pw debug ucpd --role` takes them.
 pub fn role_name(role: CcRole) -> &'static str {
     match role {
         CcRole::Off => "off",
@@ -182,10 +184,10 @@ pub fn ucpd(state: &UcpdState) -> Ucpd {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use donguru_api::GpioPort;
+    use portwright_api::GpioPort;
 
-    fn dump(ports: donguru_board::pins::Ports) -> Vec<PortRegs> {
-        donguru_board::pins::PORTS
+    fn dump(ports: portwright_board::pins::Ports) -> Vec<PortRegs> {
+        portwright_board::pins::PORTS
             .iter()
             .zip(ports)
             .map(|(&port, r)| PortRegs {

@@ -1,4 +1,4 @@
-//! `donguru udev` - manage the Linux udev rules that grant access to a dongle.
+//! `portwright udev` - manage the Linux udev rules that grant access to a dongle.
 //!
 //! Without a matching rule the character device is owned by `root`, so every command
 //! that talks to the hardware fails with a permission error unless run via `sudo`.
@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 use crate::{context::Context, exit::ExitCode};
 use clap::{Args, Subcommand, ValueEnum, builder::ArgPredicate};
-use donguru_core::udev;
+use portwright_core::udev;
 
 /// Default location of the generated rules file.
 ///
@@ -58,7 +58,7 @@ pub struct RuleOptions {
         default_value_t = Access::Uaccess,
         default_value_if("group", ArgPredicate::IsPresent, "group"),
         value_name = "POLICY",
-        env = "DONGURU_UDEV_ACCESS",
+        env = "PORTWRIGHT_UDEV_ACCESS",
         help = "Access policy encoded in the rule [aliases: logind|seat, group|plugdev, all]"
     )]
     pub access: Access,
@@ -71,7 +71,7 @@ pub struct RuleOptions {
         short,
         long,
         value_name = "GROUP",
-        env = "DONGURU_UDEV_GROUP",
+        env = "PORTWRIGHT_UDEV_GROUP",
         help = "Group granted access, implies --access group [default: plugdev]"
     )]
     pub group: Option<String>,
@@ -93,7 +93,7 @@ pub struct FileOptions {
         long,
         default_value = DEFAULT_RULES_PATH,
         value_name = "PATH",
-        env = "DONGURU_UDEV_RULES"
+        env = "PORTWRIGHT_UDEV_RULES"
     )]
     pub path: PathBuf,
 
@@ -115,8 +115,8 @@ pub enum Udev {
     ///
     /// Nothing is installed; redirect the output yourself to review or hand-edit it:
     ///
-    ///   donguru udev generate > 60-donguru.rules
-    ///   sudo install -m 644 60-donguru.rules /etc/udev/rules.d/
+    ///   portwright udev generate > 60-portwright.rules
+    ///   sudo install -m 644 60-portwright.rules /etc/udev/rules.d/
     #[command(alias = "show", verbatim_doc_comment)]
     Generate {
         #[command(flatten)]
@@ -164,7 +164,7 @@ pub enum Udev {
             long,
             default_value = DEFAULT_RULES_PATH,
             value_name = "PATH",
-            env = "DONGURU_UDEV_RULES"
+            env = "PORTWRIGHT_UDEV_RULES"
         )]
         path: PathBuf,
     },
@@ -227,7 +227,7 @@ fn find_pkexec() -> Option<PathBuf> {
 fn as_root(args: &[String], what: &str, path: &Path) -> anyhow::Result<ExitCode> {
     let Some(pkexec) = find_pkexec() else {
         eprintln!(
-            "donguru: {what} {} needs root and `pkexec` is not installed; run it as root yourself:\n  sudo {} {}",
+            "portwright: {what} {} needs root and `pkexec` is not installed; run it as root yourself:\n  sudo {} {}",
             path.display(),
             std::env::current_exe()?.display(),
             args.join(" ")
@@ -235,7 +235,7 @@ fn as_root(args: &[String], what: &str, path: &Path) -> anyhow::Result<ExitCode>
         return Ok(ExitCode::Failure);
     };
     eprintln!(
-        "donguru: {what} {} needs root, asking through pkexec",
+        "portwright: {what} {} needs root, asking through pkexec",
         path.display()
     );
     let status = std::process::Command::new(pkexec)
@@ -249,7 +249,7 @@ fn as_root(args: &[String], what: &str, path: &Path) -> anyhow::Result<ExitCode>
     })
 }
 
-/// The arguments of `donguru udev <verb>` for `file`, as the root re-run needs them.
+/// The arguments of `portwright udev <verb>` for `file`, as the root re-run needs them.
 fn file_args(verb: &str, file: &FileOptions) -> Vec<String> {
     let mut args = vec![
         "udev".to_string(),
@@ -289,7 +289,7 @@ fn install(rule: &RuleOptions, file: &FileOptions, force: bool) -> anyhow::Resul
     }
     match udev::install(&file.path, &text, force) {
         Ok(done) => {
-            eprintln!("donguru: {done:?}: {}", file.path.display());
+            eprintln!("portwright: {done:?}: {}", file.path.display());
             if !matches!(done, udev::Installed::Unchanged) && !file.no_reload {
                 reload()?;
             }
@@ -304,7 +304,7 @@ fn install(rule: &RuleOptions, file: &FileOptions, force: bool) -> anyhow::Resul
             as_root(&args, "installing", &file.path)
         }
         Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
-            eprintln!("donguru: {e}; `--force` overwrites it");
+            eprintln!("portwright: {e}; `--force` overwrites it");
             Ok(ExitCode::Failure)
         }
         Err(e) => Err(e.into()),
@@ -319,12 +319,12 @@ fn uninstall(file: &FileOptions) -> anyhow::Result<ExitCode> {
     match udev::remove(&file.path) {
         Ok(removed) => {
             if removed {
-                eprintln!("donguru: removed {}", file.path.display());
+                eprintln!("portwright: removed {}", file.path.display());
                 if !file.no_reload {
                     reload()?;
                 }
             } else {
-                eprintln!("donguru: {} is not installed", file.path.display());
+                eprintln!("portwright: {} is not installed", file.path.display());
             }
             Ok(ExitCode::Success)
         }
@@ -339,7 +339,7 @@ fn describe(status: &udev::Status) -> String {
     use std::fmt::Write;
     let mut out = String::new();
     if status.rules.is_empty() {
-        let _ = writeln!(out, "rules: not installed (`donguru udev install`)");
+        let _ = writeln!(out, "rules: not installed (`portwright udev install`)");
     }
     for r in &status.rules {
         let policy = r.access.as_ref().map_or("custom", |a| a.name());
@@ -428,7 +428,7 @@ mod tests {
         assert_eq!(rule.args(), ["--access", "group", "--group", "dialout"]);
         assert_eq!(rule.access(), udev::Access::Group("dialout".into()));
         let file = FileOptions {
-            path: "/x/60-donguru.rules".into(),
+            path: "/x/60-portwright.rules".into(),
             dry_run: false,
             no_reload: true,
         };
@@ -438,7 +438,7 @@ mod tests {
                 "udev",
                 "install",
                 "--path",
-                "/x/60-donguru.rules",
+                "/x/60-portwright.rules",
                 "--no-reload"
             ]
         );

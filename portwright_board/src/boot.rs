@@ -1,4 +1,4 @@
-//! Early boot (FW-12): the decisions `fw/donguru/src/boot.rs` takes first thing in `main`, before clocks and embassy,
+//! Early boot (FW-12): the decisions `fw/portwright/src/boot.rs` takes first thing in `main`, before clocks and embassy,
 //! as pure logic on register values.
 //!
 //! Firmware updates go through the STM32 ROM bootloader (USB DFU, AN2606): `device.boot.reboot(Updater)` writes a
@@ -19,7 +19,7 @@
 //! (`hw/b153_typec_serial/change/change_b153b.md`) and needs none of it.
 
 /// TAMP_BKP4R, the last of the five TAMP backup registers (RM0444 §31.6.12): the [BootWord]. `bkp_cnt!` counters
-/// get the four below it (`BKPSRAM` in `fw/donguru/memory.x`).
+/// get the four below it (`BKPSRAM` in `fw/portwright/memory.x`).
 pub const TAMP_BKP_BOOT: u32 = 0x4000_B110;
 
 /// Where the ROM bootloader's vector table starts on the STM32G0B1 (AN2606 Table 2, system memory): initial MSP,

@@ -18,7 +18,7 @@ use crate::device::{USB_PID, USB_VID};
 /// Where the rules file goes unless told otherwise. `60-` keeps it ahead of the systemd defaults that would
 /// otherwise claim the device first (the `uaccess` tag is handled by `73-seat-late.rules`, group and mode must be set
 /// before that).
-pub const DEFAULT_RULES_PATH: &str = "/etc/udev/rules.d/60-donguru.rules";
+pub const DEFAULT_RULES_PATH: &str = "/etc/udev/rules.d/60-portwright.rules";
 
 /// Directories a package may own the same rules file in (`status` looks there too).
 pub const VENDOR_RULES_DIRS: [&str; 2] = ["/usr/lib/udev/rules.d", "/lib/udev/rules.d"];
@@ -64,8 +64,8 @@ pub fn generate(access: &Access) -> String {
         )
     };
     format!(
-        "# Donguru USB-C dongle ({USB_VID:04x}:{USB_PID:04x}) and the STM32 ROM bootloader it reboots into for `donguru fw update` ({DFU_VID:04x}:{DFU_PID:04x}).\n\
-         # Written by `donguru udev install` (access: {name}).\n{dongle}{dfu}",
+        "# Portwright USB-C dongle ({USB_VID:04x}:{USB_PID:04x}) and the STM32 ROM bootloader it reboots into for `portwright fw update` ({DFU_VID:04x}:{DFU_PID:04x}).\n\
+         # Written by `portwright udev install` (access: {name}).\n{dongle}{dfu}",
         name = access.name(),
         dongle = line(USB_VID, USB_PID),
         dfu = line(DFU_VID, DFU_PID),
@@ -322,7 +322,7 @@ mod tests {
     #[test]
     fn install_replace_remove() {
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("60-donguru.rules");
+        let path = dir.path().join("60-portwright.rules");
         let rules = generate(&Access::Uaccess);
         assert_eq!(install(&path, &rules, false).unwrap(), Installed::Created);
         assert_eq!(fs::read_to_string(&path).unwrap(), rules);
@@ -345,7 +345,7 @@ mod tests {
     #[test]
     fn install_into_a_missing_directory_fails_cleanly() {
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("nope/60-donguru.rules");
+        let path = dir.path().join("nope/60-portwright.rules");
         assert_eq!(
             install(&path, "x", false).unwrap_err().kind(),
             io::ErrorKind::NotFound
@@ -372,7 +372,7 @@ mod tests {
         fake_device(&sysfs, &dev, "1-4", "1234", 1, 2); // somebody else's device
         let vendor = root.path().join("vendor");
         fs::create_dir_all(&vendor).unwrap();
-        let etc = root.path().join("60-donguru.rules");
+        let etc = root.path().join("60-portwright.rules");
 
         let s = status(&etc, std::slice::from_ref(&vendor), &sysfs, &dev);
         assert!(s.rules.is_empty());
@@ -383,7 +383,7 @@ mod tests {
         assert!(s.ok());
 
         fs::write(&etc, generate(&Access::Group("plugdev".into()))).unwrap();
-        fs::write(vendor.join("60-donguru.rules"), "# edited by hand\n").unwrap();
+        fs::write(vendor.join("60-portwright.rules"), "# edited by hand\n").unwrap();
         let s = status(&etc, &[vendor], &sysfs, &dev);
         assert_eq!(s.rules.len(), 2);
         assert_eq!(s.rules[0].access, Some(Access::Group("plugdev".into())));

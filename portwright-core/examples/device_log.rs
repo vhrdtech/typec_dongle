@@ -1,24 +1,24 @@
 //! Shows a dongle's defmt log (`device.log`, API-10) over USB, decoded with the firmware's ELF: the log from before
 //! this program connected comes first (the dongle keeps it, also across a crash and reset), then live lines;
-//! messages the dongle dropped show as one line with their exact number. A test tool until `dg device log` (CLI-19).
+//! messages the dongle dropped show as one line with their exact number. A test tool until `pw device log` (CLI-19).
 //!
 //! ```sh
-//! cargo run -p donguru-core --example device_log -- --elf fw/donguru/target/thumbv6m-none-eabi/debug/donguru
-//! cargo run -p donguru-core --example device_log -- --elf ... --flood 1000   # overload the logger on purpose
-//! cargo run -p donguru-core --example device_log -- --elf ... --flood 3 --no-read   # lines left in the store
+//! cargo run -p portwright-core --example device_log -- --elf fw/portwright/target/thumbv6m-none-eabi/debug/portwright
+//! cargo run -p portwright-core --example device_log -- --elf ... --flood 1000   # overload the logger on purpose
+//! cargo run -p portwright-core --example device_log -- --elf ... --flood 3 --no-read   # lines left in the store
 //! ```
 
 use anyhow::{Context, Result, bail};
 use clap::Parser;
 use defmt_decoder::{DecodeError, Table};
-use donguru_core::{Dongle, Selector};
 use object::Object;
+use portwright_core::{Dongle, Selector};
 use std::path::PathBuf;
 use wire_weaver::shrink_wrap::UVlq64;
 use wire_weaver_client::{StreamCursor, StreamEvent};
 
 #[derive(Parser)]
-#[command(about = "defmt log of a Donguru over USB, decoded with its ELF")]
+#[command(about = "defmt log of a Portwright over USB, decoded with its ELF")]
 struct Args {
     /// The firmware's ELF, with the defmt table
     #[arg(long)]
@@ -26,7 +26,7 @@ struct Args {
     /// Use the ELF even when its build id differs from the dongle's
     #[arg(long)]
     force: bool,
-    /// Which dongle (as `dg --device`), when more than one is connected
+    /// Which dongle (as `pw --device`), when more than one is connected
     #[arg(long)]
     device: Option<Selector>,
     /// Make the dongle log this many lines at once after connecting (`debug.log_flood`)

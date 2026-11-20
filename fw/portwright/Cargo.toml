@@ -1,5 +1,5 @@
 [package]
-name = "donguru"
+name = "portwright"
 version = "0.1.1"
 edition = "2024"
 
@@ -30,7 +30,7 @@ bedrock_crash = { git = "https://github.com/romixlab/embedded_bedrock", features
 # embedded_bedrock git repository, as its ww-indication feature takes WireWeaver from git too
 bedrock_led = { git = "https://github.com/romixlab/embedded_bedrock", features = ["embassy", "ww-indication", "defmt"] }
 # the shared clock (DEV-13, FW-44): host steer points onto UTC, LEDs run on it (bedrock_led's `align`). No oscillator
-# backend here (HSI trim too coarse for Donguru, decided 21 Oct 2026) and no sync line, so `ww-timebase` is the only
+# backend here (HSI trim too coarse for Portwright, decided 21 Oct 2026) and no sync line, so `ww-timebase` is the only
 # feature besides `embassy`.
 bedrock_sync = { git = "https://github.com/romixlab/embedded_bedrock", features = ["embassy", "ww-timebase", "defmt"] }
 # the USB device (FW-66): the composite WireWeaver + CMSIS-DAP device as a `const`, the usb_v4 driver, the EP0 control
@@ -46,12 +46,12 @@ bedrock_usb = { git = "https://github.com/romixlab/embedded_bedrock", features =
 # 64 bytes on the bus, src/cmsis_dap.rs splits and joins (FW-19).
 dap-rs = { version = "0.2", default-features = false, features = ["usb-hs"] }
 # where a CMSIS-DAP request ends when it spans several USB packets: no_std, unit-tested on the host
-donguru_dap = { path = "../../donguru_dap" }
+portwright_dap = { path = "../../portwright_dap" }
 # board logic, no_std, unit-tested on the host: hub (U301) variant detection and per-variant config, VBUS modes and
 # the guard
-donguru_board = { path = "../../donguru_board", features = ["defmt"] }
+portwright_board = { path = "../../portwright_board", features = ["defmt"] }
 # WireWeaver: API crate in the repo root, served by src/ww/. wire_weaver from git
-donguru_api = { path = "../../donguru_api", features = ["defmt"] }
+portwright_api = { path = "../../portwright_api", features = ["defmt"] }
 wire_weaver = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false, features = ["defmt"] }
 ww_client_server = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false }
 # observe tables and stream states of the generated server (SRV-18, counted and reliable streams)
@@ -60,7 +60,7 @@ ww_client_server = { git = "https://github.com/vhrdtech/wire_weaver", default-fe
 ww_stream = { git = "https://github.com/vhrdtech/wire_weaver", default-features = false, features = ["persistent-ram", "lz4"] }
 # the encoder of `uart[1].rx`; ram: its hot functions run from SRAM, ~30 % fewer cycles than from flash (FW-42)
 ww_lz4 = { git = "https://github.com/vhrdtech/wire_weaver", features = ["ram"] }
-# stdlib traits the API implements (`donguru_api` depends on them too): types in the handler signatures
+# stdlib traits the API implements (`portwright_api` depends on them too): types in the handler signatures
 ww_si = { git = "https://github.com/vhrdtech/ww_base", default-features = false, features = ["time", "electrical", "mechanical", "thermal", "i32", "u32"] }
 ww_adc = { git = "https://github.com/vhrdtech/ww_stdlib", default-features = false }
 ww_board_info = { git = "https://github.com/vhrdtech/ww_stdlib", default-features = false }
@@ -127,7 +127,7 @@ debug-button = []
 # source for `uart[1].rx` (FW-42); without it the method answers Unsupported
 uart-replay = ["header-uart"]
 # SWD-host starts in SPI mode (FW-21, SPI2 through the SBU level shifter) instead of bit-bang; the mode can still be
-# changed at run time with `DonguruApi::swd_mode`
+# changed at run time with `PortwrightApi::swd_mode`
 swd-spi = ["swd-host"]
 # a test image that panics at every start before USB is up, to check the boot-loop fallback into the ROM bootloader
 # (FW-45); never for a release
@@ -144,7 +144,7 @@ panic-probe = { version = "1.0", features = ["print-defmt"] }
 
 # to solve "can't find crate for test
 [[bin]]
-name = "donguru"
+name = "portwright"
 path = "src/main.rs"
 test = false
 doctest = false
@@ -186,7 +186,7 @@ opt-level = 0
 overflow-checks = false
 
 # embassy from our fork, romixlab/embassy, at its default branch `main` (FORK.md there): an upstream commit (262fdba
-# for now) with our small fixes merged in, one `t/<slug>` branch each, shared with the other firmware. For Donguru it
+# for now) with our small fixes merged in, one `t/<slug>` branch each, shared with the other firmware. For Portwright it
 # carries the DMA ring buffer copying out in up to two runs instead of a software division per byte (on the M0+ the
 # header UART got 16 kB/s at 5.8 Mbaud without it, FW-42); upstream main already has the double-buffered USB bulk
 # endpoints (embassy-rs/embassy#7275, FW-24). The fork's main keeps the versions asked for above (0.6.0 / 0.10.0 /

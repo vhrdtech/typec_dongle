@@ -11,7 +11,7 @@ use embassy_time::Timer;
 
 #[embassy_executor::main]
 async fn main(_spawner: embassy_executor::Spawner) {
-    info!("donguru starting...");
+    info!("portwright starting...");
     let config = embassy_stm32::Config::default();
     let p = embassy_stm32::init(config);
 

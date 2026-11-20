@@ -1,6 +1,6 @@
 //! The PD source on the plug CC (`plug.pd`, API-30): usbpd's source policy engine on UCPD2 through embassy's UCPD
 //! driver, plug VBUS through `src/power.rs`, every message into the log ring the server sends as `plug.pd.messages`.
-//! What needs no hardware (the offer, the answer to a Request, the ring, the phases) is `donguru_board::pd`.
+//! What needs no hardware (the offer, the answer to a Request, the ring, the phases) is `portwright_board::pd`.
 //!
 //! The server sets the source ([`set`]): it claims the plug CC pins (`Holder::PdSource`, so an SWD session's CC drive
 //! and `debug.ucpd_role` stay off them) and hands the offer to [`pd_task`]; `Off` goes the same way and the task gives
@@ -34,11 +34,6 @@ use core::cell::{Cell, RefCell};
 
 use cnt::cnt;
 use defmt::{info, warn};
-use donguru_api::{PdSource, VbusMode};
-use donguru_board::pd::{
-    CC_DEBOUNCE_MS, Kind, Offer, OfferError, Phase, Record, Ring, Rp, SRC_RECOVER_MS, TxOutcome,
-};
-use donguru_board::pins::Holder;
 use embassy_executor::InterruptExecutor;
 use embassy_futures::select::{Either, select};
 use embassy_stm32::interrupt::{InterruptExt, Priority};
@@ -49,6 +44,11 @@ use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::signal::Signal;
 use embassy_time::{Duration, Instant, Timer, with_timeout};
 use portable_atomic::{AtomicU32, Ordering};
+use portwright_api::{PdSource, VbusMode};
+use portwright_board::pd::{
+    CC_DEBOUNCE_MS, Kind, Offer, OfferError, Phase, Record, Ring, Rp, SRC_RECOVER_MS, TxOutcome,
+};
+use portwright_board::pins::Holder;
 use usbpd::protocol_layer::message::data::request::PowerSource;
 use usbpd::protocol_layer::message::data::source_capabilities::SourceCapabilities;
 use usbpd::source::device_policy_manager::{
@@ -77,7 +77,7 @@ static SHARED: Mutex<CriticalSectionRawMutex, Cell<(Option<Offer>, Phase)>> =
     Mutex::new(Cell::new((None, Phase::Off)));
 /// SenderResponseTimer of the running offer, ms, for [PdTimer] (whose `after_millis` has no `self`).
 static SENDER_RESPONSE_MS: AtomicU32 =
-    AtomicU32::new(donguru_board::pd::SPEC_SENDER_RESPONSE_MS as u32);
+    AtomicU32::new(portwright_board::pd::SPEC_SENDER_RESPONSE_MS as u32);
 
 /// Why [set] refused a setting.
 pub enum SetError {
@@ -190,7 +190,7 @@ async fn pd_task(mut r: PdResources) {
             continue;
         };
         SENDER_RESPONSE_MS.store(o.sender_response_ms as u32, Ordering::Relaxed);
-        if o.sender_response_ms != donguru_board::pd::SPEC_SENDER_RESPONSE_MS {
+        if o.sender_response_ms != portwright_board::pd::SPEC_SENDER_RESPONSE_MS {
             warn!(
                 "pd: SenderResponseTimer {} ms, out of spec (test knob)",
                 o.sender_response_ms
@@ -322,7 +322,7 @@ struct PdTimer;
 
 impl usbpd::timers::Timer for PdTimer {
     async fn after_millis(milliseconds: u64) {
-        let ms = if milliseconds == donguru_board::pd::SPEC_SENDER_RESPONSE_MS {
+        let ms = if milliseconds == portwright_board::pd::SPEC_SENDER_RESPONSE_MS {
             u64::from(SENDER_RESPONSE_MS.load(Ordering::Relaxed))
         } else {
             milliseconds

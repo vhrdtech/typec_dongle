@@ -1,11 +1,11 @@
-//! `donguru.mock.MockDevice`: donguru-core's in-process mock (CORE-3) from Python, so scripts and their tests run
+//! `portwright.mock.MockDevice`: portwright-core's in-process mock (CORE-3) from Python, so scripts and their tests run
 //! without a dongle. It answers with the firmware's rules (VBUS guard, settings, ...); the meter shows what the
 //! test sets.
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use donguru_core::api::{DataPath, MeterReading, MeterTotals};
-use donguru_core::mock;
+use portwright_core::api::{DataPath, MeterReading, MeterTotals};
+use portwright_core::mock;
 use pyo3::prelude::*;
 use ww_si::{Ampere, Coulomb, Joule, Prefix, Second, Volt};
 
@@ -16,7 +16,7 @@ use crate::{PyDongle, block_on};
 /// gives a `Dongle` on it.
 #[pyclass(
     name = "MockDevice",
-    module = "donguru.mock",
+    module = "portwright.mock",
     frozen,
     skip_from_py_object
 )]

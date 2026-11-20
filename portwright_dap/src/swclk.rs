@@ -1,4 +1,4 @@
-//! SWCLK timing of the firmware's bit-bang SWD kernels (`fw/donguru/src/swd.rs`, FW-20): from what one clock bit
+//! SWCLK timing of the firmware's bit-bang SWD kernels (`fw/portwright/src/swd.rs`, FW-20): from what one clock bit
 //! costs in CPU cycles, measured on the chip at boot, to the spin counts that give a requested frequency.
 //!
 //! A kernel bit costs `base + per_spin * (lo + hi)` cycles, `lo` and `hi` being the iterations of the busy-wait in

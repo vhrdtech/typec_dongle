@@ -4,11 +4,11 @@ use super::ServerState;
 use crate::swd;
 use cnt::cnt;
 use defmt::{info, warn};
-use donguru_api::SwdMode;
+use portwright_api::SwdMode;
 use wire_weaver::prelude::*;
 
 impl ServerState {
-    // donguru_api::Swd at swd
+    // portwright_api::Swd at swd
 
     pub(super) fn set_swd_mode(
         &mut self,
@@ -39,7 +39,7 @@ impl ServerState {
     pub(super) fn get_swd_session(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::SwdSession, CommonError<'_>> {
+    ) -> GetResult<portwright_api::SwdSession, CommonError<'_>> {
         Unimplemented.into()
     }
 }

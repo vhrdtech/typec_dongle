@@ -1,10 +1,18 @@
 # Changelog
 
-All notable changes to Donguru: firmware, API crate, host library and CLI. The format follows
+All notable changes to Portwright (named Donguru until 20 Nov 2026): firmware, API crate, host library and CLI. The format follows
 [Keep a Changelog](https://keepachangelog.com/), versions follow [Semantic Versioning](https://semver.org/). Feature
 IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
+
+### Changed
+
+- The product is now Portwright: binary `portwright`, short link `pw`, crates and Python module `portwright*` (PKG-10).
+- `portwright_api` 0.8.0 replaces `donguru_api` 0.8.0; the API GID changed, so old CLIs do not find new firmware (PKG-10).
+- Config `portwright.toml` in `/etc/portwright/`, `~/.config/portwright/` and `./`; variables `PORTWRIGHT_DEVICE`, `_OUTPUT`, `_COLOR` (PKG-10).
+- External commands are found as `portwright-NAME`; udev rule `60-portwright.rules`; `pd` log source `portwright` (PKG-10).
+- USB strings: manufacturer `vhrd.tech`, product `Portwright`; VID:PID c0de:cafe unchanged. Not flashed on a board yet (PKG-10).
 
 ## [0.20.51] - 2026-11-18
 

@@ -1,15 +1,15 @@
-//! The mock's handlers: `DonguruApi` served from [MockState], generated from `ww api scaffold donguru_api --alloc
+//! The mock's handlers: `PortwrightApi` served from [MockState], generated from `ww api scaffold portwright_api --alloc
 //! --use-async --server MockServer`. What it models is in [super]; items it doesn't model answer `Unimplemented`, as
 //! a firmware that doesn't have them yet.
 
-use donguru_api::*;
+use portwright_api::*;
 use wire_weaver::CommonError;
 use wire_weaver::prelude::*;
 use ww_board_info::{BoardSummary, RevisionSource};
 use ww_firmware_info::{BuildProfile, FirmwareSummary, Version};
 
 use super::{MockSettings, MockState, check_mode, check_window, denied, max_voltage};
-use donguru_board::pins::{Change, Denied, HUB_REG_STATUS_COMMAND, Holder, check_reg_read};
+use portwright_board::pins::{Change, Denied, HUB_REG_STATUS_COMMAND, Holder, check_reg_read};
 
 /// Bytes the mock's `uart[1].tx` accepts ahead, as the firmware's
 const UART_TX_BUF: u32 = 2048;
@@ -106,9 +106,9 @@ impl MockServer {
     }
 }
 
-// Handlers in API order; their docs are on the traits (donguru_api and the stdlib crates).
+// Handlers in API order; their docs are on the traits (portwright_api and the stdlib crates).
 impl MockServer {
-    // ---- donguru_api::DonguruApi at root ----
+    // ---- portwright_api::PortwrightApi at root ----
 
     fn valid_indices_root_uart(&mut self) -> ValidIndices<'_> {
         ValidIndices::range_u32(0..2)
@@ -122,12 +122,12 @@ impl MockServer {
         ValidIndices::range_u32(0..2)
     }
 
-    // ---- donguru_api::Device at device ----
+    // ---- portwright_api::Device at device ----
 
     async fn get_device_variant(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::BoardVariant, CommonError<'_>> {
+    ) -> GetResult<portwright_api::BoardVariant, CommonError<'_>> {
         Value(self.state.variant)
     }
 
@@ -168,7 +168,7 @@ impl MockServer {
         Ready(())
     }
 
-    // ---- ww_dfu::BootControl at device.boot, donguru_api::Dfu at device.dfu (API-58) ----
+    // ---- ww_dfu::BootControl at device.boot, portwright_api::Dfu at device.dfu (API-58) ----
 
     async fn device_boot_boot_state(
         &mut self,
@@ -207,7 +207,7 @@ impl MockServer {
         Ready(ww_dfu::NodeInfo {
             role: ww_dfu::Role::App,
             profile: ww_dfu::Profile::InPlace,
-            product: MaxLen::new_unchecked("Donguru B153"),
+            product: MaxLen::new_unchecked("Portwright B153"),
             geometry: ww_dfu::GeometryId(0),
             seal: ww_dfu::Seal::Unsigned,
             app: None,
@@ -331,12 +331,12 @@ impl MockServer {
         &mut self.device_log_frames_stream
     }
 
-    // ---- donguru_api::Settings at device.settings ----
+    // ---- portwright_api::Settings at device.settings ----
 
     async fn set_device_settings_plug_vbus_at_boot(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        value: donguru_api::VbusMode,
+        value: portwright_api::VbusMode,
     ) -> SetResult<wire_weaver::CommonError<'_>> {
         if let Some(code) = self.state.settings_fault {
             return SetError(CommonError::Fault { code });
@@ -351,14 +351,14 @@ impl MockServer {
     async fn get_device_settings_plug_vbus_at_boot(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::VbusMode, wire_weaver::CommonError<'_>> {
+    ) -> GetResult<portwright_api::VbusMode, wire_weaver::CommonError<'_>> {
         Value(self.state.settings.plug_vbus_at_boot.clone())
     }
 
     async fn set_device_settings_button_action(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        value: donguru_api::ButtonAction,
+        value: portwright_api::ButtonAction,
     ) -> SetResult<wire_weaver::CommonError<'_>> {
         if let Some(code) = self.state.settings_fault {
             return SetError(CommonError::Fault { code });
@@ -371,7 +371,7 @@ impl MockServer {
     async fn get_device_settings_button_action(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::ButtonAction, wire_weaver::CommonError<'_>> {
+    ) -> GetResult<portwright_api::ButtonAction, wire_weaver::CommonError<'_>> {
         Value(self.state.settings.button_action)
     }
 
@@ -401,7 +401,7 @@ impl MockServer {
     async fn set_device_settings_meter_deadband(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        value: donguru_api::MeterDeadband,
+        value: portwright_api::MeterDeadband,
     ) -> SetResult<wire_weaver::CommonError<'_>> {
         if let Some(code) = self.state.settings_fault {
             return SetError(CommonError::Fault { code });
@@ -414,7 +414,7 @@ impl MockServer {
     async fn get_device_settings_meter_deadband(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::MeterDeadband, wire_weaver::CommonError<'_>> {
+    ) -> GetResult<portwright_api::MeterDeadband, wire_weaver::CommonError<'_>> {
         Value(self.state.settings.meter_deadband.clone())
     }
 
@@ -601,26 +601,26 @@ impl MockServer {
         Ready(Ok(()))
     }
 
-    // ---- donguru_api::PowerMeter at meter ----
+    // ---- portwright_api::PowerMeter at meter ----
 
     async fn get_meter_reading(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::MeterReading, CommonError<'_>> {
+    ) -> GetResult<portwright_api::MeterReading, CommonError<'_>> {
         Value(self.state.reading.clone())
     }
 
     async fn get_meter_temperature(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::DieTemperature, CommonError<'_>> {
+    ) -> GetResult<portwright_api::DieTemperature, CommonError<'_>> {
         Value(self.state.temperature)
     }
 
     async fn get_meter_totals(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::MeterTotals, CommonError<'_>> {
+    ) -> GetResult<portwright_api::MeterTotals, CommonError<'_>> {
         Value(self.state.totals.clone())
     }
 
@@ -652,7 +652,7 @@ impl MockServer {
     async fn set_meter_deadband(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        value: donguru_api::MeterDeadband,
+        value: portwright_api::MeterDeadband,
     ) -> SetResult<wire_weaver::CommonError<'_>> {
         self.state.meter_deadband = value;
         Set
@@ -661,30 +661,30 @@ impl MockServer {
     async fn get_meter_deadband(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::MeterDeadband, wire_weaver::CommonError<'_>> {
+    ) -> GetResult<portwright_api::MeterDeadband, wire_weaver::CommonError<'_>> {
         Value(self.state.meter_deadband.clone())
     }
 
     async fn get_meter_calibration(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::MeterCalibration, CommonError<'_>> {
+    ) -> GetResult<portwright_api::MeterCalibration, CommonError<'_>> {
         Value(self.state.calibration.clone())
     }
 
-    // ---- donguru_api::Plug at plug ----
+    // ---- portwright_api::Plug at plug ----
 
     async fn get_plug_vbus(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::VbusState, CommonError<'_>> {
+    ) -> GetResult<portwright_api::VbusState, CommonError<'_>> {
         Value(self.state.plug_vbus)
     }
 
     async fn set_plug_vbus_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        value: donguru_api::VbusMode,
+        value: portwright_api::VbusMode,
     ) -> SetResult<wire_weaver::CommonError<'_>> {
         if let Err(e) = check_mode(&value) {
             return SetError(e);
@@ -702,7 +702,7 @@ impl MockServer {
     async fn get_plug_vbus_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::VbusMode, wire_weaver::CommonError<'_>> {
+    ) -> GetResult<portwright_api::VbusMode, wire_weaver::CommonError<'_>> {
         Value(self.state.plug_vbus_mode.clone())
     }
 
@@ -711,8 +711,9 @@ impl MockServer {
         _cx: &mut Context<'_, impl EventOut>,
         off: ww_si::Second,
         release_sbu: bool,
-    ) -> RpcResult<Result<donguru_api::VbusState, wire_weaver::Error<'_, donguru_api::PowerError>>>
-    {
+    ) -> RpcResult<
+        Result<portwright_api::VbusState, wire_weaver::Error<'_, portwright_api::PowerError>>,
+    > {
         if matches!(self.state.plug_vbus_mode, VbusMode::ForceOff) {
             return Ready(Err(wire_weaver::Error::Common(CommonError::WrongState {
                 reason: MaxLen::new_unchecked("vbus_mode is ForceOff"),
@@ -746,7 +747,7 @@ impl MockServer {
     async fn set_plug_data(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        value: donguru_api::DataPath,
+        value: portwright_api::DataPath,
     ) -> SetResult<wire_weaver::CommonError<'_>> {
         self.state.plug_data = value;
         self.mark_changed_plug_data();
@@ -756,14 +757,14 @@ impl MockServer {
     async fn get_plug_data(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::DataPath, wire_weaver::CommonError<'_>> {
+    ) -> GetResult<portwright_api::DataPath, wire_weaver::CommonError<'_>> {
         Value(self.state.plug_data)
     }
 
     async fn set_plug_orientation(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        value: donguru_api::Orientation,
+        value: portwright_api::Orientation,
     ) -> SetResult<CommonError<'_>> {
         self.state.orientation = value;
         self.mark_changed_plug_orientation();
@@ -773,23 +774,23 @@ impl MockServer {
     async fn get_plug_orientation(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::Orientation, CommonError<'_>> {
+    ) -> GetResult<portwright_api::Orientation, CommonError<'_>> {
         Value(self.state.orientation)
     }
 
     async fn get_plug_cc(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::CcState, CommonError<'_>> {
+    ) -> GetResult<portwright_api::CcState, CommonError<'_>> {
         Value(self.state.cc)
     }
 
-    // ---- donguru_api::PlugPd at plug.pd (API-30): the setting and its state, no sink and no messages ----
+    // ---- portwright_api::PlugPd at plug.pd (API-30): the setting and its state, no sink and no messages ----
 
     async fn set_plug_pd_source(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        value: donguru_api::PdSource,
+        value: portwright_api::PdSource,
     ) -> SetResult<wire_weaver::CommonError<'_>> {
         self.state.pd_source = value;
         Set
@@ -798,17 +799,17 @@ impl MockServer {
     async fn get_plug_pd_source(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::PdSource, wire_weaver::CommonError<'_>> {
+    ) -> GetResult<portwright_api::PdSource, wire_weaver::CommonError<'_>> {
         Value(self.state.pd_source.clone())
     }
 
     async fn get_plug_pd_state(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::PdState, CommonError<'_>> {
+    ) -> GetResult<portwright_api::PdState, CommonError<'_>> {
         Value(match self.state.pd_source {
-            donguru_api::PdSource::Off => donguru_api::PdState::Off,
-            _ => donguru_api::PdState::Unattached,
+            portwright_api::PdSource::Off => portwright_api::PdState::Off,
+            _ => portwright_api::PdState::Unattached,
         })
     }
 
@@ -822,19 +823,19 @@ impl MockServer {
         &mut self.unopened
     }
 
-    // ---- donguru_api::Header at header ----
+    // ---- portwright_api::Header at header ----
 
     async fn get_header_vbus_sw(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::VbusState, CommonError<'_>> {
+    ) -> GetResult<portwright_api::VbusState, CommonError<'_>> {
         Value(self.state.header_vbus)
     }
 
     async fn set_header_vbus_sw_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        value: donguru_api::VbusMode,
+        value: portwright_api::VbusMode,
     ) -> SetResult<wire_weaver::CommonError<'_>> {
         if let Err(e) = check_mode(&value) {
             return SetError(e);
@@ -852,7 +853,7 @@ impl MockServer {
     async fn get_header_vbus_sw_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::VbusMode, wire_weaver::CommonError<'_>> {
+    ) -> GetResult<portwright_api::VbusMode, wire_weaver::CommonError<'_>> {
         Value(self.state.header_vbus_mode.clone())
     }
 
@@ -873,12 +874,12 @@ impl MockServer {
         Value(self.state.relay)
     }
 
-    // ---- donguru_api::Sbu at sbu ----
+    // ---- portwright_api::Sbu at sbu ----
 
     async fn get_sbu_function(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::SbuFunction, CommonError<'_>> {
+    ) -> GetResult<portwright_api::SbuFunction, CommonError<'_>> {
         Value(self.state.sbu_function)
     }
 
@@ -936,19 +937,19 @@ impl MockServer {
         }
     }
 
-    // ---- donguru_api::Inputs at inputs ----
+    // ---- portwright_api::Inputs at inputs ----
 
     async fn get_inputs_button(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::ButtonState, CommonError<'_>> {
+    ) -> GetResult<portwright_api::ButtonState, CommonError<'_>> {
         Value(self.state.button.clone())
     }
 
     async fn get_inputs_switch(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::SwitchPosition, CommonError<'_>> {
+    ) -> GetResult<portwright_api::SwitchPosition, CommonError<'_>> {
         Value(self.state.switch)
     }
 
@@ -965,7 +966,7 @@ impl MockServer {
     async fn set_inputs_button_action(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        value: donguru_api::ButtonAction,
+        value: portwright_api::ButtonAction,
     ) -> SetResult<wire_weaver::CommonError<'_>> {
         self.state.button_action = value;
         Set
@@ -974,16 +975,16 @@ impl MockServer {
     async fn get_inputs_button_action(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::ButtonAction, wire_weaver::CommonError<'_>> {
+    ) -> GetResult<portwright_api::ButtonAction, wire_weaver::CommonError<'_>> {
         Value(self.state.button_action)
     }
 
-    // ---- donguru_api::Hub at hub ----
+    // ---- portwright_api::Hub at hub ----
 
     async fn get_hub_state(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::HubState, CommonError<'_>> {
+    ) -> GetResult<portwright_api::HubState, CommonError<'_>> {
         Value(self.state.hub)
     }
 
@@ -994,12 +995,12 @@ impl MockServer {
         Ready(())
     }
 
-    // ---- donguru_api::Swd at swd ----
+    // ---- portwright_api::Swd at swd ----
 
     async fn set_swd_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        value: donguru_api::SwdMode,
+        value: portwright_api::SwdMode,
     ) -> SetResult<wire_weaver::CommonError<'_>> {
         self.state.swd_mode = value;
         Set
@@ -1008,14 +1009,14 @@ impl MockServer {
     async fn get_swd_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::SwdMode, wire_weaver::CommonError<'_>> {
+    ) -> GetResult<portwright_api::SwdMode, wire_weaver::CommonError<'_>> {
         Value(self.state.swd_mode)
     }
 
     async fn get_swd_session(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::SwdSession, CommonError<'_>> {
+    ) -> GetResult<portwright_api::SwdSession, CommonError<'_>> {
         Value(self.state.swd_session.clone())
     }
 
@@ -1460,16 +1461,17 @@ impl MockServer {
         Unimplemented.into()
     }
 
-    // ---- donguru_api::Bringup at debug ----
+    // ---- portwright_api::Bringup at debug ----
 
     async fn debug_pin_set(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        pin: donguru_api::McuPin,
-        mode: donguru_api::PinMode,
+        pin: portwright_api::McuPin,
+        mode: portwright_api::PinMode,
         level: Option<ww_gpio::Level>,
-    ) -> RpcResult<Result<donguru_api::PinState, wire_weaver::Error<'_, donguru_api::DebugError>>>
-    {
+    ) -> RpcResult<
+        Result<portwright_api::PinState, wire_weaver::Error<'_, portwright_api::DebugError>>,
+    > {
         let level = match level {
             None => None,
             Some(Level::Low) => Some(false),
@@ -1492,26 +1494,28 @@ impl MockServer {
     async fn debug_pin_get(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        pin: donguru_api::McuPin,
-    ) -> RpcResult<Result<donguru_api::PinState, wire_weaver::Error<'_, donguru_api::DebugError>>>
-    {
+        pin: portwright_api::McuPin,
+    ) -> RpcResult<
+        Result<portwright_api::PinState, wire_weaver::Error<'_, portwright_api::DebugError>>,
+    > {
         Ready(self.state.pin_get(pin).map_err(denied))
     }
 
     async fn debug_pin_af(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        pin: donguru_api::McuPin,
+        pin: portwright_api::McuPin,
         af: u8,
-    ) -> RpcResult<Result<donguru_api::PinState, wire_weaver::Error<'_, donguru_api::DebugError>>>
-    {
+    ) -> RpcResult<
+        Result<portwright_api::PinState, wire_weaver::Error<'_, portwright_api::DebugError>>,
+    > {
         Ready(self.state.pin_change(pin, Change::Af(af)).map_err(denied))
     }
 
     async fn debug_pins(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> RpcResult<donguru_api::PinDump<'_>> {
+    ) -> RpcResult<portwright_api::PinDump<'_>> {
         self.dump = self.state.dump();
         Ready(PinDump {
             ports: MaxLen::new_unchecked(RefVec::Slice { slice: &self.dump }),
@@ -1521,7 +1525,7 @@ impl MockServer {
     async fn debug_boot_pins(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> RpcResult<donguru_api::PinDump<'_>> {
+    ) -> RpcResult<portwright_api::PinDump<'_>> {
         self.dump = MockState::reset_dump();
         Ready(PinDump {
             ports: MaxLen::new_unchecked(RefVec::Slice { slice: &self.dump }),
@@ -1536,7 +1540,7 @@ impl MockServer {
     ) -> RpcResult<
         Result<
             wire_weaver::shrink_wrap::MaxLen<wire_weaver::shrink_wrap::RefVec<'_, u8>, 32>,
-            wire_weaver::Error<'_, donguru_api::DebugError>,
+            wire_weaver::Error<'_, portwright_api::DebugError>,
         >,
     > {
         let (reg, len) = (reg as usize, len.get() as usize);
@@ -1559,7 +1563,7 @@ impl MockServer {
         _cx: &mut Context<'_, impl EventOut>,
         reg: u8,
         data: wire_weaver::shrink_wrap::MaxLen<wire_weaver::shrink_wrap::RefVec<'_, u8>, 32>,
-    ) -> RpcResult<Result<(), wire_weaver::Error<'_, donguru_api::DebugError>>> {
+    ) -> RpcResult<Result<(), wire_weaver::Error<'_, portwright_api::DebugError>>> {
         if reg == HUB_REG_STATUS_COMMAND {
             return Ready(Err(denied(Denied::Refused(
                 "STATUS/COMMAND drops our own USB: use hub.recover",
@@ -1576,18 +1580,19 @@ impl MockServer {
     async fn debug_ucpd(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        port: donguru_api::UcpdPort,
-    ) -> RpcResult<donguru_api::UcpdState> {
+        port: portwright_api::UcpdPort,
+    ) -> RpcResult<portwright_api::UcpdState> {
         Ready(self.state.ucpd(port))
     }
 
     async fn debug_ucpd_role(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        port: donguru_api::UcpdPort,
-        role: donguru_api::CcRole,
-    ) -> RpcResult<Result<donguru_api::UcpdState, wire_weaver::Error<'_, donguru_api::DebugError>>>
-    {
+        port: portwright_api::UcpdPort,
+        role: portwright_api::CcRole,
+    ) -> RpcResult<
+        Result<portwright_api::UcpdState, wire_weaver::Error<'_, portwright_api::DebugError>>,
+    > {
         Ready(self.state.ucpd_role(port, role).map_err(|d| match d {
             Denied::InUse(Holder::SwdCc) => {
                 denied(Denied::Refused("CC pins in use by an SWD session"))
@@ -1600,8 +1605,8 @@ impl MockServer {
     async fn debug_led_set(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        led: donguru_api::Led,
-        mode: donguru_api::LedMode,
+        led: portwright_api::Led,
+        mode: portwright_api::LedMode,
     ) -> RpcResult<()> {
         self.state.leds[if led == Led::Power { 0 } else { 1 }] = mode;
         Ready(())
@@ -1620,8 +1625,9 @@ impl MockServer {
     async fn debug_uart_replay(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _capture: donguru_api::ReplayCapture,
-    ) -> RpcResult<Result<ww_si::Bytes<u32>, wire_weaver::Error<'_, donguru_api::DebugError>>> {
+        _capture: portwright_api::ReplayCapture,
+    ) -> RpcResult<Result<ww_si::Bytes<u32>, wire_weaver::Error<'_, portwright_api::DebugError>>>
+    {
         Ready(Err(wire_weaver::Error::Common(CommonError::Unsupported)))
     }
 
@@ -1633,7 +1639,7 @@ impl MockServer {
     ) -> RpcResult<
         Result<
             wire_weaver::shrink_wrap::MaxLen<wire_weaver::shrink_wrap::RefVec<'_, u32>, 32>,
-            wire_weaver::Error<'_, donguru_api::DebugError>,
+            wire_weaver::Error<'_, portwright_api::DebugError>,
         >,
     > {
         if let Err(d) = check_reg_read(addr, words) {
@@ -1660,9 +1666,9 @@ impl MockServer {
 }
 
 /// Values of the `const` items. `FIRMWARE` names the mock, so a host can tell it from a real dongle.
-impl api_impl::DonguruApiConsts for MockServer {
+impl api_impl::PortwrightApiConsts for MockServer {
     const DEVICE_FIRMWARE_FIRMWARE: FirmwareSummary<'static> = FirmwareSummary {
-        name: MaxLen::new_unchecked("donguru-mock"),
+        name: MaxLen::new_unchecked("portwright-mock"),
         version: Version::new(0, 2, 0),
         git: None,
         built: None,
@@ -1677,7 +1683,7 @@ impl api_impl::DonguruApiConsts for MockServer {
 
     fn device_board_board(&self) -> BoardSummary<'_> {
         BoardSummary {
-            name: MaxLen::new_unchecked("Donguru B153"),
+            name: MaxLen::new_unchecked("Portwright B153"),
             revision: MaxLen::new_unchecked("A"),
             revision_source: RevisionSource::Assumed,
             variant: MaxLen::new_unchecked(match self.state.variant {
@@ -1725,7 +1731,7 @@ impl api_impl::DonguruApiConsts for MockServer {
 
 pub mod api_impl {
     wire_weaver::ww_codegen!(
-        donguru_api :: DonguruApi for super::MockServer,
+        portwright_api :: PortwrightApi for super::MockServer,
         server = true, no_alloc = true, use_async = true,
         method_model = "_=immediate",
         property_model = "_=get_set",

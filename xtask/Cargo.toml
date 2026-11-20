@@ -11,7 +11,7 @@ name = "xtask"
 path = "src/main.rs"
 
 [dependencies]
-donguru-cli = { path = "../donguru-cli" }
+portwright-cli = { path = "../portwright-cli" }
 clap = { workspace = true }
 clap_mangen = "0.2"
 anyhow.workspace = true

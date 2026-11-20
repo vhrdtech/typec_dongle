@@ -1,26 +1,26 @@
 #import "../lib.typ": *
 
 #show: lab.with(
-  title: [Read Donguru's own crash reports],
+  title: [Read Portwright's own crash reports],
   time: "10 min",
-  needs: ([Donguru],),
+  needs: ([Portwright],),
   features: ("CLI-19", "FW-13", "API-9", "API-10"),
 )
 
 == Goal
 
-See how a device can report its own crashes, log and counters to the host without a debug probe, using Donguru
+See how a device can report its own crashes, log and counters to the host without a debug probe, using Portwright
 itself as the example, and take the pattern home for your own firmware.
 
 == Steps
 
 #steps(cli: [
   ```sh
-  dg device reset-cause         # last reset: PowerOn · boots 41   (or: Fault, with the crash record)
-  dg device log                 # the dongle's own defmt log, decoded with its ELF found by build id
-  dg device log --follow        # live
-  dg device counters            # cnt counters: hub recoveries, USB resets, guard trips ...
-  dg device reset-cause --clear
+  pw device reset-cause         # last reset: PowerOn · boots 41   (or: Fault, with the crash record)
+  pw device log                 # the dongle's own defmt log, decoded with its ELF found by build id
+  pw device log --follow        # live
+  pw device counters            # cnt counters: hub recoveries, USB resets, guard trips ...
+  pw device reset-cause --clear
   ```
 ])
 

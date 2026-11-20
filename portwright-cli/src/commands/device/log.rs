@@ -1,4 +1,4 @@
-//! `donguru device log` - the stored defmt log, decoded with the firmware's ELF found by its build id (CLI-19,
+//! `portwright device log` - the stored defmt log, decoded with the firmware's ELF found by its build id (CLI-19,
 //! API-10).
 
 use std::io::{self, Write};
@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use crate::completion;
 use clap::Args;
 use clap_complete::engine::ArgValueCompleter;
-use donguru_core::log::LogReport;
+use portwright_core::log::LogReport;
 
 use crate::cli::Format;
 use crate::context::Context;
@@ -49,7 +49,7 @@ pub fn run(ctx: &Context, args: Log) -> anyhow::Result<ExitCode> {
                     |line| {
                         let _ = out.record(&Line(line));
                     },
-                    |warning| spinner.suspend(|| eprintln!("donguru: {warning}")),
+                    |warning| spinner.suspend(|| eprintln!("portwright: {warning}")),
                 )
                 .await?;
         } else {
@@ -57,7 +57,7 @@ pub fn run(ctx: &Context, args: Log) -> anyhow::Result<ExitCode> {
             if let Some(w) = &report.warning
                 && !ctx.quiet
             {
-                eprintln!("donguru: {w}");
+                eprintln!("portwright: {w}");
             }
             Output::stdout(ctx).emit(&report)?;
         }

@@ -8,11 +8,11 @@ use std::io::Write as _;
 use std::path::{Path, PathBuf};
 
 use clap::{CommandFactory, Parser, Subcommand};
-use donguru_cli::cli::Cli;
-use donguru_cli::completion;
+use portwright_cli::cli::Cli;
+use portwright_cli::completion;
 
 /// The two names the same executable is installed under.
-const NAMES: [&str; 2] = ["donguru", "dg"];
+const NAMES: [&str; 2] = ["portwright", "pw"];
 
 #[derive(Parser)]
 struct Args {
@@ -22,12 +22,12 @@ struct Args {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Write one man page per command/subcommand (donguru.1, donguru-device.1, ...)
+    /// Write one man page per command/subcommand (portwright.1, portwright-device.1, ...)
     Man {
         #[arg(default_value = "target/dist/man")]
         out_dir: PathBuf,
     },
-    /// Write bash, zsh and fish completions for `donguru` and `dg`
+    /// Write bash, zsh and fish completions for `portwright` and `pw`
     Completions {
         #[arg(default_value = "target/dist/completions")]
         out_dir: PathBuf,

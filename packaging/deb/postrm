@@ -1,10 +1,10 @@
 #!/bin/sh
-# Undoes packaging/deb/postinst's `dg` symlink on removal or purge; a reload drops our udev rule.
+# Undoes packaging/deb/postinst's `pw` symlink on removal or purge; a reload drops our udev rule.
 set -e
 
 case "$1" in
     remove|purge)
-        rm -f /usr/bin/dg
+        rm -f /usr/bin/pw
         ;;
 esac
 

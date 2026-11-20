@@ -55,7 +55,7 @@ impl FirmwareVersion {
 }
 
 impl fmt::Display for FirmwareVersion {
-    /// `donguru 0.20.18 (a1b2c3d-dirty, release)`
+    /// `portwright 0.20.18 (a1b2c3d-dirty, release)`
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{} {} (", self.name, self.version)?;
         if let Some(git) = &self.git {
@@ -285,7 +285,7 @@ mod tests {
                 return Ok(vec![DeviceInfo {
                     location: "sim c0de:cafe".into(),
                     manufacturer: "vhrd.tech".into(),
-                    product: "donguru".into(),
+                    product: "portwright".into(),
                     serials: vec![self.serial.clone()],
                     user_label: String::new(),
                     api: Some(wire_weaver_client::ApiInfo {
@@ -352,7 +352,7 @@ mod tests {
         assert_eq!(report.serial, serial);
         assert_eq!(report.bytes, 3000);
         assert_eq!(report.old.as_ref(), Some(&report.new));
-        assert_eq!(report.new.to_string(), "donguru-mock 0.2.0 (debug)");
+        assert_eq!(report.new.to_string(), "portwright-mock 0.2.0 (debug)");
         assert_eq!(
             steps,
             [

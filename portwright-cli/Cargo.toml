@@ -1,48 +1,48 @@
 [package]
-name = "donguru-cli"
+name = "portwright-cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Command-line interface for the Donguru USB-C dongle"
+description = "Command-line interface for the Portwright USB-C dongle"
 
 [lib]
-name = "donguru_cli"
+name = "portwright_cli"
 path = "src/lib.rs"
 
-# The same executable is installed under two names: `donguru` and `dg`.
+# The same executable is installed under two names: `portwright` and `pw`.
 [[bin]]
-name = "donguru"
+name = "portwright"
 path = "src/main.rs"
 
 [dependencies]
-donguru-core = { workspace = true, features = ["probe-rs"] }
+portwright-core = { workspace = true, features = ["probe-rs"] }
 anyhow.workspace = true
 clap.workspace = true
 clap_complete.workspace = true
 serde_json.workspace = true
 humantime.workspace = true
 indicatif = "0.18.6"
-# `device select` persists the device key in ./donguru.toml (CLI-7)
+# `device select` persists the device key in ./portwright.toml (CLI-7)
 toml = "0.9"
 # rendering `device reset-cause` (CLI-19): the types `Device::last_reset` returns
 ww_firmware_info = { git = "https://github.com/vhrdtech/ww_stdlib", features = ["std"] }
-# `dg settings set uart_plug` / `meter_deadband`: the baud rate, framing and quantity constructors (CLI-47)
+# `pw settings set uart_plug` / `meter_deadband`: the baud rate, framing and quantity constructors (CLI-47)
 ww_si = { git = "https://github.com/vhrdtech/ww_base", features = ["std", "time", "electrical"] }
 ww_uart = { git = "https://github.com/vhrdtech/ww_stdlib", features = ["std"] }
 # runs the WireWeaver client's event loop; "signal" for Ctrl-C in `power watch`
 tokio = { version = "1", features = ["rt-multi-thread", "signal"] }
-# `dg pd log`'s JSON lines and screen decode (pd_bench LOG-1), the same types `donguru-core::pd` builds
+# `pw pd log`'s JSON lines and screen decode (pd_bench LOG-1), the same types `portwright-core::pd` builds
 pd_log = { git = "ssh://git@github.com/romixlab/pd_bench", features = ["std"] }
 
 [dev-dependencies]
-donguru-core = { workspace = true, features = ["probe-rs", "mock"] }
+portwright-core = { workspace = true, features = ["probe-rs", "mock"] }
 # Colour-aware stdout for the theme_preview example.
 anstream = "1"
 insta = { version = "1", features = ["json"] }
 tempfile = "3"
 wire_weaver = { git = "https://github.com/vhrdtech/wire_weaver", features = ["std"] }
 
-# PKG-3: `cargo deb --no-build -p donguru-cli` from the workspace root, after `just package` has
+# PKG-3: `cargo deb --no-build -p portwright-cli` from the workspace root, after `just package` has
 # built the release binary and generated man pages / completions into target/dist.
 [package.metadata.deb]
 maintainer = "vhrd.tech <hello@vhrd.tech>"
@@ -55,40 +55,40 @@ maintainer-scripts = "../packaging/deb"
 # dir regardless of package dir); every other asset path is relative to this crate's own
 # directory, so the dist/ and packaging/ assets built from the workspace root need a `../`.
 assets = [
-    ["target/release/donguru", "usr/bin/", "755"],
+    ["target/release/portwright", "usr/bin/", "755"],
     ["../target/dist/man/*.1", "usr/share/man/man1/", "644"],
-    ["../packaging/dg.1", "usr/share/man/man1/", "644"],
-    ["../target/dist/completions/bash/donguru", "usr/share/bash-completion/completions/donguru", "644"],
-    ["../target/dist/completions/bash/dg", "usr/share/bash-completion/completions/dg", "644"],
-    ["../target/dist/completions/zsh/_donguru", "usr/share/zsh/site-functions/_donguru", "644"],
+    ["../packaging/pw.1", "usr/share/man/man1/", "644"],
+    ["../target/dist/completions/bash/portwright", "usr/share/bash-completion/completions/portwright", "644"],
+    ["../target/dist/completions/bash/pw", "usr/share/bash-completion/completions/pw", "644"],
+    ["../target/dist/completions/zsh/_portwright", "usr/share/zsh/site-functions/_portwright", "644"],
     ["../target/dist/completions/zsh/_dg", "usr/share/zsh/site-functions/_dg", "644"],
-    ["../target/dist/completions/fish/donguru.fish", "usr/share/fish/vendor_completions.d/donguru.fish", "644"],
-    ["../target/dist/completions/fish/dg.fish", "usr/share/fish/vendor_completions.d/dg.fish", "644"],
-    ["../packaging/60-donguru.rules", "usr/lib/udev/rules.d/60-donguru.rules", "644"],
+    ["../target/dist/completions/fish/portwright.fish", "usr/share/fish/vendor_completions.d/portwright.fish", "644"],
+    ["../target/dist/completions/fish/pw.fish", "usr/share/fish/vendor_completions.d/pw.fish", "644"],
+    ["../packaging/60-portwright.rules", "usr/lib/udev/rules.d/60-portwright.rules", "644"],
 ]
 
-# PKG-3: `cargo generate-rpm -p donguru-cli` from the workspace root, same inputs as cargo-deb above.
+# PKG-3: `cargo generate-rpm -p portwright-cli` from the workspace root, same inputs as cargo-deb above.
 [package.metadata.generate-rpm]
 assets = [
-    { source = "target/release/donguru", dest = "/usr/bin/donguru", mode = "755" },
+    { source = "target/release/portwright", dest = "/usr/bin/portwright", mode = "755" },
     { source = "target/dist/man/*.1", dest = "/usr/share/man/man1/", mode = "644", doc = true },
-    { source = "../packaging/dg.1", dest = "/usr/share/man/man1/dg.1", mode = "644", doc = true },
-    { source = "target/dist/completions/bash/donguru", dest = "/usr/share/bash-completion/completions/donguru", mode = "644" },
-    { source = "target/dist/completions/bash/dg", dest = "/usr/share/bash-completion/completions/dg", mode = "644" },
-    { source = "target/dist/completions/zsh/_donguru", dest = "/usr/share/zsh/site-functions/_donguru", mode = "644" },
+    { source = "../packaging/pw.1", dest = "/usr/share/man/man1/pw.1", mode = "644", doc = true },
+    { source = "target/dist/completions/bash/portwright", dest = "/usr/share/bash-completion/completions/portwright", mode = "644" },
+    { source = "target/dist/completions/bash/pw", dest = "/usr/share/bash-completion/completions/pw", mode = "644" },
+    { source = "target/dist/completions/zsh/_portwright", dest = "/usr/share/zsh/site-functions/_portwright", mode = "644" },
     { source = "target/dist/completions/zsh/_dg", dest = "/usr/share/zsh/site-functions/_dg", mode = "644" },
-    { source = "target/dist/completions/fish/donguru.fish", dest = "/usr/share/fish/vendor_completions.d/donguru.fish", mode = "644" },
-    { source = "target/dist/completions/fish/dg.fish", dest = "/usr/share/fish/vendor_completions.d/dg.fish", mode = "644" },
-    { source = "../packaging/60-donguru.rules", dest = "/usr/lib/udev/rules.d/60-donguru.rules", mode = "644" },
+    { source = "target/dist/completions/fish/portwright.fish", dest = "/usr/share/fish/vendor_completions.d/portwright.fish", mode = "644" },
+    { source = "target/dist/completions/fish/pw.fish", dest = "/usr/share/fish/vendor_completions.d/pw.fish", mode = "644" },
+    { source = "../packaging/60-portwright.rules", dest = "/usr/lib/udev/rules.d/60-portwright.rules", mode = "644" },
 ]
 post_install_script = """
-ln -sf donguru /usr/bin/dg
+ln -sf portwright /usr/bin/pw
 udevadm control --reload-rules || true
 udevadm trigger || true
 """
 post_uninstall_script = """
 if [ "$1" = "0" ]; then
-    rm -f /usr/bin/dg
+    rm -f /usr/bin/pw
     udevadm control --reload-rules || true
     udevadm trigger || true
 fi

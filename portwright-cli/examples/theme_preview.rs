@@ -1,4 +1,4 @@
-//! Example binary to visualize the Donguru colour theme(s).
+//! Example binary to visualize the Portwright colour theme(s).
 //!
 //! ```console
 //! cargo run --example theme_preview
@@ -10,7 +10,7 @@ use std::io::Write;
 use clap::builder::styling::{Color, Reset, Style, Styles};
 use clap::{Parser, ValueEnum};
 
-use donguru_cli::theme::{self, DEFAULT_PALETTE, FALLBACK_PALETTE, Palette, donguru_style};
+use portwright_cli::theme::{self, DEFAULT_PALETTE, FALLBACK_PALETTE, Palette, portwright_style};
 
 /// This example's *own* help/error styling is fixed at compile time via
 /// `#[command(styles = ...)]` (unlike `Cli::parse_styled()`, which picks a palette at runtime).
@@ -18,8 +18,8 @@ use donguru_cli::theme::{self, DEFAULT_PALETTE, FALLBACK_PALETTE, Palette, dongu
 #[derive(Debug, Parser)]
 #[command(
     name = "theme_preview",
-    about = "Show the Donguru CLI colour theme(s) slot by slot",
-    styles = donguru_style()
+    about = "Show the Portwright CLI colour theme(s) slot by slot",
+    styles = portwright_style()
 )]
 struct Args {
     /// Which theme variant(s) to display
@@ -33,7 +33,7 @@ enum ThemeChoice {
     /// Whatever the CLI would pick for this terminal
     Auto,
     /// The 24-bit "Acorn Circuit" theme ([`DEFAULT_PALETTE`])
-    Donguru,
+    Portwright,
     /// The 16-colour variant for terminals without truecolor ([`FALLBACK_PALETTE`])
     Fallback,
     /// clap's built-in default styling
@@ -52,7 +52,7 @@ struct Variant {
 }
 
 impl Variant {
-    /// A variant backed by one of the Donguru palettes.
+    /// A variant backed by one of the Portwright palettes.
     fn from_palette(label: &str, palette: &'static Palette) -> Self {
         Self {
             label: label.to_owned(),
@@ -71,7 +71,7 @@ impl ThemeChoice {
             Self::Auto => {
                 let styles = theme::select_style();
                 let (detected, palette) = if styles_eq(&styles, &(&DEFAULT_PALETTE).into()) {
-                    ("auto (donguru)", &DEFAULT_PALETTE)
+                    ("auto (portwright)", &DEFAULT_PALETTE)
                 } else {
                     ("auto (fallback)", &FALLBACK_PALETTE)
                 };
@@ -81,7 +81,7 @@ impl ThemeChoice {
                     palette: Some(palette),
                 }]
             }
-            Self::Donguru => vec![Variant::from_palette("donguru", &DEFAULT_PALETTE)],
+            Self::Portwright => vec![Variant::from_palette("portwright", &DEFAULT_PALETTE)],
             Self::Fallback => vec![Variant::from_palette("fallback", &FALLBACK_PALETTE)],
             Self::Default => vec![Variant {
                 label: "default".to_owned(),
@@ -93,7 +93,7 @@ impl ThemeChoice {
                 styles: Styles::plain(),
                 palette: None,
             }],
-            Self::All => [Self::Donguru, Self::Fallback, Self::Default, Self::Plain]
+            Self::All => [Self::Portwright, Self::Fallback, Self::Default, Self::Plain]
                 .into_iter()
                 .flat_map(Self::resolve)
                 .collect(),
@@ -173,7 +173,7 @@ const PALETTE_SLOTS: &[SlotMapping] = &[
 /// Width of one rendered style cell in the comparison table.
 const CELL: usize = 22;
 
-/// The styles this preview uses for its own chrome, taken from the Donguru palette.
+/// The styles this preview uses for its own chrome, taken from the Portwright palette.
 struct Chrome {
     header: Style,
     literal: Style,
@@ -218,16 +218,13 @@ fn main() {
 
 fn banner(out: &mut impl Write, chrome: &Chrome) {
     let Chrome {
-        header,
-        literal,
-        placeholder,
-        ..
+        header, literal, ..
     } = chrome;
 
     let _ = writeln!(out);
     let _ = writeln!(
         out,
-        "  {literal}donguru{Reset} {placeholder}ドングル{Reset}  {header}Acorn Circuit theme{Reset}"
+        "  {literal}portwright{Reset}  {header}Acorn Circuit theme{Reset}"
     );
     let _ = writeln!(out);
 }
@@ -399,11 +396,11 @@ fn footer(out: &mut impl Write, chrome: &Chrome) {
     let placeholder = &chrome.placeholder;
     let _ = writeln!(
         out,
-        "{placeholder}Variants: --theme {{auto|donguru|fallback|default|plain|all}}.{Reset}"
+        "{placeholder}Variants: --theme {{auto|portwright|fallback|default|plain|all}}.{Reset}"
     );
     let _ = writeln!(
         out,
-        "{placeholder}See the theme in real help output: donguru --help. Disable colour: NO_COLOR=1.{Reset}"
+        "{placeholder}See the theme in real help output: portwright --help. Disable colour: NO_COLOR=1.{Reset}"
     );
     let _ = writeln!(out);
 }

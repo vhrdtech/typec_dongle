@@ -7,12 +7,12 @@ use defmt::info;
 use wire_weaver::prelude::*;
 
 impl ServerState {
-    // donguru_api::Sbu at sbu
+    // portwright_api::Sbu at sbu
 
     pub(super) fn get_sbu_function(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::SbuFunction, CommonError<'_>> {
+    ) -> GetResult<portwright_api::SbuFunction, CommonError<'_>> {
         Unimplemented.into()
     }
 

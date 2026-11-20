@@ -4,14 +4,14 @@ icon: lucide/file-code-corner
 
 # Scripting
 
-`donguru` (or `dg`) is meant to be driven from shell scripts and test benches: every command can print JSON, and its
-exit code says what went wrong. This page is the contract scripts can rely on. From Python, use the `donguru`
-package instead, see [Python](python.md); the Rust interface (`donguru-core`) is not documented yet.
+`portwright` (or `pw`) is meant to be driven from shell scripts and test benches: every command can print JSON, and its
+exit code says what went wrong. This page is the contract scripts can rely on. From Python, use the `portwright`
+package instead, see [Python](python.md); the Rust interface (`portwright-core`) is not documented yet.
 
 ## stdout is data, stderr is diagnostics
 
 Only the result a command was asked for goes to stdout. Warnings, notes, progress bars and spinners, and errors go
-to stderr, so `dg ... | jq` never sees anything but data. `-q` / `--quiet` drops the notes and the progress output
+to stderr, so `pw ... | jq` never sees anything but data. `-q` / `--quiet` drops the notes and the progress output
 on stderr; errors are always reported.
 
 ## Output formats
@@ -28,10 +28,10 @@ Commands that stream until Ctrl-C refuse `--format json` (there would be no one 
 
 ```bash
 # one reading, fed to jq
-dg power meter -f json | jq .current_ma
+pw power meter -f json | jq .current_ma
 
 # a stream, one record per line, appended to a log
-dg power watch --on-change -f jsonl >> power.log
+pw power watch --on-change -f jsonl >> power.log
 ```
 
 The JSON shape of every command is part of the contract: a field is not removed or renamed without a CHANGELOG
@@ -63,7 +63,7 @@ check the exit code, not only the output.
 Under `--format text` a failed command prints one line on stderr:
 
 ```text
-donguru: error: no matching device: none connected
+portwright: error: no matching device: none connected
 ```
 
 Under `--format json` and `jsonl` the same error is one JSON object on one line, also on stderr (stdout stays data
@@ -84,7 +84,7 @@ Usage errors (exit code 2) are printed by the argument parser before the command
 format.
 
 ```bash
-if ! out=$(dg power on -f json 2>err.json); then
+if ! out=$(pw power on -f json 2>err.json); then
     jq -r .error.exit err.json   # e.g. no_device
 fi
 ```

@@ -1,18 +1,18 @@
-//! Python bindings of donguru-core (CORE-4): the `donguru` package, a blocking API with SI values as floats (V, A,
+//! Python bindings of portwright-core (CORE-4): the `portwright` package, a blocking API with SI values as floats (V, A,
 //! W, s, C, J). Every call runs on one tokio runtime of the process with the GIL released; logic stays in
-//! donguru-core, this crate only converts arguments and results.
+//! portwright-core, this crate only converts arguments and results.
 //!
 //! ```python
-//! import donguru
-//! dg = donguru.open()            # the only dongle, or by label, serial, index or USB path
-//! dg.power.on()
-//! for r in dg.meter.watch(interval=0.5, count=10):
+//! import portwright
+//! pw = portwright.open()            # the only dongle, or by label, serial, index or USB path
+//! pw.power.on()
+//! for r in pw.meter.watch(interval=0.5, count=10):
 //!     print(r.voltage, r.current)
 //! ```
 
 use std::sync::{OnceLock, RwLock};
 
-use donguru_core::{Dongle, Selector};
+use portwright_core::{Dongle, Selector};
 use pyo3::prelude::*;
 
 mod errors;
@@ -33,7 +33,7 @@ fn runtime() -> PyResult<&'static tokio::runtime::Runtime> {
     }
     let rt = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
-        .thread_name("donguru")
+        .thread_name("portwright")
         .enable_all()
         .build()
         .map_err(|e| errors::LinkError::new_err(format!("starting the async runtime: {e}")))?;
@@ -43,13 +43,13 @@ fn runtime() -> PyResult<&'static tokio::runtime::Runtime> {
 /// Runs `f` to completion with the GIL released.
 fn block_on<T: Send>(
     py: Python<'_>,
-    f: impl Future<Output = donguru_core::Result<T>> + Send,
+    f: impl Future<Output = portwright_core::Result<T>> + Send,
 ) -> PyResult<T> {
     let rt = runtime()?;
     py.detach(|| rt.block_on(f)).map_err(to_py)
 }
 
-/// An open dongle, shared by the level objects (`dg.power`, `dg.meter`, ...); `None` once closed.
+/// An open dongle, shared by the level objects (`pw.power`, `pw.meter`, ...); `None` once closed.
 pub(crate) struct Shared {
     dongle: RwLock<Option<Dongle>>,
 }
@@ -59,7 +59,7 @@ impl Shared {
     pub(crate) fn run<T: Send>(
         &self,
         py: Python<'_>,
-        f: impl AsyncFnOnce(&Dongle) -> donguru_core::Result<T> + Send,
+        f: impl AsyncFnOnce(&Dongle) -> portwright_core::Result<T> + Send,
     ) -> PyResult<T> {
         let rt = runtime()?;
         py.detach(|| {
@@ -75,11 +75,11 @@ impl Shared {
 /// Connected dongles, sorted by USB path, without opening them.
 #[pyfunction]
 fn list(py: Python<'_>) -> PyResult<Vec<DeviceInfo>> {
-    let entries = block_on(py, donguru_core::device::list())?;
+    let entries = block_on(py, portwright_core::device::list())?;
     Ok(entries.iter().map(DeviceInfo::from).collect())
 }
 
-/// What `open(selector)` takes: an index (`int`), or a string as `dg --device` does.
+/// What `open(selector)` takes: an index (`int`), or a string as `pw --device` does.
 fn selector(sel: Option<&Bound<'_, PyAny>>) -> PyResult<Option<Selector>> {
     let Some(sel) = sel else { return Ok(None) };
     if sel.is_none() {
@@ -103,9 +103,9 @@ fn open(py: Python<'_>, selector: Option<&Bound<'_, PyAny>>) -> PyResult<PyDongl
     Ok(PyDongle::new(dongle, None))
 }
 
-/// A connected Donguru: the levels as attributes (`power`, `meter`, `usb`, `header`, `uart`, `settings`, `leds`).
+/// A connected Portwright: the levels as attributes (`power`, `meter`, `usb`, `header`, `uart`, `settings`, `leds`).
 /// Closes on `close()`, at the end of a `with` block, or when garbage-collected.
-#[pyclass(name = "Dongle", module = "donguru", frozen)]
+#[pyclass(name = "Dongle", module = "portwright", frozen)]
 pub(crate) struct PyDongle {
     shared: std::sync::Arc<Shared>,
     entry: DeviceInfo,
@@ -146,7 +146,7 @@ impl PyDongle {
         Ok(Info::from(&summary))
     }
 
-    /// Firmware name and version, e.g. `"donguru 0.20.27"`; `None` when the firmware doesn't report it.
+    /// Firmware name and version, e.g. `"portwright 0.20.27"`; `None` when the firmware doesn't report it.
     #[getter]
     fn firmware_version(&self, py: Python<'_>) -> PyResult<Option<String>> {
         Ok(self.info(py)?.firmware)
@@ -241,7 +241,7 @@ impl PyDongle {
 }
 
 #[pymodule]
-fn _donguru(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn _portwright(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     m.add_function(wrap_pyfunction!(list, m)?)?;
     m.add_function(wrap_pyfunction!(open, m)?)?;

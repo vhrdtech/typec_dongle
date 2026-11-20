@@ -1,51 +1,51 @@
-//! `donguru.Error` and its subclasses, one per [donguru_core::Error] category, so scripts catch what they can handle
-//! (`except donguru.Timeout:`) the way the CLI maps the same categories to exit codes.
+//! `portwright.Error` and its subclasses, one per [portwright_core::Error] category, so scripts catch what they can handle
+//! (`except portwright.Timeout:`) the way the CLI maps the same categories to exit codes.
 
-use donguru_core::{DeviceErrorKind, Error};
+use portwright_core::{DeviceErrorKind, Error};
 use pyo3::create_exception;
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 
 create_exception!(
-    donguru,
-    DonguruError,
+    portwright,
+    PortwrightError,
     PyException,
-    "Any error of a Donguru call."
+    "Any error of a Portwright call."
 );
 create_exception!(
-    donguru,
+    portwright,
     NoDevice,
-    DonguruError,
+    PortwrightError,
     "No dongle matched the selector, or the selection was ambiguous."
 );
 create_exception!(
-    donguru,
+    portwright,
     DeviceError,
-    DonguruError,
+    PortwrightError,
     "The dongle refused the call: `.kind` is the category (\"refused\", \"in_use\", \"wrong_state\", ...), `.item` the API item."
 );
 create_exception!(
-    donguru,
+    portwright,
     Unimplemented,
-    DonguruError,
+    PortwrightError,
     "The dongle's firmware doesn't implement this (yet): update the firmware."
 );
 create_exception!(
-    donguru,
+    portwright,
     Timeout,
-    DonguruError,
+    PortwrightError,
     "The dongle didn't answer in time."
 );
 create_exception!(
-    donguru,
+    portwright,
     Incompatible,
-    DonguruError,
+    PortwrightError,
     "The firmware speaks an API this package can't talk to: update the firmware or the package."
 );
 create_exception!(
-    donguru,
+    portwright,
     LinkError,
-    DonguruError,
+    PortwrightError,
     "The link to the dongle failed: USB, disconnect, protocol."
 );
 
@@ -99,7 +99,7 @@ pub(crate) fn closed() -> PyErr {
 
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     let py = m.py();
-    m.add("Error", py.get_type::<DonguruError>())?;
+    m.add("Error", py.get_type::<PortwrightError>())?;
     m.add("NoDevice", py.get_type::<NoDevice>())?;
     m.add("DeviceError", py.get_type::<DeviceError>())?;
     m.add("Unimplemented", py.get_type::<Unimplemented>())?;

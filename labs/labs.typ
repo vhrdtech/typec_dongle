@@ -20,7 +20,7 @@
     "serial-console",
     "i2c-on-the-plug",
     "header-gpio-adc",
-    "update-donguru",
+    "update-portwright",
   )),
   (level: "automation", labs: (
     "hung-board",
@@ -50,10 +50,10 @@
     "can-on-the-plug",
     "logic-analyzer",
     "broken-plug-bypass",
-    "donguru-as-dev-board",
+    "portwright-as-dev-board",
   )),
   (level: "insane", labs: (
-    "donguru-debugs-donguru",
+    "portwright-debugs-portwright",
     "daisy-chain",
     "laptop-from-power-bank",
     "soak-test",

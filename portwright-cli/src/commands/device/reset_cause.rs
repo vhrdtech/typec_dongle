@@ -1,4 +1,4 @@
-//! `donguru device reset-cause` - why the device last reset, and the crash record if there is one (CLI-19, API-9),
+//! `portwright device reset-cause` - why the device last reset, and the crash record if there is one (CLI-19, API-9),
 //! with its call chain as `file:line` frames decoded with the firmware's ELF (FW-63).
 
 use std::io::{self, Write};
@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use clap::Args;
 use clap_complete::engine::ArgValueCompleter;
-use donguru_core::crash::Decoded;
+use portwright_core::crash::Decoded;
 use ww_firmware_info::ResetRecordOwned;
 
 use crate::completion;
@@ -38,14 +38,14 @@ pub fn run(ctx: &Context, args: ResetCause) -> anyhow::Result<ExitCode> {
         let device = dongle.device();
         let record = device.last_reset().await?;
         let boot_count = device.boot_count().await?;
-        let call_chain = donguru_core::crash::frames(&record, args.elf.as_deref(), args.force)
+        let call_chain = portwright_core::crash::frames(&record, args.elf.as_deref(), args.force)
             .map_err(|e| e.to_string());
         if let Ok(Some(Decoded {
             warning: Some(w), ..
         })) = &call_chain
             && !ctx.quiet
         {
-            eprintln!("donguru: {w}");
+            eprintln!("portwright: {w}");
         }
         Output::stdout(ctx).emit(&Shown {
             record: &record,
@@ -55,7 +55,7 @@ pub fn run(ctx: &Context, args: ResetCause) -> anyhow::Result<ExitCode> {
         if args.clear {
             device.clear_last_reset().await?;
             if ctx.format == Format::Text && !ctx.quiet {
-                eprintln!("donguru: crash record and boot counter cleared");
+                eprintln!("portwright: crash record and boot counter cleared");
             }
         }
         dongle.close().await?;
@@ -72,7 +72,7 @@ struct Shown<'a> {
     record: &'a ResetRecordOwned,
     boot_count: u32,
     /// The crash's call chain; `Ok(None)` when the record holds no addresses, `Err` why it wasn't decoded
-    call_chain: Result<Option<donguru_core::crash::CrashFrames>, String>,
+    call_chain: Result<Option<portwright_core::crash::CrashFrames>, String>,
 }
 
 impl Render for Shown<'_> {

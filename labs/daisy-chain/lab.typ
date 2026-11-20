@@ -3,7 +3,7 @@
 #show: lab.with(
   title: [How long can the chain be?],
   time: "30 min",
-  needs: ([three to five Donguru], [a device at the end]),
+  needs: ([three to five Portwright], [a device at the end]),
   features: ("CLI-36", "API-12", "FW-35", "CLI-34"),
 )
 
@@ -16,9 +16,9 @@ uses up. A playful way to learn why "too many hubs" fails.
 
 #steps(cli: [
   ```sh
-  dg device list --tree                     # one level deeper per dongle
-  dg each --all -- power on
-  dg each --all -f jsonl -- power meter | jq -r '[.label,.vbus_in,.current] | @tsv'
+  pw device list --tree                     # one level deeper per dongle
+  pw each --all -- power on
+  pw each --all -f jsonl -- power meter | jq -r '[.label,.vbus_in,.current] | @tsv'
   #  d1  5.11 V  0.62 A
   #  d2  5.02 V  0.55 A
   #  d3  4.94 V  0.49 A

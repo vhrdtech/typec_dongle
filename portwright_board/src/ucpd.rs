@@ -5,7 +5,7 @@
 //! normal use and may only be a sink (Rd) for PD tests. An Rp there would present a source to the computer.
 
 use crate::pins::{Denied, Holder};
-use donguru_api::{CcRole, UcpdPort};
+use portwright_api::{CcRole, UcpdPort};
 
 /// UCPD_CR fields of a CC role.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

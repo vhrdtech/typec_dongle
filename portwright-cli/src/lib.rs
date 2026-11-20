@@ -1,4 +1,4 @@
-//! Library face of the Donguru CLI.
+//! Library face of the Portwright CLI.
 //!
 //! The binary (`src/main.rs`) is the primary entry point, this exists so
 //! integration tests and examples (e.g. `examples/theme_preview.rs`) can reuse

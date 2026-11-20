@@ -2,13 +2,13 @@ use std::path::{Path, PathBuf};
 
 use crate::cli::{Cli, ColorMode, Format};
 use clap::ValueEnum;
-use donguru_core::config::{self, Entry, Layer, Settings};
+use portwright_core::config::{self, Entry, Layer, Settings};
 
 /// Everything a command handler needs beyond its own arguments.
 #[derive(Debug)]
 #[allow(dead_code)] // scaffolding: fields consumed once handlers are real
 pub struct Context {
-    /// Device selector: `--device`, `DONGURU_DEVICE`, then the `device` key of the project, user and system
+    /// Device selector: `--device`, `PORTWRIGHT_DEVICE`, then the `device` key of the project, user and system
     /// config files (CLI-9).
     pub device: Option<String>,
     /// Selected output format.
@@ -23,7 +23,7 @@ pub struct Context {
 }
 
 /// The config files that exist, as layers (lowest priority first). A file that cannot be read or has an unknown key
-/// or invalid value is skipped and reported through `warn`: `donguru config validate` says more.
+/// or invalid value is skipped and reported through `warn`: `portwright config validate` says more.
 pub fn file_layers(
     cwd: &Path,
     xdg_config_home: Option<&Path>,
@@ -99,7 +99,7 @@ impl Context {
         let quiet = cli.globals.quiet;
         let entries = config::resolve(&layers(cli, |w| {
             if !quiet {
-                eprintln!("donguru: warning: {w}");
+                eprintln!("portwright: warning: {w}");
             }
         }));
         Self::from_entries(cli, entries)
@@ -138,9 +138,9 @@ mod tests {
     fn files_are_layered_and_a_broken_one_is_skipped_with_a_warning() {
         let dir = tempfile::tempdir().unwrap();
         let xdg = dir.path().join("xdg");
-        std::fs::create_dir_all(xdg.join("donguru")).unwrap();
+        std::fs::create_dir_all(xdg.join("portwright")).unwrap();
         std::fs::write(
-            xdg.join("donguru").join(config::FILE_NAME),
+            xdg.join("portwright").join(config::FILE_NAME),
             "device = \"serial:U\"\noutput = \"json\"\n",
         )
         .unwrap();

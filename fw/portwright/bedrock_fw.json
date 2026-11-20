@@ -10,9 +10,9 @@
     "version": "Unreleased"
   },
   "generated": "2026-09-30T18:59:40+02:00",
-  "command": "bedrock_gen.py new donguru --chip STM32G0B1CE --embassy main --config-page --bkp-counters auto --counters --led PF1 --wire-weaver --ww-api donguru_api --ww-src ../../../wire_weaver",
+  "command": "bedrock_gen.py new portwright --chip STM32G0B1CE --embassy main --config-page --bkp-counters auto --counters --led PF1 --wire-weaver --ww-api portwright_api --ww-src ../../../wire_weaver",
   "answers": {
-    "name": "donguru",
+    "name": "portwright",
     "chip": "STM32G0B1CE",
     "offline": false,
     "flash_size": null,
@@ -43,7 +43,7 @@
     "build_info": false,
     "wire_weaver": true,
     "ww_transport": "usb",
-    "ww_api": "donguru_api",
+    "ww_api": "portwright_api",
     "ww_src": "../../../wire_weaver",
     "no_crash_capture": false
   },
@@ -75,7 +75,7 @@
       "to": "f10b345",
       "applied": [
         "0.4.3: build.rs without the unused `let _ = out;` (file untouched, replaced); main.rs import order was already rustfmt-clean",
-        "0.5.0: WireWeaver over USB, set up by hand in the existing layout: API crate donguru_api in the repo root (../../donguru_api, member of the root Cargo workspace), firmware stays in fw/donguru; src/ww.rs from the template with the USB driver created in main.rs (USB in assign_resources, USB_UCPD1_2 in main's Irqs) and led_on/led_off switching the status LED via led::set instead of owning PF1"
+        "0.5.0: WireWeaver over USB, set up by hand in the existing layout: API crate portwright_api in the repo root (../../portwright_api, member of the root Cargo workspace), firmware stays in fw/portwright; src/ww.rs from the template with the USB driver created in main.rs (USB in assign_resources, USB_UCPD1_2 in main's Irqs) and led_on/led_off switching the status LED via led::set instead of owning PF1"
       ],
       "notes": "wire_weaver crates via relative path deps to ~/git/wire_weaver (not git). dev/release/examples build, fmt clean, .cnt_bkp_buffer still at 0x4000B100. USB enumeration and `ww list`/`ww introspect` not yet tested on hardware."
     },
@@ -95,7 +95,7 @@
       "applied": [
         "ROB-11 crash capture (c4fa204): bedrock_crash from git, src/last_reset.rs from the template (doc pointers to src/ww/device.rs), last_reset::boot() first thing in main, HardFault saves the record and resets instead of looping (FW-13), panic-probe replaced by the template's panic handler (kept as a dev-dependency for examples/)",
         "DEV-2 build id (c4fa204): --build-id=sha1 in build.rs, .note.gnu.build-id SECTIONS block at the end of memory.x, ww_firmware_info::build::emit() in build.rs (build-dependency)",
-        "FirmwareInfo / LastReset servers (c4fa204): already declared in donguru_api 0.2 at device.firmware / device.last_reset (API-8), so no API change; served in src/ww/device.rs (firmware_summary!(), build_id(), the three LastReset handlers), const_model gets BUILD_ID, omit = [\"device.firmware.BUILD_RECORD\"]; the Snapshot is handed to ww::start",
+        "FirmwareInfo / LastReset servers (c4fa204): already declared in portwright_api 0.2 at device.firmware / device.last_reset (API-8), so no API change; served in src/ww/device.rs (firmware_summary!(), build_id(), the three LastReset handlers), const_model gets BUILD_ID, omit = [\"device.firmware.BUILD_RECORD\"]; the Snapshot is handed to ww::start",
         "STD-27 boots_since_crash (ec04ab4): in last_reset.rs as taken",
         "TPL-14 (fb0d7eb): nothing to do, ww/ was already on the current server API",
         "ROB-12 (b53d9e4): already taken on 2026-10-15 (previous entry)"
@@ -108,12 +108,12 @@
     "src/main.rs is hand-written (64 MHz PLL clock tree, assign-resources, spawned adc/button tasks): never replace it with the template's, only port individual changes (e.g. counter macros in DefaultHandler/HardFault) by hand",
     "embassy-stm32 uses time-driver-tim4 on purpose: time-driver-any picks TIM15, which drives the PF1 LED. Keep it when Cargo.toml template changes",
     "Local Cargo.toml additions to keep: bedrock_usb, ww_device, embassy-futures, [features] debug-adc/debug-button, [[bin]] test=false, defmt-rtt only as a dev-dependency for the examples",
-    "Logging (API-10): the global defmt logger is ww_defmt_logger (src/log.rs) with its RTT tee set up by rtt-target (channel defmt, 1 KiB, NoBlockSkip), not the template's defmt-rtt; keep it when the template's logging changes. The log store sits in .uninit.donguru_log next to bedrock_crash's record",
+    "Logging (API-10): the global defmt logger is ww_defmt_logger (src/log.rs) with its RTT tee set up by rtt-target (channel defmt, 1 KiB, NoBlockSkip), not the template's defmt-rtt; keep it when the template's logging changes. The log store sits in .uninit.portwright_log next to bedrock_crash's record",
     "src/adc.rs, button.rs, led.rs, examples/, scripts/size.py are local-only (not from the template), but they use the cnt macros, so update them together with template counter-syntax changes",
-    "WireWeaver layout differs from the template's: the API crate is donguru_api/ in the repo root (two levels up, in the root workspace, uses workspace edition/license), the firmware is fw/donguru/ (not firmware/). When regenerating with --wire-weaver, map <out>/donguru_api -> ../../donguru_api and <out>/firmware -> . ; the generator writes absolute --ww-src paths, keep the relative ../../../wire_weaver (firmware) and ../../wire_weaver (API crate) paths",
+    "WireWeaver layout differs from the template's: the API crate is portwright_api/ in the repo root (two levels up, in the root workspace, uses workspace edition/license), the firmware is fw/portwright/ (not firmware/). When regenerating with --wire-weaver, map <out>/portwright_api -> ../../portwright_api and <out>/firmware -> . ; the generator writes absolute --ww-src paths, keep the relative ../../../wire_weaver (firmware) and ../../wire_weaver (API crate) paths",
     "USB is bedrock_usb (FW-66), not the template's embassy-usb + wire_weaver_usb_embassy: the device is a const in ww/mod.rs, the driver is made in main.rs (UsbResources, Irqs, bedrock_usb::v4::embassy::new) and passed to ww::start; never take the template's USB set-up; ww.rs has no bind_interrupts/usb_driver. ServerState owns no LED: PF1 is the PWM status LED owned by led::led_task, the API calls led::set",
     "ww.rs follows the local wire_weaver checkout API from 3f1ccf8 'feat(server): pass a request context to every handler' (WireWeaverAsyncApiBackend::Medium, process_bytes(out: &mut EventWriter, medium, ...), handlers take &mut Context<'_, impl EventOut>), newer than the template's (f10b345) ww.rs; when taking template ww.rs changes, keep the signatures matching the checkout",
-    "src/ww.rs is split into src/ww/ (API-8, donguru_api 0.2): mod.rs has what came from the template's ww.rs (ww_codegen!, WireWeaverAsyncApiBackend, USB composite setup with fixed endpoint addresses EP1/EP2 WireWeaver and EP3 CMSIS-DAP, server task with observe polling); one handler module per level of the API tree (device.rs, plug.rs, ...) is this firmware's own. Template ww.rs changes go to ww/mod.rs; ServerState is no longer passed to ww::start (a static inside ww)",
+    "src/ww.rs is split into src/ww/ (API-8, portwright_api 0.2): mod.rs has what came from the template's ww.rs (ww_codegen!, WireWeaverAsyncApiBackend, USB composite setup with fixed endpoint addresses EP1/EP2 WireWeaver and EP3 CMSIS-DAP, server task with observe polling); one handler module per level of the API tree (device.rs, plug.rs, ...) is this firmware's own. Template ww.rs changes go to ww/mod.rs; ServerState is no longer passed to ww::start (a static inside ww)",
     "Crash capture (bedrock_crash): the record is in cortex-m-rt's .uninit; nothing in this firmware initialises RAM by hand, keep it that way. ww::start takes the last_reset Snapshot; ServerState lives in a static inside ww",
     "Settings (API-19): the template's config page (config_page, 2K CONFIG at 0x0807F800) is replaced by an 8K SETTINGS region at 0x0807E000 (the last 4 pages of bank 2) for ww_settings, with __settings_start / __settings_end offsets in memory.x; FLASH is 504K. Keep this when the template's memory.x changes",
     "embassy comes from upstream main at a pinned rev ([patch.crates-io] in Cargo.toml, FW-24) and the code uses main's API; keep that when the template's embassy choice differs, until a crates.io release has #7275",

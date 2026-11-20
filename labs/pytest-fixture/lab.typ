@@ -3,7 +3,7 @@
 #show: lab.with(
   title: [Hardware tests with pytest],
   time: "30 min",
-  needs: ([Donguru], [a device under test], [Python with uv]),
+  needs: ([Portwright], [a device under test], [Python with uv]),
   features: ("CORE-4", "CORE-9", "API-14"),
 )
 
@@ -16,7 +16,7 @@ console, and puts its power numbers into the report.
 
 #steps(python: [
   ```sh
-  uv add --dev pytest pytest-donguru
+  uv add --dev pytest pytest-portwright
   ```
   ```python
   # test_device.py
@@ -32,7 +32,7 @@ console, and puts its power numbers into the report.
       dut.console.expect(b"usb reconnected")
   ```
   ```sh
-  uv run pytest --donguru=bench-1 --donguru-uart=115200
+  uv run pytest --portwright=bench-1 --portwright-uart=115200
   #  test_device.py::test_boots PASSED        [0.31 Wh, peak 0.42 A]
   ```
 ])

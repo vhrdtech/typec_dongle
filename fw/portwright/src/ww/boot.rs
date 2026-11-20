@@ -57,7 +57,7 @@ impl ServerState {
         Ready(NodeInfo {
             role: Role::App,
             profile: Profile::InPlace,
-            product: MaxLen::new_unchecked("Donguru B153"),
+            product: MaxLen::new_unchecked("Portwright B153"),
             geometry: ww_dfu::GeometryId(0),
             seal: Seal::Unsigned,
             app: None,

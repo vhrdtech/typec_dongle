@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["donguru-cli", "donguru-core", "donguru-py", "donguru_api", "donguru_board", "donguru_dap", "xtask"]
+members = ["portwright-cli", "portwright-core", "portwright-py", "portwright_api", "portwright_board", "portwright_dap", "xtask"]
 
 [workspace.package]
 version = "0.20.51"
@@ -8,8 +8,8 @@ edition = "2024"
 license = "TBD"
 
 [workspace.dependencies]
-donguru-core = { path = "donguru-core" }
-donguru_api = { path = "donguru_api", features = ["std"] }
+portwright-core = { path = "portwright-core" }
+portwright_api = { path = "portwright_api", features = ["std"] }
 
 anyhow = "1"
 thiserror = "2"
@@ -29,7 +29,7 @@ incremental = true
 # ww_stdlib, shrink_wrap from its own repository; exact_units (ww_si's units) takes shrink_wrap from that same URL, so
 # there is one shrink_wrap without a patch. pd_bench comes by git too. Local development against sibling checkouts:
 # put such blocks in an uncommitted .cargo/config.toml of the worktree (cargo update -p wire_weaver afterwards).
-# stm32_dfu_host is the package behind the `ww_stm32_dfu` alias in donguru-core.
+# stm32_dfu_host is the package behind the `ww_stm32_dfu` alias in portwright-core.
 # [patch."https://github.com/vhrdtech/wire_weaver"]
 # wire_weaver = { path = "../wire_weaver/wire_weaver" }
 # wire_weaver_client = { path = "../wire_weaver/wire_weaver_client" }

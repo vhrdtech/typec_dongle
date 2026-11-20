@@ -1,4 +1,4 @@
-# AGENTS.md — donguru
+# AGENTS.md — portwright
 
 This firmware (STM32G0B1CE, `embassy`) was generated from the **embedded_bedrock firmware template**
 (`firmware_template_skill/` in https://github.com/romixlab/embedded_bedrock, the `firmware-template` agent skill, generator
@@ -9,11 +9,11 @@ This firmware (STM32G0B1CE, `embassy`) was generated from the **embedded_bedrock
 The firmware serves a [WireWeaver](https://github.com/vhrdtech/wire_weaver) API over USB. Unlike the template's
 WireWeaver layout (`<api>/` + `firmware/` side by side), this repo keeps:
 
-- `../../donguru_api/` (repo root) — `#![no_std]` API crate: the `DonguruApi` trait (`#[ww_api_root]`) and its data
+- `../../portwright_api/` (repo root) — `#![no_std]` API crate: the `PortwrightApi` trait (`#[ww_api_root]`) and its data
   types (`#[derive_shrink_wrap]`). A member of the repo-root Cargo workspace (host tools use it with `std`). Its name +
   version identify the API on the wire: bump the version with every change and follow WireWeaver's
   `docs/evolution/rules.md` so deployed devices and hosts keep working together.
-- `fw/donguru/` (this directory) — the firmware, a standalone crate; `src/ww/` implements the API on `ServerState`
+- `fw/portwright/` (this directory) — the firmware, a standalone crate; `src/ww/` implements the API on `ServerState`
   (`ww_codegen!` in `src/ww/mod.rs`, one handler module per level of the API tree) and runs the USB server. The
   USB driver is created in `src/main.rs` and handed to `ww::start`.
 

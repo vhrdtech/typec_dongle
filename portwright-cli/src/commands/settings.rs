@@ -1,4 +1,4 @@
-//! `donguru settings` - `device.settings` kept in flash (API-19, CLI-47): plug VBUS at boot, the button action,
+//! `portwright settings` - `device.settings` kept in flash (API-19, CLI-47): plug VBUS at boot, the button action,
 //! the meter's window and deadband, and the plug UART's default line settings. A write answers `Ok` only once the
 //! value is actually stored (`CommonError::Fault` otherwise, see [fault_note]); `settings reset` puts every
 //! setting and the label back to its default, factory data stays. The design doc's `reset --factory` isn't in the
@@ -12,8 +12,8 @@ use crate::context::Context;
 use crate::exit::ExitCode;
 use crate::output::{Output, Render};
 use crate::theme::Theme;
-use donguru_core::api::{Ampere, ButtonAction, MeterDeadband, Second, VbusMode, Volt};
-use donguru_core::vbus;
+use portwright_core::api::{Ampere, ButtonAction, MeterDeadband, Second, VbusMode, Volt};
+use portwright_core::vbus;
 use ww_si::{Baud, Prefix};
 use ww_uart::{DataBits, Mode as UartMode, Parity, StopBits, UartConfig};
 
@@ -80,13 +80,13 @@ pub fn run(ctx: &Context, command: Settings) -> anyhow::Result<ExitCode> {
     }
 }
 
-/// Prints the write's device error's [`donguru_core::Error::fault_note`] before letting it propagate, so a flash
+/// Prints the write's device error's [`portwright_core::Error::fault_note`] before letting it propagate, so a flash
 /// failure, a newer firmware's record or a too-big record read as a sentence, not just "Hardware fault 0x1".
-fn checked<T>(result: donguru_core::Result<T>) -> donguru_core::Result<T> {
+fn checked<T>(result: portwright_core::Result<T>) -> portwright_core::Result<T> {
     if let Err(e) = &result
         && let Some(note) = e.fault_note()
     {
-        eprintln!("donguru: {note}");
+        eprintln!("portwright: {note}");
     }
     result
 }
@@ -533,7 +533,9 @@ fn set_uart_plug(ctx: &Context, args: &Set) -> anyhow::Result<ExitCode> {
 
 fn reset(ctx: &Context) -> anyhow::Result<ExitCode> {
     if !ctx.quiet {
-        eprintln!("donguru: resetting every setting and the label to defaults; factory data stays");
+        eprintln!(
+            "portwright: resetting every setting and the label to defaults; factory data stays"
+        );
     }
     super::with_dongle(ctx, async |dongle| {
         checked(dongle.device().settings().reset().await)
@@ -560,7 +562,7 @@ mod tests {
     use super::*;
     use crate::cli::Format;
     use crate::output::render;
-    use donguru_core::mock::MockDevice;
+    use portwright_core::mock::MockDevice;
 
     #[test]
     fn small_quantity_parses_plain_milli_and_base() {

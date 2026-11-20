@@ -4,7 +4,7 @@ icon: lucide/package
 
 # Packaging and distribution plan
 
-This document outlines how we intend to ship Donguru. It is not an installation guide.
+This document outlines how we intend to ship Portwright. It is not an installation guide.
 
 !!! info "Status: Draft"
 
@@ -12,7 +12,7 @@ This document outlines how we intend to ship Donguru. It is not an installation 
 
 ## Goals and scope
 
-Ship the `donguru` CLI with its supporting files, reliable upgrades and a
+Ship the `portwright` CLI with its supporting files, reliable upgrades and a
 clean uninstall, in this order:
 
 1. **Linux:** `.rpm` and `.deb`
@@ -34,10 +34,10 @@ each release as a fallback for users without a package. DMG, MSI and other Linux
 
 | Asset | Intended treatment |
 | --- | --- |
-| CLI | `donguru`, with `dg` installed as a symlink or Windows shim to the same binary. |
+| CLI | `portwright`, with `pw` installed as a symlink or Windows shim to the same binary. |
 | Completions and man pages | Generated from the released CLI and installed in the appropriate locations for each package manager. |
 | Linux udev rules | A package-owned rule in the distro's vendor rules directory; we will also ship a separate *inactive* group-rule example for headless/SSH hosts. |
-| Config | A documented `donguru.toml.example` only. Never install an active system config or overwrite a user's config. |
+| Config | A documented `portwright.toml.example` only. Never install an active system config or overwrite a user's config. |
 
 
 ## References

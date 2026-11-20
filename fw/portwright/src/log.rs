@@ -28,7 +28,7 @@ pub type Stream = Reliable<Store>;
 pub const PUMP_PERIOD: embassy_time::Duration = embassy_time::Duration::from_millis(10);
 
 /// Left alone by the startup code (cortex-m-rt's `.uninit`), so it survives a reset; the store checks it at boot.
-#[unsafe(link_section = ".uninit.donguru_log")]
+#[unsafe(link_section = ".uninit.portwright_log")]
 static mut AREA: MaybeUninit<RamArea<STORE_LEN>> = MaybeUninit::uninit();
 
 /// The RTT channel `defmt`, the logger's tee. First thing in main: nothing logged before it reaches RTT (it still

@@ -1,4 +1,4 @@
-//! `donguru power` - plug VBUS (U601), USB data stays with `donguru usb`, the power meter, and (CLI-11) a combined
+//! `portwright power` - plug VBUS (U601), USB data stays with `portwright usb`, the power meter, and (CLI-11) a combined
 //! view of plug + header + meter. See `docs/user/power.md` for the VBUS modes and the guard the firmware keeps.
 
 use std::io::{self, Write};
@@ -11,10 +11,10 @@ use crate::context::Context;
 use crate::exit::ExitCode;
 use crate::output::{Output, Render, Spinner};
 use crate::theme::Theme;
-use donguru_core::api::{
+use portwright_core::api::{
     DataPath, GuardTrip, MeterReading, MeterTotals, Second, VbusMode, VbusState,
 };
-use donguru_core::client::observe::{
+use portwright_core::client::observe::{
     BatchedOwned, ObserveEvent, PowerMeterObserve, on_change as on_change_mode, periodic,
 };
 
@@ -71,10 +71,10 @@ pub struct VbusOnArgs {
 pub(crate) fn mode_from_args(args: &VbusOnArgs) -> VbusMode {
     let max_voltage = args
         .allow_voltage
-        .unwrap_or(donguru_core::vbus::DEFAULT_MAX_VOLTAGE_V);
+        .unwrap_or(portwright_core::vbus::DEFAULT_MAX_VOLTAGE_V);
     match args.trip {
-        Some(max_current) => donguru_core::vbus::auto(max_voltage, max_current),
-        None => donguru_core::vbus::force_on(max_voltage),
+        Some(max_current) => portwright_core::vbus::auto(max_voltage, max_current),
+        None => portwright_core::vbus::force_on(max_voltage),
     }
 }
 
@@ -178,7 +178,10 @@ fn reading_text(theme: &Theme, r: &MeterReading) -> String {
         "{} V   {} mA   {} mW",
         theme.value(format!("{:.3}", r.vbus_in.to_f64())),
         theme.value(format!("{:.1}", r.current.to_f64() * 1000.0)),
-        theme.value(format!("{:.1}", donguru_core::reading_power_w(r) * 1000.0))
+        theme.value(format!(
+            "{:.1}",
+            portwright_core::reading_power_w(r) * 1000.0
+        ))
     )
 }
 
@@ -199,7 +202,7 @@ fn reading_json(r: &MeterReading) -> serde_json::Value {
     serde_json::json!({
         "vbus_in_v": r.vbus_in.to_f64(),
         "current_ma": r.current.to_f64() * 1000.0,
-        "power_mw": donguru_core::reading_power_w(r) * 1000.0,
+        "power_mw": portwright_core::reading_power_w(r) * 1000.0,
     })
 }
 
@@ -230,7 +233,7 @@ pub enum Power {
             short,
             long,
             value_name = "DURATION",
-            env = "DONGURU_POWER_INTERVAL",
+            env = "PORTWRIGHT_POWER_INTERVAL",
             default_value = DEFAULT_WATCH_INTERVAL,
             value_parser = parse_interval,
         )]
@@ -405,7 +408,7 @@ fn off(ctx: &Context) -> anyhow::Result<ExitCode> {
 }
 
 fn cycle(ctx: &Context, off: Duration, release_sbu: bool) -> anyhow::Result<ExitCode> {
-    // Integer milliseconds: the firmware's `ww_si` has no `f32` (see `donguru_core::vbus`'s doc comment).
+    // Integer milliseconds: the firmware's `ww_si` has no `f32` (see `portwright_core::vbus`'s doc comment).
     let off_s = Second::milli(off.as_millis() as i32);
     // a long off time counts down on stderr (CLI-53); a short one would only flicker
     let spinner = (off >= Duration::from_secs(1)).then(|| Spinner::new(ctx, ""));
@@ -496,7 +499,7 @@ fn watch(
     let mut out = Output::stdout(ctx);
     let selector = super::selector(ctx)?;
     super::runtime()?.block_on(async {
-        let dongle = donguru_core::Dongle::open(selector.as_ref()).await?;
+        let dongle = portwright_core::Dongle::open(selector.as_ref()).await?;
         let mut observer = if sampled {
             dongle.meter().observe_samples(interval).await?
         } else {
@@ -516,7 +519,7 @@ fn watch(
                 event = observer.recv_event() => match event {
                     Ok(ObserveEvent::Update(u)) => {
                         if u.missed > 0 {
-                            eprintln!("donguru: {} sample(s) missed", u.missed);
+                            eprintln!("portwright: {} sample(s) missed", u.missed);
                         }
                         match u.value.reading {
                             Some(BatchedOwned::Samples(series)) => {
@@ -528,7 +531,7 @@ fn watch(
                                             out.record(&SampleLine { t_s: t.as_ref().map(Second::to_f64), reading: r })?;
                                         }
                                     }
-                                    Err(e) => eprintln!("donguru: malformed samples: {e}"),
+                                    Err(e) => eprintln!("portwright: malformed samples: {e}"),
                                 }
                             }
                             Some(BatchedOwned::One(r)) => {
@@ -537,17 +540,17 @@ fn watch(
                             None => {}
                         }
                     }
-                    Ok(ObserveEvent::Disconnected) => eprintln!("donguru: link down, waiting..."),
-                    Ok(ObserveEvent::Resumed) => eprintln!("donguru: link back"),
+                    Ok(ObserveEvent::Disconnected) => eprintln!("portwright: link down, waiting..."),
+                    Ok(ObserveEvent::Resumed) => eprintln!("portwright: link back"),
                     Ok(ObserveEvent::Dropped { events }) => {
-                        eprintln!("donguru: {events} update(s) dropped, the queue was full");
+                        eprintln!("portwright: {events} update(s) dropped, the queue was full");
                     }
                     Ok(ObserveEvent::Ended) => {
-                        eprintln!("donguru: the device ended the observation");
+                        eprintln!("portwright: the device ended the observation");
                         break;
                     }
                     Err(e) => {
-                        eprintln!("donguru: {e}");
+                        eprintln!("portwright: {e}");
                         break;
                     }
                 },
@@ -617,8 +620,8 @@ impl Render for WatchLine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use donguru_core::api::Volt;
-    use donguru_core::mock::MockDevice;
+    use portwright_core::api::Volt;
+    use portwright_core::mock::MockDevice;
 
     fn mv(v: i32) -> Volt {
         Volt::milli(v)
@@ -658,7 +661,7 @@ mod tests {
         insta::assert_snapshot!(crate::output::render(Format::Json, &tripped));
         let reading = MeterReading {
             vbus_in: mv(5_012),
-            current: donguru_core::api::Ampere::milli(250),
+            current: portwright_core::api::Ampere::milli(250),
         };
         let line = WatchLine {
             elapsed: Duration::from_millis(1_250),

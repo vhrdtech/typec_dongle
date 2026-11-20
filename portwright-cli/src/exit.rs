@@ -1,4 +1,4 @@
-/// The exit status of `donguru`: a public contract, documented in `docs/design/cli/index.md` ("Exit codes") and
+/// The exit status of `portwright`: a public contract, documented in `docs/design/cli/index.md` ("Exit codes") and
 /// `docs/user/scripting.md`. Never renumber one; a new category takes the next free number.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExitCode {
@@ -61,33 +61,33 @@ impl From<ExitCode> for std::process::ExitCode {
 
 impl From<&anyhow::Error> for ExitCode {
     fn from(value: &anyhow::Error) -> Self {
-        match value.downcast_ref::<donguru_core::Error>() {
-            Some(donguru_core::Error::NoDevice(_)) => ExitCode::NoDevice,
+        match value.downcast_ref::<portwright_core::Error>() {
+            Some(portwright_core::Error::NoDevice(_)) => ExitCode::NoDevice,
             // the device answered, but not with what was asked: its error, an item its firmware lacks, an API
             // this CLI can't talk to
             Some(
-                donguru_core::Error::Device { .. }
-                | donguru_core::Error::Unimplemented { .. }
-                | donguru_core::Error::Incompatible(_),
+                portwright_core::Error::Device { .. }
+                | portwright_core::Error::Unimplemented { .. }
+                | portwright_core::Error::Incompatible(_),
             ) => ExitCode::DeviceError,
-            Some(donguru_core::Error::Timeout(_)) => ExitCode::Timeout,
+            Some(portwright_core::Error::Timeout(_)) => ExitCode::Timeout,
             _ => ExitCode::Failure,
         }
     }
 }
 
-/// The line `donguru: error:` prints for `err`: the error with its causes, and for an item the firmware doesn't
+/// The line `portwright: error:` prints for `err`: the error with its causes, and for an item the firmware doesn't
 /// implement yet (`Unimplemented`, exit code 4) a plain "firmware does not support this yet" instead of the API item.
 pub fn message(err: &anyhow::Error) -> String {
-    match err.downcast_ref::<donguru_core::Error>() {
-        Some(donguru_core::Error::Unimplemented { item }) => format!(
-            "the device's firmware does not support this yet ({item} is not implemented); update the firmware (`donguru fw update`) once a release has it"
+    match err.downcast_ref::<portwright_core::Error>() {
+        Some(portwright_core::Error::Unimplemented { item }) => format!(
+            "the device's firmware does not support this yet ({item} is not implemented); update the firmware (`portwright fw update`) once a release has it"
         ),
         _ => format!("{err:#}"),
     }
 }
 
-/// The error is a write to a closed pipe, `dg ... | head`.
+/// The error is a write to a closed pipe, `pw ... | head`.
 pub fn is_broken_pipe(err: &anyhow::Error) -> bool {
     err.chain()
         .filter_map(|e| e.downcast_ref::<std::io::Error>())
@@ -117,7 +117,7 @@ mod tests {
 
     #[test]
     fn unimplemented_is_said_plainly_with_the_device_error_code() {
-        let err = anyhow::Error::new(donguru_core::Error::Unimplemented {
+        let err = anyhow::Error::new(portwright_core::Error::Unimplemented {
             item: "Sbu::release".into(),
         });
         assert!(message(&err).starts_with("the device's firmware does not support this yet"));

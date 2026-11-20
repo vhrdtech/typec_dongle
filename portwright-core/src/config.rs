@@ -1,4 +1,4 @@
-//! Layered configuration (CLI-9): built-in defaults, the system, user and project `donguru.toml`, the `DONGURU_*`
+//! Layered configuration (CLI-9): built-in defaults, the system, user and project `portwright.toml`, the `PORTWRIGHT_*`
 //! environment and the command-line flags, later layers overriding earlier ones key by key.
 //!
 //! This module only knows files, text and precedence; the CLI feeds it the environment and the flags that were
@@ -8,7 +8,7 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 
 /// File name of every config file.
-pub const FILE_NAME: &str = "donguru.toml";
+pub const FILE_NAME: &str = "portwright.toml";
 
 /// One configurable key: its name, the values it accepts (empty: any text) and its built-in default.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -28,21 +28,21 @@ pub const KEYS: &[Key] = &[
         help: "Default device selector: a serial number, an index into `device list` or a USB path (`serial:S`, `index:N`, `path:P`)",
         choices: &[],
         default: None,
-        env: "DONGURU_DEVICE",
+        env: "PORTWRIGHT_DEVICE",
     },
     Key {
         name: "output",
         help: "Output format of the commands",
         choices: &["text", "json", "jsonl"],
         default: Some("text"),
-        env: "DONGURU_OUTPUT",
+        env: "PORTWRIGHT_OUTPUT",
     },
     Key {
         name: "color",
         help: "When to colourise output",
         choices: &["auto", "always", "never"],
         default: Some("auto"),
-        env: "DONGURU_COLOR",
+        env: "PORTWRIGHT_COLOR",
     },
 ];
 
@@ -100,7 +100,7 @@ impl Settings {
             .map(|(_, v)| v.as_str())
     }
 
-    /// The settings of the `DONGURU_*` variables, through `lookup` (so tests need no real environment).
+    /// The settings of the `PORTWRIGHT_*` variables, through `lookup` (so tests need no real environment).
     /// Invalid values are left out: the CLI's own parsing reports them.
     pub fn from_env(lookup: impl Fn(&str) -> Option<String>) -> Self {
         let mut settings = Self::default();
@@ -185,7 +185,7 @@ pub fn resolve(layers: &[(Layer, Settings)]) -> Vec<Entry> {
         .collect()
 }
 
-/// The config file of a file layer; the project file is the nearest one above `cwd`, or `cwd/donguru.toml`
+/// The config file of a file layer; the project file is the nearest one above `cwd`, or `cwd/portwright.toml`
 /// when there is none (where `config generate --output` would put it).
 pub fn path_of(
     layer: Layer,
@@ -194,20 +194,20 @@ pub fn path_of(
     home: Option<&Path>,
 ) -> Option<PathBuf> {
     match layer {
-        Layer::System => Some(PathBuf::from("/etc/donguru").join(FILE_NAME)),
+        Layer::System => Some(PathBuf::from("/etc/portwright").join(FILE_NAME)),
         Layer::User => {
             let base = xdg_config_home
                 .filter(|p| p.is_absolute())
                 .map(Path::to_path_buf)
                 .or_else(|| home.map(|h| h.join(".config")))?;
-            Some(base.join("donguru").join(FILE_NAME))
+            Some(base.join("portwright").join(FILE_NAME))
         }
         Layer::Project => Some(find_project(cwd).unwrap_or_else(|| cwd.join(FILE_NAME))),
         _ => None,
     }
 }
 
-/// Walks up from `start` looking for `donguru.toml`, the way git finds `.git`.
+/// Walks up from `start` looking for `portwright.toml`, the way git finds `.git`.
 pub fn find_project(start: &Path) -> Option<PathBuf> {
     start
         .ancestors()
@@ -232,11 +232,11 @@ pub fn load(path: &Path) -> Result<Option<Settings>, ConfigError> {
 /// a line is uncommented, and still shows up to date what can be set.
 pub fn generate() -> String {
     let mut out = String::from(
-        "# Donguru configuration (donguru config generate).\n\
+        "# Portwright configuration (portwright config generate).\n\
          #\n\
-         # Layers, later ones override earlier ones key by key: built-in defaults, /etc/donguru/donguru.toml,\n\
-         # ~/.config/donguru/donguru.toml, ./donguru.toml (found by walking up), DONGURU_* environment\n\
-         # variables, command-line flags. `donguru config show --origin` tells which one a value comes from.\n",
+         # Layers, later ones override earlier ones key by key: built-in defaults, /etc/portwright/portwright.toml,\n\
+         # ~/.config/portwright/portwright.toml, ./portwright.toml (found by walking up), PORTWRIGHT_* environment\n\
+         # variables, command-line flags. `portwright config show --origin` tells which one a value comes from.\n",
     );
     for key in KEYS {
         out.push_str(&format!("\n# {}\n", key.help));
@@ -316,9 +316,9 @@ mod tests {
     #[test]
     fn env_layer_skips_empty_and_invalid() {
         let env = |k: &str| match k {
-            "DONGURU_DEVICE" => Some("serial:E".to_string()),
-            "DONGURU_OUTPUT" => Some("yaml".to_string()),
-            "DONGURU_COLOR" => Some(String::new()),
+            "PORTWRIGHT_DEVICE" => Some("serial:E".to_string()),
+            "PORTWRIGHT_OUTPUT" => Some("yaml".to_string()),
+            "PORTWRIGHT_COLOR" => Some(String::new()),
             _ => None,
         };
         let e = Settings::from_env(env);
@@ -361,15 +361,15 @@ mod tests {
                 Some(Path::new("/x")),
                 Some(Path::new("/h"))
             ),
-            Some(PathBuf::from("/x/donguru/donguru.toml"))
+            Some(PathBuf::from("/x/portwright/portwright.toml"))
         );
         assert_eq!(
             path_of(Layer::User, &sub, None, Some(Path::new("/h"))),
-            Some(PathBuf::from("/h/.config/donguru/donguru.toml"))
+            Some(PathBuf::from("/h/.config/portwright/portwright.toml"))
         );
         assert_eq!(
             path_of(Layer::System, &sub, None, None),
-            Some(PathBuf::from("/etc/donguru/donguru.toml"))
+            Some(PathBuf::from("/etc/portwright/portwright.toml"))
         );
         assert!(load(&sub.join("none.toml")).unwrap().is_none());
     }

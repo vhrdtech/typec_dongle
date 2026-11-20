@@ -3,26 +3,26 @@
 #show: lab.with(
   title: [PD edge cases for your own device],
   time: "1 h",
-  needs: ([Donguru], [a device of your own with a USB-PD sink]),
+  needs: ([Portwright], [a device of your own with a USB-PD sink]),
   features: ("API-30", "CLI-25", "CLI-44"),
 )
 
 == Goal
 
 Before a certification lab sees your device, check how its PD sink handles the unusual offers real chargers make:
-Donguru acts as a PD source and plays a list of valid-but-awkward scenarios against it, recording how it answers.
+Portwright acts as a PD source and plays a list of valid-but-awkward scenarios against it, recording how it answers.
 
 == Steps
 
 #steps(cli: [
   ```sh
-  dg pd scenarios list
+  pw pd scenarios list
   #  many-pdos       seven fixed supplies, 5 to 20 V
   #  pps-only        5 V plus a PPS range, no fixed 9 V
   #  low-current     every supply limited to 0.5 A
   #  new-caps        offer changes while charging (a charger whose other port got busy)
   #  hard-reset      the source resets the contract mid-charge
-  dg pd scenarios run --all -o pd-report.html
+  pw pd scenarios run --all -o pd-report.html
   #  many-pdos ok (asked 9 V 3 A) · pps-only ok · low-current ok · new-caps FAIL: no Request within 30 ms
   ```
 ])

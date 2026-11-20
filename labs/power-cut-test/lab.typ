@@ -3,7 +3,7 @@
 #show: lab.with(
   title: [Pull the plug at the worst moment],
   time: "30 min + the run",
-  needs: ([Donguru], [a device that writes to flash: a data logger, a board with a settings store]),
+  needs: ([Portwright], [a device that writes to flash: a data logger, a board with a settings store]),
   features: ("CLI-11", "FW-32", "CLI-35", "CORE-4"),
 )
 
@@ -17,23 +17,23 @@ data is intact every time. This is how a settings store or a file system proves 
 #steps(cli: [
   ```sh
   # cut at a random point 0-200 ms after the device prints "writing", then check its boot message
-  dg uart open --baud 115200 --log run.log &
+  pw uart open --baud 115200 --log run.log &
   for i in $(seq 1000); do
-    dg uart expect "writing" --timeout 10s
-    dg power cycle --after random:0..200ms --off 50ms
-    dg uart expect "boot ok" --timeout 5s || { echo "round $i failed"; break; }
+    pw uart expect "writing" --timeout 10s
+    pw power cycle --after random:0..200ms --off 50ms
+    pw uart expect "boot ok" --timeout 5s || { echo "round $i failed"; break; }
   done
-  dg power pulse --off 300us            # a dropout shorter than a cycle: brown-out, not a cut
+  pw power pulse --off 300us            # a dropout shorter than a cycle: brown-out, not a cut
   ```
 ], python: [
   ```python
-  import donguru, random
-  dg = donguru.open()
-  with dg.uart.open(baud=115200) as con:
+  import portwright, random
+  pw = portwright.open()
+  with pw.uart.open(baud=115200) as con:
       for i in range(1000):
           con.expect(b"writing", timeout=10)
-          dg.power.cycle(after=random.uniform(0, 0.2), off=0.05)
-          con.expect(b"boot ok", timeout=5)      # raises donguru.Timeout on a bad boot
+          pw.power.cycle(after=random.uniform(0, 0.2), off=0.05)
+          con.expect(b"boot ok", timeout=5)      # raises portwright.Timeout on a bad boot
   ```
 ])
 

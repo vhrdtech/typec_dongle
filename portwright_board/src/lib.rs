@@ -1,5 +1,5 @@
-//! Board logic of the donguru firmware (B153, STM32G0B1): the parts of `fw/donguru` that need no hardware, kept
-//! apart so they are unit-tested on the host, as `donguru_dap` does for the CMSIS-DAP framing. The firmware owns the
+//! Board logic of the portwright firmware (B153, STM32G0B1): the parts of `fw/portwright` that need no hardware, kept
+//! apart so they are unit-tested on the host, as `portwright_dap` does for the CMSIS-DAP framing. The firmware owns the
 //! pins and peripherals and calls through here with what it read.
 //!
 //! - [`boot`]: the early boot: ROM bootloader request, boot-loop count, start after a jump, the hub hold on RTC_OUT1 (rev A), the

@@ -9,7 +9,7 @@ use wire_weaver::prelude::UVlq64;
 use wire_weaver_client::StreamEvent;
 use wire_weaver_client::ww_client_server::stream::StreamCursor;
 
-use crate::client::generated::donguru_api_donguru_api::donguru_api_device::DonguruApiDeviceClient;
+use crate::client::generated::portwright_api_portwright_api::portwright_api_device::PortwrightApiDeviceClient;
 use crate::levels::read;
 use crate::{Error, Result};
 
@@ -40,7 +40,7 @@ fn load_table(path: &Path) -> Result<Table> {
 
 /// The decoded table to read the log with, and a warning worth telling the user (ELF not checked, or forced).
 async fn resolve_table(
-    client: &DonguruApiDeviceClient<'_>,
+    client: &PortwrightApiDeviceClient<'_>,
     elf: Option<&Path>,
     force: bool,
 ) -> Result<(Table, Option<String>)> {
@@ -55,7 +55,7 @@ async fn resolve_table(
 /// Opens the device's current log session from its start (position 0): `None` when it hasn't logged anything
 /// since boot (no session yet).
 async fn resume_from_start(
-    client: &DonguruApiDeviceClient<'_>,
+    client: &PortwrightApiDeviceClient<'_>,
 ) -> Result<
     Option<(
         wire_weaver_client::PositionedStream<ww_log::DefmtFramesOwned>,
@@ -97,7 +97,7 @@ fn decode_item(bytes: &[u8], decoder: &mut dyn StreamDecoder, lines: &mut Vec<St
 /// One pass over the log's store from the start, decoding whatever is in it right now. Doesn't move the device's
 /// own read cursor (a fresh resume from position 0 each time), so running it again shows the same history.
 pub async fn dump(
-    client: DonguruApiDeviceClient<'_>,
+    client: PortwrightApiDeviceClient<'_>,
     elf: Option<&Path>,
     force: bool,
 ) -> Result<LogReport> {
@@ -151,7 +151,7 @@ pub async fn dump(
 /// drops or the device closes the log (`Ctrl+C` is how a CLI leaves this). `on_warning` runs once first, if the
 /// ELF couldn't be checked or doesn't match (`--force`).
 pub async fn follow(
-    client: DonguruApiDeviceClient<'_>,
+    client: PortwrightApiDeviceClient<'_>,
     elf: Option<&Path>,
     force: bool,
     mut on_line: impl FnMut(&str),

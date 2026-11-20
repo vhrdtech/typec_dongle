@@ -1,4 +1,4 @@
-//! `donguru pd` - the USB PD source on the plug (`plug.pd`, API-30): start and stop it, show where it stands, log
+//! `portwright pd` - the USB PD source on the plug (`plug.pd`, API-30): start and stop it, show where it stands, log
 //! its messages (`plug.pd.messages`) as `pd_log` JSON lines (LOG-1), decoded on screen the same way `pd-log print`
 //! does.
 
@@ -12,8 +12,8 @@ use crate::exit::ExitCode;
 use crate::output::{Output, Render};
 use crate::theme::Theme;
 use clap::Subcommand;
-use donguru_core::api::{CcPolarity, PdEventOwned, PdRecordOwned, PdSource, PdState};
-use donguru_core::client::observe::StreamEvent;
+use portwright_core::api::{CcPolarity, PdEventOwned, PdRecordOwned, PdSource, PdState};
+use portwright_core::client::observe::StreamEvent;
 use std::time::Duration;
 use ww_si::{Ampere, Second};
 
@@ -199,7 +199,7 @@ fn log_item(
     host_time_us: u64,
     decoder: &mut pd_log::Decoder,
 ) -> (LogItem, Option<pd_log::Line>) {
-    if let Some(log_record) = donguru_core::pd::log_record(host_time_us, &record) {
+    if let Some(log_record) = portwright_core::pd::log_record(host_time_us, &record) {
         let line = pd_log::Line::decode(log_record, decoder);
         return (LogItem::Message(line.clone()), Some(line));
     }
@@ -294,13 +294,13 @@ fn log(
     let mut text_out = Output::stdout(ctx);
     let selector = super::selector(ctx)?;
     super::runtime()?.block_on(async {
-        let dongle = donguru_core::Dongle::open(selector.as_ref()).await?;
+        let dongle = portwright_core::Dongle::open(selector.as_ref()).await?;
         let plug = dongle.plug();
         let mut messages = plug.pd_messages().await?;
         let source = plug.pd_source().await?;
         if restart {
             if matches!(source, PdSource::Off) {
-                anyhow::bail!("the PD source is off: `donguru pd source on` first");
+                anyhow::bail!("the PD source is off: `portwright pd source on` first");
             }
             plug.set_pd_source(PdSource::Off).await?;
             plug.set_pd_source(source.clone()).await?;
@@ -313,7 +313,7 @@ fn log(
             // `writeln!`, not `eprintln!`: a closed stderr is no reason to stop the capture
             let _ = writeln!(
                 io::stderr(),
-                "donguru: SenderResponseTimer overridden to {:.0} ms (out of spec)",
+                "portwright: SenderResponseTimer overridden to {:.0} ms (out of spec)",
                 t.to_f64() * 1000.0
             );
         }
@@ -335,7 +335,7 @@ fn log(
                 event = event => match event {
                     None => break,
                     Some(Ok(StreamEvent::Item { value, .. })) => {
-                        let (item, to_write) = log_item(value, donguru_core::pd::host_time_us(), &mut decoder);
+                        let (item, to_write) = log_item(value, portwright_core::pd::host_time_us(), &mut decoder);
                         if let (Some(file), Some(line)) = (&mut file, &to_write) {
                             pd_log::write_line(file, line)?;
                         }
@@ -347,7 +347,7 @@ fn log(
                         }
                     }
                     Some(Ok(StreamEvent::Gap { units, .. })) => {
-                        let _ = writeln!(io::stderr(), "donguru: {units} record(s) lost");
+                        let _ = writeln!(io::stderr(), "portwright: {units} record(s) lost");
                     }
                     Some(Ok(StreamEvent::Closed | StreamEvent::Disconnected)) => break,
                     Some(Ok(_)) => {}
@@ -382,7 +382,7 @@ pub fn run(ctx: &Context, command: Pd) -> anyhow::Result<ExitCode> {
                 current,
                 sender_response_ms,
             }) => {
-                plug.set_pd_source(donguru_core::pd::source(current, sender_response_ms))
+                plug.set_pd_source(portwright_core::pd::source(current, sender_response_ms))
                     .await?
             }
             Pd::Source(SourceCmd::Off) => plug.set_pd_source(PdSource::Off).await?,
@@ -399,7 +399,7 @@ pub fn run(ctx: &Context, command: Pd) -> anyhow::Result<ExitCode> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use donguru_core::mock::MockDevice;
+    use portwright_core::mock::MockDevice;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn source_on_and_off() {
@@ -407,12 +407,12 @@ mod tests {
         let dongle = mock.open().await.unwrap();
         let plug = dongle.plug();
         assert_eq!(plug.pd_state().await.unwrap(), PdState::Off);
-        plug.set_pd_source(donguru_core::pd::source(0.5, Some(100)))
+        plug.set_pd_source(portwright_core::pd::source(0.5, Some(100)))
             .await
             .unwrap();
         assert_eq!(
             plug.pd_source().await.unwrap(),
-            donguru_core::pd::source(0.5, Some(100))
+            portwright_core::pd::source(0.5, Some(100))
         );
         assert_eq!(plug.pd_state().await.unwrap(), PdState::Unattached);
         plug.set_pd_source(PdSource::Off).await.unwrap();
@@ -432,8 +432,8 @@ mod tests {
         let mut decoder = pd_log::Decoder::new();
         let (item, to_write) = log_item(
             record(PdEventOwned::Tx {
-                sop: donguru_core::api::PdSop::Sop,
-                outcome: donguru_core::api::PdTxOutcome::Sent,
+                sop: portwright_core::api::PdSop::Sop,
+                outcome: portwright_core::api::PdTxOutcome::Sent,
                 bytes: wire_weaver::prelude::MaxLen::new(vec![0x63, 0x03]).unwrap(),
             }),
             42,

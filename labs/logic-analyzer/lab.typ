@@ -3,7 +3,7 @@
 #show: lab.with(
   title: [A four-channel logic analyzer],
   time: "30 min",
-  needs: ([Donguru], [jumper wires], [PulseView (sigrok)]),
+  needs: ([Portwright], [jumper wires], [PulseView (sigrok)]),
   features: ("FW-37", "CLI-42", "API-15"),
 )
 
@@ -16,9 +16,9 @@ look at the result in PulseView, with protocol decoders.
 
 #steps(cli: [
   ```sh
-  dg la capture io7,io8,io9,io10 --rate 2M --for 50ms -o capture.sr
+  pw la capture io7,io8,io9,io10 --rate 2M --for 50ms -o capture.sr
   #  4 ch · 2 MS/s · 100 000 samples · trigger io8 falling at 12.4 ms
-  dg la capture io7,io8 --rate 1M --trigger io8:falling --pre 10%
+  pw la capture io7,io8 --rate 1M --trigger io8:falling --pre 10%
   pulseview capture.sr
   ```
 ])
@@ -31,4 +31,4 @@ less for continuous streaming.
 
 == What next
 
-- Lab "Donguru as a dev board": build features like this one yourself.
+- Lab "Portwright as a dev board": build features like this one yourself.

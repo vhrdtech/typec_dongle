@@ -1,5 +1,5 @@
 ---
-source: donguru-cli/src/commands/swd.rs
+source: portwright-cli/src/commands/swd.rs
 expression: text
 ---
 ▶ pass 1/2  4000 kHz  0x20000000..0x20024000 (144 KiB)  seed 42

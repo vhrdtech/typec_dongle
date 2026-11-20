@@ -1,5 +1,5 @@
 ---
-source: donguru-cli/src/commands/debug.rs
+source: portwright-cli/src/commands/debug.rs
 expression: "text(|o| print_pins(Format::Text, &now.ports, false, o))"
 ---
 PA0   SBU2           analog                           reads low

@@ -3,7 +3,7 @@
 #show: lab.with(
   title: [A week-long soak test],
   time: "1 h to set up, a week to run",
-  needs: ([Donguru], [your device under test], [a computer that stays on]),
+  needs: ([Portwright], [your device under test], [a computer that stays on]),
   features: ("CLI-43", "CLI-26", "FW-32", "CLI-35", "FW-29", "FW-31"),
 )
 
@@ -18,7 +18,7 @@ dropouts, reconnects), check after each that it recovers, and log everything for
   ```toml
   # soak.toml
   [check]
-  after_each = "dg uart expect 'ready' --timeout 20s"
+  after_each = "pw uart expect 'ready' --timeout 20s"
 
   [[event]]
   kind = "power-cycle"
@@ -41,9 +41,9 @@ dropouts, reconnects), check after each that it recovers, and log everything for
   weight = 5
   ```
   ```sh
-  dg soak soak.toml --for 7d --seed 42 -o soak.jsonl
-  dg soak report soak.jsonl         # events, failures with the console before each, recovery times
-  dg soak replay soak.jsonl --from 1834   # rerun the events that led to failure #3, same seed
+  pw soak soak.toml --for 7d --seed 42 -o soak.jsonl
+  pw soak report soak.jsonl         # events, failures with the console before each, recovery times
+  pw soak replay soak.jsonl --from 1834   # rerun the events that led to failure #3, same seed
   ```
 ])
 

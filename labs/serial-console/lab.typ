@@ -3,7 +3,7 @@
 #show: lab.with(
   title: [Serial console over the USB-C cable],
   time: "20 min",
-  needs: ([Donguru], [a board with UART on its USB-C SBU pins, or the SBU breakout and two wires]),
+  needs: ([Portwright], [a board with UART on its USB-C SBU pins, or the SBU breakout and two wires]),
   features: ("FW-7", "API-14", "API-20", "CLI-20", "PKG-6"),
 )
 
@@ -14,7 +14,7 @@ cable can go in either way round.
 
 == Setup
 
-Boards that follow Donguru's SBU convention have TX and RX on SBU1 and SBU2. Any other board: the SBU breakout
+Boards that follow Portwright's SBU convention have TX and RX on SBU1 and SBU2. Any other board: the SBU breakout
 (a USB-C receptacle with SBU1, SBU2, GND on pins) and two wires to its UART pins.
 
 #photo[A dev board with the SBU breakout, two wires to its UART header]
@@ -23,16 +23,16 @@ Boards that follow Donguru's SBU convention have TX and RX on SBU1 and SBU2. Any
 
 #steps(cli: [
   ```sh
-  dg uart open --baud 115200            # a terminal: type, see the console; Ctrl-] to leave
-  dg uart monitor                       # listen to both SBU lines at once, tagged A / B
-  dg uart pty                           # /dev/pts/7 for tools that want a tty
-  picocom -b 115200 /dev/ttyACM0        # or the plain CDC-ACM port, no dg needed
+  pw uart open --baud 115200            # a terminal: type, see the console; Ctrl-] to leave
+  pw uart monitor                       # listen to both SBU lines at once, tagged A / B
+  pw uart pty                           # /dev/pts/7 for tools that want a tty
+  picocom -b 115200 /dev/ttyACM0        # or the plain CDC-ACM port, no pw needed
   ```
 ], python: [
   ```python
-  import donguru
-  dg = donguru.open()
-  with dg.uart.open(baud=115200) as port:      # flip handled by Donguru
+  import portwright
+  pw = portwright.open()
+  with pw.uart.open(baud=115200) as port:      # flip handled by Portwright
       port.write(b"help\r\n")
       print(port.read_until(b"> ", timeout=2.0).decode())
   ```
@@ -40,11 +40,11 @@ Boards that follow Donguru's SBU convention have TX and RX on SBU1 and SBU2. Any
 
 == What you should see
 
-The console appears whichever way the cable is in: Donguru finds TX by the idle-high level and swaps the lines
-itself. `dg sbu status` shows `Uart (owner: WireWeaver)` while it is open.
+The console appears whichever way the cable is in: Portwright finds TX by the idle-high level and swaps the lines
+itself. `pw sbu status` shows `Uart (owner: WireWeaver)` while it is open.
 
-#tip[Only one owner at a time: while picocom has `/dev/ttyACM0`, `dg uart open` says so instead of fighting over
-  the port, but `dg uart monitor` still listens along.]
+#tip[Only one owner at a time: while picocom has `/dev/ttyACM0`, `pw uart open` says so instead of fighting over
+  the port, but `pw uart monitor` still listens along.]
 
 == What next
 

@@ -1,14 +1,14 @@
-# Working on typec_dongle (Donguru)
+# Working on typec_dongle (Portwright)
 
 Guidance for AI agents and contributors. Read this before changing code.
 
-Donguru (ドングル) is a USB Type-C dongle (board B153, STM32G0B1CE) with a USB hub, USART on SBU with automatic TX/RX
-flip, I2C / GPIO / ADC, a power switch and a power meter, plus a scriptable CLI (`donguru` / `dg`) that drives it
+Portwright is a USB Type-C dongle (board B153, STM32G0B1CE) with a USB hub, USART on SBU with automatic TX/RX
+flip, I2C / GPIO / ADC, a power switch and a power meter, plus a scriptable CLI (`portwright` / `pw`) that drives it
 over USB with WireWeaver. Hardware is at rev A bring-up; rev B goes to first testers end of 2026, and v1.0 (dongle,
 Rust driver, Python, CLI, minimal GUI) is planned for a CrowdSupply launch. Board files live in the `hw` repo,
 `hw/b153_typec_serial`. Two people work here: keep to the conventions below so both can follow each other's work.
 
-The firmware has its own [fw/donguru/AGENTS.md](fw/donguru/AGENTS.md) from the embedded_bedrock firmware template:
+The firmware has its own [fw/portwright/AGENTS.md](fw/portwright/AGENTS.md) from the embedded_bedrock firmware template:
 read it for the template layout, `bedrock_fw.json` and the template upgrade procedure. The design of record for the
 CLI and packaging is in [docs/design/](docs/design/index.md).
 
@@ -35,7 +35,7 @@ stands.
 
 - Every change a user of the dongle or the CLI would notice gets an entry under `## [Unreleased]` in the same
   commit: `### Added`, `### Changed`, `### Fixed`, `### Removed`. Short, with the feature ID in parentheses.
-- Always record: firmware API changes (with the new `donguru_api` version and whether old CLIs still work), CLI
+- Always record: firmware API changes (with the new `portwright_api` version and whether old CLIs still work), CLI
   output or exit-code changes (scripts depend on them), board revisions supported, template upgrades, and what was
   tested on which board.
 - Pure refactors and typo fixes don't need an entry.
@@ -49,22 +49,22 @@ Our internal tooling reads this file to log progress, so a missing entry means w
 ## Layout
 
 - Cargo workspace (root `Cargo.toml`, one shared version):
-  - `donguru-cli/` — the `donguru` binary (also installed as `dg`): clap command tree (`src/cli.rs`), one module
+  - `portwright-cli/` — the `portwright` binary (also installed as `pw`): clap command tree (`src/cli.rs`), one module
     per command group in `src/commands/`, exit codes (`src/exit.rs`), colour theme (`src/theme.rs`).
-  - `donguru-core/` — host library: device enumeration and selection, the typed API used by the CLI and future
+  - `portwright-core/` — host library: device enumeration and selection, the typed API used by the CLI and future
     GUI / Python bindings, `thiserror` errors.
-  - `donguru_api/` — `#![no_std]` WireWeaver API crate (`DonguruApi`), shared by firmware and host. Its name and
+  - `portwright_api/` — `#![no_std]` WireWeaver API crate (`PortwrightApi`), shared by firmware and host. Its name and
     version identify the API on the wire.
-  - `donguru_dap/` — `#![no_std]` CMSIS-DAP request framing used by the firmware (`fw/donguru/src/cmsis_dap.rs`):
+  - `portwright_dap/` — `#![no_std]` CMSIS-DAP request framing used by the firmware (`fw/portwright/src/cmsis_dap.rs`):
     firmware logic that needs no hardware, here so `just test` runs its unit tests.
-  - `donguru_board/` — `#![no_std]` board logic of the firmware, unit-tested the same way: `hub` (U301 variant
+  - `portwright_board/` — `#![no_std]` board logic of the firmware, unit-tested the same way: `hub` (U301 variant
     and config), `power` (VBUS modes and the guard).
-- `fw/donguru/` — firmware (embassy, thumbv6m), a separate Cargo project with its own `Cargo.lock` and toolchain:
+- `fw/portwright/` — firmware (embassy, thumbv6m), a separate Cargo project with its own `Cargo.lock` and toolchain:
   `src/main.rs` (clocks, tasks, fault handlers), `led.rs`, `adc.rs`, `button.rs`, `ww.rs` (API server), `init.rs`.
 - `docs/` — documentation site (Zensical), published to vhrdtech.github.io/typec_dongle. `developer-notes.md` —
   CLI implementation notes.
 
-Logic belongs in `donguru-core`, not in the CLI: commands parse arguments, call core and render the result, so the
+Logic belongs in `portwright-core`, not in the CLI: commands parse arguments, call core and render the result, so the
 GUI and Python bindings can reuse the same code.
 
 ## Commands
@@ -75,13 +75,13 @@ The `justfile` is the single entry point for tasks; CI runs the same targets.
 just                     # list recipes
 just verify              # fmt check, clippy (-D warnings), tests: what CI runs
 just fmt
-just install             # donguru, dg and completions onto PATH; works anywhere, uses a release-management tool's stack if present
+just install             # portwright, pw and completions onto PATH; works anywhere, uses a release-management tool's stack if present
 just hooks-install       # once after cloning: prek pre-commit / pre-push hooks
 just serve-docs          # docs site with live reload
 just fw-size             # firmware release build, FLASH / RAM use, biggest symbols, counters
 
-cd fw/donguru && cargo run              # flash and run with probe-rs, defmt logs over RTT
-cd fw/donguru && cargo run --release
+cd fw/portwright && cargo run              # flash and run with probe-rs, defmt logs over RTT
+cd fw/portwright && cargo run --release
 ww list / ww introspect                 # with the dongle on USB (wire_weaver_cli)
 ```
 
@@ -93,8 +93,8 @@ and hardware changes were tested on a board, or you say clearly that they weren'
 - **CLI**: follow [docs/design/cli/](docs/design/cli/index.md): `noun verb` commands, global `--device`,
   `--format text|json|jsonl`, `--color`, `-v` / `-q`. stdout carries only data, diagnostics go to stderr. Exit codes
   are a public contract (`src/exit.rs`): keep them stable and documented once shipped.
-- **Firmware API changes**: edit `DonguruApi` in `donguru_api/src/lib.rs`, implement it in `fw/donguru/src/ww.rs`,
-  bump the `donguru_api` version, and follow WireWeaver's `docs/evolution/rules.md`. Update the CLI in the same
+- **Firmware API changes**: edit `PortwrightApi` in `portwright_api/src/lib.rs`, implement it in `fw/portwright/src/ww.rs`,
+  bump the `portwright_api` version, and follow WireWeaver's `docs/evolution/rules.md`. Update the CLI in the same
   piece of work, or add a FEATURES.md item for it.
 - **Firmware**: no panics on host input; count unexpected events with `cnt!` (and `bkp_cnt!` for ones that must
   survive a reset); watch flash and RAM with `just fw-size` (512K flash, Cortex-M0+: avoid pulling in 64-bit
@@ -107,7 +107,7 @@ and hardware changes were tested on a board, or you say clearly that they weren'
 
 - Host crates: unit tests next to the code, snapshot tests with insta for CLI output once commands print real
   data. Run through `just test`.
-- Device access goes through a trait in `donguru-core` so commands can be tested with a mock transport
+- Device access goes through a trait in `portwright-core` so commands can be tested with a mock transport
   (FEATURES.md CORE-3).
 - Firmware logic that doesn't need hardware (button decoding, LED animation, conversions) can move to a module that
   also builds for the host, with unit tests. Hardware behaviour is checked on a board and recorded in the CHANGELOG

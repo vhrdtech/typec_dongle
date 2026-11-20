@@ -1,5 +1,5 @@
-//! `donguru usb` - USB data to the device under test: the plug's data switch (U701, CLI-6). Power to the DUT is
-//! `donguru power`; the header's own switched VBUS and relay are `donguru header`.
+//! `portwright usb` - USB data to the device under test: the plug's data switch (U701, CLI-6). Power to the DUT is
+//! `portwright power`; the header's own switched VBUS and relay are `portwright header`.
 
 use std::io::{self, Write};
 
@@ -8,7 +8,7 @@ use crate::exit::ExitCode;
 use crate::output::{Output, Render};
 use crate::theme::Theme;
 use clap::Subcommand;
-use donguru_core::api::DataPath;
+use portwright_core::api::DataPath;
 
 #[derive(Debug, Subcommand)]
 pub enum Usb {
@@ -85,7 +85,7 @@ pub fn run(ctx: &Context, command: Usb) -> anyhow::Result<ExitCode> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use donguru_core::mock::MockDevice;
+    use portwright_core::mock::MockDevice;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn connect_and_disconnect() {

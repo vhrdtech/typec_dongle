@@ -1,6 +1,6 @@
-# Donguru lab book
+# Portwright lab book
 
-Short labs that show what Donguru can do, from measuring a phone's charging power to hacking the firmware. Each lab
+Short labs that show what Portwright can do, from measuring a phone's charging power to hacking the firmware. Each lab
 is one Typst file; the same source becomes a page of the PDF book and a page on the website.
 
 ## Layout
@@ -23,7 +23,7 @@ vhrd package (`@local/vhrd:0.9.2`, `just install` in the `vhrd_brand` repo).
 
 ```sh
 just lab phone-charging   # one lab as PDF, rebuilt on every save: target/labs/phone-charging.pdf
-just labs-book            # the whole book: target/labs/donguru-lab-book.pdf
+just labs-book            # the whole book: target/labs/portwright-lab-book.pdf
 just build-labs           # the website part: site/labs/index.html, one page and one PDF per lab, the book
 ```
 
@@ -35,7 +35,7 @@ just build-labs           # the website part: site/labs/index.html, one page and
    What next, and a `safety[]` box wherever power or voltages are involved.
 3. `steps(cli: [...], python: [...], gui: [...])` shows the same task from each interface; leave out the ones that
    don't exist yet.
-4. Labs describe Donguru as it should be, not only as it is: a lab may use commands that don't exist yet. Every
+4. Labs describe Portwright as it should be, not only as it is: a lab may use commands that don't exist yet. Every
    feature it relies on is a FEATURES.md ID in `features:`; the header shows each one's status, read from
    FEATURES.md at build time, and a lab using anything not built gets a Preview note. A feature that has no ID yet
    gets one in FEATURES.md (💡 or 📋) in the same commit. The feature map at the end of the book lists them all,

@@ -1,6 +1,6 @@
-//! `donguru swd` - the SWD-host pins on the plug SBU lines (FW-15): cable orientation, the Hi-Z release used
+//! `portwright swd` - the SWD-host pins on the plug SBU lines (FW-15): cable orientation, the Hi-Z release used
 //! by bench power-cut tests, and a memtest-style integrity check of the link (CLI-18). CMSIS-DAP itself is not a
-//! `donguru` subcommand: probe-rs talks to it directly over USB (see the hardware checklist in
+//! `portwright` subcommand: probe-rs talks to it directly over USB (see the hardware checklist in
 //! `docs/development/index.md`).
 
 use crate::cli::Format;
@@ -9,9 +9,9 @@ use crate::exit::ExitCode;
 use crate::output::{KeyValue, Output, Render, Spinner};
 use crate::theme::Theme;
 use clap::{Args, Subcommand, ValueEnum};
-use donguru_core::swd_memtest::probe::{DONGURU_PROBE, Target};
-use donguru_core::swd_memtest::{Pattern, PatternResult, Region};
-use donguru_core::{Dongle, api};
+use portwright_core::swd_memtest::probe::{PORTWRIGHT_PROBE, Target};
+use portwright_core::swd_memtest::{Pattern, PatternResult, Region};
+use portwright_core::{Dongle, api};
 use std::io::{self, Write};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -72,11 +72,11 @@ pub enum Swd {
 #[derive(Debug, Args)]
 pub struct MemtestArgs {
     /// probe-rs target name of the chip behind the probe, e.g. STM32G0B1CETx
-    #[arg(long, env = "DONGURU_SWD_CHIP")]
+    #[arg(long, env = "PORTWRIGHT_SWD_CHIP")]
     chip: String,
 
-    /// Debug probe as VID:PID[:SERIAL]; any CMSIS-DAP probe works, Donguru by default
-    #[arg(long, env = "DONGURU_SWD_PROBE", default_value = DONGURU_PROBE)]
+    /// Debug probe as VID:PID[:SERIAL]; any CMSIS-DAP probe works, Portwright by default
+    #[arg(long, env = "PORTWRIGHT_SWD_PROBE", default_value = PORTWRIGHT_PROBE)]
     probe: String,
 
     /// SWD speeds to test in kHz, comma separated; the probe may round them
@@ -156,14 +156,14 @@ fn orientation_cmd(ctx: &Context, wanted: Option<Orientation>) -> anyhow::Result
 async fn orientation_on(
     dongle: &Dongle,
     wanted: Option<Orientation>,
-) -> donguru_core::Result<api::Orientation> {
+) -> portwright_core::Result<api::Orientation> {
     if let Some(wanted) = wanted {
         dongle.plug().set_orientation(wanted.into()).await?;
     }
     dongle.plug().orientation().await
 }
 
-async fn release_on(dongle: &Dongle) -> donguru_core::Result<api::SbuFunction> {
+async fn release_on(dongle: &Dongle) -> portwright_core::Result<api::SbuFunction> {
     dongle.sbu().release().await?;
     dongle.sbu().function().await
 }
@@ -444,8 +444,8 @@ fn parse_size(s: &str) -> Result<u64, String> {
 mod tests {
     use super::*;
     use crate::output::render;
-    use donguru_core::mock::MockDevice;
-    use donguru_core::swd_memtest::Mismatch;
+    use portwright_core::mock::MockDevice;
+    use portwright_core::swd_memtest::Mismatch;
     use std::time::Duration;
 
     fn result(pattern: Pattern, mismatches: Vec<Mismatch>) -> PatternResult {

@@ -1,6 +1,6 @@
-//! WireWeaver API of the donguru firmware (`donguru_api/` in the repo root), served by `fw/donguru/src/ww/`.
+//! WireWeaver API of the portwright firmware (`portwright_api/` in the repo root), served by `fw/portwright/src/ww/`.
 //!
-//! The crate name and version identify the API on the wire (`DONGURU_API_FULL_GID`), so bump the version with every
+//! The crate name and version identify the API on the wire (`PORTWRIGHT_API_FULL_GID`), so bump the version with every
 //! change and follow the WireWeaver evolution rules to stay compatible with deployed devices and hosts:
 //! https://github.com/vhrdtech/wire_weaver/blob/master/docs/evolution/rules.md
 //! Data types used in the API go here too, with `#[derive_shrink_wrap]`.
@@ -40,9 +40,9 @@ pub type DieTemperature = ww_si::Point<
 /// A gain correction in steps of one part per million of the nominal gain.
 pub type GainCorrection = ww_si::Fixed<ww_si::units::Ratio, ww_si::prefix::Micro, i32>;
 
-/// Donguru: USB Type-C dongle with a hub, power switch and meter, and SWD / UART / I2C / GPIO on the plug SBU lines.
+/// Portwright: USB Type-C dongle with a hub, power switch and meter, and SWD / UART / I2C / GPIO on the plug SBU lines.
 #[ww_api_root]
-pub trait DonguruApi {
+pub trait PortwrightApi {
     /// Device contract: firmware, last reset, board, ids, label, counters, log, settings (API-9, API-10, API-19).
     ww_impl!(device: Device);
     /// Device clock: local time, host sync onto UTC, the status LEDs' shared time (API-57, FW-44). No sync line.
@@ -193,7 +193,7 @@ pub struct MeterReading {
     pub vbus_in: Volt,
     /// Current from the computer to the DUT (INA181, PB0), positive towards the DUT.
     pub current: Ampere,
-    // power is `vbus_in` x `current`, computed by the host (`donguru_core::reading_power_w`); the U601 drop is not
+    // power is `vbus_in` x `current`, computed by the host (`portwright_core::reading_power_w`); the U601 drop is not
     // measured
 }
 
@@ -250,12 +250,12 @@ pub trait Plug {
     property!(rw+observe orientation: Orientation);
     /// Detected CC polarity and pull, `Unknown` until UCPD2 is used.
     property!(ro+observe cc: CcState);
-    /// USB Power Delivery on the plug CC (UCPD2): Donguru as the source towards the DUT, with every message logged
+    /// USB Power Delivery on the plug CC (UCPD2): Portwright as the source towards the DUT, with every message logged
     /// (API-30).
     ww_impl!(pd: PlugPd);
 }
 
-/// USB PD on the plug CC lines (UCPD2), Donguru as the source (API-30). The source offers one PDO, vSafe5V from the
+/// USB PD on the plug CC lines (UCPD2), Portwright as the source (API-30). The source offers one PDO, vSafe5V from the
 /// receptacle VBUS, and runs the usbpd source policy engine; `messages` carries every message both ways, raw, with
 /// the device time, for logs that are merged with the sink's side.
 #[ww_trait]

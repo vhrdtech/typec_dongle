@@ -8,15 +8,15 @@
 
 #let page-head() = {
   html.elem("link", attrs: (rel: "stylesheet", href: "labs.css"))
-  html.elem("nav", [#link("index.html")[Donguru lab book] · #link("features.html")[Features the labs use] ·
-    #link("donguru-lab-book.pdf")[PDF]])
+  html.elem("nav", [#link("index.html")[Portwright lab book] · #link("features.html")[Features the labs use] ·
+    #link("portwright-lab-book.pdf")[PDF]])
 }
 
-#document("index.html", title: "Donguru lab book")[
+#document("index.html", title: "Portwright lab book")[
   #page-head()
-  = Donguru lab book
+  = Portwright lab book
   From a phone's charging power to hacking the firmware: one cable, a script and a lab at a time.
-  Also as one #link("donguru-lab-book.pdf")[PDF].
+  Also as one #link("portwright-lab-book.pdf")[PDF].
 
   // Titles from the labs themselves (the metadata lab() records).
   #context {
@@ -32,7 +32,7 @@
   }
 ]
 
-#document("features.html", title: "Donguru lab book: features")[
+#document("features.html", title: "Portwright lab book: features")[
   #page-head()
   = Features the labs use
   Every feature the labs rely on, with its status in FEATURES.md: what is missing comes first.
@@ -40,7 +40,7 @@
 ]
 
 #for slug in parts.map(p => p.labs).flatten() {
-  document(slug + ".html", title: "Donguru lab: " + slug)[
+  document(slug + ".html", title: "Portwright lab: " + slug)[
     #page-head()
     #lab-at(parts, slug)
     #html.elem("p", attrs: (class: "pdf"), link(slug + ".pdf")[This lab as PDF])
@@ -51,4 +51,4 @@
   ]
 }
 
-#document("donguru-lab-book.pdf")[#include "book.typ"]
+#document("portwright-lab-book.pdf")[#include "book.typ"]

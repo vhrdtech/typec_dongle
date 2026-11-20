@@ -5,19 +5,19 @@ use crate::power::{self, Which};
 use wire_weaver::prelude::*;
 
 impl ServerState {
-    // donguru_api::Header at header
+    // portwright_api::Header at header
 
     pub(super) fn get_header_vbus_sw(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::VbusState, CommonError<'_>> {
+    ) -> GetResult<portwright_api::VbusState, CommonError<'_>> {
         Value(power::state(Which::Header))
     }
 
     pub(super) fn set_header_vbus_sw_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        value: donguru_api::VbusMode,
+        value: portwright_api::VbusMode,
     ) -> SetResult<CommonError<'_>> {
         match power::set_mode(Which::Header, value) {
             Ok(()) => {
@@ -32,7 +32,7 @@ impl ServerState {
     pub(super) fn get_header_vbus_sw_mode(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::VbusMode, CommonError<'_>> {
+    ) -> GetResult<portwright_api::VbusMode, CommonError<'_>> {
         Value(power::mode(Which::Header))
     }
 

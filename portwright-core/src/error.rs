@@ -1,6 +1,6 @@
 //! Typed error categories for the core library.
 //!
-//! Users like the CLI tools, mapping these variants onto stable exit codes (see `donguru-cli/src/exit.rs`),
+//! Users like the CLI tools, mapping these variants onto stable exit codes (see `portwright-cli/src/exit.rs`),
 //! so scripts can branch on the failure category.
 
 use std::any::Any;
@@ -37,7 +37,7 @@ pub enum Error {
     #[error("timed out: {0}")]
     Timeout(String),
 
-    /// The firmware speaks an API this host can't talk to (`donguru_api` major.minor differ).
+    /// The firmware speaks an API this host can't talk to (`portwright_api` major.minor differ).
     #[error("incompatible firmware: {0}")]
     Incompatible(String),
 
@@ -61,7 +61,7 @@ pub struct DeviceError {
 }
 
 impl DeviceError {
-    /// The item's own error type, e.g. `err.typed::<donguru_api::PowerError>()` for `OverVoltage { measured }`.
+    /// The item's own error type, e.g. `err.typed::<portwright_api::PowerError>()` for `OverVoltage { measured }`.
     pub fn typed<E: 'static>(&self) -> Option<&E> {
         self.typed.downcast_ref()
     }

@@ -1,5 +1,5 @@
-//! `donguru header` - header J101's own switched VBUS (Q102, PD1) and the isolated relay (U101) (CLI-16). It is
-//! not the computer's regulated 5 V: it is the same receptacle VBUS as `donguru power`, routed to the header, so
+//! `portwright header` - header J101's own switched VBUS (Q102, PD1) and the isolated relay (U101) (CLI-16). It is
+//! not the computer's regulated 5 V: it is the same receptacle VBUS as `portwright power`, routed to the header, so
 //! a PD charger above 5 V reaches it too. See `docs/user/power.md`.
 
 use std::io::{self, Write};
@@ -11,7 +11,7 @@ use crate::context::Context;
 use crate::exit::ExitCode;
 use crate::output::{Output, Render};
 use crate::theme::Theme;
-use donguru_core::api::{VbusMode, VbusState};
+use portwright_core::api::{VbusMode, VbusState};
 
 #[derive(Debug, Subcommand)]
 pub enum HeaderVbus {
@@ -101,10 +101,10 @@ fn warn_not_regulated(ctx: &Context, present_v: Option<f64>) {
     }
     match present_v {
         Some(v) => eprintln!(
-            "donguru: warning: header VBUS_SW is the computer's own VBUS, not a regulated 5 V supply (measured {v:.2} V)"
+            "portwright: warning: header VBUS_SW is the computer's own VBUS, not a regulated 5 V supply (measured {v:.2} V)"
         ),
         None => eprintln!(
-            "donguru: warning: header VBUS_SW is the computer's own VBUS, not a regulated 5 V supply"
+            "portwright: warning: header VBUS_SW is the computer's own VBUS, not a regulated 5 V supply"
         ),
     }
 }
@@ -166,8 +166,8 @@ impl Render for Relay {
 
 #[cfg(test)]
 mod tests {
-    use donguru_core::api::{VbusMode, VbusState};
-    use donguru_core::mock::MockDevice;
+    use portwright_core::api::{VbusMode, VbusState};
+    use portwright_core::mock::MockDevice;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn vbus_on_off_and_relay() {
@@ -178,7 +178,7 @@ mod tests {
         dongle
             .header()
             .set_vbus_sw_mode(VbusMode::ForceOn {
-                max_voltage: donguru_core::api::Volt::milli(5_500i32),
+                max_voltage: portwright_core::api::Volt::milli(5_500i32),
             })
             .await
             .unwrap();

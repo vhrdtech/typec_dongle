@@ -1,4 +1,4 @@
-//! Shell completion with live values (CLI-3, CLI-49): `COMPLETE=<shell> donguru -- ARGS` asks the binary itself, so
+//! Shell completion with live values (CLI-3, CLI-49): `COMPLETE=<shell> portwright -- ARGS` asks the binary itself, so
 //! device serials come from the dongles plugged in right now, not from a list frozen into a script.
 
 use std::ffi::OsStr;
@@ -23,7 +23,7 @@ pub fn complete_if_asked() {
         .complete();
 }
 
-/// The registration script of `shell` for the command called `bin` (`donguru` or `dg`): the shell calls back into
+/// The registration script of `shell` for the command called `bin` (`portwright` or `pw`): the shell calls back into
 /// the binary found on `PATH` under that name.
 pub fn registration(shell: &str, bin: &str, out: &mut dyn Write) -> anyhow::Result<()> {
     let shells = Shells::builtins();
@@ -47,7 +47,7 @@ pub fn devices() -> Vec<CompletionCandidate> {
         return vec![];
     };
     let listed = rt.block_on(async {
-        tokio::time::timeout(ENUMERATE_TIMEOUT, donguru_core::device::list()).await
+        tokio::time::timeout(ENUMERATE_TIMEOUT, portwright_core::device::list()).await
     });
     let Ok(Ok(entries)) = listed else {
         return vec![];
@@ -83,7 +83,7 @@ pub fn elf_files(current: &OsStr) -> Vec<CompletionCandidate> {
         .complete(current)
 }
 
-/// UART framings as `dg uart configure` and `dg settings set uart_plug` take them.
+/// UART framings as `pw uart configure` and `pw settings set uart_plug` take them.
 pub fn framings() -> Vec<CompletionCandidate> {
     [
         ("8N1", "8 data bits, no parity, 1 stop bit (the usual)"),
@@ -98,18 +98,18 @@ pub fn framings() -> Vec<CompletionCandidate> {
     .collect()
 }
 
-/// MCU pins for `dg debug pin`: the net names of the B153A with their port pin and what they do; the ones the
+/// MCU pins for `pw debug pin`: the net names of the B153A with their port pin and what they do; the ones the
 /// firmware always refuses say so.
 pub fn nets() -> Vec<CompletionCandidate> {
-    donguru_core::nets::B153A
+    portwright_core::nets::B153A
         .iter()
         .map(|n| {
-            let refused = donguru_core::debug::refused(n.pin)
+            let refused = portwright_core::debug::refused(n.pin)
                 .map(|r| format!(" (refused: {r})"))
                 .unwrap_or_default();
             CompletionCandidate::new(n.name).help(help(format!(
                 "{}: {}{refused}",
-                donguru_core::nets::port_pin_name(n.pin),
+                portwright_core::nets::port_pin_name(n.pin),
                 n.note
             )))
         })
@@ -151,12 +151,12 @@ mod tests {
     fn registration_calls_back_into_the_named_binary() {
         for shell in ["bash", "zsh", "fish"] {
             let mut out = Vec::new();
-            registration(shell, "dg", &mut out).unwrap();
+            registration(shell, "pw", &mut out).unwrap();
             let script = String::from_utf8(out).unwrap();
             assert!(script.contains("COMPLETE"), "{shell}: {script}");
-            assert!(script.contains("dg"), "{shell}");
+            assert!(script.contains("pw"), "{shell}");
         }
-        assert!(registration("nushell", "dg", &mut Vec::new()).is_err());
+        assert!(registration("nushell", "pw", &mut Vec::new()).is_err());
     }
 
     #[test]

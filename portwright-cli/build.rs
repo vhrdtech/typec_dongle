@@ -1,6 +1,6 @@
 //! Stamps `--version` with the git commit and the build time, without extra crates.
 //!
-//! `DONGURU_GIT` is the short SHA with `-dirty` for uncommitted changes (`unknown` without git), `DONGURU_BUILT`
+//! `PORTWRIGHT_GIT` is the short SHA with `-dirty` for uncommitted changes (`unknown` without git), `PORTWRIGHT_BUILT`
 //! the build time in UTC, e.g. `21 Oct 2026 18:20 UTC` (`SOURCE_DATE_EPOCH` when set, for reproducible builds).
 
 use std::process::Command;
@@ -74,6 +74,6 @@ fn main() {
                 .duration_since(UNIX_EPOCH)
                 .map_or(0, |d| d.as_secs() as i64)
         });
-    println!("cargo:rustc-env=DONGURU_GIT={}", describe());
-    println!("cargo:rustc-env=DONGURU_BUILT={}", built(secs));
+    println!("cargo:rustc-env=PORTWRIGHT_GIT={}", describe());
+    println!("cargo:rustc-env=PORTWRIGHT_BUILT={}", built(secs));
 }

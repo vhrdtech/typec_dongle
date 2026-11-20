@@ -19,7 +19,7 @@ pub mod usb;
 use crate::cli::Command;
 use crate::context::Context;
 use crate::exit::ExitCode;
-use donguru_core::Selector;
+use portwright_core::Selector;
 
 pub fn dispatch(ctx: &Context, command: Command) -> anyhow::Result<ExitCode> {
     match command {
@@ -44,7 +44,7 @@ pub fn dispatch(ctx: &Context, command: Command) -> anyhow::Result<ExitCode> {
 }
 
 pub(crate) fn stub(what: &str, exit_code: ExitCode) -> anyhow::Result<ExitCode> {
-    eprintln!("donguru: `{what}` is not implemented yet");
+    eprintln!("portwright: `{what}` is not implemented yet");
     Ok(exit_code)
 }
 
@@ -56,7 +56,7 @@ pub(crate) fn runtime() -> anyhow::Result<tokio::runtime::Runtime> {
         .build()?)
 }
 
-/// `--device` / `DONGURU_DEVICE`, parsed.
+/// `--device` / `PORTWRIGHT_DEVICE`, parsed.
 pub(crate) fn selector(ctx: &Context) -> anyhow::Result<Option<Selector>> {
     Ok(ctx
         .device
@@ -69,11 +69,11 @@ pub(crate) fn selector(ctx: &Context) -> anyhow::Result<Option<Selector>> {
 /// `power` / `usb` / `header` command needs.
 pub(crate) fn with_dongle<T>(
     ctx: &Context,
-    f: impl AsyncFnOnce(&donguru_core::Dongle) -> donguru_core::Result<T>,
+    f: impl AsyncFnOnce(&portwright_core::Dongle) -> portwright_core::Result<T>,
 ) -> anyhow::Result<T> {
     let selector = selector(ctx)?;
-    let result: donguru_core::Result<T> = runtime()?.block_on(async {
-        let dongle = donguru_core::Dongle::open(selector.as_ref()).await?;
+    let result: portwright_core::Result<T> = runtime()?.block_on(async {
+        let dongle = portwright_core::Dongle::open(selector.as_ref()).await?;
         let result = f(&dongle).await;
         dongle.close().await?;
         result
@@ -82,7 +82,7 @@ pub(crate) fn with_dongle<T>(
 }
 
 /// `Ok(None)` for an item the firmware doesn't implement yet, instead of failing the whole command.
-pub(crate) fn optional<T>(r: donguru_core::Result<T>) -> donguru_core::Result<Option<T>> {
+pub(crate) fn optional<T>(r: portwright_core::Result<T>) -> portwright_core::Result<Option<T>> {
     match r {
         Ok(v) => Ok(Some(v)),
         Err(e) if e.is_unimplemented() => Ok(None),

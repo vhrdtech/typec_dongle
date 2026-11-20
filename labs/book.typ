@@ -6,7 +6,7 @@
 
 #page(header: none, footer: none, margin: 2.5cm)[
   #v(1fr)
-  #text(36pt, weight: "bold", fill: brand.red)[Donguru]
+  #text(36pt, weight: "bold", fill: brand.red)[Portwright]
   #v(-0.6em)
   #text(22pt, weight: "bold")[Lab book]
   #v(0.4em)

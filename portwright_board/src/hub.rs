@@ -1,9 +1,9 @@
-//! USB hub (U301) per-variant configuration for the donguru firmware (`fw/donguru/src/hub.rs`, FW-6).
+//! USB hub (U301) per-variant configuration for the portwright firmware (`fw/portwright/src/hub.rs`, FW-6).
 //!
 //! Two board variants share this hub bring-up: Main (2-port USB2512B) and Plus (4-port USB2514B,
 //! not decided/built yet). Which one is fitted was first going to be read from the hub's own power-on-default
 //! PID register (HUB-5), but on the one board tested that register reads back as zero regardless of delay (see
-//! `fw/donguru/src/hub.rs`'s `Hub::read_power_on_defaults` doc) — in this hub's SMBus-slave strap, the register
+//! `fw/portwright/src/hub.rs`'s `Hub::read_power_on_defaults` doc) — in this hub's SMBus-slave strap, the register
 //! holds whatever was last written over SMBus, not a factory default. The board-variant signal that does exist
 //! is a strap on PA10 (SBU_TO_USB, U901's S): R902, a 10K pull-down, is fitted only on Plus (hw_b153a.md §9),
 //! so the net reads low there and high (the MCU's own pull-up) on Main. [`board_variant_from_strap`] is that
@@ -19,10 +19,10 @@
 //! reconfigures it otherwise.
 //!
 //! No embassy and no GPIO/I2C in here — just the mapping and the `usb251xb` crate's pure config builder — so
-//! this is unit-tested on the host (`fw/donguru/src/hub.rs` only reads the strap and calls through here), the
-//! same way `donguru_dap` keeps the CMSIS-DAP framing apart from the firmware's USB plumbing.
+//! this is unit-tested on the host (`fw/portwright/src/hub.rs` only reads the strap and calls through here), the
+//! same way `portwright_dap` keeps the CMSIS-DAP framing apart from the firmware's USB plumbing.
 
-use donguru_api::BoardVariant;
+use portwright_api::BoardVariant;
 use usb251xb::register::{ConfigByte3, REG_STATUS_COMMAND, StatusCommand};
 use usb251xb::{Config, CurrentSensing, Milliamps, Port, PowerSwitching, Variant};
 
@@ -151,10 +151,10 @@ pub fn check<E>(config: &Config, mut read: impl FnMut(u8, &mut [u8]) -> Result<(
     }
 }
 
-/// What `watchdog_task` (`fw/donguru/src/hub.rs`) should do about a recovery request (FW-18), decided from one
+/// What `watchdog_task` (`fw/portwright/src/hub.rs`) should do about a recovery request (FW-18), decided from one
 /// [`check`] read and how many retries are left for a [`Check::NoAnswer`] answer, rather than assuming every
 /// loss of the MCU's own configured state means the hub itself got reset (FW-68): `UsbControl::reset`
-/// (`fw/donguru/src/ww/mod.rs`) asks for recovery on any bus reset after the first configuration, which also
+/// (`fw/portwright/src/ww/mod.rs`) asks for recovery on any bus reset after the first configuration, which also
 /// fires when the host resets only the composite device (a bedrock-usb-ch9 bus-reset test, `usbreset`, a
 /// driver's error recovery) — the hub and every other downstream port are untouched then, so recovering would
 /// drop a DUT on another port for nothing.

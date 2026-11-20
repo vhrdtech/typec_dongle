@@ -22,7 +22,7 @@
 //!    I2C probe backstops it for a brown-out that, for some reason, does not bounce the MCU's own port.
 //!
 //! An MCU reset leaves the hub alone where the reset line lets it (FW-46): RTC_OUT1 holds it on rev A, a pull-up on
-//! rev B. [`bring_up`] then reads the hub's config back ([`donguru_board::hub::check`]) and keeps the hub when it
+//! rev B. [`bring_up`] then reads the hub's config back ([`portwright_board::hub::check`]) and keeps the hub when it
 //! holds what this firmware writes and is attached, so a DUT on a downstream port keeps its USB link through a
 //! firmware update, a crash or a reboot; only the MCU's own device on port 1 re-enumerates. Anything else (another
 //! firmware's config, a hub that lost its config) gets the reset pulse and the config as after a power cycle.
@@ -32,10 +32,6 @@ use core::sync::atomic::{AtomicU8, Ordering};
 use crate::HubResources;
 use cnt::cnt;
 use defmt::{debug, info, warn};
-use donguru_api::BoardVariant;
-use donguru_board::hub::{
-    Check, RecoveryStep, board_variant_from_strap, check, hub_config, recovery_step,
-};
 use embassy_futures::select::{Either3, select3};
 use embassy_stm32::Peri;
 use embassy_stm32::gpio::{Flex, Level, Output, Pull, Speed};
@@ -46,6 +42,10 @@ use embassy_stm32::peripherals::{PA10, PC13};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::signal::Signal;
 use embassy_time::{Duration, Instant, Timer};
+use portwright_api::BoardVariant;
+use portwright_board::hub::{
+    Check, RecoveryStep, board_variant_from_strap, check, hub_config, recovery_step,
+};
 use usb251xb::Usb251xb;
 use usb251xb::register::{DEVICE_ADDR, REG_CONFIG_BYTE_1, REG_VENDOR_ID_LSB};
 
@@ -133,7 +133,7 @@ pub fn request_recovery() {
 /// Rev A (feature `rev_a`): R304 pulls it low, so every MCU reset would hold the hub in reset, and the ROM
 /// bootloader (FW-12) would sit on a dead USB path. It is driven from RTC_OUT1 instead of the GPIO: RTC_CR (in the
 /// backup domain) keeps the level through a system reset, the hub stays attached through the reset into the ROM and
-/// the reset after the ROM's leave (`donguru_board::boot::rtc_cr_hub`, values tested on B153A 21 Oct 2026). A power
+/// the reset after the ROM's leave (`portwright_board::boot::rtc_cr_hub`, values tested on B153A 21 Oct 2026). A power
 /// cycle resets the backup domain: PC13 back to the pull-down, as before. Rev B: a pull-up instead of R304
 /// (change_b153b.md), which holds the hub running through a reset; the GPIO drives it.
 struct ResetPin {
@@ -150,7 +150,7 @@ impl ResetPin {
             // RTC_OUT1 overrides the GPIO while RTC_CR.OSEL selects it: the pin stays in its reset state
             let _ = pc13;
             let mut pin = ResetPin {};
-            let running = warm && donguru_board::boot::rtc_runs_hub(pac::RTC.cr().read().0);
+            let running = warm && portwright_board::boot::rtc_runs_hub(pac::RTC.cr().read().0);
             if !running {
                 pin.set(false);
             }
@@ -174,7 +174,7 @@ impl ResetPin {
             rtc.wpr().write_value(pac::rtc::regs::Wpr(0xCA));
             rtc.wpr().write_value(pac::rtc::regs::Wpr(0x53));
             rtc.cr()
-                .modify(|w| w.0 = donguru_board::boot::rtc_cr_hub(w.0, run));
+                .modify(|w| w.0 = portwright_board::boot::rtc_cr_hub(w.0, run));
             // any wrong key locks again
             rtc.wpr().write_value(pac::rtc::regs::Wpr(0xFF));
         }

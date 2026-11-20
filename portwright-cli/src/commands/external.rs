@@ -1,11 +1,11 @@
 //! External subcommand dispatch (Git/Cargo-style plugins, CLI-4).
 //!
 //! When the first argument is not a built-in subcommand e.g. `foo`, search `PATH`
-//! for an executable named `donguru-foo` and run it, forwarding the remaining
+//! for an executable named `portwright-foo` and run it, forwarding the remaining
 //! arguments verbatim. The resolved context reaches the plugin through the
-//! environment: `DONGURU_DEVICE` (the selector, when one is set anywhere in the
-//! config layering) and `DONGURU_OUTPUT` (`text`, `json` or `jsonl`), the same
-//! variables the CLI itself reads, so a plugin that calls `donguru` again inherits them.
+//! environment: `PORTWRIGHT_DEVICE` (the selector, when one is set anywhere in the
+//! config layering) and `PORTWRIGHT_OUTPUT` (`text`, `json` or `jsonl`), the same
+//! variables the CLI itself reads, so a plugin that calls `portwright` again inherits them.
 
 use std::collections::BTreeMap;
 use std::ffi::{OsStr, OsString};
@@ -15,7 +15,7 @@ use crate::context::Context;
 use crate::exit::ExitCode;
 use clap::ValueEnum;
 
-const PREFIX: &str = "donguru-";
+const PREFIX: &str = "portwright-";
 
 fn is_executable(path: &Path) -> bool {
     #[cfg(unix)]
@@ -30,7 +30,7 @@ fn is_executable(path: &Path) -> bool {
     }
 }
 
-/// Every `donguru-NAME` executable in the directories of `path_var`; the first directory wins for a repeated name.
+/// Every `portwright-NAME` executable in the directories of `path_var`; the first directory wins for a repeated name.
 pub fn list_plugins(path_var: &OsStr) -> BTreeMap<String, PathBuf> {
     let mut found = BTreeMap::new();
     for dir in std::env::split_paths(path_var) {
@@ -83,13 +83,13 @@ fn builtin_names() -> Vec<String> {
         .collect()
 }
 
-/// The "External commands" block of `donguru help`; empty without plugins.
+/// The "External commands" block of `portwright help`; empty without plugins.
 pub fn help_section(path_var: &OsStr) -> String {
     let plugins = list_plugins(path_var);
     if plugins.is_empty() {
         return String::new();
     }
-    let mut out = String::from("External commands (donguru-NAME on PATH):\n");
+    let mut out = String::from("External commands (portwright-NAME on PATH):\n");
     for (name, path) in plugins {
         out.push_str(&format!("  {name:12} {}\n", path.display()));
     }
@@ -109,7 +109,7 @@ fn not_found(name: &str, path_var: &OsStr) -> String {
     if !near.is_empty() {
         msg.push_str(&format!("\n\nDid you mean: {}?", near.join(", ")));
     }
-    msg.push_str("\nSee `donguru help` for the commands.");
+    msg.push_str("\nSee `portwright help` for the commands.");
     msg
 }
 
@@ -120,8 +120,8 @@ pub fn plugin_env(ctx: &Context) -> [(&'static str, Option<String>); 2] {
         .to_possible_value()
         .map(|v| v.get_name().to_string());
     [
-        ("DONGURU_DEVICE", ctx.device.clone()),
-        ("DONGURU_OUTPUT", output),
+        ("PORTWRIGHT_DEVICE", ctx.device.clone()),
+        ("PORTWRIGHT_OUTPUT", output),
     ]
 }
 
@@ -132,7 +132,7 @@ pub fn run(ctx: &Context, args: Vec<OsString>) -> anyhow::Result<ExitCode> {
     let name = name.to_string_lossy();
     let path_var = std::env::var_os("PATH").unwrap_or_default();
     let Some(plugin) = list_plugins(&path_var).remove(name.as_ref()) else {
-        eprintln!("donguru: error: {}", not_found(&name, &path_var));
+        eprintln!("portwright: error: {}", not_found(&name, &path_var));
         return Ok(ExitCode::BadArgs);
     };
 
@@ -178,15 +178,15 @@ mod tests {
     fn finds_executables_first_directory_wins() {
         let a = tempfile::tempdir().unwrap();
         let b = tempfile::tempdir().unwrap();
-        plugin(a.path(), "donguru-flash", 0o755);
-        plugin(b.path(), "donguru-flash", 0o755);
-        plugin(b.path(), "donguru-bench", 0o755);
-        plugin(b.path(), "donguru-notexec", 0o644);
+        plugin(a.path(), "portwright-flash", 0o755);
+        plugin(b.path(), "portwright-flash", 0o755);
+        plugin(b.path(), "portwright-bench", 0o755);
+        plugin(b.path(), "portwright-notexec", 0o644);
         plugin(b.path(), "other-tool", 0o755);
         let path = std::env::join_paths([a.path(), b.path()]).unwrap();
         let found = list_plugins(&path);
         assert_eq!(found.keys().collect::<Vec<_>>(), ["bench", "flash"]);
-        assert_eq!(found["flash"], a.path().join("donguru-flash"));
+        assert_eq!(found["flash"], a.path().join("portwright-flash"));
         let help = help_section(&path);
         assert!(
             help.starts_with("External commands") && help.contains("bench"),
@@ -216,7 +216,7 @@ mod tests {
             config: Vec::new(),
         };
         let env = plugin_env(&ctx);
-        assert_eq!(env[0], ("DONGURU_DEVICE", Some("serial:X".to_string())));
-        assert_eq!(env[1], ("DONGURU_OUTPUT", Some("jsonl".to_string())));
+        assert_eq!(env[0], ("PORTWRIGHT_DEVICE", Some("serial:X".to_string())));
+        assert_eq!(env[1], ("PORTWRIGHT_OUTPUT", Some("jsonl".to_string())));
     }
 }

@@ -1,4 +1,4 @@
-//! `donguru gpio` - read and drive general-purpose I/O pins.
+//! `portwright gpio` - read and drive general-purpose I/O pins.
 
 use std::time::Duration;
 
@@ -86,7 +86,7 @@ pub enum Gpio {
 
     /// Control the level of an output pin
     ///
-    /// The pin must be configured as an output first, see `donguru gpio configure`.
+    /// The pin must be configured as an output first, see `portwright gpio configure`.
     #[command(alias = "set")]
     Write {
         #[command(flatten)]
@@ -129,7 +129,7 @@ pub enum Gpio {
             short,
             long,
             value_name = "DURATION",
-            env = "DONGURU_GPIO_INTERVAL",
+            env = "PORTWRIGHT_GPIO_INTERVAL",
             default_value = DEFAULT_WATCH_INTERVAL,
             value_parser = parse_interval,
         )]

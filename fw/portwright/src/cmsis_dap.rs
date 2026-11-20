@@ -2,7 +2,7 @@
 //! (FW-15). The DAP packet is 512 bytes (`dap_rs`'s `usb-hs` feature, which only changes the size it reports in
 //! `DAP_Info`) over Full-Speed 64-byte bulk endpoints (FW-19): a request is put together from several OUT packets
 //! and a response split over several IN packets. Where a request ends, what happens to a truncated one and when
-//! a response gets a zero-length packet is decided in the `donguru_dap` crate (repo root), which has the reasoning
+//! a response gets a zero-length packet is decided in the `portwright_dap` crate (repo root), which has the reasoning
 //! and the unit tests; this file only moves the packets.
 //!
 //! [FUNCTION] is the second function of the composite USB device (`src/ww/mod.rs`, bedrock_usb); its endpoints
@@ -13,9 +13,9 @@ use bedrock_usb::desc::{Endpoint, Function, Interface, Item, MsOsFeature, RegVal
 use bedrock_usb::v4::{BulkIn, BulkOut, EndpointError, Mmio};
 use cnt::cnt;
 use dap_rs::dap::{Command, DapVersion};
-use donguru_dap::{Assembler, DAP_PACKET_SIZE, Dropped, Event, response_needs_zlp};
 use embassy_futures::select::{Either, Either3, select, select3};
 use embassy_time::{Duration, Timer, with_timeout};
+use portwright_dap::{Assembler, DAP_PACKET_SIZE, Dropped, Event, response_needs_zlp};
 
 use crate::swd::{self, SwdHost};
 use crate::ww::{EP_CMSIS_DAP, UsbDriver};
@@ -109,7 +109,7 @@ impl CmsisDap {
 }
 
 /// Waits for the assembler's timeout, or forever between requests.
-async fn expire(after: Option<donguru_dap::Timeout>) {
+async fn expire(after: Option<portwright_dap::Timeout>) {
     match after {
         Some(timeout) => Timer::after(Duration::from_millis(timeout.millis() as u64)).await,
         None => core::future::pending().await,

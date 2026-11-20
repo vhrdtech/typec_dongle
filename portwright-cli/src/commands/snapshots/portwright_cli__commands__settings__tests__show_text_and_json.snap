@@ -1,5 +1,5 @@
 ---
-source: donguru-cli/src/commands/settings.rs
+source: portwright-cli/src/commands/settings.rs
 expression: "String::from_utf8(text).unwrap()"
 ---
 plug_vbus_at_boot   off

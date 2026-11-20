@@ -4,19 +4,19 @@ use super::ServerState;
 use wire_weaver::prelude::*;
 
 impl ServerState {
-    // donguru_api::Inputs at inputs
+    // portwright_api::Inputs at inputs
 
     pub(super) fn get_inputs_button(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::ButtonState, CommonError<'_>> {
+    ) -> GetResult<portwright_api::ButtonState, CommonError<'_>> {
         Unimplemented.into()
     }
 
     pub(super) fn get_inputs_switch(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::SwitchPosition, CommonError<'_>> {
+    ) -> GetResult<portwright_api::SwitchPosition, CommonError<'_>> {
         Unimplemented.into()
     }
 
@@ -33,7 +33,7 @@ impl ServerState {
     pub(super) fn set_inputs_button_action(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-        _value: donguru_api::ButtonAction,
+        _value: portwright_api::ButtonAction,
     ) -> SetResult<wire_weaver::CommonError<'_>> {
         Unimplemented.into()
     }
@@ -41,7 +41,7 @@ impl ServerState {
     pub(super) fn get_inputs_button_action(
         &mut self,
         _cx: &mut Context<'_, impl EventOut>,
-    ) -> GetResult<donguru_api::ButtonAction, wire_weaver::CommonError<'_>> {
+    ) -> GetResult<portwright_api::ButtonAction, wire_weaver::CommonError<'_>> {
         Unimplemented.into()
     }
 }

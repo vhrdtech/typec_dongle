@@ -3,8 +3,8 @@ requires = ["maturin>=1.9,<2"]
 build-backend = "maturin"
 
 [project]
-name = "donguru"
-description = "Drive a Donguru USB Type-C dongle from Python: power, meter, USB data, header, UART, settings"
+name = "portwright"
+description = "Drive a Portwright USB Type-C dongle from Python: power, meter, USB data, header, UART, settings"
 readme = "README.md"
 requires-python = ">=3.10"
 dynamic = ["version"]
@@ -23,7 +23,7 @@ dev = ["pytest>=8"]
 
 [tool.maturin]
 python-source = "python"
-module-name = "donguru._donguru"
+module-name = "portwright._portwright"
 features = ["pyo3/extension-module", "mock"]
 
 [tool.pytest.ini_options]
@@ -36,6 +36,6 @@ cache-keys = [
     { file = "Cargo.toml" },
     { file = "src/**/*.rs" },
     { file = "../Cargo.lock" },
-    { file = "../donguru-core/src/**/*.rs" },
-    { file = "../donguru_api/src/**/*.rs" },
+    { file = "../portwright-core/src/**/*.rs" },
+    { file = "../portwright_api/src/**/*.rs" },
 ]

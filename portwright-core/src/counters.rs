@@ -7,7 +7,7 @@ use cnt_core::{Counters, Source, Storage};
 use serde::Serialize;
 use ww_counters::CounterBuffer;
 
-use crate::client::generated::donguru_api_donguru_api::donguru_api_device::DonguruApiDeviceClient;
+use crate::client::generated::portwright_api_portwright_api::portwright_api_device::PortwrightApiDeviceClient;
 use crate::levels::{call_plain, read};
 use crate::{Error, Result};
 
@@ -37,7 +37,7 @@ pub struct CountersReport {
 
 /// All the words of `buffer`, read a page at a time.
 async fn read_buffer(
-    client: &DonguruApiDeviceClient<'_>,
+    client: &PortwrightApiDeviceClient<'_>,
     buffer: CounterBuffer,
     used_words: u16,
 ) -> Result<Vec<u32>> {
@@ -90,7 +90,7 @@ impl Source for Preloaded {
 
 /// Reads and decodes every counter the device has (CLI-19 `device counters`).
 pub async fn report(
-    client: DonguruApiDeviceClient<'_>,
+    client: PortwrightApiDeviceClient<'_>,
     elf: Option<&Path>,
     force: bool,
 ) -> Result<CountersReport> {

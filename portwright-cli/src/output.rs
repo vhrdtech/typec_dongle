@@ -158,7 +158,7 @@ impl Drop for Spinner {
     }
 }
 
-/// How `main` reports a failed command on stderr (CLI-52): under `--format text` one line, `donguru: error: ...`;
+/// How `main` reports a failed command on stderr (CLI-52): under `--format text` one line, `portwright: error: ...`;
 /// under `json` / `jsonl` one json object, so a script that asked for json gets json either way. stdout stays
 /// data only: a `jsonl` stream that fails halfway has only records on stdout.
 pub fn report_error(
@@ -168,7 +168,7 @@ pub fn report_error(
     out: &mut impl Write,
 ) -> io::Result<()> {
     match format {
-        Format::Text => writeln!(out, "donguru: error: {}", crate::exit::message(err)),
+        Format::Text => writeln!(out, "portwright: error: {}", crate::exit::message(err)),
         Format::Json | Format::Jsonl => writeln!(out, "{}", error_json(err, exit)),
     }
 }
@@ -182,8 +182,8 @@ pub fn error_json(err: &anyhow::Error, exit: ExitCode) -> serde_json::Value {
         "message": crate::exit::message(err),
     });
     if let Some(kind) = err
-        .downcast_ref::<donguru_core::Error>()
-        .and_then(donguru_core::Error::kind_name)
+        .downcast_ref::<portwright_core::Error>()
+        .and_then(portwright_core::Error::kind_name)
     {
         e["kind"] = serde_json::json!(kind);
     }
@@ -254,12 +254,12 @@ mod tests {
 
     #[test]
     fn errors_follow_the_format() {
-        let err = anyhow::Error::new(donguru_core::Error::NoDevice("none connected".into()));
+        let err = anyhow::Error::new(portwright_core::Error::NoDevice("none connected".into()));
         let mut text = Vec::new();
         report_error(Format::Text, &err, ExitCode::NoDevice, &mut text).unwrap();
         assert_eq!(
             String::from_utf8(text).unwrap(),
-            "donguru: error: no matching device: none connected\n"
+            "portwright: error: no matching device: none connected\n"
         );
 
         let mut json = Vec::new();
@@ -277,7 +277,7 @@ mod tests {
 
     #[test]
     fn device_errors_carry_their_kind() {
-        let err = anyhow::Error::new(donguru_core::Error::Unimplemented {
+        let err = anyhow::Error::new(portwright_core::Error::Unimplemented {
             item: "Meter::reading".into(),
         })
         .context("power meter");

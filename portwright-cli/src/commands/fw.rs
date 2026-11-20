@@ -1,4 +1,4 @@
-//! `donguru fw` - firmware version and update over USB, no debug probe (CLI-10, FW-12).
+//! `portwright fw` - firmware version and update over USB, no debug probe (CLI-10, FW-12).
 
 use std::io::{self, IsTerminal, Read, Write};
 use std::path::PathBuf;
@@ -6,8 +6,8 @@ use std::time::Duration;
 
 use clap::{Args, Subcommand};
 use clap_complete::engine::ArgValueCompleter;
-use donguru_core::update::{FirmwareImage, FirmwareVersion, UpdateReport, UpdateStep};
 use indicatif::{ProgressBar, ProgressStyle};
+use portwright_core::update::{FirmwareImage, FirmwareVersion, UpdateReport, UpdateStep};
 
 use crate::completion;
 use crate::context::Context;
@@ -16,7 +16,7 @@ use crate::output::{Output, Render};
 use crate::theme::{self, Theme};
 
 /// Where `cargo build --release` in a checkout of this repository puts the firmware.
-const DEFAULT_ELF: &str = "fw/donguru/target/thumbv6m-none-eabi/release/donguru";
+const DEFAULT_ELF: &str = "fw/portwright/target/thumbv6m-none-eabi/release/portwright";
 
 #[derive(Debug, Subcommand)]
 pub enum Fw {
@@ -32,7 +32,7 @@ pub enum Fw {
 
 #[derive(Debug, Args)]
 pub struct Update {
-    /// Firmware ELF, `-` for stdin [default: fw/donguru/target/thumbv6m-none-eabi/release/donguru]
+    /// Firmware ELF, `-` for stdin [default: fw/portwright/target/thumbv6m-none-eabi/release/portwright]
     #[arg(value_name = "ELF", add = ArgValueCompleter::new(completion::elf_files))]
     elf: Option<PathBuf>,
 }
@@ -66,7 +66,7 @@ impl Render for Version<'_> {
     fn text(&self, out: &mut dyn Write, th: &Theme) -> io::Result<()> {
         writeln!(out, "{}", th.value(self.fw))?;
         if let Some(api) = self.api {
-            writeln!(out, "{} {}", th.key("donguru_api"), th.value(api))?;
+            writeln!(out, "{} {}", th.key("portwright_api"), th.value(api))?;
         }
         Ok(())
     }
@@ -83,7 +83,7 @@ fn update(ctx: &Context, args: Update) -> anyhow::Result<ExitCode> {
     let selector = super::selector(ctx)?;
     let bar = Bar::new(ctx);
     let report = super::runtime()?.block_on(async {
-        let dongle = donguru_core::Dongle::open(selector.as_ref()).await?;
+        let dongle = portwright_core::Dongle::open(selector.as_ref()).await?;
         dongle
             .update_firmware(&image, |step, done, total| bar.step(step, done, total))
             .await
@@ -106,7 +106,7 @@ fn read_image(elf: Option<PathBuf>) -> anyhow::Result<FirmwareImage> {
             let p = PathBuf::from(DEFAULT_ELF);
             anyhow::ensure!(
                 p.is_file(),
-                "no firmware ELF given and {DEFAULT_ELF} does not exist here: `donguru fw update FILE.elf`"
+                "no firmware ELF given and {DEFAULT_ELF} does not exist here: `portwright fw update FILE.elf`"
             );
             Ok(FirmwareImage::from_elf_file(&p)?)
         }
@@ -194,7 +194,7 @@ mod tests {
 
     fn fw() -> FirmwareVersion {
         FirmwareVersion {
-            name: "donguru".into(),
+            name: "portwright".into(),
             version: "0.20.18".into(),
             git: Some("841ef1f".into()),
             dirty: true,
@@ -211,7 +211,7 @@ mod tests {
         };
         assert_eq!(
             render(Format::Text, &v),
-            "donguru 0.20.18 (841ef1f-dirty, release)\ndonguru_api 0.5.1\n"
+            "portwright 0.20.18 (841ef1f-dirty, release)\nportwright_api 0.5.1\n"
         );
         let v: serde_json::Value = serde_json::from_str(&render(Format::Json, &v)).unwrap();
         assert_eq!(v["version"], "0.20.18");
@@ -234,7 +234,7 @@ mod tests {
         };
         assert_eq!(
             render(Format::Text, &Report(&r)),
-            "204B319B5431: donguru 0.20.18 (841ef1f-dirty, release) -> donguru 0.20.19 (841ef1f, release)\n415000 bytes in 43.2 s\n"
+            "204B319B5431: portwright 0.20.18 (841ef1f-dirty, release) -> portwright 0.20.19 (841ef1f, release)\n415000 bytes in 43.2 s\n"
         );
         let v: serde_json::Value =
             serde_json::from_str(&render(Format::Json, &Report(&r))).unwrap();

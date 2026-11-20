@@ -1,5 +1,5 @@
 ---
-source: donguru-cli/src/commands/debug.rs
+source: portwright-cli/src/commands/debug.rs
 expression: "text(|o| print_ucpd(Format::Text, &ucpd, o))"
 ---
 ucpd1  role off    cc1 off      cc2 off      CR 0x00000000 SR 0x00000000

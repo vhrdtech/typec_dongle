@@ -1,13 +1,13 @@
-//! VBUS switch modes and the firmware-side guard of the donguru firmware (`fw/donguru/src/power.rs`, API-11).
+//! VBUS switch modes and the firmware-side guard of the portwright firmware (`fw/portwright/src/power.rs`, API-11).
 //!
 //! A [`Switch`] is one VBUS switch (plug U601, header Q102): the [`VbusMode`] a host set, the [`VbusState`] the
 //! firmware reports, and the guard that cuts it when the receptacle VBUS, the current or the power goes over the
 //! mode's limits, or when the switch reports a fault (U601 FLTB). The firmware drives the enable pin from
 //! [`Switch::enabled`] after every call and feeds it one [`Sample`] per ADC update.
 //!
-//! No embassy and no GPIO in here, so the rules are unit-tested on the host, as [`crate::hub`] and `donguru_dap` do.
+//! No embassy and no GPIO in here, so the rules are unit-tested on the host, as [`crate::hub`] and `portwright_dap` do.
 
-use donguru_api::{GuardTrip, VbusMode, VbusState};
+use portwright_api::{GuardTrip, VbusMode, VbusState};
 use ww_si::ww_numeric::NumericValue;
 use ww_si::{Prefix, Second, Volt};
 

@@ -485,98 +485,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "donguru"
-version = "0.1.1"
-dependencies = [
- "assign-resources",
- "bedrock_crash",
- "bedrock_led",
- "bedrock_sync",
- "bedrock_usb",
- "cnt",
- "cortex-m",
- "cortex-m-rt",
- "critical-section",
- "dap-rs",
- "defmt 1.2.0",
- "defmt-rtt",
- "donguru_api",
- "donguru_board",
- "donguru_dap",
- "embassy-executor",
- "embassy-futures",
- "embassy-stm32",
- "embassy-sync",
- "embassy-time",
- "panic-probe",
- "portable-atomic",
- "rtt-target",
- "static_cell",
- "usb251xb",
- "usbpd",
- "usbpd-traits",
- "wire_weaver",
- "ww_adc",
- "ww_board_info",
- "ww_client_server",
- "ww_counters",
- "ww_date_time",
- "ww_defmt_logger",
- "ww_device",
- "ww_dfu",
- "ww_ecc_flash",
- "ww_firmware_info",
- "ww_gpio",
- "ww_i2c",
- "ww_indication",
- "ww_log",
- "ww_lz4",
- "ww_settings",
- "ww_si",
- "ww_stream",
- "ww_timebase",
- "ww_uart",
- "ww_uid",
- "ww_user_info",
-]
-
-[[package]]
-name = "donguru_api"
-version = "0.8.0"
-dependencies = [
- "ww_adc",
- "ww_api",
- "ww_board_info",
- "ww_counters",
- "ww_dfu",
- "ww_firmware_info",
- "ww_gpio",
- "ww_i2c",
- "ww_indication",
- "ww_log",
- "ww_si",
- "ww_timebase",
- "ww_uart",
- "ww_uid",
- "ww_user_info",
-]
-
-[[package]]
-name = "donguru_board"
-version = "0.20.51"
-dependencies = [
- "defmt 1.2.0",
- "donguru_api",
- "shrink_wrap",
- "usb251xb",
- "ww_si",
-]
-
-[[package]]
-name = "donguru_dap"
-version = "0.20.51"
-
-[[package]]
 name = "dsp-fixedpoint"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1368,6 +1276,98 @@ checksum = "05c8b63e8d9609db387f0324918f81d68fe27748f084ef092fb35954d0539a85"
 dependencies = [
  "critical-section",
 ]
+
+[[package]]
+name = "portwright"
+version = "0.1.1"
+dependencies = [
+ "assign-resources",
+ "bedrock_crash",
+ "bedrock_led",
+ "bedrock_sync",
+ "bedrock_usb",
+ "cnt",
+ "cortex-m",
+ "cortex-m-rt",
+ "critical-section",
+ "dap-rs",
+ "defmt 1.2.0",
+ "defmt-rtt",
+ "embassy-executor",
+ "embassy-futures",
+ "embassy-stm32",
+ "embassy-sync",
+ "embassy-time",
+ "panic-probe",
+ "portable-atomic",
+ "portwright_api",
+ "portwright_board",
+ "portwright_dap",
+ "rtt-target",
+ "static_cell",
+ "usb251xb",
+ "usbpd",
+ "usbpd-traits",
+ "wire_weaver",
+ "ww_adc",
+ "ww_board_info",
+ "ww_client_server",
+ "ww_counters",
+ "ww_date_time",
+ "ww_defmt_logger",
+ "ww_device",
+ "ww_dfu",
+ "ww_ecc_flash",
+ "ww_firmware_info",
+ "ww_gpio",
+ "ww_i2c",
+ "ww_indication",
+ "ww_log",
+ "ww_lz4",
+ "ww_settings",
+ "ww_si",
+ "ww_stream",
+ "ww_timebase",
+ "ww_uart",
+ "ww_uid",
+ "ww_user_info",
+]
+
+[[package]]
+name = "portwright_api"
+version = "0.8.0"
+dependencies = [
+ "ww_adc",
+ "ww_api",
+ "ww_board_info",
+ "ww_counters",
+ "ww_dfu",
+ "ww_firmware_info",
+ "ww_gpio",
+ "ww_i2c",
+ "ww_indication",
+ "ww_log",
+ "ww_si",
+ "ww_timebase",
+ "ww_uart",
+ "ww_uid",
+ "ww_user_info",
+]
+
+[[package]]
+name = "portwright_board"
+version = "0.20.51"
+dependencies = [
+ "defmt 1.2.0",
+ "portwright_api",
+ "shrink_wrap",
+ "usb251xb",
+ "ww_si",
+]
+
+[[package]]
+name = "portwright_dap"
+version = "0.20.51"
 
 [[package]]
 name = "proc-bitfield"

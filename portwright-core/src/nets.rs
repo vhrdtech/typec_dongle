@@ -1,10 +1,10 @@
-//! Net names of the B153A MCU pins (U202, STM32G0B1CE, LQFP48), for the `debug` level: `dg debug pin set RELAY_EN
+//! Net names of the B153A MCU pins (U202, STM32G0B1CE, LQFP48), for the `debug` level: `pw debug pin set RELAY_EN
 //! high` instead of `PA5`. The firmware only knows `McuPin { port, pin }`; the names live here, on the host.
 //!
 //! Source: `hw/b153_typec_serial/doc/hw_b153a.md` §11 "MCU pin map" (hw `cd5cc93`). Keep it in step with that table
 //! when a revision changes a net.
 
-use donguru_api::{GpioPort, McuPin};
+use portwright_api::{GpioPort, McuPin};
 
 /// One MCU pin and the net on it.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

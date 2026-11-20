@@ -1,6 +1,6 @@
-//! Donguru Colour theme and styles.
+//! Portwright Colour theme and styles.
 //!
-//! Donguru uses a 24-bit colour theme/style and a 16-colour fallback theme style
+//! Portwright uses a 24-bit colour theme/style and a 16-colour fallback theme style
 //! for terminals without truecolor support.
 
 use crate::cli::ColorMode;
@@ -113,7 +113,7 @@ pub const FALLBACK_PALETTE: Palette = Palette {
 };
 
 /// Truecolor style.
-pub fn donguru_style() -> Styles {
+pub fn portwright_style() -> Styles {
     (&DEFAULT_PALETTE).into()
 }
 
@@ -304,7 +304,7 @@ pub fn choice_from_args(args: impl IntoIterator<Item = String>) -> ColorChoice {
 /// Pick the richest palette the current terminal can render.
 pub fn select_style() -> Styles {
     if truecolor() {
-        donguru_style()
+        portwright_style()
     } else {
         fallback_style()
     }
@@ -321,16 +321,16 @@ mod tests {
     #[test]
     fn color_flag_is_found_anywhere() {
         assert_eq!(
-            choice_from_args(args(&["dg", "--color", "never", "info"])),
+            choice_from_args(args(&["pw", "--color", "never", "info"])),
             ColorChoice::Never
         );
         assert_eq!(
-            choice_from_args(args(&["dg", "info", "--color=always"])),
+            choice_from_args(args(&["pw", "info", "--color=always"])),
             ColorChoice::Always
         );
-        assert_eq!(choice_from_args(args(&["dg", "info"])), ColorChoice::Auto);
+        assert_eq!(choice_from_args(args(&["pw", "info"])), ColorChoice::Auto);
         assert_eq!(
-            choice_from_args(args(&["dg", "--", "--color=never"])),
+            choice_from_args(args(&["pw", "--", "--color=never"])),
             ColorChoice::Auto
         );
     }

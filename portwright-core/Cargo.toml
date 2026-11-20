@@ -1,9 +1,9 @@
 [package]
-name = "donguru-core"
+name = "portwright-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Library for interacting with Donguru dongles"
+description = "Library for interacting with Portwright dongles"
 
 [dependencies]
 thiserror.workspace = true
@@ -11,11 +11,11 @@ anyhow.workspace = true
 serde.workspace = true
 # layered config files (CLI-9)
 toml = "0.9"
-donguru_api.workspace = true
+portwright_api.workspace = true
 # the firmware's own debug rules (refused pins, claim table, UCPD roles), modelled by the mock
-donguru_board = { path = "../donguru_board" }
+portwright_board = { path = "../portwright_board" }
 tokio = { version = "1", features = ["rt", "time", "sync", "macros"] }
-# local checkout next to this repo (~/git/wire_weaver), like donguru_api
+# local checkout next to this repo (~/git/wire_weaver), like portwright_api
 wire_weaver = { git = "https://github.com/vhrdtech/wire_weaver", features = ["std"] }
 wire_weaver_client = { git = "https://github.com/vhrdtech/wire_weaver", features = ["stm32_dfu"] }
 ww_device = { git = "https://github.com/vhrdtech/wire_weaver", optional = true }
@@ -57,14 +57,14 @@ ignored = ["ww_date_time"]
 [features]
 # Run the SWD memtest (CORE-5) through a debug probe
 probe-rs = ["dep:probe-rs"]
-# A DonguruApi server in the same process (`mock`): the test double for the CLI, GUI and Python (CORE-3)
+# A PortwrightApi server in the same process (`mock`): the test double for the CLI, GUI and Python (CORE-3)
 mock = ["wire_weaver_client/in_process", "dep:ww_device", "dep:ww_stream"]
 
 [dev-dependencies]
 tempfile = "3"
 semver = "1"
 ww_stm32_dfu = { package = "stm32_dfu_host", git = "https://github.com/vhrdtech/wire_weaver", features = ["sim"] }
-donguru-core = { path = ".", features = ["mock"] }
+portwright-core = { path = ".", features = ["mock"] }
 tokio = { version = "1", features = ["rt-multi-thread", "process"] }
 # examples/uart_resume.rs: the state its two processes hand over
 serde_json.workspace = true

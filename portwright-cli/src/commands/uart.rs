@@ -1,11 +1,11 @@
-//! `donguru uart` - the UARTs of `uart[]` (CLI-20). So far `uart configure`: the line of the header UART
+//! `portwright uart` - the UARTs of `uart[]` (CLI-20). So far `uart configure`: the line of the header UART
 //! (`uart[1]`, IO7 TX / IO8 RX) until the dongle resets; the plug UART on SBU follows with API-14.
 
 use std::io::{self, Write};
 
 use clap::{Args, Subcommand, ValueEnum};
 use clap_complete::engine::ArgValueCandidates;
-use donguru_core::levels::Side;
+use portwright_core::levels::Side;
 use ww_si::{Baud, Prefix};
 use ww_uart::{Mode, UartConfig};
 
@@ -134,7 +134,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn configure_answers_the_rate_set() {
-        let mock = donguru_core::mock::MockDevice::start("cli/uart");
+        let mock = portwright_core::mock::MockDevice::start("cli/uart");
         let dongle = mock.open().await.unwrap();
         let (baud, data_bits, parity, stop_bits) = parse_uart_value("6000000 8N1").unwrap();
         let asked = UartConfig {
