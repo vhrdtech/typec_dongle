@@ -75,7 +75,7 @@
       "to": "f10b345",
       "applied": [
         "0.4.3: build.rs without the unused `let _ = out;` (file untouched, replaced); main.rs import order was already rustfmt-clean",
-        "0.5.0: WireWeaver over USB, set up by hand in the existing layout: API crate portwright_api in the repo root (../../portwright_api, member of the root Cargo workspace), firmware stays in fw/portwright; src/ww.rs from the template with the USB driver created in main.rs (USB in assign_resources, USB_UCPD1_2 in main's Irqs) and led_on/led_off switching the status LED via led::set instead of owning PF1"
+        "0.5.0: WireWeaver over USB, set up by hand in the existing layout: API crate donguru_api in the repo root (../../donguru_api, member of the root Cargo workspace), firmware stays in fw/donguru; src/ww.rs from the template with the USB driver created in main.rs (USB in assign_resources, USB_UCPD1_2 in main's Irqs) and led_on/led_off switching the status LED via led::set instead of owning PF1"
       ],
       "notes": "wire_weaver crates via relative path deps to ~/git/wire_weaver (not git). dev/release/examples build, fmt clean, .cnt_bkp_buffer still at 0x4000B100. USB enumeration and `ww list`/`ww introspect` not yet tested on hardware."
     },
@@ -95,7 +95,7 @@
       "applied": [
         "ROB-11 crash capture (c4fa204): bedrock_crash from git, src/last_reset.rs from the template (doc pointers to src/ww/device.rs), last_reset::boot() first thing in main, HardFault saves the record and resets instead of looping (FW-13), panic-probe replaced by the template's panic handler (kept as a dev-dependency for examples/)",
         "DEV-2 build id (c4fa204): --build-id=sha1 in build.rs, .note.gnu.build-id SECTIONS block at the end of memory.x, ww_firmware_info::build::emit() in build.rs (build-dependency)",
-        "FirmwareInfo / LastReset servers (c4fa204): already declared in portwright_api 0.2 at device.firmware / device.last_reset (API-8), so no API change; served in src/ww/device.rs (firmware_summary!(), build_id(), the three LastReset handlers), const_model gets BUILD_ID, omit = [\"device.firmware.BUILD_RECORD\"]; the Snapshot is handed to ww::start",
+        "FirmwareInfo / LastReset servers (c4fa204): already declared in donguru_api 0.2 at device.firmware / device.last_reset (API-8), so no API change; served in src/ww/device.rs (firmware_summary!(), build_id(), the three LastReset handlers), const_model gets BUILD_ID, omit = [\"device.firmware.BUILD_RECORD\"]; the Snapshot is handed to ww::start",
         "STD-27 boots_since_crash (ec04ab4): in last_reset.rs as taken",
         "TPL-14 (fb0d7eb): nothing to do, ww/ was already on the current server API",
         "ROB-12 (b53d9e4): already taken on 2026-10-15 (previous entry)"
