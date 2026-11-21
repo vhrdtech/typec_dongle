@@ -13,5 +13,5 @@
 </p>
 
 <p align="center">
-  <b><a href="https://vhrdtech.github.io/typec_dongle/">Documentation</a></b> — quickstart, usage, scripting and design docs.
+  <b><a href="https://vhrdtech.github.io/portwright/">Documentation</a></b> — quickstart, usage, scripting and design docs.
 </p>

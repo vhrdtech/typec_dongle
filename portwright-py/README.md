@@ -11,4 +11,4 @@ with portwright.open("bench-1") as pw:
         print(f"{r.voltage:.3f} V {r.current:.3f} A")
 ```
 
-Documentation: <https://vhrdtech.github.io/typec_dongle/user/python/>
+Documentation: <https://vhrdtech.github.io/portwright/user/python/>

@@ -16,7 +16,7 @@ run your own firmware on it, then put the official one back.
 
 #steps(cli: [
   ```sh
-  git clone https://github.com/vhrdtech/typec_dongle && cd typec_dongle/fw/portwright
+  git clone https://github.com/vhrdtech/portwright && cd portwright/fw/portwright
   # change something in src/, then:
   cargo build --release
   pw fw update target/thumbv6m-none-eabi/release/portwright        # through the ROM bootloader, no probe

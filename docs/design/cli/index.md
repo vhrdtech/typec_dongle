@@ -13,7 +13,7 @@ other Unix tools.
     This is a **design document**: it is the spec of the full v1 command
     tree, including commands no release has yet. What is actually built and
     what still answers "not implemented" is tracked in
-    [FEATURES.md](https://github.com/vhrdtech/typec_dongle/blob/main/FEATURES.md),
+    [FEATURES.md](https://github.com/vhrdtech/portwright/blob/main/FEATURES.md),
     not duplicated here.
 
 ## Goals

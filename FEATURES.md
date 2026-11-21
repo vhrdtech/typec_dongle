@@ -1180,7 +1180,7 @@ Last full review: 3 Oct 2026 (commit `c702f0d`, 0.1.0). Built from the code, the
 - 💡 **PKG-9 Pigtails**: a short cable for rev B's plug pads with both CC lines (a cut regular cable carries only one,
   so no debug accessory mode), as an accessory and possibly a Portwright with one soldered on from the start. Lab
   `broken-plug-bypass`.
-- 🧪 **PKG-10 Product name Portwright**: the product was Donguru until 20 Nov 2026. Crates `portwright-cli`, `portwright-core`, `portwright-py`, `portwright_api`, `portwright_board`, `portwright_dap`, firmware in `fw/portwright`, binary `portwright` with the short link `pw`, Python module `portwright`, config `portwright.toml`, `PORTWRIGHT_*` variables, `portwright-` plugins, udev rule `60-portwright.rules`, USB strings `vhrd.tech` / `Portwright`. VID:PID stays c0de:cafe. No compatibility with the old names. Built and tested on mock; boards not reflashed yet.
+- 🧪 **PKG-10 Product name Portwright**: the product was Donguru until 20 Nov 2026. Crates `portwright-cli`, `portwright-core`, `portwright-py`, `portwright_api`, `portwright_board`, `portwright_dap`, firmware in `fw/portwright`, binary `portwright` with the short link `pw`, Python module `portwright`, config `portwright.toml`, `PORTWRIGHT_*` variables, `portwright-` plugins, udev rule `60-portwright.rules`, USB strings `vhrd.tech` / `Portwright`. VID:PID stays c0de:cafe. Repository `vhrdtech/portwright` (was `typec_dongle`), docs at vhrdtech.github.io/portwright. No compatibility with the old names. Built and tested on mock; boards not reflashed yet.
 
 ## Dropped and superseded
 

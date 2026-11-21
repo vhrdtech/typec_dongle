@@ -5,7 +5,7 @@ icon: lucide/terminal
 # Usage
 
 A task-oriented guide to everyday commands. Most of the command tree is still being built (see
-[FEATURES.md](https://github.com/vhrdtech/typec_dongle/blob/main/FEATURES.md) for current status); this page grows
+[FEATURES.md](https://github.com/vhrdtech/portwright/blob/main/FEATURES.md) for current status); this page grows
 with it. `pw` is a short alias for `portwright` and takes the same arguments.
 
 ## Power to the device under test

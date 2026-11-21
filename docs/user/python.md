@@ -28,7 +28,7 @@ The package isn't on PyPI yet. Build it from a checkout of the repository with [
 (it needs a Rust toolchain; maturin is fetched by uv):
 
 ```sh
-uv add --editable path/to/typec_dongle/portwright-py   # into your uv project
+uv add --editable path/to/portwright/portwright-py   # into your uv project
 just py-build                                        # or a wheel into target/dist
 ```
 

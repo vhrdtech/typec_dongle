@@ -3,7 +3,7 @@
 #show: lab.with(
   title: [Add your own method to the firmware],
   time: "1-2 h",
-  needs: ([Portwright], [Rust toolchain], [the typec_dongle repo]),
+  needs: ([Portwright], [Rust toolchain], [the portwright repo]),
   features: ("API-29", "CORE-11", "CLI-39", "FW-12", "CLI-10"),
 )
 

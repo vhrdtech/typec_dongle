@@ -6,6 +6,10 @@ IDs refer to [FEATURES.md](FEATURES.md).
 
 ## [Unreleased]
 
+### Changed
+
+- Repository renamed `vhrdtech/typec_dongle` → `vhrdtech/portwright`; docs move to <https://vhrdtech.github.io/portwright/> (PKG-10).
+
 ## [0.20.52] - 2026-11-20
 
 ### Changed

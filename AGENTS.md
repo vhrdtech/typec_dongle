@@ -1,4 +1,4 @@
-# Working on typec_dongle (Portwright)
+# Working on Portwright
 
 Guidance for AI agents and contributors. Read this before changing code.
 
@@ -61,7 +61,7 @@ Our internal tooling reads this file to log progress, so a missing entry means w
     and config), `power` (VBUS modes and the guard).
 - `fw/portwright/` — firmware (embassy, thumbv6m), a separate Cargo project with its own `Cargo.lock` and toolchain:
   `src/main.rs` (clocks, tasks, fault handlers), `led.rs`, `adc.rs`, `button.rs`, `ww.rs` (API server), `init.rs`.
-- `docs/` — documentation site (Zensical), published to vhrdtech.github.io/typec_dongle. `developer-notes.md` —
+- `docs/` — documentation site (Zensical), published to vhrdtech.github.io/portwright. `developer-notes.md` —
   CLI implementation notes.
 
 Logic belongs in `portwright-core`, not in the CLI: commands parse arguments, call core and render the result, so the

@@ -15,8 +15,8 @@ classifiers = [
 ]
 
 [project.urls]
-Documentation = "https://vhrdtech.github.io/typec_dongle/user/python/"
-Repository = "https://github.com/vhrdtech/typec_dongle"
+Documentation = "https://vhrdtech.github.io/portwright/user/python/"
+Repository = "https://github.com/vhrdtech/portwright"
 
 [dependency-groups]
 dev = ["pytest>=8"]
